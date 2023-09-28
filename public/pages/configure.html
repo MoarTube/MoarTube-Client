@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>MoarTube - Configure</title>
+		<link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+		<meta charset="utf-8">
+		<script src="/javascript/jquery-3.6.4.min.js"></script>
+		<link href="/css/Open+Sans300,400,600,700.css" rel="stylesheet">
+		<link href="/css/nucleo-icons.css" rel="stylesheet">
+		<link href="/css/nucleo-svg.css" rel="stylesheet">
+		<link href="/css/free-5.15.4.min.css" rel="stylesheet">
+		<link href="/css/free-v4-font-face-5.15.4.min.css" rel="stylesheet">
+		<link href="/css/free-v4-shims-5.15.4.min.css" rel="stylesheet">
+		<link href="/css/nucleo-svg.css" rel="stylesheet">
+		<link id="pagestyle" href="/css/soft-ui-dashboard-1.1.0.min.css" rel="stylesheet">
+	</head>
+	<body class="g-sidenav-show bg-gray-100 h-100">
+		<main class="main-content position-relative max-height-vh-100 h-100 border-radius-lg height-vh-100">
+			<nav class="navbar navbar-main navbar-expand-lg position-sticky mt-4 top-1 px-0 mx-4 shadow-none border-radius-xl z-index-sticky" id="navbarBlur" data-scroll="true">
+				<div class="container-fluid py-1 px-3">
+					<div class="collapse navbar-collapse mt-sm-0 mt-2 me-md-0 me-sm-4" id="navbar">
+						<div class="ms-md-auto pe-md-3 d-flex align-items-center"></div>
+						<ul class="navbar-nav  justify-content-end">
+							<li class="nav-item d-flex align-items-center">
+								<a href="/account/signout" class="nav-link text-body font-weight-bold px-0">
+									<i class="fa fa-user me-sm-1" aria-hidden="true"></i>
+									<span class="d-sm-inline d-none">Sign Out</span>
+								</a>
+							</li>
+							<li class="nav-item d-xl-none ps-3 d-flex align-items-center">
+								<a href="javascript:;" class="nav-link text-body p-0" id="iconNavbarSidenav">
+									<div class="sidenav-toggler-inner">
+										<i class="sidenav-toggler-line"></i>
+										<i class="sidenav-toggler-line"></i>
+										<i class="sidenav-toggler-line"></i>
+									</div>
+								</a>
+							</li>
+							<li class="nav-item px-3 d-flex align-items-center hidden-elem">
+								<a href="javascript:;" class="nav-link text-body p-0">
+									<i class="fa fa-cog fixed-plugin-button-nav cursor-pointer" aria-hidden="true"></i>
+								</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</nav>
+			<div class="container-fluid py-4">
+				<div class="row">
+					<div class="col-12 text-center">
+						<h3 class="mt-5">Indexing Your Node</h3>
+						<div class="multisteps-form mb-5">
+							<div class="row">
+								<div class="col-12 col-lg-8 m-auto">
+									<form id="configure-form" class="multisteps-form__form" method="POST" action="/settings/node/network/external" style="height: 463px;">
+										<div class="card multisteps-form__panel p-3 border-radius-xl bg-white js-active" data-animation="FadeIn">
+											<div class="row text-center">
+												<div class="col-10 mx-auto">
+													<h5 class="font-weight-normal">Let's get you started</h5>
+												</div>
+											</div>
+											<div class="multisteps-form__content">
+												<div class="row mt-3">
+													<div class="col-12 col-sm-4">
+														<div class="avatar avatar-xxl position-relative">
+															<svg version="1.1" viewBox="0 0 68 48" width="100%" height="100%">
+																<path d="M66.52,7.74c-0.78-2.93-2.49-5.41-5.42-6.19C55.79,.13,34,0,34,0S12.21,.13,6.9,1.55 C3.97,2.33,2.27,4.81,1.48,7.74C0.06,13.05,0,24,0,24s0.06,10.95,1.48,16.26c0.78,2.93,2.49,5.41,5.42,6.19 C12.21,47.87,34,48,34,48s21.79-0.13,27.1-1.55c2.93-0.78,4.64-3.26,5.42-6.19C67.94,34.95,68,24,68,24S67.94,13.05,66.52,7.74z" fill="#cb0c9f"></path>
+																<path d="M 51.908 24 L 33.908 14 L 33.908 34" fill="#fff"></path>
+																<path d="M 37.342 24.211 L 19.342 14.211 L 19.342 34.211" fill="#fff"></path>
+															</svg>
+														</div>
+													</div>
+													<div class="col-12 col-sm-8 mt-4 mt-sm-0 text-start">
+														<label>public node host name / ip address</label>
+														<input id="node-address-input" class="multisteps-form__input form-control mb-3" type="text" name="publicNodeAddress" placeholder="moartube.example.com / xxx.xxx.xxx.xxx">
+														<label>public node port</label>
+														<input id="node-port-input" class="multisteps-form__input form-control mb-3" type="text" name="publicNodePort" placeholder="">
+													</div>
+												</div>
+												<div class="button-row d-flex mt-4">
+													<button class="btn bg-gradient-dark mb-0 js-btn-next" type="button" title="Done" onclick="showSkipConfiguringModal()">Skip</button>
+													<button class="btn bg-gradient-dark ms-auto mb-0 js-btn-next" type="submit" title="Done">Done</button>
+												</div>
+											</div>
+										</div>
+									</form>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</main>
+
+		<script src="/javascript/popper-2.11.6.min.js"></script>
+		<script src="/javascript/bootstrap-5.2.2.min.js"></script>
+		<script src="/javascript/sweetalert-11.0.11.min.js"></script>
+		<script src="/javascript/soft-ui-dashboard-1.1.0.min.js"></script>
+		
+		<script>
+			$(document).ready(async function() {
+				getNodeInformation();
+			});
+			
+			function getNodeInformation() {
+				return new Promise(function(resolve, reject) {
+					$.ajax({type: 'GET', url: '/node/information'})
+					.always(function() {
+						
+					})
+					.done(function (data, textStatus, xhr) {
+						if(data.isError) {
+							console.log(data.message);
+						}
+						else {
+							const nodeInformation = data.nodeInformation;
+							
+							$('#node-address-input').val(nodeInformation.publicNodeAddress);
+							$('#node-port-input').val(nodeInformation.publicNodePort);
+						}
+					})
+					.fail(function() {
+						console.log('unable to communicate with node');
+					});
+				});
+			}
+		
+			$("#configure-form").submit(function(event) {
+				event.preventDefault();
+				
+				var form = $(this);
+
+				var url = form.attr('action');
+				
+				var publicNodeProtocol = 'http';
+				var publicNodeAddress = form.find('input[name="publicNodeAddress"]').val();
+				var publicNodePort = form.find('input[name="publicNodePort"]').val();
+				
+				$.ajax({type: 'POST', url: url, data: { publicNodeProtocol: publicNodeProtocol, publicNodeAddress: publicNodeAddress, publicNodePort: publicNodePort }})
+				.done(function (data, textStatus, xhr) {
+					if(data.isError) {
+						Swal.fire({
+							icon: 'error',
+							title: 'hmmm',
+							text: data.message
+						});
+					}
+					else {
+						Swal.fire({
+						title: 'Welcome!',
+						html: '<h6>Your node has successfuly joined the MoarTube network</h6>',
+						icon: 'success'
+						})
+						.then((result) => {
+							if (result.isConfirmed) {
+								window.location.href = '/videos';
+							}
+						});
+					}
+				})
+				.fail(function() {
+					Swal.fire({
+						icon: 'error',
+						title: 'hmmm',
+						text: '...something went wrong...'
+					});
+				});
+			});
+			
+			function showSkipConfiguringModal() {
+				Swal.fire({
+					title: 'Are you sure?',
+					html: "<h6>Indexing allows your videos to be seen publicly on the <a href='http://www.moartube.com' target='_blank'>MoarTube front page</a></h6><p>But first, we need to know the ip address and port that your node is listening on<br>You can do this later in the settings if you want</p>",
+					icon: 'warning',
+					showCancelButton: true,
+					confirmButtonColor: '#3085d6',
+					cancelButtonColor: '#d33',
+					confirmButtonText: 'Got it!'
+				})
+				.then((result) => {
+					if (result.isConfirmed) {
+						$.ajax({type: 'POST', url: '/configure/skip'})
+						.done(function (data, textStatus, xhr) {
+							if(data.isError) {
+								Swal.fire({
+									icon: 'error',
+									title: 'hmmm',
+									text: data.message
+								});
+							}
+							else {
+								window.location.href = '/videos';
+							}
+						})
+						.fail(function() {
+							Swal.fire({
+								icon: 'error',
+								title: 'hmmm',
+								text: '...something went wrong...'
+							});
+						});
+					}
+				});
+			}
+		</script>
+	</body>
+</html>
