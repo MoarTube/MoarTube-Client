@@ -354,6 +354,7 @@
 										<div class="card-body d-sm-flex pt-0"><div class="d-flex align-items-center mb-sm-0 mb-4 ms-auto"><button class="btn btn-primary mb-0" type="submit" name="button">Save</button></div></div>
 									</div>
 								</form>
+								<!--
 								<form id="cloudflare_credentials_settings_form" role="form" method="POST" action="/settings/cloudflare/update">
 									<div class="card-body pt-0 pb-0">
 										<div class="">
@@ -378,6 +379,7 @@
 										<div class="card-body d-sm-flex pt-0"><div class="d-flex align-items-center mb-sm-0 mb-4 ms-auto"><button class="btn btn-primary mb-0" type="submit" name="button">Save</button></div></div>
 									</div>
 								</form>
+								-->
 							</div>
 						</div>
 					</div>
@@ -527,8 +529,8 @@
 						$('#public-node-address-input').val(nodeSettings.publicNodeAddress);
 						$('#public-node-port-input').val(nodeSettings.publicNodePort);
 						
-						$('#cloudflare-account-id').val(nodeSettings.cloudflareAccountId);
-						$('#cloudflare-api-key').val(nodeSettings.cloudflareApiKey);
+						//$('#cloudflare-account-id').val(nodeSettings.cloudflareAccountId);
+						//$('#cloudflare-api-key').val(nodeSettings.cloudflareApiKey);
 					}
 				})
 				.fail(function() {
@@ -730,6 +732,7 @@
 				}
 			});
 			
+			/*
 			$("#cloudflare_credentials_settings_form").submit(function(event) {
 				event.preventDefault();
 				
@@ -755,6 +758,7 @@
 					showAlert(true, 'an error occurred, please try again');
 				});
 			});
+			*/
 			
 			function toggleClientSettingGpuAccelerationCheckbox(checkbox) {
 				const isGpuAccelerationEnabled = $(checkbox).is(':checked');

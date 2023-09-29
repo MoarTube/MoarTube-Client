@@ -58,6 +58,7 @@ async function startClient() {
 
 	logDebugMessageToConsole('creating required directories', '', true);
 	
+	// create required directories
 	fs.mkdirSync(path.join(__dirname, '/public/javascript'), { recursive: true });
 	fs.mkdirSync(path.join(__dirname, '/public/css'), { recursive: true });
 	fs.mkdirSync(path.join(__dirname, '/public/media/videos'), { recursive: true });
