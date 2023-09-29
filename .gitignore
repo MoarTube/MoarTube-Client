@@ -1,4 +1,6 @@
 node_modules
+
+public/certificates
 public/media
 
 _client_log.txt
