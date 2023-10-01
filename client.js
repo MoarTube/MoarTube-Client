@@ -265,7 +265,6 @@ async function startClient() {
 		const password = req.body.password;
 		const moarTubeNodeIp = req.body.moarTubeNodeIp;
 		const moarTubeNodePort = req.body.moarTubeNodePort;
-		const isSecure = req.body.isSecure;
 		const rememberMe = req.body.rememberMe;
 		
 		if(!ipAddressIsValid(moarTubeNodeIp) && !isDomainNameValid(moarTubeNodeIp)) {
@@ -279,153 +278,173 @@ async function startClient() {
 			res.send({isError: true, message: 'port is not valid'});
 		}
 		else {
-			MOARTUBE_NODE_IP = moarTubeNodeIp;
-			MOARTUBE_NODE_PORT = moarTubeNodePort;
+			logDebugMessageToConsole('attempting client sign in with HTTP...', '', true);
 			
-			if(isSecure) {
-				MOARTUBE_NODE_HTTP_PROTOCOL = 'https';
-				MOARTUBE_NODE_WEBSOCKET_PROTOCOL = 'wss';
-			}
-			else {
-				MOARTUBE_NODE_HTTP_PROTOCOL = 'http';
-				MOARTUBE_NODE_WEBSOCKET_PROTOCOL = 'ws';
-			}
-			
-			node_doSignin(username, password, rememberMe)
+			node_getHeartbeat_1('http', moarTubeNodeIp, moarTubeNodePort)
 			.then((nodeResponseData) => {
-				if(nodeResponseData.isError) {
-					logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
-					
-					res.send({isError: true, message: 'error communicating with the MoarTube node'});
-				}
-				else {
-					if(nodeResponseData.isAuthenticated) {
-						req.session.jwtToken = nodeResponseData.token;
-						
-						if(websocketClient == null) {
-							var connectWebsocketClient = function() {
-								try {
-									const websocketServerAddress = MOARTUBE_NODE_WEBSOCKET_PROTOCOL + '://' + MOARTUBE_NODE_IP + ':' + MOARTUBE_NODE_PORT;
-									websocketClient = new webSocket(websocketServerAddress);
-									
-									websocketClient.on('open', () => {
-										logDebugMessageToConsole('connected to websocket server: ' + websocketServerAddress, '', true);
-									});
-									
-									websocketClient.on('message', (message) => {
-										const parsedMessage = JSON.parse(message);
-										
-										if(parsedMessage.eventName === 'echo') {
-											if(parsedMessage.data.eventName === 'video_status') {
-												if(parsedMessage.data.payload.type === 'importing_stopping') {
-													if(importVideoTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
-														importVideoTracker[parsedMessage.data.payload.videoId].stopping = true;
-													}
-												}
-												else if(parsedMessage.data.payload.type === 'importing_stopped') {
-													if(importVideoTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
-														importVideoTracker[parsedMessage.data.payload.videoId].req.destroy();
-														
-														//delete importVideoTracker[parsedMessage.data.payload.videoId];
-													}
-													
-													websocketServerBroadcast(parsedMessage.data);
-												}
-												else if(parsedMessage.data.payload.type === 'publishing_stopping') {
-													if(publishVideoEncodingTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
-														publishVideoEncodingTracker[parsedMessage.data.payload.videoId].stopping = true;
-													}
-												}
-												else if(parsedMessage.data.payload.type === 'publishing_stopped') {
-													if(publishVideoEncodingTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
-														const processes = publishVideoEncodingTracker[parsedMessage.data.payload.videoId].processes;
-														processes.forEach(function(process) {
-															process.kill(); // no point in being graceful about it; just kill it
-														});
-														
-														//delete publishVideoEncodingTracker[parsedMessage.data.payload.videoId];
-													}
-													
-													websocketServerBroadcast(parsedMessage.data);
-												}
-												else if(parsedMessage.data.payload.type === 'streaming_stopping') {
-													if(publishStreamTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
-														publishStreamTracker[parsedMessage.data.payload.videoId].stopping = true;
-													}
-												}
-												else if(parsedMessage.data.payload.type === 'streaming_stopped') {
-													if(publishStreamTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
-														const process = publishStreamTracker[parsedMessage.data.payload.videoId].process;
-														process.kill(); // no point in being graceful about it; just kill it
-														
-														//delete publishStreamTracker[parsedMessage.data.payload.videoId];
-													}
-													
-													websocketServerBroadcast(parsedMessage.data);
-												}
-												else {
-													websocketServerBroadcast(parsedMessage.data);
-												}
-												
-											}
-											else if(parsedMessage.data.eventName === 'video_data') {
-												websocketServerBroadcast(parsedMessage.data);
-											}
-										}
-									});
-									
-									websocketClient.on('error', (error) => {
-										logDebugMessageToConsole('', new Error(error).stack, true);
-									});
-									
-									websocketClient.on('close', () => {
-										logDebugMessageToConsole('disconnected from websocket server <' + websocketServerAddress + '>', '', true);
-										
-										setTimeout(connectWebsocketClient, 1000);
-									});
-								}
-								catch(error) {
-									logDebugMessageToConsole('', new Error(error).stack, true);
-								}
-							};
-							
-							connectWebsocketClient();
-						}
-						
-						node_getSettings_filesystem(req.session.jwtToken)
-						.then(nodeResponseData => {
-							if(nodeResponseData.isError) {
-								logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
-								
-								res.send({isError: true, message: 'error communicating with the MoarTube node'});
-							}
-							else {
-								const nodeSettings = nodeResponseData.nodeSettings;
-								
-								if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
-									res.send({isError: false, isAuthenticated: true, redirectUrl: '/videos'});
-								}
-								else {
-									res.send({isError: false, isAuthenticated: true, redirectUrl: '/configure'});
-								}
-							}
-						})
-						.catch(error => {
-							logDebugMessageToConsole('', new Error(error).stack, true);
-							
-							res.send({isError: true, message: 'error communicating with the MoarTube node'});
-						});
-					}
-					else {
-						res.send({isError: false, isAuthenticated: false});
-					}
-				}
+				logDebugMessageToConsole('client signing in with HTTP available', '', true);
+				
+				performSignIn('http', 'ws', moarTubeNodeIp, moarTubeNodePort);
 			})
 			.catch(error => {
-				logDebugMessageToConsole('', new Error(error).stack, true);
+				logDebugMessageToConsole('attempting client sign in with HTTPS...', '', true);
 				
-				res.send({isError: true, message: 'error communicating with the MoarTube node'});
+				node_getHeartbeat_1('https', moarTubeNodeIp, moarTubeNodePort)
+				.then((nodeResponseData) => {
+					logDebugMessageToConsole('client signing in with HTTPS available', '', true);
+					
+					performSignIn('https', 'wss', moarTubeNodeIp, moarTubeNodePort);
+				})
+				.catch(error => {
+					logDebugMessageToConsole('', new Error(error).stack, true);
+					
+					res.send({isError: true, message: 'error communicating with the MoarTube node'});
+				});
 			});
+			
+			function performSignIn(moarTubeNodeProtocol, moarTubeNodeWebsocketProtocol, moarTubeNodeIp, moarTubeNodePort) {
+				MOARTUBE_NODE_HTTP_PROTOCOL = moarTubeNodeProtocol
+				MOARTUBE_NODE_WEBSOCKET_PROTOCOL = moarTubeNodeWebsocketProtocol;
+				
+				MOARTUBE_NODE_IP = moarTubeNodeIp;
+				MOARTUBE_NODE_PORT = moarTubeNodePort;
+				
+				node_doSignin(username, password, rememberMe)
+				.then((nodeResponseData) => {
+					if(nodeResponseData.isError) {
+						logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+						
+						res.send({isError: true, message: 'error communicating with the MoarTube node'});
+					}
+					else {
+						if(nodeResponseData.isAuthenticated) {
+							req.session.jwtToken = nodeResponseData.token;
+							
+							if(websocketClient == null) {
+								var connectWebsocketClient = function() {
+									try {
+										const websocketServerAddress = MOARTUBE_NODE_WEBSOCKET_PROTOCOL + '://' + MOARTUBE_NODE_IP + ':' + MOARTUBE_NODE_PORT;
+										websocketClient = new webSocket(websocketServerAddress);
+										
+										websocketClient.on('open', () => {
+											logDebugMessageToConsole('connected to websocket server: ' + websocketServerAddress, '', true);
+										});
+										
+										websocketClient.on('message', (message) => {
+											const parsedMessage = JSON.parse(message);
+											
+											if(parsedMessage.eventName === 'echo') {
+												if(parsedMessage.data.eventName === 'video_status') {
+													if(parsedMessage.data.payload.type === 'importing_stopping') {
+														if(importVideoTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
+															importVideoTracker[parsedMessage.data.payload.videoId].stopping = true;
+														}
+													}
+													else if(parsedMessage.data.payload.type === 'importing_stopped') {
+														if(importVideoTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
+															importVideoTracker[parsedMessage.data.payload.videoId].req.destroy();
+															
+															//delete importVideoTracker[parsedMessage.data.payload.videoId];
+														}
+														
+														websocketServerBroadcast(parsedMessage.data);
+													}
+													else if(parsedMessage.data.payload.type === 'publishing_stopping') {
+														if(publishVideoEncodingTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
+															publishVideoEncodingTracker[parsedMessage.data.payload.videoId].stopping = true;
+														}
+													}
+													else if(parsedMessage.data.payload.type === 'publishing_stopped') {
+														if(publishVideoEncodingTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
+															const processes = publishVideoEncodingTracker[parsedMessage.data.payload.videoId].processes;
+															processes.forEach(function(process) {
+																process.kill(); // no point in being graceful about it; just kill it
+															});
+															
+															//delete publishVideoEncodingTracker[parsedMessage.data.payload.videoId];
+														}
+														
+														websocketServerBroadcast(parsedMessage.data);
+													}
+													else if(parsedMessage.data.payload.type === 'streaming_stopping') {
+														if(publishStreamTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
+															publishStreamTracker[parsedMessage.data.payload.videoId].stopping = true;
+														}
+													}
+													else if(parsedMessage.data.payload.type === 'streaming_stopped') {
+														if(publishStreamTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
+															const process = publishStreamTracker[parsedMessage.data.payload.videoId].process;
+															process.kill(); // no point in being graceful about it; just kill it
+															
+															//delete publishStreamTracker[parsedMessage.data.payload.videoId];
+														}
+														
+														websocketServerBroadcast(parsedMessage.data);
+													}
+													else {
+														websocketServerBroadcast(parsedMessage.data);
+													}
+													
+												}
+												else if(parsedMessage.data.eventName === 'video_data') {
+													websocketServerBroadcast(parsedMessage.data);
+												}
+											}
+										});
+										
+										websocketClient.on('error', (error) => {
+											logDebugMessageToConsole('', new Error(error).stack, true);
+										});
+										
+										websocketClient.on('close', () => {
+											logDebugMessageToConsole('disconnected from websocket server <' + websocketServerAddress + '>', '', true);
+											
+											setTimeout(connectWebsocketClient, 1000);
+										});
+									}
+									catch(error) {
+										logDebugMessageToConsole('', new Error(error).stack, true);
+									}
+								};
+								
+								connectWebsocketClient();
+							}
+							
+							node_getSettings_filesystem(req.session.jwtToken)
+							.then(nodeResponseData => {
+								if(nodeResponseData.isError) {
+									logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+									
+									res.send({isError: true, message: 'error communicating with the MoarTube node'});
+								}
+								else {
+									const nodeSettings = nodeResponseData.nodeSettings;
+									
+									if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
+										res.send({isError: false, isAuthenticated: true, redirectUrl: '/videos'});
+									}
+									else {
+										res.send({isError: false, isAuthenticated: true, redirectUrl: '/configure'});
+									}
+								}
+							})
+							.catch(error => {
+								logDebugMessageToConsole('', new Error(error).stack, true);
+								
+								res.send({isError: true, message: 'error communicating with the MoarTube node'});
+							});
+						}
+						else {
+							res.send({isError: false, isAuthenticated: false});
+						}
+					}
+				})
+				.catch(error => {
+					logDebugMessageToConsole('', new Error(error).stack, true);
+					
+					res.send({isError: true, message: 'error communicating with the MoarTube node'});
+				});
+			}
 		}
 	});
 	
@@ -4116,7 +4135,21 @@ async function startClient() {
 		});
 	}
 	
-	function node_getHeartbeat() {
+	function node_getHeartbeat_1(moarTubeNodeHttpProtocol, moarTubeNodeIp, moarTubeNodePort) {
+		return new Promise(function(resolve, reject) {
+			axios.get(moarTubeNodeHttpProtocol + '://' + moarTubeNodeIp + ':' + moarTubeNodePort + '/heartbeat')
+			.then(response => {
+				const data = response.data;
+				
+				resolve(data);
+			})
+			.catch(error => {
+				reject(error);
+			});
+		});
+	}
+	
+	function node_getHeartbeat_2() {
 		return new Promise(function(resolve, reject) {
 			axios.get(MOARTUBE_NODE_HTTP_PROTOCOL + '://' + MOARTUBE_NODE_IP + ':' + MOARTUBE_NODE_PORT + '/heartbeat')
 			.then(response => {

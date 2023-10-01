@@ -88,10 +88,7 @@
 					var moarTubeNodePort = form.find('input[name="moarTubeNodePort"]').val();
 					var rememberMe = form.find('input[name="rememberMe"]').prop('checked');
 					
-					//separate the two login approaches and just let them race each other
-					
-					// try non-secure login to node
-					performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe, false)
+					performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe)
 					.then(response => {
 						var loginOutcome = handleloginResponse(response);
 						
@@ -100,36 +97,10 @@
 						}
 						else {
 							if(loginOutcome.reason === 'error') {
-								// try secure login to node
-								performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe, true)
-								.then(response => {
-									var loginOutcome = handleloginResponse(response);
-									
-									if(loginOutcome.isLoggedIn) {
-										window.location.href = loginOutcome.redirectUrl;
-									}
-									else {
-										if(loginOutcome.reason === 'error') {
-											Swal.fire({
-												icon: 'error',
-												title: 'hmmm',
-												text: response.message
-											});
-										}
-										else if(loginOutcome.reason === 'password') {
-											Swal.fire({
-												icon: 'error',
-												text: 'username/password not correct'
-											});
-										}
-									}
-								})
-								.catch(error => {
-									Swal.fire({
-										icon: 'error',
-										title: 'hmmm',
-										text: '...something went wrong...'
-									});
+								Swal.fire({
+									icon: 'error',
+									title: 'hmmm',
+									text: response.message
 								});
 							}
 							else if(loginOutcome.reason === 'password') {
@@ -149,9 +120,9 @@
 					});
 				});
 				
-				function performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe, isSecure) {
+				function performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe) {
 					return new Promise(function(resolve, reject) {
-						$.post({url: url, data: JSON.stringify({username: username, password: password, moarTubeNodeIp: moarTubeNodeIp, moarTubeNodePort: moarTubeNodePort, rememberMe: rememberMe, isSecure: isSecure}), contentType: 'application/json; charset=utf-8'})
+						$.post({url: url, data: JSON.stringify({username: username, password: password, moarTubeNodeIp: moarTubeNodeIp, moarTubeNodePort: moarTubeNodePort, rememberMe: rememberMe}), contentType: 'application/json; charset=utf-8'})
 						.done(function(response) {
 							resolve(response);
 						})
