@@ -2487,6 +2487,18 @@
 					else {
 						const rtmpUrls = data.rtmpUrls;
 						
+						var rtmlServerUrl = '';
+						var rtmpStreamKey = '';
+						
+						if(rtmpUrls.length > 0) {
+							const rtmpUrl = rtmpUrls[0];
+							
+							const splitIndex = rtmpUrl.lastIndexOf('/');
+							
+							rtmlServerUrl = rtmpUrl.substring(0, splitIndex); 
+							rtmpStreamKey = rtmpUrl.substring(splitIndex + 1); 
+						}
+						
 						var rtmpUrlsHtml = '';
 						
 						for(const rtmpUrl of rtmpUrls) {
@@ -2498,9 +2510,20 @@
 							<p>All detected system network interfaces are below.</p>\
 							<p>Send your stream to the one that will receive the stream input.</p>\
 						</div>\
+						<label class="form-label d-flex justify-content-start mt-3 mb-1">RTMP Server URLs</label>\
 						<div class="input-group">\
 							<select id="rtmp-url-select" class="form-select dropdown-toggle me-1" name="reason">' + rtmpUrlsHtml + '</select>\
 							<span class="input-group-btn"><button id="rtmp-url-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-container="body" data-bs-animation="false">copy</button></span>\
+						</div>\
+						<label class="form-label d-flex justify-content-start mt-3 mb-1">RTMP Server URL</label>\
+						<div class="input-group mt-1">\
+							<input id="rtmp-server-url-input" class="form-control me-1" disabled value="' + rtmlServerUrl + '"/>\
+							<span class="input-group-btn"><button id="rtmp-server-url-input-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-container="body" data-bs-animation="false">copy</button></span>\
+						</div>\
+						<label class="form-label d-flex justify-content-start mt-3 mb-1">RTMP Server Stream Key</label>\
+						<div class="input-group">\
+							<input id="rtmp-stream-key-input" class="form-control me-1" disabled value="' + rtmpStreamKey + '"/>\
+							<span class="input-group-btn"><button id="rtmp-stream-key-input-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-container="body" data-bs-animation="false">copy</button></span>\
 						</div>';
 						
 						Swal.fire({
@@ -2510,10 +2533,34 @@
 							html: html,
 						});
 						
+						$('#rtmp-url-select').on('change', function() {
+							const rtmpUrl = $(this).val();
+							
+							const splitIndex = rtmpUrl.lastIndexOf('/');
+							
+							rtmlServerUrl = rtmpUrl.substring(0, splitIndex); 
+							rtmpStreamKey = rtmpUrl.substring(splitIndex + 1); 
+							
+							$('#rtmp-server-url-input').val(rtmlServerUrl);
+							$('#rtmp-stream-key-input').val(rtmpStreamKey);
+						});
+						
 						$('#rtmp-url-copy-button').click(function(event) {
 							const rtmpUrl = $( "#rtmp-url-select option:selected" ).val();
 							
 							setClipboard(rtmpUrl);
+						});
+						
+						$('#rtmp-server-url-input-copy-button').click(function(event) {
+							const rtmpServerUrl = $( "#rtmp-server-url-input" ).val();
+							
+							setClipboard(rtmpServerUrl);
+						});
+						
+						$('#rtmp-stream-key-input-copy-button').click(function(event) {
+							const rtmpStreamKey = $( "#rtmp-stream-key-input" ).val();
+							
+							setClipboard(rtmpStreamKey);
 						});
 						
 						refreshClickTooltips();
