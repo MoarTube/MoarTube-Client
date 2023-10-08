@@ -652,7 +652,7 @@ async function startClient() {
 										receivedFileSize += chunk.length;
 										const importProgress = Math.floor((receivedFileSize / totalFileSize) * 100);
 										
-										node_broadcastMessage_websocket({eventName: 'echo', data: {eventName: 'video_status', payload: { type: 'importing', videoId: videoId, progress: importProgress }}});
+										node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing', videoId: videoId, progress: importProgress }}});
 									}
 								});
 								
@@ -850,7 +850,7 @@ async function startClient() {
 																						else {
 																							logDebugMessageToConsole('flagging video as imported to node for video: ' + videoId, '', true);
 																							
-																							node_broadcastMessage_websocket({eventName: 'echo', data: {eventName: 'video_status', payload: { type: 'imported', videoId: videoId, lengthTimestamp: lengthTimestamp }}});
+																							node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'imported', videoId: videoId, lengthTimestamp: lengthTimestamp }}});
 																							
 																							res.send({isError: false});
 																						}
@@ -940,7 +940,7 @@ async function startClient() {
 				if(nodeResponseData.isAuthenticated) {
 					const videoId = req.params.videoId;
 					
-					node_broadcastMessage_websocket({eventName: 'echo', data: {eventName: 'video_status', payload: { type: 'importing_stopping', videoId: videoId }}});
+					node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing_stopping', videoId: videoId }}});
 					
 					node_stopVideoImporting_database(jwtToken, videoId)
 					.then((nodeResponseData) => {
@@ -950,7 +950,7 @@ async function startClient() {
 							//res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
 						else {
-							node_broadcastMessage_websocket({eventName: 'echo', data: {eventName: 'video_status', payload: { type: 'importing_stopped', videoId: videoId }}});
+							node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing_stopped', videoId: videoId }}});
 							
 							res.send({isError: false});
 						}
@@ -1140,7 +1140,7 @@ async function startClient() {
 				if(nodeResponseData.isAuthenticated) {
 					const videoId = req.params.videoId;
 					
-					node_broadcastMessage_websocket({eventName: 'echo', data: {eventName: 'video_status', payload: { type: 'publishing_stopping', videoId: videoId }}});
+					node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing_stopping', videoId: videoId }}});
 					
 					node_stopVideoPublishing_database(jwtToken, videoId)
 					.then((nodeResponseData) => {
@@ -1150,7 +1150,7 @@ async function startClient() {
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
 						else {
-							node_broadcastMessage_websocket({eventName: 'echo', data: {eventName: 'video_status', payload: { type: 'publishing_stopped', videoId: videoId }}});
+							node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing_stopped', videoId: videoId }}});
 					
 							res.send({isError: false});
 						}
@@ -1281,7 +1281,7 @@ async function startClient() {
 				if(nodeResponseData.isAuthenticated) {
 					const videoId = req.params.videoId;
 					
-					node_broadcastMessage_websocket({eventName: 'echo', data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
+					node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
 					
 					node_stopVideoStreaming_database(jwtToken, videoId)
 					.then((nodeResponseData) => {
@@ -1291,7 +1291,7 @@ async function startClient() {
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
 						else {
-							node_broadcastMessage_websocket({eventName: 'echo', data: {eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId }}});
+							node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId }}});
 							
 							res.send({isError: false});
 						}
@@ -2128,7 +2128,7 @@ async function startClient() {
 								
 								deleteDirectoryRecursive(videoDirectory);
 								
-								node_broadcastMessage_websocket({eventName: 'echo', data: {eventName: 'video_status', payload: { type: 'finalized', videoId: finalizedVideoId }}});
+								node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'finalized', videoId: finalizedVideoId }}});
 							}
 							
 							res.send({isError: false, finalizedVideoIds: finalizedVideoIds, nonFinalizedVideoIds: nonFinalizedVideoIds});
@@ -6316,7 +6316,7 @@ async function startClient() {
 							else {
 								logDebugMessageToConsole('video finished publishing for id: ' + videoId, '', true);
 								
-								node_broadcastMessage_websocket({eventName: 'echo', data: {eventName: 'video_status', payload: { type: 'published', videoId: videoId, lengthTimestamp: lengthTimestamp, lengthSeconds: lengthSeconds }}});
+								node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'published', videoId: videoId, lengthTimestamp: lengthTimestamp, lengthSeconds: lengthSeconds }}});
 							}
 						})
 						.catch(error => {
@@ -6406,7 +6406,7 @@ async function startClient() {
 							if(currentTimeSeconds > 0 && lengthSeconds > 0) {
 								const encodingProgress = Math.ceil(((currentTimeSeconds / lengthSeconds) * 100) / 2);
 								
-								node_broadcastMessage_websocket({eventName: 'echo', data: {eventName: 'video_status', payload: { type: 'publishing', videoId: videoId, format: format, resolution: resolution, progress: encodingProgress }}});
+								node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing', videoId: videoId, format: format, resolution: resolution, progress: encodingProgress }}});
 							}
 						}
 					});
@@ -6805,7 +6805,7 @@ async function startClient() {
 											else {
 												const bandwidth = nodeResponseData.bandwidth;
 												
-												node_broadcastMessage_websocket({eventName: 'echo', data: {eventName: 'video_status', payload: {type: 'streaming', videoId: videoId, lengthTimestamp: lengthTimestamp, bandwidth: bandwidth}}});
+												node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: {type: 'streaming', videoId: videoId, lengthTimestamp: lengthTimestamp, bandwidth: bandwidth}}});
 											}
 										})
 										.catch(error => {
@@ -6861,7 +6861,7 @@ async function startClient() {
 					if(!publishStreamTracker[videoId].stopping) {
 						logDebugMessageToConsole('performStreamingJob determined live stream process was interrupted by user', '', true);
 						
-						node_broadcastMessage_websocket({eventName: 'echo', data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
+						node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
 						
 						node_stopVideoStreaming_database(jwtToken, videoId)
 						.then((nodeResponseData) => {
@@ -6869,7 +6869,7 @@ async function startClient() {
 								logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
 							}
 							else {
-								node_broadcastMessage_websocket({eventName: 'echo', data: {eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId }}});
+								node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId }}});
 							}
 						})
 						.catch(error => {
