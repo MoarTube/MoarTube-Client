@@ -328,6 +328,8 @@ async function startClient() {
 										
 										websocketClient.on('open', () => {
 											logDebugMessageToConsole('connected to websocket server: ' + websocketServerAddress, '', true);
+											
+											websocketClient.send(JSON.stringify({eventName: 'register', socketType: 'moartube_client', jwtToken: req.session.jwtToken}));
 										});
 										
 										websocketClient.on('message', (message) => {
@@ -1205,7 +1207,7 @@ async function startClient() {
 							}
 							else {
 								if (portStatus === 'closed') {
-									const uuid = uuidv4();
+									const uuid = 'moartube';
 									
 									node_streamVideo_database(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally)
 									.then(nodeResponseData => {
