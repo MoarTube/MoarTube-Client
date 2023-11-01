@@ -6208,8 +6208,7 @@ async function startClient() {
 		}
 		
 		/*
-		hls_list_size will be enforced if not recording remotely, otherwise hls_list_size 
-		will be 0 (no list size limit) if stream is recording remotely
+		hls_list_size will be enforced if not recording remotely, otherwise hls_list_size will be 0 (no list size limit) if stream is recording remotely
 		*/
 		if(!isRecordingStreamRemotely) {
 			ffmpegArguments.splice(ffmpegArguments.indexOf('-hls_playlist_type'), 1);
@@ -6764,7 +6763,11 @@ async function startClient() {
 										process3.on('error', function (code) {
 											logDebugMessageToConsole('live poster generating errorred with error code: ' + code, '', true);
 										});
-
+										
+										
+										
+										
+										
 										const directoryPaths = [
 											{fileName : manifestFileName, filePath: manifestFilePath}, 
 											{fileName : expectedSegmentFileName, filePath: expectedSegmentFilePath}
