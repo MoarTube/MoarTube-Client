@@ -12,6 +12,7 @@
 		<link href="/css/free-v4-font-face-5.15.4.min.css" rel="stylesheet">
 		<link href="/css/free-v4-shims-5.15.4.min.css" rel="stylesheet">
 		<link href="/css/nucleo-svg.css" rel="stylesheet">
+		<link href="/css/pickr-nano-theme-1.9.0.min.css" rel="stylesheet">
 		<link id="pagestyle" href="/css/soft-ui-dashboard-1.1.0.min.css" rel="stylesheet">
 		<style>
 			.circle {
@@ -97,6 +98,10 @@
 			.upload-images-button-container {
 				background-color: #cb0c9f;
 				color: white;
+			}
+			
+			.pcr-button {
+				border: 1px solid grey;
 			}
 		</style>
 	</head>
@@ -334,7 +339,7 @@
 		<script src="/javascript/choices-9.0.1.min.js"></script>
 		<script src="/javascript/soft-ui-dashboard-1.1.0.min.js"></script>
 		<script src="/javascript/circle-progress-1.2.2.min.js"></script>
-		
+		<script src="/javascript/pickr-nano-theme-1.9.0.min.js"></script>
 		<script>
 			var NODE_PROTOCOL;
 			var NODE_ADDRESS;
@@ -2323,15 +2328,15 @@
 								<div class="input-group"><input id="index-captcha-input" class="form-control mt-2" disabled placeholder="enter the captcha" type="text"></div>\
 								<div class="form-check mt-2 d-flex align-items-center justify-content-center text-center">\
 									<div>\
+										<label for="contains-adult-content-checkbox">Contains Adult Content</label> \
 										<input id="contains-adult-content-checkbox" class="form-check-input" type="checkbox">\
 									</div>\
-									<div>Contains Adult Content</div>\
 								</div>\
 								<div class="form-check mt-2 d-flex align-items-center justify-content-center text-center">\
 									<div>\
+										<label for="terms-of-service-checkbox">I agree to the <a href="http://www.moartube.com/terms-of-service" target="_blank">Terms of Service</a></label> \
 										<input id="terms-of-service-checkbox" class="form-check-input" type="checkbox">\
 									</div>\
-									<div>I agree to the <a href="http://www.moartube.com/terms-of-service" target="_blank">Terms of Service</a></div>\
 								</div>';
 								
 								Swal.update({ 
@@ -2476,6 +2481,141 @@
 				});
 			}
 			
+			function showChatEmbedModal(videoId) {
+				const html = '\
+				<div class="card" id="notifications"> \
+					<div class="card-body pt-0"> \
+						<div class="table-responsive"> \
+							<table id="embed-chat-table" class="table mb-0"> \
+								<tbody> \
+									<tr> <td class="ps-1" colspan="4"> <div class="my-auto">  <span class="text-s font-weight-normal">show chat input</span> </div> </td> <td> <div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input id="embed-chat-show-chat-checkbox" class="form-check-input" type="checkbox"> </div> </td>   </tr> \
+									<tr> <td class="ps-1 align-middle" colspan="4"> <div class="my-auto">  <span class="text-s font-weight-normal">background color</span> </div> </td> <td> <div id="background-color-pickr"></div> </td>   </tr>   \
+									<tr> <td class="ps-1 align-middle" colspan="4"> <div class="my-auto">  <span class="text-s font-weight-normal">chat text color</span> </div> </td> <td> <div id="chat-text-color-pickr"></div> </td>   </tr>   \
+								</tbody> \
+							</table> \
+						</div> \
+					</div> \
+				</div> \
+				<div class="input-group mt-2"><input id="embed-chat-input" class="form-control me-1" type="text" value="" disabled=""><span class="input-group-btn"><button id="embed-chat-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-container="body" data-bs-animation="false" data-bs-original-title="copied!">copy</button></span></div> \
+				<div class="input-group mt-2"><input id="embed-chat-code-input" class="form-control me-1" type="text" value="" disabled=""><span class="input-group-btn"><button id="embed-chat-code-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-container="body" data-bs-animation="false" data-bs-original-title="copied!">copy</button></span></div>';
+				
+				Swal.fire({
+					title: 'Embed Chat',
+					showCloseButton: true,
+					showConfirmButton: false,
+					html: html,
+					didOpen: () => {
+						var sci = false;
+						var bgc = '000000';
+						var ctc = 'F9F9F9';
+						
+						Pickr.create({
+							el: '#background-color-pickr',
+							theme: 'nano',
+							default: '#' + bgc,
+							swatches: [
+								'rgba(0, 0, 0, 1)',
+								'rgba(249, 249, 249, 1)',
+								'rgba(203, 12, 159, 1)',
+								'rgba(103, 58, 183, 0.85)',
+								'rgba(63, 81, 181, 0.8)',
+								'rgba(33, 150, 243, 0.75)',
+								'rgba(3, 169, 244, 0.7)',
+								'rgba(0, 188, 212, 0.7)',
+								'rgba(0, 150, 136, 0.75)',
+								'rgba(76, 175, 80, 0.8)',
+								'rgba(139, 195, 74, 0.85)',
+								'rgba(205, 220, 57, 0.9)',
+								'rgba(255, 235, 59, 0.95)',
+								'rgba(255, 193, 7, 1)'
+							],
+							components: {
+								preview: true,
+								opacity: true,
+								hue: true,
+								interaction: {
+									input: true
+								}
+							}
+						})
+						.on('change', (color, source, instance) => {
+							instance.applyColor(true, color);
+							
+							bgc = color.toHEXA().toString().slice(1);
+							
+							updateChatEmbedInput();
+						});
+						
+						Pickr.create({
+							el: '#chat-text-color-pickr',
+							theme: 'nano',
+							default: '#' + ctc,
+							swatches: [
+								'rgba(0, 0, 0, 1)',
+								'rgba(249, 249, 249, 1)',
+								'rgba(203, 12, 159, 1)',
+								'rgba(103, 58, 183, 0.85)',
+								'rgba(63, 81, 181, 0.8)',
+								'rgba(33, 150, 243, 0.75)',
+								'rgba(3, 169, 244, 0.7)',
+								'rgba(0, 188, 212, 0.7)',
+								'rgba(0, 150, 136, 0.75)',
+								'rgba(76, 175, 80, 0.8)',
+								'rgba(139, 195, 74, 0.85)',
+								'rgba(205, 220, 57, 0.9)',
+								'rgba(255, 235, 59, 0.95)',
+								'rgba(255, 193, 7, 1)'
+							],
+							components: {
+								preview: true,
+								opacity: true,
+								hue: true,
+								interaction: {
+									input: true
+								}
+							}
+						})
+						.on('change', (color, source, instance) => {
+							instance.applyColor(true, color);
+							
+							ctc = color.toHEXA().toString().slice(1);
+							
+							updateChatEmbedInput();
+						});
+						
+						$('#embed-chat-show-chat-checkbox').on('click', function(event) {
+							sci = $(this).prop('checked');
+							
+							updateChatEmbedInput();
+						});
+						
+						$('#embed-chat-copy-button').click(function(event) {
+							const value = $('#embed-chat-input').val();
+							
+							setClipboard(value);
+						});
+						
+						$('#embed-chat-code-copy-button').click(function(event) {
+							const value = $('#embed-chat-code-input').val();
+							
+							setClipboard(value);
+						});
+						
+						function updateChatEmbedInput() {
+							const url = NODE_BASE_URL + '/embed/chat/' + videoId + '?sci=' + sci + '&' + 'bgc=' + bgc + '&' + 'ctc=' + ctc;
+							const code = '<iframe width="560" height="315" src="' + url + '" title="MoarTube video chat" frameborder="0"></iframe>';
+							
+							$('#embed-chat-input').val(url);
+							$('#embed-chat-code-input').val(code);
+						}
+						
+						updateChatEmbedInput();
+						
+						refreshClickTooltips();
+					}
+				});
+			}
+			
 			function showRtmpLinksModal(videoId) {
 				$.ajax({type: 'GET', url: '/stream/' + videoId + '/rtmp/urls'})
 				.done(function (data, textStatus, xhr) {
@@ -2577,69 +2717,8 @@
 				});
 			}
 			
-			function showChatEmbedModal(videoId) {
-				const html = '\
-				<div class="card" id="notifications"> \
-					<div class="card-body pt-0"> \
-						<div class="table-responsive"> \
-							<table id="embed-chat-table" class="table mb-0"> \
-								<tbody> \
-									<tr> <td class="ps-1" colspan="4"> <div class="my-auto">  <span class="text-s font-weight-normal">show chat input</span> </div> </td> <td> <div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input id="embed-chat-show-chat-checkbox" class="form-check-input" type="checkbox"> </div> </td>   </tr> \
-									<tr> <td class="ps-1" colspan="4"> <div class="my-auto">  <span class="text-s font-weight-normal">dark mode</span> </div> </td> <td> <div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input id="embed-chat-dark-mode-checkbox" class="form-check-input" type="checkbox"> </div> </td>   </tr>   \
-								</tbody> \
-							</table> \
-						</div> \
-					</div> \
-				</div> \
-				<div class="input-group mt-2"><input id="embed-chat-input" class="form-control me-1" type="text" value="" disabled=""><span class="input-group-btn"><button id="embed-chat-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-container="body" data-bs-animation="false" data-bs-original-title="copied!">copy</button></span></div> \
-				<div class="input-group mt-2"><input id="embed-chat-code-input" class="form-control me-1" type="text" value="" disabled=""><span class="input-group-btn"><button id="embed-chat-code-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-container="body" data-bs-animation="false" data-bs-original-title="copied!">copy</button></span></div>';
+			function showChatSettingsModal(videoId) {
 				
-				Swal.fire({
-					title: 'Embed Chat',
-					showCloseButton: true,
-					showConfirmButton: false,
-					html: html,
-					didOpen: () => {
-						var sci = false;
-						var dm = false;
-						
-						$('#embed-chat-show-chat-checkbox').on('click', function(event) {
-							sci = $(this).prop('checked');
-							
-							updateChatEmbedInput();
-						});
-						
-						$('#embed-chat-dark-mode-checkbox').on('click', function(event) {
-							dm = $(this).prop('checked');
-							
-							updateChatEmbedInput();
-						});
-						
-						$('#embed-chat-copy-button').click(function(event) {
-							const value = $('#embed-chat-input').val();
-							
-							setClipboard(value);
-						});
-						
-						$('#embed-chat-code-copy-button').click(function(event) {
-							const value = $('#embed-chat-code-input').val();
-							
-							setClipboard(value);
-						});
-						
-						function updateChatEmbedInput() {
-							const url = NODE_BASE_URL + '/embed/chat/' + videoId + '?sci=' + sci + '&' + 'dm=' + dm;
-							const code = '<iframe width="560" height="315" src="' + url + '" title="MoarTube video chat" frameborder="0"></iframe>';
-							
-							$('#embed-chat-input').val(url);
-							$('#embed-chat-code-input').val(code);
-						}
-						
-						updateChatEmbedInput();
-						
-						refreshClickTooltips();
-					}
-				});
 			}
 			
 			
@@ -2734,7 +2813,8 @@
 				if(status === 'live') {
 					html += '<div> \
 					<i role="button" data-bs-toggle="tooltip" data-bs-placement="top" title="Embed Chat" data-container="body" data-animation="true" onclick="showChatEmbedModal(\''+videoId+'\')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#cb0c9f" class="bi bi-chat me-2" viewBox="0 0 16 16"> <path d="M2.678 11.894a1 1 0 0 1 .287.801 10.97 10.97 0 0 1-.398 2c1.395-.323 2.247-.697 2.634-.893a1 1 0 0 1 .71-.074A8.06 8.06 0 0 0 8 14c3.996 0 7-2.807 7-6 0-3.192-3.004-6-7-6S1 4.808 1 8c0 1.468.617 2.83 1.678 3.894zm-.493 3.905a21.682 21.682 0 0 1-.713.129c-.2.032-.352-.176-.273-.362a9.68 9.68 0 0 0 .244-.637l.003-.01c.248-.72.45-1.548.524-2.319C.743 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7-3.582 7-8 7a9.06 9.06 0 0 1-2.347-.306c-.52.263-1.639.742-3.468 1.105z"></path> </svg></i> \
-					<i role="button" data-bs-toggle="tooltip" data-bs-placement="top" title="RTMP URLs" data-container="body" data-animation="true" onclick="showRtmpLinksModal(\''+videoId+'\')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#cb0c9f" class="bi bi-broadcast" viewBox="0 0 16 16"><path d="M3.05 3.05a7 7 0 0 0 0 9.9.5.5 0 0 1-.707.707 8 8 0 0 1 0-11.314.5.5 0 0 1 .707.707zm2.122 2.122a4 4 0 0 0 0 5.656.5.5 0 1 1-.708.708 5 5 0 0 1 0-7.072.5.5 0 0 1 .708.708zm5.656-.708a.5.5 0 0 1 .708 0 5 5 0 0 1 0 7.072.5.5 0 1 1-.708-.708 4 4 0 0 0 0-5.656.5.5 0 0 1 0-.708zm2.122-2.12a.5.5 0 0 1 .707 0 8 8 0 0 1 0 11.313.5.5 0 0 1-.707-.707 7 7 0 0 0 0-9.9.5.5 0 0 1 0-.707zM10 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"></path></svg></i> \
+					<i role="button" data-bs-toggle="tooltip" data-bs-placement="top" title="RTMP URLs" data-container="body" data-animation="true" onclick="showRtmpLinksModal(\''+videoId+'\')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#cb0c9f" class="bi bi-broadcast me-2" viewBox="0 0 16 16"><path d="M3.05 3.05a7 7 0 0 0 0 9.9.5.5 0 0 1-.707.707 8 8 0 0 1 0-11.314.5.5 0 0 1 .707.707zm2.122 2.122a4 4 0 0 0 0 5.656.5.5 0 1 1-.708.708 5 5 0 0 1 0-7.072.5.5 0 0 1 .708.708zm5.656-.708a.5.5 0 0 1 .708 0 5 5 0 0 1 0 7.072.5.5 0 1 1-.708-.708 4 4 0 0 0 0-5.656.5.5 0 0 1 0-.708zm2.122-2.12a.5.5 0 0 1 .707 0 8 8 0 0 1 0 11.313.5.5 0 0 1-.707-.707 7 7 0 0 0 0-9.9.5.5 0 0 1 0-.707zM10 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"></path></svg></i> \
+					<i role="button" data-bs-toggle="tooltip" data-bs-placement="top" title="Chat Settings" data-container="body" data-animation="true" onclick="showChatSettingsModal(\''+videoId+'\')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#cb0c9f" class="bi bi-broadcast" viewBox="0 0 16 16"><path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/><path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/></svg></i> \
 					</div>';
 				}
 				
