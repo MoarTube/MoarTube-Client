@@ -4105,6 +4105,89 @@ async function startClient() {
 		});
 	});
 	
+	app.get('/stream/:videoId/chat/settings', (req, res) => {
+		const jwtToken = req.session.jwtToken;
+		
+		node_isAuthenticated(jwtToken)
+		.then(nodeResponseData => {
+			if(nodeResponseData.isError) {
+				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				
+				res.send({isError: true, message: 'error communicating with the MoarTube node'});
+			}
+			else {
+				if(nodeResponseData.isAuthenticated) {
+					const videoId = req.params.videoId;
+					
+					node_getVideoData_database(jwtToken, videoId)
+					.then(nodeResponseData => {
+						const meta = JSON.parse(nodeResponseData.videoData.meta);
+						
+						const isChatHistoryEnabled = meta.chatSettings.isChatHistoryEnabled;
+						const chatHistoryLimit = meta.chatSettings.chatHistoryLimit;
+						
+						res.send({isError: false, isChatHistoryEnabled: isChatHistoryEnabled, chatHistoryLimit: chatHistoryLimit});
+					})
+					.catch(error => {
+						logDebugMessageToConsole('', new Error(error).stack, true);
+						
+						res.send({isError: true, message: 'error communicating with the MoarTube node'});
+					});
+				}
+				else {
+					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+
+					res.send({isError: true, message: 'you are not logged in'});
+				}
+			}
+		})
+		.catch(error => {
+			logDebugMessageToConsole('', new Error(error).stack, true);
+			
+			res.send({isError: true, message: 'error communicating with the MoarTube node'});
+		});
+	});
+	
+	app.post('/stream/:videoId/chat/settings', (req, res) => {
+		const jwtToken = req.session.jwtToken;
+		
+		node_isAuthenticated(jwtToken)
+		.then(nodeResponseData => {
+			if(nodeResponseData.isError) {
+				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				
+				res.send({isError: true, message: 'error communicating with the MoarTube node'});
+			}
+			else {
+				if(nodeResponseData.isAuthenticated) {
+					const videoId = req.params.videoId;
+					const isChatHistoryEnabled = req.body.isChatHistoryEnabled;
+					const chatHistoryLimit = req.body.chatHistoryLimit;
+					
+					node_setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled, chatHistoryLimit)
+					.then(nodeResponseData => {
+						res.send(nodeResponseData);
+					})
+					.catch(error => {
+						logDebugMessageToConsole('', new Error(error).stack, true);
+						
+						res.send({isError: true, message: 'error communicating with the MoarTube node'});
+					});
+				}
+				else {
+					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+
+					res.send({isError: true, message: 'you are not logged in'});
+				}
+			}
+		})
+		.catch(error => {
+			logDebugMessageToConsole('', new Error(error).stack, true);
+			
+			res.send({isError: true, message: 'error communicating with the MoarTube node'});
+		});
+	});
+	
 	app.get('/heartbeat', (req, res) => {
 		res.end();
 	});
@@ -4607,6 +4690,29 @@ async function startClient() {
 			});
 		});
 	}
+	
+	function node_setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled, chatHistoryLimit) {
+		return new Promise(function(resolve, reject) {
+			axios.post(MOARTUBE_NODE_HTTP_PROTOCOL + '://' + MOARTUBE_NODE_IP + ':' + MOARTUBE_NODE_PORT + '/stream/' + videoId + '/chat/settings', {
+				isChatHistoryEnabled: isChatHistoryEnabled,
+				chatHistoryLimit: chatHistoryLimit
+			}, {
+			  headers: {
+				Authorization: jwtToken
+			  }
+			})
+			.then(response => {
+				const data = response.data;
+				
+				resolve(data);
+			})
+			.catch(error => {
+				reject(error);
+			});
+		});
+	}
+	
+	
 	
 	function node_videosDelete_database_filesystem(jwtToken, videoIdsJson) {
 		return new Promise(function(resolve, reject) {

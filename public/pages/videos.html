@@ -2155,8 +2155,6 @@
 									$('#finalize-selected-videos-button').addClass('hidden-elem');
 									$('#finalize-selected-videos-spinner').addClass('hidden-elem');
 									$('#finalize-selected-videos-garbage-icon').addClass('hidden-elem');
-									
-									showNotification('<span class=\"alert-text\">some videos could not be deleted</span>', 'alert-primary');
 								}
 								else {
 									$('#delete-selected-videos-spinner').addClass('hidden-elem');
@@ -2164,6 +2162,8 @@
 									
 									$('#finalize-selected-videos-spinner').addClass('hidden-elem');
 									$('#finalize-selected-videos-garbage-icon').removeClass('hidden-elem');
+									
+									showNotification('<span class=\"alert-text\">some videos could not be deleted</span>', 'alert-primary');
 								}
 								
 								$('#videos-table-select-all').prop('checked', false);
@@ -2718,7 +2718,89 @@
 			}
 			
 			function showChatSettingsModal(videoId) {
+				const html = '\
+				<div class="card" id="notifications"> \
+					<div class="card-body pt-0"> \
+						<div class="table-responsive"> \
+							<table id="chat-settings-table" class="table mb-0"> \
+								<tbody> \
+									<tr> <td class="ps-1" colspan="4"> <div class="my-auto">  <span class="text-s font-weight-normal">chat history</span> </div> </td> <td> <div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input id="chat-settings-is-chat-history-enabled" class="form-check-input" type="checkbox" disabled> </div> </td>   </tr> \
+									<tr> <td class="ps-1 align-middle" colspan="4"> <div class="my-auto">  <span class="text-s font-weight-normal">chat history limit</span> </div> </td> <td> <select id="chat-settings-chat-history-limit" class="form-select dropdown-toggle me-1" disabled><option value=0>no limit</option><option value=10>10 messages</option><option value=20>20 messages</option><option value=30>30 messages</option><option value=40>40 messages</option><option value=50>50 messages</option></select> </td>   </tr>   \
+								</tbody> \
+							</table> \
+						</div> \
+					</div> \
+				</div>';
 				
+				Swal.fire({
+					title: 'Chat Settings',
+					showCloseButton: true,
+					showConfirmButton: false,
+					html: html,
+					didOpen: () => {
+						$.ajax({type: 'GET', url: '/stream/' + videoId + '/chat/settings'})
+						.done(function (data, textStatus, xhr) {
+							if(data.isError) {
+								Swal.fire({
+									icon: 'error',
+									title: 'hmmm',
+									text: data.message
+								});
+							}
+							else {
+								const isChatHistoryEnabled = data.isChatHistoryEnabled;
+								const chatHistoryLimit = data.chatHistoryLimit;
+								
+								$('#chat-settings-is-chat-history-enabled').prop('disabled', false);
+								
+								if(isChatHistoryEnabled) {
+									$('#chat-settings-chat-history-limit').prop('disabled', false);
+								}
+								
+								$('#chat-settings-is-chat-history-enabled').prop('checked', isChatHistoryEnabled);
+								$('#chat-settings-chat-history-limit').val(chatHistoryLimit);
+								
+								$('#chat-settings-is-chat-history-enabled').on('click', function(event) {
+									const isChatHistoryEnabled = $('#chat-settings-is-chat-history-enabled').is(':checked') ? true : false;
+									const chatHistoryLimit = Number($('#chat-settings-chat-history-limit').val());
+									
+									saveChatSettings(isChatHistoryEnabled, chatHistoryLimit);
+								});
+					
+								$('#chat-settings-chat-history-limit').on('change', function() {
+									const isChatHistoryEnabled = $('#chat-settings-is-chat-history-enabled').is(':checked') ? true : false;
+									const chatHistoryLimit = Number($('#chat-settings-chat-history-limit').val());
+									
+									saveChatSettings(isChatHistoryEnabled, chatHistoryLimit);
+								});
+					
+								function saveChatSettings(isChatHistoryEnabled, chatHistoryLimit) {
+									$.post({url: '/stream/' + videoId + '/chat/settings', data: JSON.stringify({isChatHistoryEnabled: isChatHistoryEnabled, chatHistoryLimit: chatHistoryLimit}), contentType: 'application/json; charset=utf-8'})
+									.done(function(data) {
+										if(data.isError) {
+											showNotification(data.message, 'alert-primary');
+										}
+										else {
+											//showNotification('chat settings saved', 'alert-primary');
+											
+											$('#chat-settings-chat-history-limit').prop('disabled', !isChatHistoryEnabled);
+										}
+									})
+									.fail(function() {
+										showNotification('chat settings save error', 'alert-primary');
+									});
+								}
+							}
+						})
+						.fail(function() {
+							Swal.fire({
+								icon: 'error',
+								title: 'hmmm',
+								text: '...something went wrong...'
+							});
+						});
+					}
+				});
 			}
 			
 			
