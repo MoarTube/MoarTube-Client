@@ -320,97 +320,101 @@ async function startClient() {
 						if(nodeResponseData.isAuthenticated) {
 							req.session.jwtToken = nodeResponseData.token;
 							
-							if(websocketClient == null) {
-								var connectWebsocketClient = function() {
-									try {
-										const websocketServerAddress = MOARTUBE_NODE_WEBSOCKET_PROTOCOL + '://' + MOARTUBE_NODE_IP + ':' + MOARTUBE_NODE_PORT;
-										websocketClient = new webSocket(websocketServerAddress);
+							if(websocketClient != null) {
+								websocketClient.canReconnect = false;
+								
+								websocketClient.close();
+							}
+
+							var connectWebsocketClient = function() {
+								try {
+									const websocketServerAddress = MOARTUBE_NODE_WEBSOCKET_PROTOCOL + '://' + MOARTUBE_NODE_IP + ':' + MOARTUBE_NODE_PORT;
+									
+									websocketClient = new webSocket(websocketServerAddress);
+									websocketClient.canReconnect = true;
+									
+									websocketClient.on('open', () => {
+										logDebugMessageToConsole('connected to websocket server: ' + websocketServerAddress, '', true);
 										
-										websocketClient.on('open', () => {
-											logDebugMessageToConsole('connected to websocket server: ' + websocketServerAddress, '', true);
-											
-											websocketClient.send(JSON.stringify({eventName: 'register', socketType: 'moartube_client', jwtToken: req.session.jwtToken}));
-										});
+										websocketClient.send(JSON.stringify({eventName: 'register', socketType: 'moartube_client', jwtToken: req.session.jwtToken}));
+									});
+									
+									websocketClient.on('message', (message) => {
+										const parsedMessage = JSON.parse(message);
 										
-										websocketClient.on('message', (message) => {
-											const parsedMessage = JSON.parse(message);
-											
-											if(parsedMessage.eventName === 'echo') {
-												if(parsedMessage.data.eventName === 'video_status') {
-													if(parsedMessage.data.payload.type === 'importing_stopping') {
-														if(importVideoTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
-															importVideoTracker[parsedMessage.data.payload.videoId].stopping = true;
-														}
+										if(parsedMessage.eventName === 'echo') {
+											if(parsedMessage.data.eventName === 'video_status') {
+												if(parsedMessage.data.payload.type === 'importing_stopping') {
+													if(importVideoTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
+														importVideoTracker[parsedMessage.data.payload.videoId].stopping = true;
 													}
-													else if(parsedMessage.data.payload.type === 'importing_stopped') {
-														if(importVideoTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
-															importVideoTracker[parsedMessage.data.payload.videoId].req.destroy();
-															
-															//delete importVideoTracker[parsedMessage.data.payload.videoId];
-														}
+												}
+												else if(parsedMessage.data.payload.type === 'importing_stopped') {
+													if(importVideoTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
+														importVideoTracker[parsedMessage.data.payload.videoId].req.destroy();
 														
-														websocketServerBroadcast(parsedMessage.data);
-													}
-													else if(parsedMessage.data.payload.type === 'publishing_stopping') {
-														if(publishVideoEncodingTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
-															publishVideoEncodingTracker[parsedMessage.data.payload.videoId].stopping = true;
-														}
-													}
-													else if(parsedMessage.data.payload.type === 'publishing_stopped') {
-														if(publishVideoEncodingTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
-															const processes = publishVideoEncodingTracker[parsedMessage.data.payload.videoId].processes;
-															processes.forEach(function(process) {
-																process.kill(); // no point in being graceful about it; just kill it
-															});
-															
-															//delete publishVideoEncodingTracker[parsedMessage.data.payload.videoId];
-														}
-														
-														websocketServerBroadcast(parsedMessage.data);
-													}
-													else if(parsedMessage.data.payload.type === 'streaming_stopping') {
-														if(publishStreamTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
-															publishStreamTracker[parsedMessage.data.payload.videoId].stopping = true;
-														}
-													}
-													else if(parsedMessage.data.payload.type === 'streaming_stopped') {
-														if(publishStreamTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
-															const process = publishStreamTracker[parsedMessage.data.payload.videoId].process;
-															process.kill(); // no point in being graceful about it; just kill it
-															
-															//delete publishStreamTracker[parsedMessage.data.payload.videoId];
-														}
-														
-														websocketServerBroadcast(parsedMessage.data);
-													}
-													else {
-														websocketServerBroadcast(parsedMessage.data);
+														//delete importVideoTracker[parsedMessage.data.payload.videoId];
 													}
 													
-												}
-												else if(parsedMessage.data.eventName === 'video_data') {
 													websocketServerBroadcast(parsedMessage.data);
 												}
+												else if(parsedMessage.data.payload.type === 'publishing_stopping') {
+													if(publishVideoEncodingTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
+														publishVideoEncodingTracker[parsedMessage.data.payload.videoId].stopping = true;
+													}
+												}
+												else if(parsedMessage.data.payload.type === 'publishing_stopped') {
+													if(publishVideoEncodingTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
+														const processes = publishVideoEncodingTracker[parsedMessage.data.payload.videoId].processes;
+														processes.forEach(function(process) {
+															process.kill(); // no point in being graceful about it; just kill it
+														});
+														
+														//delete publishVideoEncodingTracker[parsedMessage.data.payload.videoId];
+													}
+													
+													websocketServerBroadcast(parsedMessage.data);
+												}
+												else if(parsedMessage.data.payload.type === 'streaming_stopping') {
+													if(publishStreamTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
+														publishStreamTracker[parsedMessage.data.payload.videoId].stopping = true;
+													}
+												}
+												else if(parsedMessage.data.payload.type === 'streaming_stopped') {
+													if(publishStreamTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
+														const process = publishStreamTracker[parsedMessage.data.payload.videoId].process;
+														process.kill(); // no point in being graceful about it; just kill it
+														
+														//delete publishStreamTracker[parsedMessage.data.payload.videoId];
+													}
+													
+													websocketServerBroadcast(parsedMessage.data);
+												}
+												else {
+													websocketServerBroadcast(parsedMessage.data);
+												}
+												
 											}
-										});
+											else if(parsedMessage.data.eventName === 'video_data') {
+												websocketServerBroadcast(parsedMessage.data);
+											}
+										}
+									});
+									
+									websocketClient.on('close', () => {
+										logDebugMessageToConsole('disconnected from websocket server <' + websocketServerAddress + '>', '', true);
 										
-										websocketClient.on('error', (error) => {
-											logDebugMessageToConsole('', new Error(error).stack, true);
-										});
-										
-										websocketClient.on('close', () => {
-											logDebugMessageToConsole('disconnected from websocket server <' + websocketServerAddress + '>', '', true);
-											
+										if(websocketClient.canReconnect) {
 											setTimeout(connectWebsocketClient, 1000);
-										});
-									}
-									catch(error) {
-										logDebugMessageToConsole('', new Error(error).stack, true);
-									}
-								};
-								
-								connectWebsocketClient();
-							}
+										}
+									});
+								}
+								catch(error) {
+									logDebugMessageToConsole('', new Error(error).stack, true);
+								}
+							};
+							
+							connectWebsocketClient();
 							
 							node_getSettings_filesystem(req.session.jwtToken)
 							.then(nodeResponseData => {
@@ -454,6 +458,12 @@ async function startClient() {
 		logDebugMessageToConsole('signing user out', '', true);
 		
 		req.session.jwtToken = '';
+		
+		if(websocketClient != null) {
+			websocketClient.canReconnect = false;
+			
+			websocketClient.close();
+		}
 		
 		res.redirect('/signin');
 	});
@@ -648,13 +658,21 @@ async function startClient() {
 								
 								importVideoTracker[videoId] = {req: req, stopping: false};
 								
+								var lastImportingTime = 0;
 								var receivedFileSize = 0;
 								req.on('data', function(chunk) {
 									if(!importVideoTracker[videoId].stopping) {
 										receivedFileSize += chunk.length;
+										
 										const importProgress = Math.floor((receivedFileSize / totalFileSize) * 100);
 										
-										node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing', videoId: videoId, progress: importProgress }}});
+										const currentTime = Date.now();
+										
+										if(currentTime - lastImportingTime >= 100) {
+											lastImportingTime = currentTime;
+											
+											node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing', videoId: videoId, progress: importProgress }}});
+										}
 									}
 								});
 								
@@ -745,152 +763,154 @@ async function startClient() {
 												logDebugMessageToConsole('generating images for video: ' + videoId, '', true);
 												
 												const imagesDirectoryPath = path.join(__dirname, '/public/media/videos/' + videoId + '/images');
+												const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
 												const thumbnailImagePath = path.join(imagesDirectoryPath, 'thumbnail.jpg');
 												const previewImagePath = path.join(imagesDirectoryPath, 'preview.jpg');
 												const posterImagePath = path.join(imagesDirectoryPath, 'poster.jpg');
 												
 												fs.mkdirSync(imagesDirectoryPath, { recursive: true });
 												
-												spawnSync(ffmpegPath, [
-													'-i', videoFile.path, 
-													'-vf', 'select=\'gte(t,'+lengthSeconds+'*25/100)\',crop=min(iw\\,ih):min(iw\\,ih),scale=100:100,setsar=1',
-													'-vframes', '1',
-													thumbnailImagePath
-												], 
-												{cwd: __dirname}
-												);
+												const imageExtractionTimestamp = Math.floor(lengthSeconds * 0.25);
 												
-												spawnSync(ffmpegPath, [
-													'-i', videoFile.path, 
-													'-vf', 'select=\'gte(t,'+lengthSeconds+'*25/100)\',scale=512:288:force_original_aspect_ratio=decrease,pad=512:288:(ow-iw)/2:(oh-ih)/2,setsar=1',
-													'-vframes', '1',
-													previewImagePath
-												], 
-												{cwd: __dirname}
-												);
+												spawnSync(ffmpegPath, ['-ss', imageExtractionTimestamp, '-i', videoFile.path, sourceImagePath], {cwd: __dirname});
 												
-												spawnSync(ffmpegPath, [
-													'-i', videoFile.path, 
-													'-vf', 'select=\'gte(t,'+lengthSeconds+'*25/100)\',scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1',
-													'-vframes', '1',
-													posterImagePath
-												], 
-												{cwd: __dirname}
-												);
-												
-												if(!fs.existsSync(thumbnailImagePath)) {
-													logDebugMessageToConsole('expected a thumbnail to be generated in <' + thumbnailImagePath + '> but found none', new Error().stack, true);
-													
-													res.send({isError: true, message: 'error communicating with the MoarTube node'});
-												}
-												else if(!fs.existsSync(previewImagePath)) {
-													logDebugMessageToConsole('expected a preview to be generated in <' + previewImagePath + '> but found none', new Error().stack, true);
-													
-													res.send({isError: true, message: 'error communicating with the MoarTube node'});
-												}
-												else if(!fs.existsSync(posterImagePath)) {
-													logDebugMessageToConsole('expected a poster to be generated in <' + posterImagePath + '> but found none', new Error().stack, true);
-													
-													res.send({isError: true, message: 'error communicating with the MoarTube node'});
-												}
-												else {
-													logDebugMessageToConsole('generated thumbnail, preview, and poster for video: ' + videoId, '', true);
-													
-													logDebugMessageToConsole('uploading thumbnail, preview, and poster to node for video: ' + videoId, '', true);
-													
-													node_setThumbnail_fileSystem(jwtToken, videoId, thumbnailImagePath)
-													.then(nodeResponseData => {
-														if(nodeResponseData.isError) {
-															logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
-															
-															res.send({isError: true, message: 'error communicating with the MoarTube node'});
-														}
-														else {
-															logDebugMessageToConsole('uploaded thumbnail to node for video: ' + videoId, '', true);
-															
-															node_setPreview_fileSystem(jwtToken, videoId, previewImagePath)
-															.then(nodeResponseData => {
-																if(nodeResponseData.isError) {
-																	logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
-																	
-																	res.send({isError: true, message: 'error communicating with the MoarTube node'});
-																}
-																else {
-																	logDebugMessageToConsole('uploaded preview to node for video: ' + videoId, '', true);
-																	
-																	node_setPoster_fileSystem(jwtToken, videoId, posterImagePath)
-																	.then(nodeResponseData => {
-																		if(nodeResponseData.isError) {
-																			logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
-																			
-																			res.send({isError: true, message: 'error communicating with the MoarTube node'});
-																		}
-																		else {
-																			logDebugMessageToConsole('uploaded poster to node for video: ' + videoId, '', true);
-																			
-																			deleteDirectoryRecursive(imagesDirectoryPath);
-																			
-																			logDebugMessageToConsole('uploading video length to node for video: ' + videoId, '', true);
-																			
-																			node_setVideoLengths_database(jwtToken, videoId, lengthSeconds, lengthTimestamp)
-																			.then(nodeResponseData => {
-																				if(nodeResponseData.isError) {
-																					logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
-																					
-																					res.send({isError: true, message: 'error communicating with the MoarTube node'});
-																				}
-																				else {
-																					logDebugMessageToConsole('uploaded video length to node for video: ' + videoId, '', true);
-																					
-																					node_setVideoImported_database(jwtToken, videoId)
-																					.then(nodeResponseData => {
-																						if(nodeResponseData.isError) {
-																							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
-																							
-																							res.send({isError: true, message: 'error communicating with the MoarTube node'});
-																						}
-																						else {
-																							logDebugMessageToConsole('flagging video as imported to node for video: ' + videoId, '', true);
-																							
-																							node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'imported', videoId: videoId, lengthTimestamp: lengthTimestamp }}});
-																							
-																							res.send({isError: false});
-																						}
-																					})
-																					.catch(error => {
-																						logDebugMessageToConsole('', new Error(error).stack, true);
-																						
-																						res.send({isError: true, message: 'error communicating with the MoarTube node'});
-																					});
-																				}
-																			})
-																			.catch(error => {
-																				logDebugMessageToConsole('', new Error(error).stack, true);
-																				
-																				res.send({isError: true, message: 'error communicating with the MoarTube node'});
-																			});
-																		}
-																	})
-																	.catch(error => {
-																		logDebugMessageToConsole('', new Error(error).stack, true);
-																		
-																		res.send({isError: true, message: 'error communicating with the MoarTube node'});
-																	});
-																}
-															})
-															.catch(error => {
-																logDebugMessageToConsole('', new Error(error).stack, true);
+												sharp(sourceImagePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toFile(thumbnailImagePath)
+												.then(() => {
+													sharp(sourceImagePath).resize({width: 512}).resize(512, 288).jpeg({quality : 90}).toFile(previewImagePath)
+													.then(() => {
+														sharp(sourceImagePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toFile(posterImagePath)
+														.then(() => {
+															if(!fs.existsSync(thumbnailImagePath)) {
+																logDebugMessageToConsole('expected a thumbnail to be generated in <' + thumbnailImagePath + '> but found none', new Error().stack, true);
 																
 																res.send({isError: true, message: 'error communicating with the MoarTube node'});
-															});
-														}
+															}
+															else if(!fs.existsSync(previewImagePath)) {
+																logDebugMessageToConsole('expected a preview to be generated in <' + previewImagePath + '> but found none', new Error().stack, true);
+																
+																res.send({isError: true, message: 'error communicating with the MoarTube node'});
+															}
+															else if(!fs.existsSync(posterImagePath)) {
+																logDebugMessageToConsole('expected a poster to be generated in <' + posterImagePath + '> but found none', new Error().stack, true);
+																
+																res.send({isError: true, message: 'error communicating with the MoarTube node'});
+															}
+															else {
+																logDebugMessageToConsole('generated thumbnail, preview, and poster for video: ' + videoId, '', true);
+																
+																logDebugMessageToConsole('uploading thumbnail, preview, and poster to node for video: ' + videoId, '', true);
+																
+																node_setThumbnail_fileSystem(jwtToken, videoId, thumbnailImagePath)
+																.then(nodeResponseData => {
+																	if(nodeResponseData.isError) {
+																		logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+																		
+																		res.send({isError: true, message: 'error communicating with the MoarTube node'});
+																	}
+																	else {
+																		logDebugMessageToConsole('uploaded thumbnail to node for video: ' + videoId, '', true);
+																		
+																		node_setPreview_fileSystem(jwtToken, videoId, previewImagePath)
+																		.then(nodeResponseData => {
+																			if(nodeResponseData.isError) {
+																				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+																				
+																				res.send({isError: true, message: 'error communicating with the MoarTube node'});
+																			}
+																			else {
+																				logDebugMessageToConsole('uploaded preview to node for video: ' + videoId, '', true);
+																				
+																				node_setPoster_fileSystem(jwtToken, videoId, posterImagePath)
+																				.then(nodeResponseData => {
+																					if(nodeResponseData.isError) {
+																						logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+																						
+																						res.send({isError: true, message: 'error communicating with the MoarTube node'});
+																					}
+																					else {
+																						logDebugMessageToConsole('uploaded poster to node for video: ' + videoId, '', true);
+																						
+																						deleteDirectoryRecursive(imagesDirectoryPath);
+																						
+																						logDebugMessageToConsole('uploading video length to node for video: ' + videoId, '', true);
+																						
+																						node_setVideoLengths_database(jwtToken, videoId, lengthSeconds, lengthTimestamp)
+																						.then(nodeResponseData => {
+																							if(nodeResponseData.isError) {
+																								logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+																								
+																								res.send({isError: true, message: 'error communicating with the MoarTube node'});
+																							}
+																							else {
+																								logDebugMessageToConsole('uploaded video length to node for video: ' + videoId, '', true);
+																								
+																								node_setVideoImported_database(jwtToken, videoId)
+																								.then(nodeResponseData => {
+																									if(nodeResponseData.isError) {
+																										logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+																										
+																										res.send({isError: true, message: 'error communicating with the MoarTube node'});
+																									}
+																									else {
+																										logDebugMessageToConsole('flagging video as imported to node for video: ' + videoId, '', true);
+																										
+																										node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'imported', videoId: videoId, lengthTimestamp: lengthTimestamp }}});
+																										
+																										res.send({isError: false});
+																									}
+																								})
+																								.catch(error => {
+																									logDebugMessageToConsole('', new Error(error).stack, true);
+																									
+																									res.send({isError: true, message: 'error communicating with the MoarTube node'});
+																								});
+																							}
+																						})
+																						.catch(error => {
+																							logDebugMessageToConsole('', new Error(error).stack, true);
+																							
+																							res.send({isError: true, message: 'error communicating with the MoarTube node'});
+																						});
+																					}
+																				})
+																				.catch(error => {
+																					logDebugMessageToConsole('', new Error(error).stack, true);
+																					
+																					res.send({isError: true, message: 'error communicating with the MoarTube node'});
+																				});
+																			}
+																		})
+																		.catch(error => {
+																			logDebugMessageToConsole('', new Error(error).stack, true);
+																			
+																			res.send({isError: true, message: 'error communicating with the MoarTube node'});
+																		});
+																	}
+																})
+																.catch(error => {
+																	logDebugMessageToConsole('', new Error(error).stack, true);
+																	
+																	res.send({isError: true, message: 'error communicating with the MoarTube node'});
+																});
+															}
+														})
+														.catch(error => {
+															logDebugMessageToConsole('', new Error(error).stack, true);
+															
+															res.send({isError: true, message: 'error communicating with the MoarTube node'});
+														});
 													})
 													.catch(error => {
 														logDebugMessageToConsole('', new Error(error).stack, true);
 														
 														res.send({isError: true, message: 'error communicating with the MoarTube node'});
 													});
-												}
+												})
+												.catch(error => {
+													logDebugMessageToConsole('', new Error(error).stack, true);
+													
+													res.send({isError: true, message: 'error communicating with the MoarTube node'});
+												});
 											}
 										})
 										.catch(error => {
