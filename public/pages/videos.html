@@ -2236,8 +2236,6 @@
 									$('#finalize-selected-videos-button').addClass('hidden-elem');
 									$('#finalize-selected-videos-spinner').addClass('hidden-elem');
 									$('#finalize-selected-videos-garbage-icon').addClass('hidden-elem');
-									
-									showNotification('<span class=\"alert-text\">some videos could not be finalized</span>', 'alert-primary');
 								}
 								else {
 									$('#delete-selected-videos-spinner').addClass('hidden-elem');
@@ -2245,6 +2243,8 @@
 									
 									$('#finalize-selected-videos-spinner').addClass('hidden-elem');
 									$('#finalize-selected-videos-garbage-icon').removeClass('hidden-elem');
+									
+									showNotification('<span class=\"alert-text\">some videos could not be finalized</span>', 'alert-primary');
 								}
 								
 								$('#videos-table-select-all').prop('checked', false);
