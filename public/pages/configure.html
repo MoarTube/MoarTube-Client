@@ -48,17 +48,12 @@
 			<div class="container-fluid py-4">
 				<div class="row">
 					<div class="col-12 text-center">
-						<h3 class="mt-5">Indexing Your Node</h3>
+						<h3 class="mt-5">How Can MoarTube Find Your Node?</h3>
 						<div class="multisteps-form mb-5">
 							<div class="row">
 								<div class="col-12 col-lg-8 m-auto">
 									<form id="configure-form" class="multisteps-form__form" method="POST" action="/settings/node/network/external" style="height: 463px;">
 										<div class="card multisteps-form__panel p-3 border-radius-xl bg-white js-active" data-animation="FadeIn">
-											<div class="row text-center">
-												<div class="col-10 mx-auto">
-													<h5 class="font-weight-normal">Let's get you started</h5>
-												</div>
-											</div>
 											<div class="multisteps-form__content">
 												<div class="row mt-3">
 													<div class="col-12 col-sm-4">
@@ -170,7 +165,7 @@
 			function showSkipConfiguringModal() {
 				Swal.fire({
 					title: 'Are you sure?',
-					html: "<h6>Indexing allows your videos to be seen publicly on the <a href='http://www.moartube.com' target='_blank'>MoarTube front page</a></h6><p>But first, we need to know the ip address and port that your node is listening on<br>You can do this later in the settings if you want</p>",
+					html: "<p>MoarTube needs to know how to find your node if you want to index videos.<br>Indexing allows your videos to be seen publicly on the <a href='http://www.moartube.com' target='_blank'>MoarTube front page</a>.<br>You can configure this later in the settings if you want.</p>",
 					icon: 'warning',
 					showCancelButton: true,
 					confirmButtonColor: '#3085d6',
