@@ -130,13 +130,9 @@ async function startClient() {
 						}
 						else {
 							if(nodeResponseData.isAuthenticated) {
-								logDebugMessageToConsole('granted upgrade of http connection to websocket', '', true);
-								
 								websocketServer.emit('connection', ws, req);
 							}
 							else {
-								logDebugMessageToConsole('denied upgrade of http connection to websocket', '', true);
-								
 								ws.close();
 							}
 						}
