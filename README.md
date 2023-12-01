@@ -11,7 +11,7 @@ Download and run the [Node.js](https://nodejs.org/en/download) installer for you
 
 ## Setup Guide
 
-Git Clone the MoarTube-Client repository
+**git clone** the MoarTube-Client repository
 
 Open a terminal within the MoarTube-Client directory
 
