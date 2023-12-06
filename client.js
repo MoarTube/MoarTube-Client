@@ -1350,8 +1350,9 @@ async function startClient() {
 					const sortTerm = req.query.sortTerm;
 					const tagTerm = req.query.tagTerm;
 					const tagLimit = req.query.tagLimit;
+					const timestamp = req.query.timestamp;
 					
-					node_doVideosSearch_database(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit)
+					node_doVideosSearch_database(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
 							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
@@ -1382,7 +1383,7 @@ async function startClient() {
 		});
 	});
 	
-	app.get('/videos/search/all', (req, res) => {
+	app.get('/channel/search', (req, res) => {
 		const jwtToken = req.session.jwtToken;
 		
 		node_isAuthenticated(jwtToken)
@@ -4489,14 +4490,15 @@ async function startClient() {
 		});
 	}
 	
-	function node_doVideosSearch_database(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit) {
+	function node_doVideosSearch_database(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
 		return new Promise(function(resolve, reject) {
 			axios.get(MOARTUBE_NODE_HTTP_PROTOCOL + '://' + MOARTUBE_NODE_IP + ':' + MOARTUBE_NODE_PORT + '/videos/search', {
 			  params: {
 				  searchTerm: searchTerm,
 				  sortTerm: sortTerm,
 				  tagTerm: tagTerm,
-				  tagLimit: tagLimit
+				  tagLimit: tagLimit,
+				  timestamp: timestamp
 			  },
 			  headers: {
 				Authorization: jwtToken
@@ -4515,7 +4517,7 @@ async function startClient() {
 	
 	function node_doVideosSearchAll_database(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
 		return new Promise(function(resolve, reject) {
-			axios.get(MOARTUBE_NODE_HTTP_PROTOCOL + '://' + MOARTUBE_NODE_IP + ':' + MOARTUBE_NODE_PORT + '/videos/search/all', {
+			axios.get(MOARTUBE_NODE_HTTP_PROTOCOL + '://' + MOARTUBE_NODE_IP + ':' + MOARTUBE_NODE_PORT + '/channel/search', {
 			  params: {
 				  searchTerm: searchTerm,
 				  sortTerm: sortTerm,

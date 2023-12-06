@@ -475,7 +475,7 @@
 						window.history.replaceState({}, '', '/videos');
 					}
 					
-					$.ajax({type: 'GET', url: '/videos/search/all', data: { searchTerm: searchTerm, sortTerm: sortTerm, tagTerm: tagTerm, tagLimit: tagLimit, timestamp: timestamp }})
+					$.ajax({type: 'GET', url: '/videos/search', data: { searchTerm: searchTerm, sortTerm: sortTerm, tagTerm: tagTerm, tagLimit: 10, timestamp: timestamp }})
 					.done(function (data, textStatus, xhr)
 					{
 						if(data.isError) {
