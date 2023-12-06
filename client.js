@@ -263,7 +263,7 @@ async function startClient() {
 		const moarTubeNodePort = req.body.moarTubeNodePort;
 		const rememberMe = req.body.rememberMe;
 		
-		if(!ipAddressIsValid(moarTubeNodeIp) && !isDomainNameValid(moarTubeNodeIp)) {
+		if(!isPublicNodeAddressValid(moarTubeNodeIp)) {
 			logDebugMessageToConsole('attempted to sign in with invalid ip address or domian name: ' + moarTubeNodeIp, '', true);
 			
 			res.send({isError: true, message: 'ip address or domain name is not valid'});
@@ -5689,27 +5689,9 @@ async function startClient() {
 	
 	
 	/* helper functions */
-	
-	function ipAddressIsValid(ipAddress) {
-		var result = false;
-		
-		if(ipAddress === 'localhost' || ipAddress === '127.0.0.1' || ipAddress === '::1') {
-			result = true;
-		}
-		else {
-			const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
-			const ipv6Regex = /^(([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|([0-9A-Fa-f]{1,4}:){1,6}:|::([0-9A-Fa-f]{1,4}:){0,6})$/;
-			
-			result = (ipv4Regex.test(ipAddress) || ipv6Regex.test(ipAddress));
-		}
-		
-		return result;
-	}
 
-	function isDomainNameValid(domainName) {
-		const regex = /^([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$/;
-		
-		return domainName != null && regex.test(domainName);
+	function isPublicNodeAddressValid(publicNodeAddress) {
+		return publicNodeAddress != null && publicNodeAddress.length > 0 && publicNodeAddress.length <= 100;
 	}
 	
 	function isPortValid(port) {
