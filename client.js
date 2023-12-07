@@ -110,10 +110,10 @@ async function startClient() {
 		});
 		
 		websocketServer.on('connection', function connection(ws) {
-			logDebugMessageToConsole('websocket client connected', '', true);
+			logDebugMessageToConsole('browser websocket client connected', '', true);
 
 			ws.on('close', () => {
-				logDebugMessageToConsole('websocket client disconnected', '', true);
+				logDebugMessageToConsole('browser websocket client disconnected', '', true);
 			});
 		});
 		
@@ -274,20 +274,20 @@ async function startClient() {
 			res.send({isError: true, message: 'port is not valid'});
 		}
 		else {
-			logDebugMessageToConsole('attempting client sign in with HTTP...', '', true);
+			logDebugMessageToConsole('attempting user sign in with HTTP...', '', true);
 			
 			node_getHeartbeat_1('http', moarTubeNodeIp, moarTubeNodePort)
 			.then((nodeResponseData) => {
-				logDebugMessageToConsole('client signing in with HTTP available', '', true);
+				logDebugMessageToConsole('user signing in with HTTP available', '', true);
 				
 				performSignIn('http', 'ws', moarTubeNodeIp, moarTubeNodePort);
 			})
 			.catch(error => {
-				logDebugMessageToConsole('attempting client sign in with HTTPS...', '', true);
+				logDebugMessageToConsole('attempting user sign in with HTTPS...', '', true);
 				
 				node_getHeartbeat_1('https', moarTubeNodeIp, moarTubeNodePort)
 				.then((nodeResponseData) => {
-					logDebugMessageToConsole('client signing in with HTTPS available', '', true);
+					logDebugMessageToConsole('user signing in with HTTPS available', '', true);
 					
 					performSignIn('https', 'wss', moarTubeNodeIp, moarTubeNodePort);
 				})
@@ -333,14 +333,14 @@ async function startClient() {
 									var pingTimeoutTimer;
 
 									websocketClient.on('open', () => {
-										logDebugMessageToConsole('client websocket connected to node: ' + websocketServerAddress, '', true);
+										logDebugMessageToConsole('MoarTube Client websocket connected to node: ' + websocketServerAddress, '', true);
 										
 										websocketClient.send(JSON.stringify({eventName: 'register', socketType: 'moartube_client', jwtToken: req.session.jwtToken}));
 
 										pingIntervalTimer = setInterval(function() {
 											if(pingTimeoutTimer == null) {
 												pingTimeoutTimer = setTimeout(function() {
-													logDebugMessageToConsole('terminating likely dead client websocket connection to node: ' + websocketServerAddress, '', true);
+													logDebugMessageToConsole('terminating likely dead MoarTube Client websocket connection to node: ' + websocketServerAddress, '', true);
 
 													clearInterval(pingIntervalTimer);
 													websocketClient.terminate();
@@ -350,7 +350,7 @@ async function startClient() {
 												
 												websocketClient.send(JSON.stringify({eventName: 'ping', jwtToken: req.session.jwtToken}));
 											}
-										}, 2000);
+										}, 1000);
 									});
 									
 									websocketClient.on('message', (message) => {
@@ -363,7 +363,7 @@ async function startClient() {
 											pingTimeoutTimer = null;
 										}
 										else if(parsedMessage.eventName === 'registered') {
-											logDebugMessageToConsole('client registered websocket with node: ' + websocketServerAddress, '', true);
+											logDebugMessageToConsole('MoarTube Client registered websocket with node: ' + websocketServerAddress, '', true);
 										}
 										else if(parsedMessage.eventName === 'echo') {
 											if(parsedMessage.data.eventName === 'video_status') {
@@ -425,7 +425,7 @@ async function startClient() {
 									});
 									
 									websocketClient.on('close', () => {
-										logDebugMessageToConsole('client websocket disconnected from node <' + websocketServerAddress + '>', '', true);
+										logDebugMessageToConsole('MoarTube Client websocket disconnected from node <' + websocketServerAddress + '>', '', true);
 
 										clearInterval(pingIntervalTimer);
 										clearInterval(pingTimeoutTimer);
