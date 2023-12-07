@@ -329,16 +329,43 @@ async function startClient() {
 									websocketClient = new webSocket(websocketServerAddress);
 									websocketClient.canReconnect = true;
 									
+									var pingIntervalTimer;
+									var pingTimeoutTimer;
+
 									websocketClient.on('open', () => {
-										logDebugMessageToConsole('connected to websocket server: ' + websocketServerAddress, '', true);
+										logDebugMessageToConsole('client websocket connected to node: ' + websocketServerAddress, '', true);
 										
 										websocketClient.send(JSON.stringify({eventName: 'register', socketType: 'moartube_client', jwtToken: req.session.jwtToken}));
+
+										pingIntervalTimer = setInterval(function() {
+											if(pingTimeoutTimer == null) {
+												pingTimeoutTimer = setTimeout(function() {
+													logDebugMessageToConsole('terminating likely dead client websocket connection to node: ' + websocketServerAddress, '', true);
+
+													clearInterval(pingIntervalTimer);
+													websocketClient.terminate();
+												}, 3000);
+
+												//logDebugMessageToConsole('sending ping to node: ' + websocketServerAddress, '', true);
+												
+												websocketClient.send(JSON.stringify({eventName: 'ping', jwtToken: req.session.jwtToken}));
+											}
+										}, 2000);
 									});
 									
 									websocketClient.on('message', (message) => {
 										const parsedMessage = JSON.parse(message);
 										
-										if(parsedMessage.eventName === 'echo') {
+										if(parsedMessage.eventName === 'pong') {
+											//logDebugMessageToConsole('received pong from node: ' + websocketServerAddress, '', true);
+
+											clearTimeout(pingTimeoutTimer);
+											pingTimeoutTimer = null;
+										}
+										else if(parsedMessage.eventName === 'registered') {
+											logDebugMessageToConsole('client registered websocket with node: ' + websocketServerAddress, '', true);
+										}
+										else if(parsedMessage.eventName === 'echo') {
 											if(parsedMessage.data.eventName === 'video_status') {
 												if(parsedMessage.data.payload.type === 'importing_stopping') {
 													if(importVideoTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
@@ -398,7 +425,10 @@ async function startClient() {
 									});
 									
 									websocketClient.on('close', () => {
-										logDebugMessageToConsole('disconnected from websocket server <' + websocketServerAddress + '>', '', true);
+										logDebugMessageToConsole('client websocket disconnected from node <' + websocketServerAddress + '>', '', true);
+
+										clearInterval(pingIntervalTimer);
+										clearInterval(pingTimeoutTimer);
 										
 										if(websocketClient.canReconnect) {
 											setTimeout(connectWebsocketClient, 1000);
