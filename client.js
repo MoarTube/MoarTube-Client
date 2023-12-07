@@ -645,6 +645,58 @@ async function startClient() {
 		});
 	});
 	
+	// Serve the comments page
+	app.get('/comments', (req, res) => {
+		const jwtToken = req.session.jwtToken;
+		
+		node_isAuthenticated(jwtToken)
+		.then(nodeResponseData => {
+			if(nodeResponseData.isError) {
+				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				
+				res.send('error communicating with the MoarTube node');
+			}
+			else {
+				if(nodeResponseData.isAuthenticated) {
+					node_getSettings_filesystem(jwtToken)
+					.then(nodeResponseData => {
+						if(nodeResponseData.isError) {
+							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							
+							res.send('error communicating with the MoarTube node');
+						}
+						else {
+							const nodeSettings = nodeResponseData.nodeSettings;
+							
+							if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
+								const pagePath = path.join(__dirname, '/public/pages/comments.html');
+								const fileStream = fs.createReadStream(pagePath);
+								res.setHeader('Content-Type', 'text/html');
+								fileStream.pipe(res);
+							}
+							else {
+								res.redirect('/configure');
+							}
+						}
+					})
+					.catch(error => {
+						logDebugMessageToConsole('', new Error(error).stack, true);
+						
+						res.send('error communicating with the MoarTube node');
+					});
+				}
+				else {
+					res.redirect('/signin');
+				}
+			}
+		})
+		.catch(error => {
+			logDebugMessageToConsole('', new Error(error).stack, true);
+			
+			res.send('error communicating with the MoarTube node');
+		});
+	});
+	
 	app.post('/video/import', (req, res) => {
 		const jwtToken = req.session.jwtToken;
 		
@@ -2768,7 +2820,50 @@ async function startClient() {
 		});
 	});
 	
-	
+	app.get('/videos/comments/all', (req, res) => {
+		const jwtToken = req.session.jwtToken;
+		
+		node_isAuthenticated(jwtToken)
+		.then(nodeResponseData => {
+			if(nodeResponseData.isError) {
+				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				
+				res.send({isError: true, message: 'error communicating with the MoarTube node'});
+			}
+			else {
+				if(nodeResponseData.isAuthenticated) {
+					node_getAllComments(jwtToken)
+					.then(nodeResponseData => {
+						if(nodeResponseData.isError) {
+							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							
+							res.send('error communicating with the MoarTube node');
+						}
+						else {
+							const comments = nodeResponseData.comments;
+							
+							res.send({isError: false, comments: comments});
+						}
+					})
+					.catch(error => {
+						logDebugMessageToConsole('', new Error(error).stack, true);
+						
+						res.send('error communicating with the MoarTube node');
+					});
+				}
+				else {
+					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+
+					res.send({isError: true, message: 'you are not logged in'});
+				}
+			}
+		})
+		.catch(error => {
+			logDebugMessageToConsole('', new Error(error).stack, true);
+			
+			res.send({isError: true, message: 'error communicating with the MoarTube node'});
+		});
+	});
 	
 	
 	
@@ -5648,6 +5743,24 @@ async function startClient() {
 			  params: {
 				  timestamp: timestamp
 			  },
+			  headers: {
+				Authorization: jwtToken
+			  }
+			})
+			.then(response => {
+				const data = response.data;
+				
+				resolve(data);
+			})
+			.catch(error => {
+				reject(error);
+			});
+		});
+	}
+	
+	function node_getAllComments(jwtToken) {
+		return new Promise(function(resolve, reject) {
+			axios.get(MOARTUBE_NODE_HTTP_PROTOCOL + '://' + MOARTUBE_NODE_IP + ':' + MOARTUBE_NODE_PORT + '/node/videos/comments/all', {
 			  headers: {
 				Authorization: jwtToken
 			  }

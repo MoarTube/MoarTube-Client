@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<title>MoarTube - Reports</title>
+		<title>MoarTube - Comments</title>
 		<link rel="icon" type="image/x-icon" href="/images/favicon.ico">
 		<meta charset="utf-8">
 		<script src="/javascript/jquery-3.6.4.min.js"></script>
@@ -14,7 +14,7 @@
 		<link href="/css/nucleo-svg.css" rel="stylesheet">
 		<link id="pagestyle" href="/css/soft-ui-dashboard-1.1.0.min.css" rel="stylesheet">
 		<style>
-			td:nth-child(6) { word-wrap:break-word; word-break: break-all; overflow:hidden }
+			td:nth-child(4) { word-wrap:break-word; word-break: break-all; overflow:hidden }
 
 			.table td, .table th {
 				white-space: break-spaces;
@@ -43,28 +43,28 @@
 									</a>
 								</li>
 								<li class="nav-item ">
-									<a class="nav-link " href="/comments">
+									<a class="nav-link active " href="/comments">
 										<span class="sidenav-mini-icon"> C </span>
 										<span class="sidenav-normal"> Comments </span>
 									</a>
 								</li>
 								<li class="nav-item ">
-									<a class="nav-link active" data-bs-toggle="collapse" aria-expanded="true" href="#reports">
+									<a class="nav-link collapsed" data-bs-toggle="collapse" aria-expanded="false" href="#reports">
 										<span class="sidenav-mini-icon"> R </span>
 										<span class="sidenav-normal"> Reports <b class="caret"></b></span>
 										<span id="total-report-count" class="badge badge-primary ms-1"></span>
 									</a>
-									<div class="collapse show" id="reports">
+									<div class="collapse" id="reports">
 										<ul class="nav nav-sm flex-column">
 											<li class="nav-item">
-												<a class="nav-link" href="/reports/videos">
+												<a class="nav-link " href="/reports/videos">
 													<span class="sidenav-mini-icon text-xs"> V </span>
 													<span class="sidenav-normal"> Videos </span>
 													<span id="video-report-count" class="badge badge-primary ms-1"></span>
 												</a>
 											</li>
 											<li class="nav-item">
-												<a class="nav-link active" href="/reports/comments">
+												<a class="nav-link " href="/reports/comments">
 													<span class="sidenav-mini-icon text-xs"> C </span>
 													<span class="sidenav-normal"> Comments </span>
 													<span id="comment-report-count" class="badge badge-primary ms-1"></span>
@@ -148,16 +148,17 @@
 				</ul>
 			</div>
 		</aside>
-		<main class="main-content position-relative max-height-vh-100 h-100 border-radius-lg">
+		<main class="main-content position-relative max-height-vh-100 h-100 border-radius-lg height-vh-100">
 			<nav class="navbar navbar-main navbar-expand-lg position-sticky mt-4 top-1 px-0 mx-4 shadow-none border-radius-xl z-index-sticky" id="navbarBlur" data-scroll="true">
 				<div class="container-fluid py-1 px-3">
 					<nav aria-label="breadcrumb">
-						<h6 class="font-weight-bolder mb-0">Comment Reports</h6>
+						<h6 class="font-weight-bolder mb-0">Comments</h6>
 					</nav>
 					<div class="collapse navbar-collapse mt-sm-0 mt-2 me-md-0 me-sm-4" id="navbar">
 						<div class="ms-md-auto pe-md-3 d-flex align-items-center">
+
 						</div>
-						<ul class="navbar-nav  justify-content-end">
+						<ul class="navbar-nav justify-content-end">
 							<li class="nav-item d-flex align-items-center">
 								<a href="/account/signout" class="nav-link text-body font-weight-bold px-0">
 									<i class="fa fa-user me-sm-1" aria-hidden="true"></i>
@@ -186,22 +187,16 @@
 				<div class="row ">
 					<div class="col-lg-12">
 						<div class="card">
-							<table id="comment-reports-table" class="table table-striped">
-							</table>
-						</div>
-					</div>
-				</div>
-				<div class="row mt-3">
-					<div class="col-lg-12">
-						<div class="card">
-							<table id="comment-reports-archive-table" class="table table-striped">
+							<table id="comments-table" class="table table-striped">
 							</table>
 						</div>
 					</div>
 				</div>
 			</div>
 		</main>
-		
+		<div id="notifications-container"></div>
+		<div id="notifications-container"></div>
+
 		<script src="/javascript/popper-2.11.6.min.js"></script>
 		<script src="/javascript/bootstrap-5.2.2.min.js"></script>
 		<script src="/javascript/perfect-scrollbar-1.5.1.min.js"></script>
@@ -209,51 +204,19 @@
 		<script src="/javascript/simple-datatables.js"></script>
 		<script src="/javascript/choices-9.0.1.min.js"></script>
 		<script src="/javascript/soft-ui-dashboard-1.1.0.min.js"></script>
-		
 		<script>
-			var NODE_PROTOCOL;
-			var NODE_ADDRESS;
-			var NODE_PORT;
-			
-			var NODE_BASE_URL;
-			
-			var DATA_TABLE_COMMENT_REPORTS;
-			var DATA_TABLE_COMMENT_REPORTS_ARCHIVE;
-			
-			var COMMENT_ID_VIDEO_ID_ASSOCIATIONS = {};
-			var COMMENT_ID_COMMENT_TIMESTAMP_ASSOCIATIONS = {};
-			
+            var DATA_TABLE_COMMENTS;
+
+            var COMMENT_ID_VIDEO_ID_ASSOCIATIONS = {};
+            var COMMENT_ID_COMMENT_TIMESTAMP_ASSOCIATIONS = {};
+
 			$(document).ready(async function() {
-				getNodeInformation();
-				getReportCounts();
-				getCommentReports();
-				getCommentReportsArchive();
+                getNodeInformation();
+                getReportCounts();
+				getComments();
 			});
-			
-			function getNodeInformation() {
-				$.ajax({type: 'GET', url: '/node/information'})
-				.done(function (data, textStatus, xhr) {
-					if(data.isError) {
-					
-					}
-					else {
-						const nodeInformation = data.nodeInformation;
-					
-						NODE_PROTOCOL = nodeInformation.publicNodeProtocol;
-						NODE_ADDRESS = nodeInformation.publicNodeAddress;
-						NODE_PORT = nodeInformation.publicNodePort;
-						
-						NODE_BASE_URL = NODE_PROTOCOL + '://' + NODE_ADDRESS + ':' + NODE_PORT;
-						
-						$('#node-link').attr('href', NODE_BASE_URL);
-					}
-				})
-				.fail(function() {
-					console.log('unable to communicate with node');
-				});
-			}
-			
-			function getReportCounts() {
+
+            function getReportCounts() {
 				return new Promise(function(resolve, reject) {
 					$.ajax({type: 'GET', url: '/reports/count'})
 					.done(function (data, textStatus, xhr)
@@ -289,88 +252,86 @@
 					});
 				});
 			}
-			
-			function getCommentReports() {
-				$.ajax({type: 'GET', url: '/reports/comments/all'})
+
+            function getNodeInformation() {
+				$.ajax({type: 'GET', url: '/node/information'})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
 						
 					}
 					else {
-						var reports = data.reports;
+						const nodeInformation = data.nodeInformation;
+					
+						NODE_PROTOCOL = nodeInformation.publicNodeProtocol;
+						NODE_ADDRESS = nodeInformation.publicNodeAddress;
+						NODE_PORT = nodeInformation.publicNodePort;
 						
-						const parsedReports = parseReports(reports);
+						NODE_BASE_URL = NODE_PROTOCOL + '://' + NODE_ADDRESS + ':' + NODE_PORT;
 						
-						let tableData = {
-							headings: [ "actions", "report id", "report date", 'comment date', "video id", "comment id", "email", "type", "message" ],
-							data: parsedReports
-						};
-						
-						populateCommentReportsTable(tableData);
-						
-						refreshHoverTooltips();
+						$('#node-link').attr('href', NODE_BASE_URL);
 					}
 				})
-				.fail(function() {
+				.fail(function()
+				{
 					console.log('unable to communicate with node');
 				});
 			}
-			
-			function getCommentReportsArchive() {
-				$.ajax({type: 'GET', url: '/reports/comments/archive/all'})
+
+            function getComments() {
+                $.ajax({type: 'GET', url: '/videos/comments/all'})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
 						
 					}
 					else {
-						var reports = data.reports;
+						var comments = data.comments;
 						
-						const parsedReports = parseReports(reports);
+						const parsedComments = parseComments(comments);
 						
 						let tableData = {
-							headings: [ "actions", "archive id", "report id", "report date", 'comment date', "video id", "comment id", "email", "type", "message" ],
-							data: parsedReports
+							headings: [ "actions", 'comment date', "video id", "comment id", "message" ],
+							data: parsedComments
 						};
 						
-						populateCommentReportsArchiveTable(tableData);
-						
-						refreshHoverTooltips();
+						populateCommentsTable(tableData);
+
+                        refreshHoverTooltips()
 					}
 				})
 				.fail(function() {
 					console.log('unable to communicate with node');
 				});
-			}
-			
-			function parseReports(reports) {
+            }
+
+            function parseComments(comments) {
 				const data = [];
 				
-				if(reports.length > 0) {
-					for ( let i = 0; i < reports.length; i++ ) {
+				if(comments.length > 0) {
+					for ( let i = 0; i < comments.length; i++ ) {
 						data[i] = [];
-						
-						var commentTimestamp;
-						var videoId;
+
+                        var commentTimestamp;
+                        var videoId;
 						var commentId;
 						
-						for (let p in reports[i]) {
-							if( reports[i].hasOwnProperty(p) ) {
-								data[i].push(reports[i][p]);
-								
-								if(p === 'comment_timestamp') {
-									commentTimestamp = reports[i][p];
+						for (let p in comments[i]) {
+							if(comments[i].hasOwnProperty(p) ) {
+								data[i].push(comments[i][p]);
+
+                                if(p === 'timestamp') {
+									commentTimestamp = comments[i][p];
 								}
-								else if(p === 'video_id') {
-									videoId = reports[i][p];
+                                else if(p === 'video_id') {
+									videoId = comments[i][p];
 								}
-								else if(p === 'comment_id') {
-									commentId = reports[i][p];
+								else if(p === 'id') {
+									commentId = comments[i][p];
 								}
 							}
 						}
-						
-						COMMENT_ID_COMMENT_TIMESTAMP_ASSOCIATIONS[commentId] = commentTimestamp;
-						COMMENT_ID_VIDEO_ID_ASSOCIATIONS[commentId] = videoId;
+
+                        COMMENT_ID_COMMENT_TIMESTAMP_ASSOCIATIONS[commentId] = commentTimestamp;
+                        COMMENT_ID_VIDEO_ID_ASSOCIATIONS[commentId] = videoId;
 						
 						data[i].unshift('');
 					}
@@ -378,14 +339,14 @@
 				
 				return data;
 			}
-			
-			function populateCommentReportsTable(data) {
-				if(DATA_TABLE_COMMENT_REPORTS != null) {
-					DATA_TABLE_COMMENT_REPORTS.destroy();
+
+            function populateCommentsTable(data) {
+                if(DATA_TABLE_COMMENTS != null) {
+					DATA_TABLE_COMMENTS.destroy();
 				}
-				
-				DATA_TABLE_COMMENT_REPORTS = new simpleDatatables.DataTable(
-					"#comment-reports-table",
+
+                DATA_TABLE_COMMENTS = new simpleDatatables.DataTable(
+					"#comments-table",
 					{
 						searchable: true,
 						fixedHeight: true,
@@ -395,31 +356,21 @@
 								select: 0,
 								sortable: false,
 								render: function (emptyString, cell, row) {
-									const archiveReportButton = '<button type="button" class="btn btn-icon btn-2 btn-primary me-1" onclick="archiveReport(this)" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="archive report" data-bs-original-title="archive report"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-archive" viewBox="0 0 16 16"><path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1V2zm2 3v7.5A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5H2zm13-3H1v2h14V2zM5 7.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/></svg></span></button>';
-									const deleteReportButton = '<button type="button" class="btn btn-icon btn-2 btn-primary  me-1" onclick="deleteReport(this)" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete report" data-bs-original-title="delete report"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/></svg></span></button>';
-									const deleteCommentButton = '<button type="button" class="btn btn-icon btn-2 btn-primary" onclick="deleteComment1(this)" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>';
+									const deleteCommentButton = '<button type="button" class="btn btn-icon btn-2 btn-primary" onclick="deleteComment(this)" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>';
 									
-									return archiveReportButton + deleteReportButton + deleteCommentButton;
+									return deleteCommentButton;
+								}
+							},
+							{
+								select: 1,
+								render: function (timestampString, cell, row) {
+									const timestampParsed = parseInt(timestampString);
+									
+									return createDateTimestamp(timestampParsed);
 								}
 							},
 							{
 								select: 2,
-								render: function (timestampString, cell, row) {
-									const timestampParsed = parseInt(timestampString);
-									
-									return createDateTimestamp(timestampParsed);
-								}
-							},
-							{
-								select: 3,
-								render: function (timestampString, cell, row) {
-									const timestampParsed = parseInt(timestampString);
-									
-									return createDateTimestamp(timestampParsed);
-								}
-							},
-							{
-								select: 4,
 								render: function (videoId, cell, row) {
 									const videoWatchUrl = NODE_BASE_URL + '/watch?v=' + videoId;
 									
@@ -427,7 +378,7 @@
 								}
 							},
 							{
-								select: 5,
+								select: 3,
 								render: function (commentId, cell, row) {
 									const videoId = COMMENT_ID_VIDEO_ID_ASSOCIATIONS[commentId];
 									
@@ -439,132 +390,12 @@
 						]
 					}
 				);
-			}
-			
-			function populateCommentReportsArchiveTable(data) {
-				if(DATA_TABLE_COMMENT_REPORTS_ARCHIVE != null) {
-					DATA_TABLE_COMMENT_REPORTS_ARCHIVE.destroy();
-				}
-				
-				DATA_TABLE_COMMENT_REPORTS_ARCHIVE = new simpleDatatables.DataTable(
-					"#comment-reports-archive-table",
-					{
-						searchable: true,
-						fixedHeight: true,
-						data: data,
-						columns: [
-							{
-								select: 0,
-								sortable: false,
-								render: function (emptyString, cell, row) {
-									const deleteArchiveButton = '<button class="btn btn-icon btn-2 btn-primary me-1" onclick="deleteArchive(this)" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete archive" data-bs-original-title="delete archive"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/></svg></span></button>';
-									const deleteCommentButton = '<button class="btn btn-icon btn-2 btn-primary" onclick="deleteComment2(this)" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>';
-									
-									return deleteArchiveButton + deleteCommentButton;
-								}
-							},
-							{
-								select: 3,
-								render: function (timestampString, cell, row) {
-									const timestampParsed = parseInt(timestampString);
-									
-									return createDateTimestamp(timestampParsed);
-								}
-							},
-							{
-								select: 4,
-								render: function (timestampString, cell, row) {
-									const timestampParsed = parseInt(timestampString);
-									
-									return createDateTimestamp(timestampParsed);
-								}
-							},
-							{
-								select: 5,
-								render: function (videoId, cell, row) {
-									const videoWatchUrl = NODE_BASE_URL + '/watch?v=' + videoId;
-									
-									return '<a href="' + videoWatchUrl + '" target="_blank">' + videoId + '</a>';
-								}
-							},
-							{
-								select: 6,
-								render: function (commentId, cell, row) {
-									const videoId = COMMENT_ID_VIDEO_ID_ASSOCIATIONS[commentId];
-									
-									const videoCommentUrl = NODE_BASE_URL + '/watch?v=' + videoId + '#p' + commentId;
-									
-									return '<a href="' + videoCommentUrl + '" target="_blank">' + commentId + '</a>';
-								}
-							}
-						]
-					}
-				);
-			}
-			
-			
-			function archiveReport(button) {
+            }
+
+            function deleteComment(button) {
 				const row = button.closest('tr');
-				const reportId = row.cells[1].data;
-				
-				$.ajax({type: 'POST', url: '/reports/comment/archive', data: {reportId: reportId}})
-				.done(function (data, textStatus, xhr) {
-					if(data.isError) {
-						
-					}
-					else {
-						DATA_TABLE_COMMENT_REPORTS.rows().remove(parseInt(row.dataIndex));
-						
-						getCommentReportsArchive();
-					}
-				})
-				.fail(function() {
-					console.log('unable to communicate with node');
-				});
-			}
-			
-			
-			function deleteReport(button) {
-				const row = button.closest('tr');
-				const reportId = row.cells[1].data;
-				
-				$.ajax({type: 'POST', url: '/reports/comment/delete', data: {reportId: reportId}})
-				.done(function (data, textStatus, xhr) {
-					if(data.isError) {
-						
-					}
-					else {
-						DATA_TABLE_COMMENT_REPORTS.rows().remove(parseInt(row.dataIndex));
-					}
-				})
-				.fail(function() {
-					console.log('unable to communicate with node');
-				});
-			}
-			
-			function deleteArchive(button) {
-				const row = button.closest('tr');
-				const archiveId = row.cells[1].data;
-				
-				$.ajax({type: 'POST', url: '/reports/archive/comment/delete', data: {archiveId: archiveId}})
-				.done(function (data, textStatus, xhr) {
-					if(data.isError) {
-						
-					}
-					else {
-						DATA_TABLE_COMMENT_REPORTS_ARCHIVE.rows().remove(parseInt(row.dataIndex));
-					}
-				})
-				.fail(function() {
-					console.log('unable to communicate with node');
-				});
-			}
-			
-			
-			function deleteComment1(button) {
-				const row = button.closest('tr');
-				const videoId = row.cells[4].data;
-				const commentId = row.cells[5].data;
+                const videoId = row.cells[2].data;
+				const commentId = row.cells[3].data;
 				const timestamp = COMMENT_ID_COMMENT_TIMESTAMP_ASSOCIATIONS[commentId];
 				
 				$.ajax({type: 'POST', url: '/comments/delete', data: {videoId: videoId, commentId: commentId, timestamp: timestamp}})
@@ -573,35 +404,16 @@
 						
 					}
 					else {
-						showAlert(false, 'comment deleted');
+                        const row = button.closest('tr');
+						DATA_TABLE_COMMENTS.rows().remove(parseInt(row.dataIndex));
 					}
 				})
 				.fail(function() {
 					console.log('unable to communicate with node');
 				});
 			}
-			
-			function deleteComment2(button) {
-				const row = button.closest('tr');
-				const videoId = row.cells[5].data;
-				const commentId = row.cells[6].data;
-				const timestamp = COMMENT_ID_COMMENT_TIMESTAMP_ASSOCIATIONS[commentId];
-				
-				$.ajax({type: 'POST', url: '/comments/delete', data: {videoId: videoId, commentId: commentId, timestamp: timestamp}})
-				.done(function (data, textStatus, xhr) {
-					if(data.isError) {
-						
-					}
-					else {
-						showAlert(false, 'comment deleted');
-					}
-				})
-				.fail(function() {
-					console.log('unable to communicate with node');
-				});
-			}
-			
-			function refreshHoverTooltips() {
+
+            function refreshHoverTooltips() {
 				$(function () {
 					$('[data-bs-toggle="tooltip"]').tooltip({
 						trigger : 'hover'
@@ -612,32 +424,15 @@
 					});
 				});
 			}
-			
-			function showAlert(isError, message) {
-				if(isError) {
-					Swal.fire({
-						icon: 'warning',
-						text: message,
-						confirmButtonColor: '#3085d6',
-						confirmButtonText: 'Ok'
-					});
-				}
-				else {
-					Swal.fire({
-						icon: 'success',
-						text: message,
-						showConfirmButton: false,
-						timer: 1500
-					})
-				}
-			}
-			
-			function createDateTimestamp(timestamp)	{
+
+            function createDateTimestamp(timestamp)	{
 				var date = new Date(timestamp);
 				var weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 				
 				return ('0' + (date.getMonth() + 1).toString()).substr(-2) + '/' + ('0' + date.getDate().toString()).substr(-2)  + '/' + (date.getFullYear().toString()).substr(2) + '(' + weekday[date.getDay()] + ')' + date.toTimeString().split(' ')[0];
 			}
+			
+
 		</script>
 	</body>
 </html>
