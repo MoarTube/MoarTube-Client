@@ -14,7 +14,7 @@
 		<link href="/css/nucleo-svg.css" rel="stylesheet">
 		<link id="pagestyle" href="/css/soft-ui-dashboard-1.1.0.min.css" rel="stylesheet">
 		<style>
-			#node-avatar {
+			.node-avatar {
 				border-radius: 50%;
 				max-width: 128px;
 			}
@@ -33,7 +33,7 @@
 			<div class="sidenav-header">
 				<i class="fas fa-times p-3 cursor-pointer text-secondary opacity-5 position-absolute end-0 top-0 d-none d-xl-none" aria-hidden="true" id="iconSidenav"></i>
 				<a id="node-link" class="navbar-brand m-0" target="_blank">
-					<img src="/settings/node/avatar" class="navbar-brand-img h-100" alt="main_logo">
+					<img src="/settings/node/avatar" class="node-avatar navbar-brand-img h-100" alt="main_logo">
 					<span class="ms-1 font-weight-bold">MoarTube Client</span>
 				</a>
 			</div>
@@ -225,7 +225,7 @@
 												<div class="col-2">
 													<label class="form-label">Node Avatar (128x128)</label>
 													<div class="input-group">
-														<img id="node-avatar" src="/settings/node/avatar" class="cursor-pointer w-100" onclick="document.getElementById('avatar_file_input').click();">
+														<img src="/settings/node/avatar" class="node-avatar cursor-pointer w-100" onclick="document.getElementById('avatar_file_input').click();">
 													</div>
 												</div>
 												<div class="col-6">
@@ -393,8 +393,8 @@
 			</div>
 		</main>
 
-		<input id="avatar_file_input" class="hidden-elem" type="file" accept=".jpg"/>
-		<input id="banner_file_input" class="hidden-elem" type="file" accept=".jpg"/>
+		<input id="avatar_file_input" class="hidden-elem" type="file" accept=".png"/>
+		<input id="banner_file_input" class="hidden-elem" type="file" accept=".png"/>
 
 		<script src="/javascript/popper-2.11.6.min.js"></script>
 		<script src="/javascript/bootstrap-5.2.2.min.js"></script>
@@ -550,6 +550,8 @@
 				var formData = new FormData();
 				
 				formData.append('avatar_file', file);
+
+				this.value = null;
 				
 				$.ajax({type: 'POST', url: '/settings/node/avatar', data: formData, processData: false, contentType: false})
 				.done(function (data, textStatus, xhr)
@@ -570,7 +572,7 @@
 						.then(blob => {
 							const objectURL = URL.createObjectURL(blob);
 							
-							$('#node-avatar').attr('src', objectURL);
+							$('.node-avatar').attr('src', objectURL);
 						})
 						.catch(error => {
 							showAlert(true, 'an error occurred, please try again');
@@ -589,6 +591,8 @@
 				var formData = new FormData();
 				
 				formData.append('banner_file', file);
+
+				this.value = null;
 				
 				$.ajax({type: 'POST', url: '/settings/node/banner', data: formData, processData: false, contentType: false})
 				.done(function (data, textStatus, xhr)

@@ -3410,8 +3410,8 @@ async function startClient() {
 							filename: function (req, file, cb) {
 								var extension;
 								
-								if(file.mimetype === 'image/jpeg') {
-									extension = '.jpg';
+								if(file.mimetype === 'image/png') {
+									extension = '.png';
 								}
 								
 								const fileName = Date.now() + extension;
@@ -3433,12 +3433,12 @@ async function startClient() {
 						
 							const sourceFilePath = path.join(imagesDirectory, avatarFile.filename);
 							
-							const iconDestinationFilePath = path.join(imagesDirectory, 'icon.jpg');
-							const avatarDestinationFilePath = path.join(imagesDirectory, 'avatar.jpg');
+							const iconDestinationFilePath = path.join(imagesDirectory, 'icon.png');
+							const avatarDestinationFilePath = path.join(imagesDirectory, 'avatar.png');
 							
-							sharp(sourceFilePath).resize({width: 48}).resize(48, 48).jpeg({quality : 90}).toFile(iconDestinationFilePath)
+							sharp(sourceFilePath).resize({width: 48}).resize(48, 48).png({ compressionLevel: 9 }).toFile(iconDestinationFilePath)
 							.then(() => {
-								sharp(sourceFilePath).resize({width: 128}).resize(128, 128).jpeg({quality : 90}).toFile(avatarDestinationFilePath)
+								sharp(sourceFilePath).resize({width: 128}).resize(128, 128).png({ compressionLevel: 9 }).toFile(avatarDestinationFilePath)
 								.then(() => {
 									node_setAvatar_fileSystem(jwtToken, iconDestinationFilePath, avatarDestinationFilePath)
 									.then(nodeResponseData => {
@@ -3552,8 +3552,8 @@ async function startClient() {
 							filename: function (req, file, cb) {
 								var extension;
 								
-								if(file.mimetype === 'image/jpeg') {
-									extension = '.jpg';
+								if(file.mimetype === 'image/png') {
+									extension = '.png';
 								}
 								
 								const fileName = Date.now() + extension;
@@ -3575,9 +3575,9 @@ async function startClient() {
 						
 							const sourceFilePath = path.join(imagesDirectory, bannerFile.filename);
 							
-							const bannerDestinationFilePath = path.join(imagesDirectory, 'banner.jpg');
+							const bannerDestinationFilePath = path.join(imagesDirectory, 'banner.png');
 							
-							sharp(sourceFilePath).resize({width: 2560}).resize(2560, 424).jpeg({quality : 90}).toFile(bannerDestinationFilePath)
+							sharp(sourceFilePath).resize({width: 2560}).resize(2560, 424).png({ compressionLevel: 9 }).toFile(bannerDestinationFilePath)
 							.then(() => {
 								fs.unlinkSync(sourceFilePath);
 								
@@ -5137,8 +5137,8 @@ async function startClient() {
 			const avatarFileStream = fs.createReadStream(avatarPath);
 			
 			const formData = new FormData();
-			formData.append('iconFile', iconFileStream, 'icon.jpg');
-			formData.append('avatarFile', avatarFileStream, 'avatar.jpg');
+			formData.append('iconFile', iconFileStream, 'icon.png');
+			formData.append('avatarFile', avatarFileStream, 'avatar.png');
 			
 			const headers = formData.getHeaders();
 			headers.Authorization = jwtToken;
@@ -5181,7 +5181,7 @@ async function startClient() {
 			const bannerFileStream = fs.createReadStream(bannerPath);
 			
 			const formData = new FormData();
-			formData.append('bannerFile', bannerFileStream, 'banner.jpg');
+			formData.append('bannerFile', bannerFileStream, 'banner.png');
 			
 			const headers = formData.getHeaders();
 			headers.Authorization = jwtToken;
