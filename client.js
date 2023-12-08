@@ -6033,7 +6033,7 @@ async function startClient() {
 						
 						return;
 					}
-					else if(controller.vendor.toLowerCase() === 'amd') {
+					else if(controller.vendor.toLowerCase() === 'amd' || controller.vendor.toLowerCase().includes() === 'advanced micro devices') {
 						processingAgentName = 'AMD';
 						processingAgentModel = controller.model.replace(/^.*\bAMD\s*/, '');
 						
