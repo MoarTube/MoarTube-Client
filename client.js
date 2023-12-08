@@ -3413,6 +3413,9 @@ async function startClient() {
 								if(file.mimetype === 'image/png') {
 									extension = '.png';
 								}
+								else if(file.mimetype === 'image/jpeg') {
+									extension = '.jpg';
+								}
 								
 								const fileName = Date.now() + extension;
 								
@@ -3554,6 +3557,9 @@ async function startClient() {
 								
 								if(file.mimetype === 'image/png') {
 									extension = '.png';
+								}
+								else if(file.mimetype === 'image/jpeg') {
+									extension = '.jpg';
 								}
 								
 								const fileName = Date.now() + extension;
