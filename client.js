@@ -6027,13 +6027,13 @@ async function startClient() {
 				var processingAgentModel = '';
 				
 				data.controllers.forEach(function(controller) {
-					if(controller.vendor.toLowerCase() === 'nvidia') {
+					if(controller.vendor.toLowerCase().includes('nvidia')) {
 						processingAgentName = 'NVIDIA';
 						processingAgentModel = controller.model.replace(/^.*\bNVIDIA\s*/, '');
 						
 						return;
 					}
-					else if(controller.vendor.toLowerCase() === 'amd' || controller.vendor.toLowerCase().includes('advanced micro devices')) {
+					else if(controller.vendor.toLowerCase().includes('amd') || controller.vendor.toLowerCase().includes('advanced micro devices')) {
 						processingAgentName = 'AMD';
 						processingAgentModel = controller.model.replace(/^.*\bAMD\s*/, '');
 						
