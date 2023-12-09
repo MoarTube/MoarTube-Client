@@ -6039,6 +6039,12 @@ async function startClient() {
 						
 						return;
 					}
+					else {
+						processingAgentName = 'none';
+						processingAgentModel = 'none';
+						
+						return;
+					}
 				});
 				
 				resolve({processingAgentName: processingAgentName, processingAgentModel: processingAgentModel});
