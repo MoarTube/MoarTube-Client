@@ -6,7 +6,7 @@ A repository containing the client software for communication with nodes on the 
 ## Node.js Install Guide
 
 ### Ubuntu Linux
-Run the command **sudo snap install node --classic --channel=20**
+Run the command **sudo snap install node --classic --channel=21**
 
 ### Windows/macOS
 Download and run the [Node.js](https://nodejs.org/en/download) installer for your system
