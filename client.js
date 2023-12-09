@@ -7163,5 +7163,5 @@ async function startClient() {
 function loadConfig() {
 	const config = JSON.parse(fs.readFileSync(path.join(__dirname, '/config.json'), 'utf8'));
 	
-	MOARTUBE_CLIENT_PORT = config.clientConfig.port;
+	MOARTUBE_CLIENT_PORT = process.env.PORT || config.clientConfig.port;
 }

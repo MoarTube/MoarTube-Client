@@ -1,0 +1,8 @@
+.vscode
+node_modules
+
+public/certificates
+public/media
+
+_client_log.txt
+_client_settings.json
