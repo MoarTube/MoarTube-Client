@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "A client for communicating with MoarTube nodes.",
   "author": "Christopher Conley",
+  "license": "Custom License - See LICENSE.md file",
   "main": "main.js",
   "scripts": {
     "start": "electron-forge start",
