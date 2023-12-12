@@ -30,4 +30,15 @@ module.exports = {
       config: {},
     },
   ],
+  publishers: [
+    {
+      name: "@electron-forge/publisher-github",
+      config: {
+        repository: {
+          owner: "cconley717",
+          name: "MoarTube-Client"
+        }
+      }
+    }
+  ]
 };
