@@ -845,39 +845,37 @@
 							for (var i = 0; i < caFiles.length; i++) {
 								formData.append('caFiles', caFiles[i]);
 							}
-							
-							$.ajax({type: 'POST', url: '/settings/node/secure?isSecure=' + isCheckboxChecked, data: formData, processData: false, contentType: false})
-							.done(function (data, textStatus, xhr)
-							{
-								if(data.isError)
-								{
-									$(checkbox).prop('checked', !isCheckboxChecked);
-									
-									showAlert(true, data.message);
-								}
-								else
-								{
-									revertAction = false;
-									
-									Swal.fire({
-										title: 'please wait',
-										text: '...enabling secure HTTPS mode...',
-										timer: 5000,
-										timerProgressBar: true,
-										didOpen: () => {
-											Swal.showLoading()
+
+							Swal.fire({
+								title: 'please wait',
+								text: '...enabling secure HTTPS mode...',
+								timer: 5000,
+								timerProgressBar: true,
+								didOpen: () => {
+									Swal.showLoading();
+
+									$.ajax({type: 'POST', url: '/settings/node/secure?isSecure=' + isCheckboxChecked, data: formData, processData: false, contentType: false})
+									.done(function (data, textStatus, xhr) {
+										if(data.isError) {
+											$(checkbox).prop('checked', !isCheckboxChecked);
+											
+											showAlert(true, data.message);
 										}
-									}).then((result) => {
-										if (result.dismiss === Swal.DismissReason.timer) {
-											showAlert(false);
+										else {
+											revertAction = false;
 										}
+									})
+									.fail(function() {
+										showAlert(true, 'an error occurred, please try again');
 									});
 								}
-							})
-							.fail(function()
-							{
-								showAlert(true, 'an error occurred, please try again');
+							}).then((result) => {
+								if (result.dismiss === Swal.DismissReason.timer) {
+									showAlert(false);
+								}
 							});
+							
+							
 							
 							return false;
 						}
@@ -886,57 +884,38 @@
 						if(revertAction) {
 							$(checkbox).prop('checked', !isCheckboxChecked);
 						}
-						
-						console.log('fuck');
 					});
 				}
 				else {
 					Swal.fire({
-						title: '...hold on...',
-						html: 'I will close in <b></b> milliseconds.',
+						title: 'please wait',
+						text: '...enabling non-secure HTTP mode...',
+						timer: 5000,
+						timerProgressBar: true,
 						didOpen: () => {
 							Swal.showLoading();
-							
+
 							var formData = new FormData();
 							
 							$.ajax({type: 'POST', url: '/settings/node/secure?isSecure=' + isCheckboxChecked, data: formData, processData: false, contentType: false})
-							.done(function (data, textStatus, xhr)
-							{
-								if(data.isError)
-								{
+							.done(function (data, textStatus, xhr) {
+								if(data.isError) {
 									$(checkbox).prop('checked', !isCheckboxChecked);
 									
 									showAlert(true, data.message);
 								}
-								else
-								{
+								else {
 									revertAction = false;
-									
-									Swal.fire({
-										title: 'please wait',
-										text: '...enabling non-secure HTTP mode...',
-										timer: 5000,
-										timerProgressBar: true,
-										didOpen: () => {
-											Swal.showLoading()
-										}
-									}).then((result) => {
-										if (result.dismiss === Swal.DismissReason.timer) {
-											showAlert(false);
-										}
-									});
 								}
 							})
-							.fail(function()
-							{
+							.fail(function() {
 								showAlert(true, 'an error occurred, please try again');
 							});
-						},
-						willClose: () => {
-							
 						}
 					}).then((result) => {
-						
+						if (result.dismiss === Swal.DismissReason.timer) {
+							showAlert(false);
+						}
 					});
 				}
 			}
