@@ -1,7 +1,7 @@
 node_modules
 
-public/certificates
-public/media
+out
+temp
+user
 
 _client_log.txt
-_client_settings.json

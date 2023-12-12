@@ -1,17 +1,38 @@
 {
+  "name": "moartube-client",
+  "version": "1.0.0",
+  "description": "A client for communicating with MoarTube nodes.",
+  "author": "Christopher Conley",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron-forge start",
+    "startApp": "electron main.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
+  },
   "dependencies": {
     "axios": "^1.4.0",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
+    "electron-squirrel-startup": "^1.0.0",
     "express": "^4.18.2",
     "express-session": "^1.17.3",
     "ffmpeg-static": "^5.2.0",
     "form-data": "^4.0.0",
     "multer": "^1.4.5-lts.1",
     "portscanner": "^2.2.0",
-    "sharp": "^0.32.1",
+    "sharp": "^0.33.0",
     "systeminformation": "^5.18.14",
-    "uuid": "^9.0.0",
     "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.2.0",
+    "@electron-forge/maker-deb": "^7.2.0",
+    "@electron-forge/maker-rpm": "^7.2.0",
+    "@electron-forge/maker-squirrel": "^7.2.0",
+    "@electron-forge/maker-zip": "^7.2.0",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.2.0",
+    "electron": "^28.0.0"
   }
 }

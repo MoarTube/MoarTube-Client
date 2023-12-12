@@ -8,16 +8,21 @@ const multer = require('multer');
 const spawn = require('child_process').spawn;
 const spawnSync = require('child_process').spawnSync;
 const execSync = require('child_process').execSync;
-const ffmpegPath = require('ffmpeg-static');
+const ffmpegPath = require('ffmpeg-static').replace('app.asar', 'app.asar.unpacked');
 const webSocket = require('ws');
 const crypto = require('crypto');
 const sharp = require('sharp');
 const axios = require('axios');
 const FormData = require('form-data');
 const portscanner = require('portscanner');
-const { v4: uuidv4 } = require('uuid');
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+var USER_DIRECTORY;
+var PUBLIC_DIRECTORY;
+var TEMP_DIRECTORY;
+var TEMP_CERTIFICATES_DIRECTORY;
+var TEMP_VIDEOS_DIRECTORY;
 
 var MOARTUBE_CLIENT_PORT;
 
@@ -38,9 +43,26 @@ async function startClient() {
 	process.on('unhandledRejection', (reason, promise) => {
 		logDebugMessageToConsole('', new Error(reason).stack, true);
 	});
+
+	logDebugMessageToConsole('using ffmpeg at path: ' + ffmpegPath, '', true);
+	logDebugMessageToConsole(execSync(ffmpegPath + ' -version').toString(), '', true);
+
+	logDebugMessageToConsole('creating required directories', '', true);
 	
-	if (!fs.existsSync(path.join(__dirname, '/_client_settings.json'))) {
-		fs.writeFileSync(path.join(__dirname, '/_client_settings.json'), JSON.stringify({
+	if (!fs.existsSync(USER_DIRECTORY)) {
+		fs.mkdirSync(USER_DIRECTORY, { recursive: true });
+	}
+
+	if (!fs.existsSync(TEMP_CERTIFICATES_DIRECTORY)) {
+		fs.mkdirSync(TEMP_CERTIFICATES_DIRECTORY, { recursive: true });
+	}
+
+	if (!fs.existsSync(TEMP_VIDEOS_DIRECTORY)) {
+		fs.mkdirSync(TEMP_VIDEOS_DIRECTORY, { recursive: true });
+	}
+
+	if (!fs.existsSync(path.join(USER_DIRECTORY, '_client_settings.json'))) {
+		fs.writeFileSync(path.join(USER_DIRECTORY, '_client_settings.json'), JSON.stringify({
 			"processingAgent":{
 				"processingAgentType":"cpu",
 				"processingAgentName":"",
@@ -49,39 +71,25 @@ async function startClient() {
 		}));
 	}
 
+	await cleanVideosDirectory();
+	
+	performEncodingDecodingAssessment();
+
 	startPublishInterval();
 	
 	const pendingPublishingJobs = [];
 	const importVideoTracker = {};
 	const publishVideoEncodingTracker = {};
 	const publishStreamTracker = {};
-
-	logDebugMessageToConsole('creating required directories', '', true);
-	
-	// create required directories
-	fs.mkdirSync(path.join(__dirname, '/public/javascript'), { recursive: true });
-	fs.mkdirSync(path.join(__dirname, '/public/css'), { recursive: true });
-	fs.mkdirSync(path.join(__dirname, '/public/media/videos'), { recursive: true });
-	fs.mkdirSync(path.join(__dirname, '/public/pages'), { recursive: true });
-	fs.mkdirSync(path.join(__dirname, '/public/fonts'), { recursive: true });
-	fs.mkdirSync(path.join(__dirname, '/public/certificates'), { recursive: true });
-	
-	await cleanVideosDirectory();
-	
-	logDebugMessageToConsole('using ffmpeg at path: ' + ffmpegPath, '', true);
-	logDebugMessageToConsole(execSync(ffmpegPath + ' -version').toString(), '', true);
-	
-	performEncodingDecodingAssessment();
 	
 	const app = express();
 	
 	app.enable('trust proxy');
 	
-	app.use('/javascript', express.static(path.join(__dirname, '/public/javascript')));
-	app.use('/css', express.static(path.join(__dirname, '/public/css')));
-	app.use('/images', express.static(path.join(__dirname, '/public/images')));
-	app.use('/fonts', express.static(path.join(__dirname, '/public/fonts')));
-	
+	app.use('/javascript', express.static(path.join(PUBLIC_DIRECTORY, 'javascript')));
+	app.use('/css', express.static(path.join(PUBLIC_DIRECTORY, 'css')));
+	app.use('/images', express.static(path.join(PUBLIC_DIRECTORY, 'images')));
+	app.use('/fonts', express.static(path.join(PUBLIC_DIRECTORY, 'fonts')));
 	
 	const sessionMiddleware = expressSession({
 		name: crypto.randomBytes(64).toString('hex'),
@@ -242,7 +250,7 @@ async function startClient() {
 					});
 				}
 				else {
-					const pagePath = path.join(__dirname, '/public/pages/signin.html');
+					const pagePath = path.join(PUBLIC_DIRECTORY, 'pages/signin.html');
 					const fileStream = fs.createReadStream(pagePath);
 					res.setHeader('Content-Type', 'text/html');
 					fileStream.pipe(res);
@@ -524,7 +532,7 @@ async function startClient() {
 								res.redirect('/settings');
 							}
 							else {
-								const pagePath = path.join(__dirname, '/public/pages/configure.html');
+								const pagePath = path.join(PUBLIC_DIRECTORY, 'pages/configure.html');
 								const fileStream = fs.createReadStream(pagePath);
 								res.setHeader('Content-Type', 'text/html');
 								fileStream.pipe(res);
@@ -617,7 +625,7 @@ async function startClient() {
 							const nodeSettings = nodeResponseData.nodeSettings;
 							
 							if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
-								const pagePath = path.join(__dirname, '/public/pages/videos.html');
+								const pagePath = path.join(PUBLIC_DIRECTORY, 'pages/videos.html');
 								const fileStream = fs.createReadStream(pagePath);
 								res.setHeader('Content-Type', 'text/html');
 								fileStream.pipe(res);
@@ -669,7 +677,7 @@ async function startClient() {
 							const nodeSettings = nodeResponseData.nodeSettings;
 							
 							if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
-								const pagePath = path.join(__dirname, '/public/pages/comments.html');
+								const pagePath = path.join(PUBLIC_DIRECTORY, 'pages/comments.html');
 								const fileStream = fs.createReadStream(pagePath);
 								res.setHeader('Content-Type', 'text/html');
 								fileStream.pipe(res);
@@ -757,7 +765,7 @@ async function startClient() {
 								multer({
 									storage: multer.diskStorage({
 										destination: function (req, file, cb) {
-											const sourceDirectoryPath =  path.join(__dirname, '/public/media/videos/' + videoId + '/source');
+											const sourceDirectoryPath =  path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/source');
 											
 											fs.mkdirSync(sourceDirectoryPath, { recursive: true });
 											
@@ -811,6 +819,7 @@ async function startClient() {
 									}
 									else {
 										const videoFile = req.files['video_file'][0];
+										const videoFilePath = videoFile.path;
 										
 										var sourceFileExtension = '';
 										if(videoFile.mimetype === 'video/mp4') {
@@ -829,9 +838,9 @@ async function startClient() {
 											}
 											else {
 												const result = spawnSync(ffmpegPath, [
-													'-i', videoFile.path
+													'-i', videoFilePath
 												], 
-												{cwd: __dirname, encoding: 'utf-8' }
+												{encoding: 'utf-8' }
 												);
 												
 												const durationIndex = result.stderr.indexOf('Duration: ');
@@ -840,7 +849,7 @@ async function startClient() {
 												
 												logDebugMessageToConsole('generating images for video: ' + videoId, '', true);
 												
-												const imagesDirectoryPath = path.join(__dirname, '/public/media/videos/' + videoId + '/images');
+												const imagesDirectoryPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images');
 												const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
 												const thumbnailImagePath = path.join(imagesDirectoryPath, 'thumbnail.jpg');
 												const previewImagePath = path.join(imagesDirectoryPath, 'preview.jpg');
@@ -850,7 +859,7 @@ async function startClient() {
 												
 												const imageExtractionTimestamp = Math.floor(lengthSeconds * 0.25);
 												
-												spawnSync(ffmpegPath, ['-ss', imageExtractionTimestamp, '-i', videoFile.path, sourceImagePath], {cwd: __dirname});
+												spawnSync(ffmpegPath, ['-ss', imageExtractionTimestamp, '-i', videoFilePath, sourceImagePath]);
 												
 												sharp(sourceImagePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toFile(thumbnailImagePath)
 												.then(() => {
@@ -1119,8 +1128,8 @@ async function startClient() {
 									else {
 										const sourceFileExtension = nodeResponseData.sourceFileExtension;
 										
-										const sourceFilePath = path.join(__dirname, '/public/media/videos/' + videoId + '/source/' + videoId + sourceFileExtension);
-										
+										const sourceFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/source/' + videoId + sourceFileExtension);
+
 										if(fs.existsSync(sourceFilePath)) {
 											for(const publishing of publishings) {
 												pendingPublishingJobs.push({
@@ -1642,7 +1651,7 @@ async function startClient() {
 					multer({
 						storage: multer.diskStorage({
 							destination: function (req, file, cb) {
-								const filePath = path.join(__dirname, '/public/media/videos/' + videoId + '/images');
+								const filePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images');
 								
 								fs.mkdirSync(filePath, { recursive: true });
 								
@@ -1677,8 +1686,8 @@ async function startClient() {
 						else {
 							const thumbnailFile = req.files['thumbnail_file'][0];
 						
-							const sourceFilePath = path.join(__dirname, '/public/media/videos/' + videoId + '/images/' + thumbnailFile.filename);
-							const destinationFilePath = path.join(__dirname, '/public/media/videos/' + videoId + '/images/thumbnail.jpg');
+							const sourceFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images/' + thumbnailFile.filename);
+							const destinationFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images/thumbnail.jpg');
 							
 							sharp(sourceFilePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toFile(destinationFilePath)
 							.then(() => {
@@ -1742,7 +1751,7 @@ async function startClient() {
 					multer({
 						storage: multer.diskStorage({
 							destination: function (req, file, cb) {
-								const filePath = path.join(__dirname, '/public/media/videos/' + videoId + '/images');
+								const filePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images');
 								
 								fs.mkdirSync(filePath, { recursive: true });
 								
@@ -1777,8 +1786,8 @@ async function startClient() {
 						else {
 							const previewFile = req.files['preview_file'][0];
 						
-							const sourceFilePath = path.join(__dirname, '/public/media/videos/' + videoId + '/images/' + previewFile.filename);
-							const destinationFilePath = path.join(__dirname, '/public/media/videos/' + videoId + '/images/preview.jpg');
+							const sourceFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images/' + previewFile.filename);
+							const destinationFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images/preview.jpg');
 							
 							sharp(sourceFilePath).resize({width: 512}).resize(512, 288).jpeg({quality : 90}).toFile(destinationFilePath)
 							.then(() => {
@@ -1842,7 +1851,7 @@ async function startClient() {
 					multer({
 						storage: multer.diskStorage({
 							destination: function (req, file, cb) {
-								const filePath = path.join(__dirname, '/public/media/videos/' + videoId + '/images');
+								const filePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images');
 								
 								fs.mkdirSync(filePath, { recursive: true });
 								
@@ -1877,8 +1886,8 @@ async function startClient() {
 						else {
 							const posterFile = req.files['poster_file'][0];
 						
-							const sourceFilePath = path.join(__dirname, '/public/media/videos/' + videoId + '/images/' + posterFile.filename);
-							const destinationFilePath = path.join(__dirname, '/public/media/videos/' + videoId + '/images/poster.jpg');
+							const sourceFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images/' + posterFile.filename);
+							const destinationFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images/poster.jpg');
 							
 							sharp(sourceFilePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toFile(destinationFilePath)
 							.then(() => {
@@ -2173,6 +2182,12 @@ async function startClient() {
 						else {
 							const deletedVideoIds = nodeResponseData.deletedVideoIds;
 							const nonDeletedVideoIds = nodeResponseData.nonDeletedVideoIds;
+
+							for(const deletedVideoId of deletedVideoIds) {
+								const deletedVideoIdPath = path.join(TEMP_VIDEOS_DIRECTORY, deletedVideoId);
+								
+								deleteDirectoryRecursive(deletedVideoIdPath);
+							}
 							
 							res.send({isError: false, deletedVideoIds: deletedVideoIds, nonDeletedVideoIds: nonDeletedVideoIds});
 						}
@@ -2222,10 +2237,8 @@ async function startClient() {
 							const finalizedVideoIds = nodeResponseData.finalizedVideoIds;
 							const nonFinalizedVideoIds = nodeResponseData.nonFinalizedVideoIds;
 							
-							const videosDirectory = path.join(__dirname, 'public/media/videos');
-							
 							for(const finalizedVideoId of finalizedVideoIds) {
-								const videoDirectory = path.join(videosDirectory, finalizedVideoId);
+								const videoDirectory = path.join(TEMP_VIDEOS_DIRECTORY, finalizedVideoId);
 								
 								deleteDirectoryRecursive(videoDirectory);
 								
@@ -2520,7 +2533,7 @@ async function startClient() {
 							const nodeSettings = nodeResponseData.nodeSettings;
 							
 							if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
-								const pagePath = path.join(__dirname, '/public/pages/reports-videos.html');
+								const pagePath = path.join(PUBLIC_DIRECTORY, 'pages/reports-videos.html');
 								const fileStream = fs.createReadStream(pagePath);
 								res.setHeader('Content-Type', 'text/html');
 								fileStream.pipe(res);
@@ -2893,7 +2906,7 @@ async function startClient() {
 							const nodeSettings = nodeResponseData.nodeSettings;
 							
 							if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
-								const pagePath = path.join(__dirname, '/public/pages/reports-comments.html');
+								const pagePath = path.join(PUBLIC_DIRECTORY, 'pages/reports-comments.html');
 								const fileStream = fs.createReadStream(pagePath);
 								res.setHeader('Content-Type', 'text/html');
 								fileStream.pipe(res);
@@ -3235,7 +3248,7 @@ async function startClient() {
 							const nodeSettings = nodeResponseData.nodeSettings;
 							
 							if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
-								const pagePath = path.join(__dirname, '/public/pages/settings.html');
+								const pagePath = path.join(PUBLIC_DIRECTORY, 'pages/settings.html');
 								const fileStream = fs.createReadStream(pagePath);
 								res.setHeader('Content-Type', 'text/html');
 								fileStream.pipe(res);
@@ -3277,7 +3290,7 @@ async function startClient() {
 						isGpuAccelerationEnabled: false
 					};
 					
-					const clientSettings = JSON.parse(fs.readFileSync(path.join(__dirname, '/_client_settings.json'), 'utf8'));
+					const clientSettings = getClientSettings();
 					
 					if(clientSettings.processingAgent.processingAgentType === 'gpu') {
 						settings.isGpuAccelerationEnabled = true;
@@ -3396,7 +3409,7 @@ async function startClient() {
 					multer({
 						storage: multer.diskStorage({
 							destination: function (req, file, cb) {
-								const filePath = path.join(__dirname, '/public/images');
+								const filePath = path.join(PUBLIC_DIRECTORY, 'images');
 								
 								fs.access(filePath, fs.F_OK, function(error) {
 									if(error) {
@@ -3432,7 +3445,7 @@ async function startClient() {
 						else {
 							const avatarFile = req.files['avatar_file'][0];
 							
-							const imagesDirectory = path.join(__dirname, '/public/images');
+							const imagesDirectory = path.join(PUBLIC_DIRECTORY, 'images');
 						
 							const sourceFilePath = path.join(imagesDirectory, avatarFile.filename);
 							
@@ -3541,7 +3554,7 @@ async function startClient() {
 					multer({
 						storage: multer.diskStorage({
 							destination: function (req, file, cb) {
-								const filePath = path.join(__dirname, '/public/images');
+								const filePath = path.join(PUBLIC_DIRECTORY, 'images');
 								
 								fs.access(filePath, fs.F_OK, function(error) {
 									if(error) {
@@ -3577,7 +3590,7 @@ async function startClient() {
 						else {
 							const bannerFile = req.files['banner_file'][0];
 							
-							const imagesDirectory = path.join(__dirname, '/public/images');
+							const imagesDirectory = path.join(PUBLIC_DIRECTORY, 'images');
 						
 							const sourceFilePath = path.join(imagesDirectory, bannerFile.filename);
 							
@@ -3691,14 +3704,12 @@ async function startClient() {
 							},
 							storage: multer.diskStorage({
 								destination: function (req, file, cb) {
-									const filePath = path.join(__dirname, '/public/certificates');
-									
-									fs.access(filePath, fs.F_OK, function(error) {
+									fs.access(TEMP_CERTIFICATES_DIRECTORY, fs.F_OK, function(error) {
 										if(error) {
 											cb(new Error('file upload error'));
 										}
 										else {
-											cb(null, filePath);
+											cb(null, TEMP_CERTIFICATES_DIRECTORY);
 										}
 									});
 								},
@@ -3907,9 +3918,7 @@ async function startClient() {
 					const operatingSystem = detectOperatingSystem();
 					
 					if(operatingSystem === 'win32') {
-						const clientSettingsPath = path.join(__dirname, '/_client_settings.json');
-					
-						const clientSettings = JSON.parse(fs.readFileSync(clientSettingsPath, 'utf8'));
+						const clientSettings = getClientSettings();
 						
 						const result = {};
 						
@@ -3924,7 +3933,7 @@ async function startClient() {
 								result.gpuVendor = systemGpu.processingAgentName;
 								result.gpuModel = systemGpu.processingAgentModel;
 								
-								fs.writeFileSync(clientSettingsPath, JSON.stringify(clientSettings));
+								setClientSettings(clientSettings);
 						
 								res.send({isError: false, result: result });
 							})
@@ -5871,11 +5880,13 @@ async function startClient() {
 		
 		errorMessage += '\n';
 		
+		/*
 		if(isLoggingToFile) {
 			const logFilePath = path.join(__dirname, '/_client_log.txt');
 			
 			fs.appendFileSync(logFilePath, errorMessage);
 		}
+		*/
 	}
 	
 	function timestampToSeconds(timestamp) {
@@ -5920,10 +5931,8 @@ async function startClient() {
 		return new Promise(function(resolve, reject) {
 			logDebugMessageToConsole('cleaning imported video directories', '', true);
 			
-			const videosDirectoryPath = path.join(__dirname, '/public/media/videos');
-			
-			if(fs.existsSync(videosDirectoryPath)) {
-				fs.readdir(videosDirectoryPath, function(error, videoDirectories) {
+			if(fs.existsSync(TEMP_VIDEOS_DIRECTORY)) {
+				fs.readdir(TEMP_VIDEOS_DIRECTORY, function(error, videoDirectories) {
 					if (error) {
 						reject(error);
 					}
@@ -5933,7 +5942,7 @@ async function startClient() {
 						}
 						else {
 							for(const videoDirectory of videoDirectories) {
-								const videoDirectoryPath = path.join(videosDirectoryPath, videoDirectory);
+								const videoDirectoryPath = path.join(TEMP_VIDEOS_DIRECTORY, videoDirectory);
 								
 								if(fs.existsSync(videoDirectoryPath)) {
 									if (fs.statSync(videoDirectoryPath).isDirectory()) {
@@ -5964,7 +5973,7 @@ async function startClient() {
 				});
 			}
 			else {
-				reject('expected path does not exist: ' + videosDirectoryPath);
+				reject('expected path does not exist: ' + TEMP_VIDEOS_DIRECTORY);
 			}
 		});
 	}
@@ -6123,37 +6132,39 @@ async function startClient() {
 			bitrate = '700k';
 		}
 		
-		const generalSettings = JSON.parse(fs.readFileSync(path.join(__dirname, '/_client_settings.json'), 'utf8'));
+		const clientSettings = getClientSettings();
 		
-		if(generalSettings.processingAgent.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
+		if(clientSettings.processingAgent.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
 			scale = 'scale';
 		}
-		else if(generalSettings.processingAgent.processingAgentType === 'gpu' && (format === 'm3u8' || format === 'mp4')) {
-			if(generalSettings.processingAgent.processingAgentName === 'NVIDIA') {
+		else if(clientSettings.processingAgent.processingAgentType === 'gpu' && (format === 'm3u8' || format === 'mp4')) {
+			if(clientSettings.processingAgent.processingAgentName === 'NVIDIA') {
 				scale = 'scale_cuda';
 			}
-			else if(generalSettings.processingAgent.processingAgentName === 'AMD') {
+			else if(clientSettings.processingAgent.processingAgentName === 'AMD') {
 				scale = 'scale';
 			}
 		}
 		
 		var filterComplex = scale + "='if(gt(ih,iw),-1," + width + ")':'if(gt(ih,iw)," + height + ",-1)',";
 		
-		if(generalSettings.processingAgent.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
+		if(clientSettings.processingAgent.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
 			filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
 		}
-		else if(generalSettings.processingAgent.processingAgentType === 'gpu' && (format === 'm3u8' || format === 'mp4')) {
-			if(generalSettings.processingAgent.processingAgentName === 'NVIDIA') {
+		else if(clientSettings.processingAgent.processingAgentType === 'gpu' && (format === 'm3u8' || format === 'mp4')) {
+			if(clientSettings.processingAgent.processingAgentName === 'NVIDIA') {
 				filterComplex += 'hwdownload,format=nv12,crop=trunc(iw/2)*2:trunc(ih/2)*2,hwupload_cuda';
 			}
-			else if(generalSettings.processingAgent.processingAgentName === 'AMD') {
+			else if(clientSettings.processingAgent.processingAgentName === 'AMD') {
 				filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
 			}
 		}
+
+		const hlsSegmentOutputPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
 		
 		var ffmpegArguments = [];
 		
-		if(generalSettings.processingAgent.processingAgentType === 'cpu') {
+		if(clientSettings.processingAgent.processingAgentType === 'cpu') {
 			if(format === 'm3u8') {
 				ffmpegArguments = [
 					'-i', sourceFilePath,
@@ -6166,7 +6177,7 @@ async function startClient() {
 					'-vf', filterComplex,
 					'-f', 'hls', 
 					'-hls_time', '6', '-hls_init_time', '2',
-					'-hls_segment_filename', './public/media/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts', 
+					'-hls_segment_filename', hlsSegmentOutputPath, 
 					'-hls_base_url', '/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/', 
 					'-hls_playlist_type', 'vod',
 					destinationFilePath
@@ -6207,8 +6218,8 @@ async function startClient() {
 				];
 			}
 		}
-		else if(generalSettings.processingAgent.processingAgentType === 'gpu') {
-			if(generalSettings.processingAgent.processingAgentName === 'NVIDIA') {
+		else if(clientSettings.processingAgent.processingAgentType === 'gpu') {
+			if(clientSettings.processingAgent.processingAgentName === 'NVIDIA') {
 				if(format === 'm3u8') {
 					ffmpegArguments = [
 						'-hwaccel', 'cuvid',
@@ -6224,7 +6235,7 @@ async function startClient() {
 						'-vf', filterComplex,
 						'-f', 'hls',
 						'-hls_time', '6', '-hls_init_time', '2',
-						'-hls_segment_filename', `./public/media/videos/${videoId}/adaptive/m3u8/${resolution}/segment-${resolution}-%d.ts`,
+						'-hls_segment_filename', hlsSegmentOutputPath,
 						'-hls_base_url', `/${videoId}/adaptive/m3u8/${resolution}/segments/`,
 						'-hls_playlist_type', 'vod',
 						destinationFilePath
@@ -6267,7 +6278,7 @@ async function startClient() {
 					];
 				}
 			}
-			else if(generalSettings.processingAgent.processingAgentName === 'AMD') {
+			else if(clientSettings.processingAgent.processingAgentName === 'AMD') {
 				if(format === 'm3u8') {
 					ffmpegArguments = [
 						'-hwaccel', 'dxva2',
@@ -6281,7 +6292,7 @@ async function startClient() {
 						'-vf', filterComplex,
 						'-f', 'hls',
 						'-hls_time', '6', '-hls_init_time', '2',
-						'-hls_segment_filename', `./public/media/videos/${videoId}/adaptive/m3u8/${resolution}/segment-${resolution}-%d.ts`,
+						'-hls_segment_filename', hlsSegmentOutputPath,
 						'-hls_base_url', `/${videoId}/adaptive/m3u8/${resolution}/segments/`,
 						'-hls_playlist_type', 'vod',
 						destinationFilePath
@@ -6371,37 +6382,37 @@ async function startClient() {
 			bitrate = '700k';
 		}
 		
-		const generalSettings = JSON.parse(fs.readFileSync(path.join(__dirname, '/_client_settings.json'), 'utf8'));
-		
-		if(generalSettings.processingAgent.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
+		const clientSettings = getClientSettings();
+
+		if(clientSettings.processingAgent.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
 			scale = 'scale';
 		}
-		else if(generalSettings.processingAgent.processingAgentType === 'gpu' && (format === 'm3u8' || format === 'mp4')) {
-			if(generalSettings.processingAgent.processingAgentName === 'NVIDIA') {
+		else if(clientSettings.processingAgent.processingAgentType === 'gpu' && (format === 'm3u8' || format === 'mp4')) {
+			if(clientSettings.processingAgent.processingAgentName === 'NVIDIA') {
 				scale = 'scale_cuda';
 			}
-			else if(generalSettings.processingAgent.processingAgentName === 'AMD') {
+			else if(clientSettings.processingAgent.processingAgentName === 'AMD') {
 				scale = 'scale';
 			}
 		}
 		
 		var filterComplex = scale + "='if(gt(ih,iw),-1," + width + ")':'if(gt(ih,iw)," + height + ",-1)',";
 		
-		if(generalSettings.processingAgent.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
+		if(clientSettings.processingAgent.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
 			filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
 		}
-		else if(generalSettings.processingAgent.processingAgentType === 'gpu' && (format === 'm3u8' || format === 'mp4')) {
-			if(generalSettings.processingAgent.processingAgentName === 'NVIDIA') {
+		else if(clientSettings.processingAgent.processingAgentType === 'gpu' && (format === 'm3u8' || format === 'mp4')) {
+			if(clientSettings.processingAgent.processingAgentName === 'NVIDIA') {
 				filterComplex += 'hwdownload,format=nv12,crop=trunc(iw/2)*2:trunc(ih/2)*2,hwupload_cuda';
 			}
-			else if(generalSettings.processingAgent.processingAgentName === 'AMD') {
+			else if(clientSettings.processingAgent.processingAgentName === 'AMD') {
 				filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
 			}
 		}
 		
 		var ffmpegArguments = [];
 		
-		if(generalSettings.processingAgent.processingAgentType === 'cpu') {
+		if(clientSettings.processingAgent.processingAgentType === 'cpu') {
 			if(format === 'm3u8') {
 				ffmpegArguments = [
 					'-listen', '1',
@@ -6414,16 +6425,16 @@ async function startClient() {
 					'-c:a', 'aac',
 					'-f', 'hls', 
 					'-hls_time', '3', '-hls_init_time', '3', '-hls_list_size', '20',
-					'-hls_segment_filename', './public/media/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts',
+					'-hls_segment_filename', './temp/media/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts',
 					'-hls_base_url', '/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/', 
 					'-hls_playlist_type', 'event', 
 					'-hls_flags', 'append_list',
-					'./public/media/videos/' + videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8'
+					'./temp/media/videos/' + videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8'
 				];
 			}
 		}
-		else if(generalSettings.processingAgent.processingAgentType === 'gpu') {
-			if(generalSettings.processingAgent.processingAgentName === 'NVIDIA') {
+		else if(clientSettings.processingAgent.processingAgentType === 'gpu') {
+			if(clientSettings.processingAgent.processingAgentName === 'NVIDIA') {
 				if(format === 'm3u8') {
 					ffmpegArguments = [
 						'-listen', '1',
@@ -6440,15 +6451,15 @@ async function startClient() {
 						'-c:a', 'aac',
 						'-f', 'hls', 
 						'-hls_time', '3', '-hls_init_time', '3', '-hls_list_size', '20',
-						'-hls_segment_filename', './public/media/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts',
+						'-hls_segment_filename', './temp/media/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts',
 						'-hls_base_url', '/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/', 
 						'-hls_playlist_type', 'event', 
 						'-hls_flags', 'append_list',
-						'./public/media/videos/' + videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8'
+						'./temp/media/videos/' + videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8'
 					];
 				}
 			}
-			else if(generalSettings.processingAgent.processingAgentName === 'AMD') {
+			else if(clientSettings.processingAgent.processingAgentName === 'AMD') {
 				if(format === 'm3u8') {
 					ffmpegArguments = [
 						'-listen', '1',
@@ -6463,11 +6474,11 @@ async function startClient() {
 						'-c:a', 'aac',
 						'-f', 'hls', 
 						'-hls_time', '3', '-hls_init_time', '3', '-hls_list_size', '20',
-						'-hls_segment_filename', './public/media/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts',
+						'-hls_segment_filename', './temp/media/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts',
 						'-hls_base_url', '/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/', 
 						'-hls_playlist_type', 'event', 
 						'-hls_flags', 'append_list',
-						'./public/media/videos/' + videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8'
+						'./temp/media/videos/' + videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8'
 					];
 				}
 			}
@@ -6553,16 +6564,16 @@ async function startClient() {
 		}
 		
 		function finishVideoPublish(jwtToken, videoId, sourceFileExtension) {
-			deleteDirectoryRecursive(path.join(__dirname, '/public/media/videos/' + videoId + '/adaptive'));
-			deleteDirectoryRecursive(path.join(__dirname, '/public/media/videos/' + videoId + '/progressive'));
+			deleteDirectoryRecursive(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive'));
+			deleteDirectoryRecursive(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive'));
 			
-			const sourceFilePath =  path.join(__dirname, '/public/media/videos/' + videoId + '/source/' + videoId + sourceFileExtension);
+			const sourceFilePath =  path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/source/' + videoId + sourceFileExtension);
 			
 			if(fs.existsSync(sourceFilePath)) {
 				const result = spawnSync(ffmpegPath, [
 					'-i', sourceFilePath
 				], 
-				{cwd: __dirname, encoding: 'utf-8' }
+				{encoding: 'utf-8' }
 				);
 				
 				const durationIndex = result.stderr.indexOf('Duration: ');
@@ -6603,35 +6614,35 @@ async function startClient() {
 		function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExtension) {
 			return new Promise(function(resolve, reject) {
 				if(!publishVideoEncodingTracker[videoId].stopping) {
-					const sourceFilePath = path.join(__dirname, '/public/media/videos/' + videoId + '/source/' + videoId + sourceFileExtension);
+					const sourceFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/source/' + videoId + sourceFileExtension);
 					
 					const destinationFileExtension = '.' + format;
 					var destinationFilePath = '';
 					
 					if(format === 'm3u8') {
-						fs.mkdirSync(path.join(__dirname, '/public/media/videos/' + videoId + '/adaptive/m3u8/' + resolution), { recursive: true });
+						fs.mkdirSync(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive/m3u8/' + resolution), { recursive: true });
 						
-						destinationFilePath = path.join(__dirname, '/public/media/videos/' + videoId + '/adaptive/m3u8/manifest-' + resolution + destinationFileExtension);
+						destinationFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive/m3u8/manifest-' + resolution + destinationFileExtension);
 					}
 					else if(format === 'mp4') {
-						fs.mkdirSync(path.join(__dirname, '/public/media/videos/' + videoId + '/progressive/mp4/' + resolution), { recursive: true });
+						fs.mkdirSync(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/mp4/' + resolution), { recursive: true });
 						
-						destinationFilePath = path.join(__dirname, '/public/media/videos/' + videoId + '/progressive/mp4/' + resolution + '/' + resolution + destinationFileExtension);
+						destinationFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/mp4/' + resolution + '/' + resolution + destinationFileExtension);
 					}
 					else if(format === 'webm') {
-						fs.mkdirSync(path.join(__dirname, '/public/media/videos/' + videoId + '/progressive/webm/' + resolution), { recursive: true });
+						fs.mkdirSync(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/webm/' + resolution), { recursive: true });
 						
-						destinationFilePath = path.join(__dirname, '/public/media/videos/' + videoId + '/progressive/webm/' + resolution + '/' + resolution + destinationFileExtension);
+						destinationFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/webm/' + resolution + '/' + resolution + destinationFileExtension);
 					}
 					else if(format === 'ogv') {
-						fs.mkdirSync(path.join(__dirname, '/public/media/videos/' + videoId + '/progressive/ogv/' + resolution), { recursive: true });
+						fs.mkdirSync(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/ogv/' + resolution), { recursive: true });
 						
-						destinationFilePath = path.join(__dirname, '/public/media/videos/' + videoId + '/progressive/ogv/' + resolution + '/' + resolution + destinationFileExtension);
+						destinationFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/ogv/' + resolution + '/' + resolution + destinationFileExtension);
 					}
 					
 					const ffmpegArguments = generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePath, destinationFilePath);
 					
-					const process = spawn(ffmpegPath, ffmpegArguments, { cwd: __dirname });
+					const process = spawn(ffmpegPath, ffmpegArguments);
 					
 					publishVideoEncodingTracker[videoId].processes.push(process);
 					
@@ -6709,8 +6720,8 @@ async function startClient() {
 					const paths = [];
 					
 					if(format === 'm3u8') {
-						const manifestFilePath = path.join(__dirname, '/public/media/videos/' + videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
-						const segmentsDirectoryPath = path.join(__dirname, '/public/media/videos/' + videoId + '/adaptive/m3u8/' + resolution);
+						const manifestFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
+						const segmentsDirectoryPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive/m3u8/' + resolution);
 						
 						paths.push({fileName : 'manifest-' + resolution + '.m3u8', filePath: manifestFilePath});
 						
@@ -6723,19 +6734,19 @@ async function startClient() {
 					}
 					else if(format === 'mp4') {
 						const fileName = resolution + '.mp4';
-						const filePath = path.join(__dirname, '/public/media/videos/' + videoId + '/progressive/mp4/' + resolution + '/' + fileName);
+						const filePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/mp4/' + resolution + '/' + fileName);
 						
 						paths.push({fileName : fileName, filePath: filePath});
 					}
 					else if(format === 'webm') {
 						const fileName = resolution + '.webm';
-						const filePath = path.join(__dirname, '/public/media/videos/' + videoId + '/progressive/webm/' + resolution + '/' + fileName);
+						const filePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/webm/' + resolution + '/' + fileName);
 						
 						paths.push({fileName : fileName, filePath: filePath});
 					}
 					else if(format === 'ogv') {
 						const fileName = resolution + '.ogv';
-						const filePath = path.join(__dirname, '/public/media/videos/' + videoId + '/progressive/ogv/' + resolution + '/' + fileName);
+						const filePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/ogv/' + resolution + '/' + fileName);
 						
 						paths.push({fileName : fileName, filePath: filePath});
 					}
@@ -6774,14 +6785,14 @@ async function startClient() {
 		return new Promise(function(resolve, reject) {
 			logDebugMessageToConsole('starting live stream for id: ' + videoId, '', true);
 			
-			fs.mkdirSync(path.join(__dirname, '/public/media/videos/' + videoId + '/source'), { recursive: true });
-			fs.mkdirSync(path.join(__dirname, '/public/media/videos/' + videoId + '/images'), { recursive: true });
-			fs.mkdirSync(path.join(__dirname, '/public/media/videos/' + videoId + '/adaptive'), { recursive: true });
-			fs.mkdirSync(path.join(__dirname, '/public/media/videos/' + videoId + '/progressive'), { recursive: true });
+			fs.mkdirSync(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/source'), { recursive: true });
+			fs.mkdirSync(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images'), { recursive: true });
+			fs.mkdirSync(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive'), { recursive: true });
+			fs.mkdirSync(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive'), { recursive: true });
 			
-			const sourceDirectoryPath = path.join(__dirname, '/public/media/videos/' + videoId + '/source');
+			const sourceDirectoryPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/source');
 			const sourceFilePath = path.join(sourceDirectoryPath, '/' + videoId + '.ts');
-			const videoDirectory = path.join(__dirname, '/public/media/videos/' + videoId + '/adaptive/m3u8');
+			const videoDirectory = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive/m3u8');
 			const manifestFileName = 'manifest-' + resolution + '.m3u8';
 			const manifestFilePath = path.join(videoDirectory, '/' + manifestFileName);
 			const segmentsDirectoryPath = path.join(videoDirectory, '/' + resolution);
@@ -6790,8 +6801,7 @@ async function startClient() {
 			
 			const ffmpegArguments = generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely);
 			
-			var process = spawn(ffmpegPath, ffmpegArguments, 
-			{cwd: __dirname});
+			var process = spawn(ffmpegPath, ffmpegArguments);
 			
 			publishStreamTracker[videoId].process = process;
 			
@@ -6867,7 +6877,7 @@ async function startClient() {
 									if(fs.existsSync(manifestFilePath) && fs.existsSync(expectedSegmentFilePath)) {
 										logDebugMessageToConsole('generating live images for video: ' + videoId, '', true);
 										
-										const imagesDirectoryPath = path.join(__dirname, '/public/media/videos/' + videoId + '/images');
+										const imagesDirectoryPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images');
 										
 										const thumbnailImagePath = path.join(imagesDirectoryPath, 'thumbnail.jpg');
 										
@@ -6877,8 +6887,7 @@ async function startClient() {
 											'-vframes', '1',
 											'-y',
 											thumbnailImagePath
-										], 
-										{cwd: __dirname});
+										]);
 										
 										process1.on('spawn', function (code) {
 											logDebugMessageToConsole('live thumbnail generating ffmpeg process spawned', '', true);
@@ -6888,7 +6897,7 @@ async function startClient() {
 											logDebugMessageToConsole('live thumbnail generating ffmpeg process exited with exit code: ' + code, '', true);
 											
 											if(code === 0) {
-												const thumbnailPath = path.join(__dirname, '/public/media/videos/' + videoId + '/images/thumbnail.jpg');
+												const thumbnailPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images/thumbnail.jpg');
 												
 												if(fs.existsSync(thumbnailPath)) {
 													logDebugMessageToConsole('generated live thumbnail for video: ' + videoId, '', true);
@@ -6930,9 +6939,7 @@ async function startClient() {
 											'-vframes', '1',
 											'-y',
 											previewImagePath
-										], 
-										{cwd: __dirname}
-										);
+										]);
 										
 										process2.on('spawn', function (code) {
 											logDebugMessageToConsole('live preview generating ffmpeg process spawned', '', true);
@@ -6942,7 +6949,7 @@ async function startClient() {
 											logDebugMessageToConsole('live preview generating ffmpeg process exited with exit code: ' + code, '', true);
 											
 											if(code === 0) {
-												const previewPath = path.join(__dirname, '/public/media/videos/' + videoId + '/images/preview.jpg');
+												const previewPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images/preview.jpg');
 												
 												if(fs.existsSync(previewPath)) {
 													logDebugMessageToConsole('generated live preview for video: ' + videoId, '', true);
@@ -6984,9 +6991,7 @@ async function startClient() {
 											'-vframes', '1',
 											'-y',
 											posterImagePath
-										], 
-										{cwd: __dirname}
-										);
+										]);
 									
 										process3.on('spawn', function (code) {
 											logDebugMessageToConsole('live poster generating ffmpeg process spawned', '', true);
@@ -6996,7 +7001,7 @@ async function startClient() {
 											logDebugMessageToConsole('live poster generating ffmpeg process exited with exit code: ' + code, '', true);
 											
 											if(code === 0) {
-												const posterPath = path.join(__dirname, '/public/media/videos/' + videoId + '/images/poster.jpg');
+												const posterPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images/poster.jpg');
 												
 												if(fs.existsSync(posterPath)) {
 													logDebugMessageToConsole('generated live poster for video: ' + videoId, '', true);
@@ -7166,7 +7171,32 @@ async function startClient() {
 	}
 }
 
+function getClientSettings() {
+	const clientSettings = JSON.parse(fs.readFileSync(path.join(USER_DIRECTORY, '_client_settings.json'), 'utf8'));
+
+	return clientSettings;
+}
+
+function setClientSettings(clientSettings) {
+	fs.writeFileSync(path.join(USER_DIRECTORY, '_client_settings.json'), JSON.stringify(clientSettings));
+}
+
 function loadConfig() {
+	sharp.cache(false);
+
+	if(global != null && global.electronPaths != null) {
+		USER_DIRECTORY = path.join(global.electronPaths.userData, 'user');
+		TEMP_DIRECTORY = path.join(global.electronPaths.temp, 'moartube-client/temp');
+	}
+	else {
+		USER_DIRECTORY = path.join(__dirname, 'user');
+		TEMP_DIRECTORY = path.join(__dirname, 'temp');
+	}
+
+	PUBLIC_DIRECTORY = path.join(__dirname, 'public');
+	TEMP_CERTIFICATES_DIRECTORY = path.join(TEMP_DIRECTORY, 'certificates');
+	TEMP_VIDEOS_DIRECTORY = path.join(TEMP_DIRECTORY, 'media/videos');
+
 	const config = JSON.parse(fs.readFileSync(path.join(__dirname, '/config.json'), 'utf8'));
 	
 	MOARTUBE_CLIENT_PORT = process.env.PORT || config.clientConfig.port;
