@@ -1132,12 +1132,18 @@ async function startClient() {
 
 										if(fs.existsSync(sourceFilePath)) {
 											for(const publishing of publishings) {
+												const format = publishing.format;
+												const resolution = publishing.resolution;
+
 												pendingPublishingJobs.push({
 													jwtToken: jwtToken,
 													videoId: videoId,
-													format: publishing.format,
-													resolution: publishing.resolution,
-													sourceFileExtension: sourceFileExtension
+													format: format,
+													resolution: resolution,
+													sourceFileExtension: sourceFileExtension,
+													idleInterval: setInterval(function() {
+														node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing', videoId: videoId, format: format, resolution: resolution, progress: 0 }}});
+													}, 1000)
 												});
 											}
 											
@@ -3951,8 +3957,8 @@ async function startClient() {
 								clientSettings.processingAgent.processingAgentModel = systemCpu.processingAgentModel;
 								
 								result.isGpuAccelerationEnabled = false;
-								
-								fs.writeFileSync(clientSettingsPath, JSON.stringify(clientSettings));
+
+								setClientSettings(clientSettings);
 						
 								res.send({isError: false, result: result });
 							})
@@ -6536,6 +6542,9 @@ async function startClient() {
 				const format = publishingJob.format;
 				const resolution = publishingJob.resolution;
 				const sourceFileExtension = publishingJob.sourceFileExtension;
+				const idleInterval = publishingJob.idleInterval;
+
+				clearInterval(idleInterval);
 				
 				node_setVideoPublishing_database(jwtToken, videoId)
 				.then(nodeResponseData => {
