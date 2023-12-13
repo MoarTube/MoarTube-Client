@@ -36,17 +36,17 @@ startClient();
 
 async function startClient() {
 	process.on('uncaughtException', (error) => {
-		logDebugMessageToConsole('', new Error(error).stack, true);
+		logDebugMessageToConsole(null, error, error.stackTrace, true);
 	});
 
 	process.on('unhandledRejection', (reason, promise) => {
-		logDebugMessageToConsole('', new Error(reason).stack, true);
+		logDebugMessageToConsole(null, reason, reason.stack, true);
 	});
 
-	logDebugMessageToConsole('using ffmpeg at path: ' + ffmpegPath, '', true);
-	logDebugMessageToConsole(execSync(ffmpegPath + ' -version').toString(), '', true);
+	logDebugMessageToConsole('using ffmpeg at path: ' + ffmpegPath, null, null, true);
+	logDebugMessageToConsole(execSync(ffmpegPath + ' -version').toString(), null, null, true);
 
-	logDebugMessageToConsole('creating required directories', '', true);
+	logDebugMessageToConsole('creating required directories', null, null, true);
 	
 	if (!fs.existsSync(USER_DIRECTORY)) {
 		fs.mkdirSync(USER_DIRECTORY, { recursive: true });
@@ -109,7 +109,7 @@ async function startClient() {
 	var websocketClient;
 	
 	httpServer.listen(MOARTUBE_CLIENT_PORT, function() {
-		logDebugMessageToConsole('MoarTube Client is listening on port ' + MOARTUBE_CLIENT_PORT, '', true);
+		logDebugMessageToConsole('MoarTube Client is listening on port ' + MOARTUBE_CLIENT_PORT, null, null, true);
 		
 		websocketServer = new webSocket.Server({ 
 			noServer: true, 
@@ -117,23 +117,20 @@ async function startClient() {
 		});
 		
 		websocketServer.on('connection', function connection(ws) {
-			logDebugMessageToConsole('browser websocket client connected', '', true);
+			logDebugMessageToConsole('browser websocket client connected', null, null, true);
 
 			ws.on('close', () => {
-				logDebugMessageToConsole('browser websocket client disconnected', '', true);
+				logDebugMessageToConsole('browser websocket client disconnected', null, null, true);
 			});
 		});
 		
 		httpServer.on('upgrade', function upgrade(req, socket, head) {
-			logDebugMessageToConsole('attempting to upgrade http connection to websocket', '', true);
-			
-			
 			websocketServer.handleUpgrade(req, socket, head, function done(ws) {
 				sessionMiddleware(req, {}, () => {
 					node_isAuthenticated(req.session.jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 						}
 						else {
 							if(nodeResponseData.isAuthenticated) {
@@ -145,7 +142,7 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 					});
 				});
 			});
@@ -164,7 +161,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send('error communicating with the MoarTube node');
 			}
@@ -173,7 +170,7 @@ async function startClient() {
 					node_getSettings_filesystem(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send('error communicating with the MoarTube node');
 						}
@@ -189,7 +186,7 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send('error communicating with the MoarTube node');
 					});
@@ -218,7 +215,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send('error communicating with the MoarTube node');
 			}
@@ -227,7 +224,7 @@ async function startClient() {
 					node_getSettings_filesystem(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send('error communicating with the MoarTube node');
 						}
@@ -243,7 +240,7 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send('error communicating with the MoarTube node');
 					});
@@ -257,7 +254,7 @@ async function startClient() {
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send('error communicating with the MoarTube node');
 		});
@@ -271,35 +268,35 @@ async function startClient() {
 		const rememberMe = req.body.rememberMe;
 		
 		if(!isPublicNodeAddressValid(moarTubeNodeIp)) {
-			logDebugMessageToConsole('attempted to sign in with invalid ip address or domian name: ' + moarTubeNodeIp, '', true);
+			logDebugMessageToConsole('attempted to sign in with invalid ip address or domian name: ' + moarTubeNodeIp, null, null, true);
 			
 			res.send({isError: true, message: 'ip address or domain name is not valid'});
 		}
 		else if(!isPortValid(moarTubeNodePort)) {
-			logDebugMessageToConsole('attempted to sign in with invalid port: ' + moarTubeNodePort, '', true);
+			logDebugMessageToConsole('attempted to sign in with invalid port: ' + moarTubeNodePort, null, null, true);
 			
 			res.send({isError: true, message: 'port is not valid'});
 		}
 		else {
-			logDebugMessageToConsole('attempting user sign in with HTTP...', '', true);
+			logDebugMessageToConsole('attempting user sign in with HTTP...', null, null, true);
 			
 			node_getHeartbeat_1('http', moarTubeNodeIp, moarTubeNodePort)
 			.then((nodeResponseData) => {
-				logDebugMessageToConsole('user signing in with HTTP available', '', true);
+				logDebugMessageToConsole('user signing in with HTTP available', null, null, true);
 				
 				performSignIn('http', 'ws', moarTubeNodeIp, moarTubeNodePort);
 			})
 			.catch(error => {
-				logDebugMessageToConsole('attempting user sign in with HTTPS...', '', true);
+				logDebugMessageToConsole('attempting user sign in with HTTPS...', null, null, true);
 				
 				node_getHeartbeat_1('https', moarTubeNodeIp, moarTubeNodePort)
 				.then((nodeResponseData) => {
-					logDebugMessageToConsole('user signing in with HTTPS available', '', true);
+					logDebugMessageToConsole('user signing in with HTTPS available', null, null, true);
 					
 					performSignIn('https', 'wss', moarTubeNodeIp, moarTubeNodePort);
 				})
 				.catch(error => {
-					logDebugMessageToConsole('', new Error(error).stack, true);
+					logDebugMessageToConsole(null, error, new Error().stack, true);
 					
 					res.send({isError: true, message: 'error communicating with the MoarTube node'});
 				});
@@ -315,7 +312,7 @@ async function startClient() {
 				node_doSignin(username, password, rememberMe)
 				.then((nodeResponseData) => {
 					if(nodeResponseData.isError) {
-						logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+						logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					}
@@ -340,20 +337,20 @@ async function startClient() {
 									var pingTimeoutTimer;
 
 									websocketClient.on('open', () => {
-										logDebugMessageToConsole('MoarTube Client websocket connected to node: ' + websocketServerAddress, '', true);
+										logDebugMessageToConsole('MoarTube Client websocket connected to node: ' + websocketServerAddress, null, null, true);
 										
 										websocketClient.send(JSON.stringify({eventName: 'register', socketType: 'moartube_client', jwtToken: req.session.jwtToken}));
 
 										pingIntervalTimer = setInterval(function() {
 											if(pingTimeoutTimer == null) {
 												pingTimeoutTimer = setTimeout(function() {
-													logDebugMessageToConsole('terminating likely dead MoarTube Client websocket connection to node: ' + websocketServerAddress, '', true);
+													logDebugMessageToConsole('terminating likely dead MoarTube Client websocket connection to node: ' + websocketServerAddress, null, null, true);
 
 													clearInterval(pingIntervalTimer);
 													websocketClient.terminate();
 												}, 3000);
 
-												//logDebugMessageToConsole('sending ping to node: ' + websocketServerAddress, '', true);
+												//logDebugMessageToConsole('sending ping to node: ' + websocketServerAddress, null, null, true);
 												
 												websocketClient.send(JSON.stringify({eventName: 'ping', jwtToken: req.session.jwtToken}));
 											}
@@ -364,13 +361,13 @@ async function startClient() {
 										const parsedMessage = JSON.parse(message);
 										
 										if(parsedMessage.eventName === 'pong') {
-											//logDebugMessageToConsole('received pong from node: ' + websocketServerAddress, '', true);
+											//logDebugMessageToConsole('received pong from node: ' + websocketServerAddress, null, null, true);
 
 											clearTimeout(pingTimeoutTimer);
 											pingTimeoutTimer = null;
 										}
 										else if(parsedMessage.eventName === 'registered') {
-											logDebugMessageToConsole('MoarTube Client registered websocket with node: ' + websocketServerAddress, '', true);
+											logDebugMessageToConsole('MoarTube Client registered websocket with node: ' + websocketServerAddress, null, null, true);
 										}
 										else if(parsedMessage.eventName === 'echo') {
 											if(parsedMessage.data.eventName === 'video_status') {
@@ -432,7 +429,7 @@ async function startClient() {
 									});
 									
 									websocketClient.on('close', () => {
-										logDebugMessageToConsole('MoarTube Client websocket disconnected from node <' + websocketServerAddress + '>', '', true);
+										logDebugMessageToConsole('MoarTube Client websocket disconnected from node <' + websocketServerAddress + '>', null, null, true);
 
 										clearInterval(pingIntervalTimer);
 										clearInterval(pingTimeoutTimer);
@@ -443,7 +440,7 @@ async function startClient() {
 									});
 								}
 								catch(error) {
-									logDebugMessageToConsole('', new Error(error).stack, true);
+									logDebugMessageToConsole(null, error, new Error().stack, true);
 								}
 							};
 							
@@ -452,7 +449,7 @@ async function startClient() {
 							node_getSettings_filesystem(req.session.jwtToken)
 							.then(nodeResponseData => {
 								if(nodeResponseData.isError) {
-									logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+									logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 									
 									res.send({isError: true, message: 'error communicating with the MoarTube node'});
 								}
@@ -468,7 +465,7 @@ async function startClient() {
 								}
 							})
 							.catch(error => {
-								logDebugMessageToConsole('', new Error(error).stack, true);
+								logDebugMessageToConsole(null, error, new Error().stack, true);
 								
 								res.send({isError: true, message: 'error communicating with the MoarTube node'});
 							});
@@ -479,7 +476,7 @@ async function startClient() {
 					}
 				})
 				.catch(error => {
-					logDebugMessageToConsole('', new Error(error).stack, true);
+					logDebugMessageToConsole(null, error, new Error().stack, true);
 					
 					res.send({isError: true, message: 'error communicating with the MoarTube node'});
 				});
@@ -488,7 +485,7 @@ async function startClient() {
 	});
 	
 	app.get('/account/signout', (req, res) => {
-		logDebugMessageToConsole('signing user out', '', true);
+		logDebugMessageToConsole('signing user out', null, null, true);
 		
 		signUserOut(req, res);
 	});
@@ -503,7 +500,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				signUserOut(req, res);
 			}
@@ -512,7 +509,7 @@ async function startClient() {
 					node_getSettings_filesystem(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							signUserOut(req, res);
 						}
@@ -531,7 +528,7 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						signUserOut(req, res);
 					});
@@ -542,7 +539,7 @@ async function startClient() {
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			signUserOut(req, res);
 		});
@@ -554,7 +551,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -563,7 +560,7 @@ async function startClient() {
 					node_setConfigurationSkipped(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: nodeResponseData.message});
 						}
@@ -572,20 +569,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -599,7 +596,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				signUserOut(req, res);
 			}
@@ -608,7 +605,7 @@ async function startClient() {
 					node_getSettings_filesystem(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							signUserOut(req, res);
 						}
@@ -627,7 +624,7 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						signUserOut(req, res);
 					});
@@ -638,7 +635,7 @@ async function startClient() {
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			signUserOut(req, res);
 		});
@@ -651,7 +648,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				signUserOut(req, res);
 			}
@@ -660,7 +657,7 @@ async function startClient() {
 					node_getSettings_filesystem(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							signUserOut(req, res);
 						}
@@ -679,7 +676,7 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						signUserOut(req, res);
 					});
@@ -690,7 +687,7 @@ async function startClient() {
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			signUserOut(req, res);
 		});
@@ -702,36 +699,36 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then((nodeResponseData) => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
 			else {
 				if(nodeResponseData.isAuthenticated) {
-					logDebugMessageToConsole('attempting to import video file into the client file system', '', true);
+					logDebugMessageToConsole('attempting to import video file into the client file system', null, null, true);
 					
 					const totalFileSize = parseInt(req.headers['content-length']);
 					
 					if(totalFileSize > 0) {
-						logDebugMessageToConsole('importing video into the client file system: ' + totalFileSize + ' bytes', '', true);
+						logDebugMessageToConsole('importing video into the client file system: ' + totalFileSize + ' bytes', null, null, true);
 						
 						const title = req.query.title;
 						const description = req.query.description;
 						const tags = req.query.tags;
 						
-						logDebugMessageToConsole('requesting video id for imported video....', '', true);
+						logDebugMessageToConsole('requesting video id for imported video....', null, null, true);
 
 						node_importVideo_database(jwtToken, title, description, tags)
 						.then(nodeResponseData => {
 							if(nodeResponseData.isError) {
-								logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+								logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 								
 								res.send({isError: true, message: 'error communicating with the MoarTube node'});
 							}
 							else {
 								const videoId = nodeResponseData.videoId;
 								
-								logDebugMessageToConsole('imported video file assigned video id: ' + videoId, '', true);
+								logDebugMessageToConsole('imported video file assigned video id: ' + videoId, null, null, true);
 								
 								importVideoTracker[videoId] = {req: req, stopping: false};
 								
@@ -781,7 +778,7 @@ async function startClient() {
 											
 											const fileName = videoId + extension;
 											
-											logDebugMessageToConsole('imported video file and assigned temporary file name: ' + fileName, '', true);
+											logDebugMessageToConsole('imported video file and assigned temporary file name: ' + fileName, null, null, true);
 											
 											cb(null, fileName);
 										}
@@ -789,12 +786,12 @@ async function startClient() {
 								}).fields([{ name: 'video_file', minCount: 1, maxCount: 1 }])
 								(req, res, function(error) {
 									if(error) {
-										logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+										logDebugMessageToConsole(nodeResponseData.message, error, new Error().stack, true);
 										
 										node_setVideoError_database(jwtToken, videoId)
 										.then(nodeResponseData => {
 											if(nodeResponseData.isError) {
-												logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+												logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 												
 												res.send({isError: true, message: 'error communicating with the MoarTube node'});
 											}
@@ -803,7 +800,7 @@ async function startClient() {
 											}
 										})
 										.catch(error => {
-											logDebugMessageToConsole('', new Error(error).stack, true);
+											logDebugMessageToConsole(null, error, new Error().stack, true);
 											
 											res.send({isError: true, message: 'error communicating with the MoarTube node'});
 										});
@@ -823,7 +820,7 @@ async function startClient() {
 										node_setSourceFileExtension_database(jwtToken, videoId, sourceFileExtension)
 										.then(nodeResponseData => {
 											if(nodeResponseData.isError) {
-												logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+												logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 												
 												res.send({isError: true, message: 'error communicating with the MoarTube node'});
 											}
@@ -838,7 +835,7 @@ async function startClient() {
 												const lengthTimestamp = result.stderr.substr(durationIndex + 10, 11);
 												const lengthSeconds = timestampToSeconds(lengthTimestamp);
 												
-												logDebugMessageToConsole('generating images for video: ' + videoId, '', true);
+												logDebugMessageToConsole('generating images for video: ' + videoId, null, null, true);
 												
 												const imagesDirectoryPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images');
 												const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
@@ -859,78 +856,78 @@ async function startClient() {
 														sharp(sourceImagePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toFile(posterImagePath)
 														.then(() => {
 															if(!fs.existsSync(thumbnailImagePath)) {
-																logDebugMessageToConsole('expected a thumbnail to be generated in <' + thumbnailImagePath + '> but found none', new Error().stack, true);
+																logDebugMessageToConsole('expected a thumbnail to be generated in <' + thumbnailImagePath + '> but found none', null, new Error().stack, true);
 																
 																res.send({isError: true, message: 'error communicating with the MoarTube node'});
 															}
 															else if(!fs.existsSync(previewImagePath)) {
-																logDebugMessageToConsole('expected a preview to be generated in <' + previewImagePath + '> but found none', new Error().stack, true);
+																logDebugMessageToConsole('expected a preview to be generated in <' + previewImagePath + '> but found none', null, new Error().stack, true);
 																
 																res.send({isError: true, message: 'error communicating with the MoarTube node'});
 															}
 															else if(!fs.existsSync(posterImagePath)) {
-																logDebugMessageToConsole('expected a poster to be generated in <' + posterImagePath + '> but found none', new Error().stack, true);
+																logDebugMessageToConsole('expected a poster to be generated in <' + posterImagePath + '> but found none', null, new Error().stack, true);
 																
 																res.send({isError: true, message: 'error communicating with the MoarTube node'});
 															}
 															else {
-																logDebugMessageToConsole('generated thumbnail, preview, and poster for video: ' + videoId, '', true);
+																logDebugMessageToConsole('generated thumbnail, preview, and poster for video: ' + videoId, null, null, true);
 																
-																logDebugMessageToConsole('uploading thumbnail, preview, and poster to node for video: ' + videoId, '', true);
+																logDebugMessageToConsole('uploading thumbnail, preview, and poster to node for video: ' + videoId, null, null, true);
 																
 																node_setThumbnail_fileSystem(jwtToken, videoId, thumbnailImagePath)
 																.then(nodeResponseData => {
 																	if(nodeResponseData.isError) {
-																		logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+																		logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 																		
 																		res.send({isError: true, message: 'error communicating with the MoarTube node'});
 																	}
 																	else {
-																		logDebugMessageToConsole('uploaded thumbnail to node for video: ' + videoId, '', true);
+																		logDebugMessageToConsole('uploaded thumbnail to node for video: ' + videoId, null, null, true);
 																		
 																		node_setPreview_fileSystem(jwtToken, videoId, previewImagePath)
 																		.then(nodeResponseData => {
 																			if(nodeResponseData.isError) {
-																				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+																				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 																				
 																				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 																			}
 																			else {
-																				logDebugMessageToConsole('uploaded preview to node for video: ' + videoId, '', true);
+																				logDebugMessageToConsole('uploaded preview to node for video: ' + videoId, null, null, true);
 																				
 																				node_setPoster_fileSystem(jwtToken, videoId, posterImagePath)
 																				.then(nodeResponseData => {
 																					if(nodeResponseData.isError) {
-																						logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+																						logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 																						
 																						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 																					}
 																					else {
-																						logDebugMessageToConsole('uploaded poster to node for video: ' + videoId, '', true);
+																						logDebugMessageToConsole('uploaded poster to node for video: ' + videoId, null, null, true);
 																						
 																						deleteDirectoryRecursive(imagesDirectoryPath);
 																						
-																						logDebugMessageToConsole('uploading video length to node for video: ' + videoId, '', true);
+																						logDebugMessageToConsole('uploading video length to node for video: ' + videoId, null, null, true);
 																						
 																						node_setVideoLengths_database(jwtToken, videoId, lengthSeconds, lengthTimestamp)
 																						.then(nodeResponseData => {
 																							if(nodeResponseData.isError) {
-																								logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+																								logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 																								
 																								res.send({isError: true, message: 'error communicating with the MoarTube node'});
 																							}
 																							else {
-																								logDebugMessageToConsole('uploaded video length to node for video: ' + videoId, '', true);
+																								logDebugMessageToConsole('uploaded video length to node for video: ' + videoId, null, null, true);
 																								
 																								node_setVideoImported_database(jwtToken, videoId)
 																								.then(nodeResponseData => {
 																									if(nodeResponseData.isError) {
-																										logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+																										logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 																										
 																										res.send({isError: true, message: 'error communicating with the MoarTube node'});
 																									}
 																									else {
-																										logDebugMessageToConsole('flagging video as imported to node for video: ' + videoId, '', true);
+																										logDebugMessageToConsole('flagging video as imported to node for video: ' + videoId, null, null, true);
 																										
 																										node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'imported', videoId: videoId, lengthTimestamp: lengthTimestamp }}});
 																										
@@ -938,61 +935,61 @@ async function startClient() {
 																									}
 																								})
 																								.catch(error => {
-																									logDebugMessageToConsole('', new Error(error).stack, true);
+																									logDebugMessageToConsole(null, error, new Error().stack, true);
 																									
 																									res.send({isError: true, message: 'error communicating with the MoarTube node'});
 																								});
 																							}
 																						})
 																						.catch(error => {
-																							logDebugMessageToConsole('', new Error(error).stack, true);
+																							logDebugMessageToConsole(null, error, new Error().stack, true);
 																							
 																							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 																						});
 																					}
 																				})
 																				.catch(error => {
-																					logDebugMessageToConsole('', new Error(error).stack, true);
+																					logDebugMessageToConsole(null, error, new Error().stack, true);
 																					
 																					res.send({isError: true, message: 'error communicating with the MoarTube node'});
 																				});
 																			}
 																		})
 																		.catch(error => {
-																			logDebugMessageToConsole('', new Error(error).stack, true);
+																			logDebugMessageToConsole(null, error, new Error().stack, true);
 																			
 																			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 																		});
 																	}
 																})
 																.catch(error => {
-																	logDebugMessageToConsole('', new Error(error).stack, true);
+																	logDebugMessageToConsole(null, error, new Error().stack, true);
 																	
 																	res.send({isError: true, message: 'error communicating with the MoarTube node'});
 																});
 															}
 														})
 														.catch(error => {
-															logDebugMessageToConsole('', new Error(error).stack, true);
+															logDebugMessageToConsole(null, error, new Error().stack, true);
 															
 															res.send({isError: true, message: 'error communicating with the MoarTube node'});
 														});
 													})
 													.catch(error => {
-														logDebugMessageToConsole('', new Error(error).stack, true);
+														logDebugMessageToConsole(null, error, new Error().stack, true);
 														
 														res.send({isError: true, message: 'error communicating with the MoarTube node'});
 													});
 												})
 												.catch(error => {
-													logDebugMessageToConsole('', new Error(error).stack, true);
+													logDebugMessageToConsole(null, error, new Error().stack, true);
 													
 													res.send({isError: true, message: 'error communicating with the MoarTube node'});
 												});
 											}
 										})
 										.catch(error => {
-											logDebugMessageToConsole('', new Error(error).stack, true);
+											logDebugMessageToConsole(null, error, new Error().stack, true);
 											
 											res.send({isError: true, message: 'error communicating with the MoarTube node'});
 										});
@@ -1001,26 +998,26 @@ async function startClient() {
 							}
 						})
 						.catch(error => {
-							logDebugMessageToConsole('', new Error(error).stack, true);
+							logDebugMessageToConsole(null, error, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						});
 					}
 					else {
-						logDebugMessageToConsole('expected totalFileSize of non-zero but got zero', '', true);
+						logDebugMessageToConsole('expected totalFileSize of non-zero but got zero', null, null, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					}
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -1032,7 +1029,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -1045,9 +1042,9 @@ async function startClient() {
 					node_stopVideoImporting_database(jwtToken, videoId)
 					.then((nodeResponseData) => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
-							//res.send({isError: true, message: 'error communicating with the MoarTube node'});
+							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
 						else {
 							node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing_stopped', videoId: videoId }}});
@@ -1056,20 +1053,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
-						//res.send({isError: true, message: 'error communicating with the MoarTube node'});
+						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -1081,7 +1078,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -1093,7 +1090,7 @@ async function startClient() {
 					node_getVideoInformation_database(jwtToken, videoId)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -1112,7 +1109,7 @@ async function startClient() {
 								node_getSourceFileExtension_database(jwtToken, videoId)
 								.then(nodeResponseData => {
 									if(nodeResponseData.isError) {
-										logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+										logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 										
 										res.send({isError: true, message: nodeResponseData.message});
 									}
@@ -1154,20 +1151,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -1179,7 +1176,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -1192,7 +1189,7 @@ async function startClient() {
 					node_getVideoData_database(jwtToken, videoId)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -1202,7 +1199,7 @@ async function startClient() {
 							node_unpublishVideo_filesystem(jwtToken, videoId, format, resolution)
 							.then(nodeResponseData => {
 								if(nodeResponseData.isError) {
-									logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+									logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 									
 									res.send({isError: true, message: 'error communicating with the MoarTube node'});
 								}
@@ -1211,7 +1208,7 @@ async function startClient() {
 								}
 							})
 							.catch(error => {
-								logDebugMessageToConsole('', new Error(error).stack, true);
+								logDebugMessageToConsole(null, error, new Error().stack, true);
 								
 								res.send({isError: true, message: 'error communicating with the MoarTube node'});
 							});
@@ -1219,14 +1216,14 @@ async function startClient() {
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -1238,7 +1235,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -1251,7 +1248,7 @@ async function startClient() {
 					node_stopVideoPublishing_database(jwtToken, videoId)
 					.then((nodeResponseData) => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -1262,20 +1259,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -1287,7 +1284,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then((nodeResponseData) => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -1316,7 +1313,7 @@ async function startClient() {
 									node_streamVideo_database(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally)
 									.then(nodeResponseData => {
 										if(nodeResponseData.isError) {
-											logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+											logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 											
 											res.send({isError: true, message: 'error communicating with the MoarTube node'});
 										}
@@ -1328,7 +1325,7 @@ async function startClient() {
 											node_setSourceFileExtension_database(jwtToken, videoId, '.ts')
 											.then(nodeResponseData => {
 												if(nodeResponseData.isError) {
-													logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+													logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 													
 													res.send({isError: true, message: 'error communicating with the MoarTube node'});
 												}
@@ -1341,14 +1338,14 @@ async function startClient() {
 												}
 											})
 											.catch(error => {
-												logDebugMessageToConsole('', new Error(error).stack, true);
+												logDebugMessageToConsole(null, error, new Error().stack, true);
 												
 												res.send({isError: true, message: 'error communicating with the MoarTube node'});
 											});
 										}
 									})
 									.catch(error => {
-										logDebugMessageToConsole('', new Error(error).stack, true);
+										logDebugMessageToConsole(null, error, new Error().stack, true);
 										
 										res.send({isError: true, message: 'error communicating with the MoarTube node'});
 									});
@@ -1360,14 +1357,14 @@ async function startClient() {
 					}
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -1379,7 +1376,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -1392,7 +1389,7 @@ async function startClient() {
 					node_stopVideoStreaming_database(jwtToken, videoId)
 					.then((nodeResponseData) => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -1403,20 +1400,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -1428,7 +1425,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -1443,7 +1440,7 @@ async function startClient() {
 					node_doVideosSearch_database(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -1452,20 +1449,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -1477,7 +1474,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -1492,7 +1489,7 @@ async function startClient() {
 					node_doVideosSearchAll_database(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -1501,20 +1498,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -1526,7 +1523,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.end();
 			}
@@ -1540,7 +1537,7 @@ async function startClient() {
 						nodeResponseData.pipe(res);
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.status(404).send('thumbnail not found');
 					});
@@ -1551,7 +1548,7 @@ async function startClient() {
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.status(404).send('thumbnail not found');
 		});
@@ -1563,7 +1560,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.end();
 			}
@@ -1577,7 +1574,7 @@ async function startClient() {
 						nodeResponseData.pipe(res);
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.end();
 					});
@@ -1588,7 +1585,7 @@ async function startClient() {
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.end();
 		});
@@ -1600,7 +1597,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.end();
 			}
@@ -1614,7 +1611,7 @@ async function startClient() {
 						nodeResponseData.pipe(res);
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.end();
 					});
@@ -1625,7 +1622,7 @@ async function startClient() {
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.end();
 		});
@@ -1637,7 +1634,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -1676,7 +1673,7 @@ async function startClient() {
 					}).fields([{ name: 'thumbnail_file', minCount: 1, maxCount: 1 }])
 					(req, res, function(error) {
 						if(error) {
-							logDebugMessageToConsole('', new Error(error).stack, true);
+							logDebugMessageToConsole(null, error, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -1691,12 +1688,12 @@ async function startClient() {
 								node_setThumbnail_fileSystem(jwtToken, videoId, destinationFilePath)
 								.then(nodeResponseData => {
 									if(nodeResponseData.isError) {
-										logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+										logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 										
 										res.send({isError: true, message: 'error communicating with the MoarTube node'});
 									}
 									else {
-										logDebugMessageToConsole('uploaded live preview to node for video: ' + videoId, '', true);
+										logDebugMessageToConsole('uploaded live preview to node for video: ' + videoId, null, null, true);
 										
 										fs.unlinkSync(destinationFilePath);
 										
@@ -1704,13 +1701,13 @@ async function startClient() {
 									}
 								})
 								.catch(error => {
-									logDebugMessageToConsole('', new Error(error).stack, true);
+									logDebugMessageToConsole(null, error, new Error().stack, true);
 									
 									res.send({isError: true, message: 'error communicating with the MoarTube node'});
 								});
 							})
 							.catch(error => {
-								logDebugMessageToConsole('', new Error(error).stack, true);
+								logDebugMessageToConsole(null, error, new Error().stack, true);
 								
 								res.send({isError: true, message: 'error communicating with the MoarTube node'});
 							});
@@ -1718,14 +1715,14 @@ async function startClient() {
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -1737,7 +1734,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -1776,7 +1773,7 @@ async function startClient() {
 					}).fields([{ name: 'preview_file', minCount: 1, maxCount: 1 }])
 					(req, res, function(error) {
 						if(error) {
-							logDebugMessageToConsole('', new Error(error).stack, true);
+							logDebugMessageToConsole(null, error, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -1791,12 +1788,12 @@ async function startClient() {
 								node_setPreview_fileSystem(jwtToken, videoId, destinationFilePath)
 								.then(nodeResponseData => {
 									if(nodeResponseData.isError) {
-										logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+										logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 										
 										res.send({isError: true, message: 'error communicating with the MoarTube node'});
 									}
 									else {
-										logDebugMessageToConsole('uploaded live preview to node for video: ' + videoId, '', true);
+										logDebugMessageToConsole('uploaded live preview to node for video: ' + videoId, null, null, true);
 										
 										fs.unlinkSync(destinationFilePath);
 										
@@ -1804,13 +1801,13 @@ async function startClient() {
 									}
 								})
 								.catch(error => {
-									logDebugMessageToConsole('', new Error(error).stack, true);
+									logDebugMessageToConsole(null, error, new Error().stack, true);
 									
 									res.send({isError: true, message: 'error communicating with the MoarTube node'});
 								});
 							})
 							.catch(error => {
-								logDebugMessageToConsole('', new Error(error).stack, true);
+								logDebugMessageToConsole(null, error, new Error().stack, true);
 								
 								res.send({isError: true, message: 'error communicating with the MoarTube node'});
 							});
@@ -1818,14 +1815,14 @@ async function startClient() {
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -1837,7 +1834,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -1876,7 +1873,7 @@ async function startClient() {
 					}).fields([{ name: 'poster_file', minCount: 1, maxCount: 1 }])
 					(req, res, function(error) {
 						if(error) {
-							logDebugMessageToConsole('', new Error(error).stack, true);
+							logDebugMessageToConsole(null, error, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -1891,12 +1888,12 @@ async function startClient() {
 								node_setPoster_fileSystem(jwtToken, videoId, destinationFilePath)
 								.then(nodeResponseData => {
 									if(nodeResponseData.isError) {
-										logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+										logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 										
 										res.send({isError: true, message: 'error communicating with the MoarTube node'});
 									}
 									else {
-										logDebugMessageToConsole('uploaded live poster to node for video: ' + videoId, '', true);
+										logDebugMessageToConsole('uploaded live poster to node for video: ' + videoId, null, null, true);
 										
 										fs.unlinkSync(destinationFilePath);
 										
@@ -1904,13 +1901,13 @@ async function startClient() {
 									}
 								})
 								.catch(error => {
-									logDebugMessageToConsole('', new Error(error).stack, true);
+									logDebugMessageToConsole(null, error, new Error().stack, true);
 									
 									res.send({isError: true, message: 'error communicating with the MoarTube node'});
 								});
 							})
 							.catch(error => {
-								logDebugMessageToConsole('', new Error(error).stack, true);
+								logDebugMessageToConsole(null, error, new Error().stack, true);
 								
 								res.send({isError: true, message: 'error communicating with the MoarTube node'});
 							});
@@ -1918,14 +1915,14 @@ async function startClient() {
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -1937,7 +1934,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -1946,7 +1943,7 @@ async function startClient() {
 					node_getVideosTags_database(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -1955,20 +1952,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -1980,7 +1977,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -1989,7 +1986,7 @@ async function startClient() {
 					node_getVideosTagsAll_database(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -1998,20 +1995,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2023,7 +2020,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2034,7 +2031,7 @@ async function startClient() {
 					node_getVideoPublishes_filesystem(jwtToken, videoId)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -2043,20 +2040,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2068,7 +2065,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2079,7 +2076,7 @@ async function startClient() {
 					node_getVideoInformation_database(jwtToken, videoId)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -2088,20 +2085,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2113,7 +2110,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2127,7 +2124,7 @@ async function startClient() {
 					node_setVideoInformation_database(jwtToken, videoId, title, description, tags)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -2136,20 +2133,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2161,7 +2158,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2172,7 +2169,7 @@ async function startClient() {
 					node_videosDelete_database_filesystem(jwtToken, videoIdsJson)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -2190,20 +2187,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2215,7 +2212,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2226,7 +2223,7 @@ async function startClient() {
 					node_videosFinalize_database_filesystem(jwtToken, videoIdsJson)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -2246,20 +2243,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2271,7 +2268,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2280,7 +2277,7 @@ async function startClient() {
 					node_getBusyVideos(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -2291,20 +2288,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2316,7 +2313,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2330,7 +2327,7 @@ async function startClient() {
 					node_addVideoToIndex(jwtToken, videoId, captchaResponse, containsAdultContent, termsOfServiceAgreed)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: nodeResponseData.message});
 						}
@@ -2339,20 +2336,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2364,7 +2361,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2375,7 +2372,7 @@ async function startClient() {
 					node_removeVideoFromIndex(jwtToken, videoId)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: nodeResponseData.message});
 						}
@@ -2384,20 +2381,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2409,7 +2406,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2421,7 +2418,7 @@ async function startClient() {
 					node_doAliasVideo(jwtToken, videoId, captchaResponse)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: nodeResponseData.message});
 						}
@@ -2430,20 +2427,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2455,7 +2452,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2466,7 +2463,7 @@ async function startClient() {
 					node_getVideoAlias(jwtToken, videoId)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: nodeResponseData.message});
 						}
@@ -2475,20 +2472,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2513,7 +2510,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				signUserOut(req, res);
 			}
@@ -2522,7 +2519,7 @@ async function startClient() {
 					node_getSettings_filesystem(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							signUserOut(req, res);
 						}
@@ -2541,7 +2538,7 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						signUserOut(req, res);
 					});
@@ -2552,7 +2549,7 @@ async function startClient() {
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			signUserOut(req, res);
 		});
@@ -2564,7 +2561,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2573,7 +2570,7 @@ async function startClient() {
 					node_getVideoReports(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -2584,20 +2581,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2609,7 +2606,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2618,7 +2615,7 @@ async function startClient() {
 					node_getVideoReportsArchive(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -2629,20 +2626,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2654,7 +2651,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2665,7 +2662,7 @@ async function startClient() {
 					node_archiveVideoReport(jwtToken, reportId)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -2674,20 +2671,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2699,7 +2696,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2710,7 +2707,7 @@ async function startClient() {
 					node_removeVideoReport(jwtToken, reportId)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -2719,20 +2716,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2744,7 +2741,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2755,7 +2752,7 @@ async function startClient() {
 					node_removeVideoReportArchive(jwtToken, archiveId)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -2764,20 +2761,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2789,7 +2786,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2798,7 +2795,7 @@ async function startClient() {
 					node_getReportCount(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -2811,20 +2808,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2836,7 +2833,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2845,7 +2842,7 @@ async function startClient() {
 					node_getAllComments(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send('error communicating with the MoarTube node');
 						}
@@ -2856,20 +2853,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send('error communicating with the MoarTube node');
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2886,7 +2883,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				signUserOut(req, res);
 			}
@@ -2895,7 +2892,7 @@ async function startClient() {
 					node_getSettings_filesystem(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							signUserOut(req, res);
 						}
@@ -2914,7 +2911,7 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						signUserOut(req, res);
 					});
@@ -2925,7 +2922,7 @@ async function startClient() {
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			signUserOut(req, res);
 		});
@@ -2937,7 +2934,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2946,7 +2943,7 @@ async function startClient() {
 					node_getCommentReports(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -2957,20 +2954,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -2982,7 +2979,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -2991,7 +2988,7 @@ async function startClient() {
 					node_getCommentReportsArchive(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -3002,20 +2999,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -3027,7 +3024,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -3038,7 +3035,7 @@ async function startClient() {
 					node_archiveCommentReport(jwtToken, reportId)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -3047,20 +3044,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -3072,7 +3069,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -3083,7 +3080,7 @@ async function startClient() {
 					node_removeCommentReport(jwtToken, reportId)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -3092,20 +3089,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -3117,7 +3114,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -3128,7 +3125,7 @@ async function startClient() {
 					node_removeCommentReportArchive(jwtToken, archiveId)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -3137,20 +3134,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -3162,7 +3159,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -3175,7 +3172,7 @@ async function startClient() {
 					node_removeComment(jwtToken, videoId, commentId, timestamp)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -3184,20 +3181,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -3228,7 +3225,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 
 				signUserOut(req, res);
 			}
@@ -3237,7 +3234,7 @@ async function startClient() {
 					node_getSettings_filesystem(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							signUserOut(req, res);
 						}
@@ -3256,7 +3253,7 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						signUserOut(req, res);
 					});
@@ -3267,7 +3264,7 @@ async function startClient() {
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			signUserOut(req, res);
 		});
@@ -3277,7 +3274,7 @@ async function startClient() {
 		node_isAuthenticated(req.session.jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -3298,14 +3295,14 @@ async function startClient() {
 					res.send({isError: false, clientSettings: settings});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -3317,7 +3314,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -3326,7 +3323,7 @@ async function startClient() {
 					node_getSettings_filesystem(jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -3335,20 +3332,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -3360,7 +3357,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.end();
 			}
@@ -3372,20 +3369,20 @@ async function startClient() {
 						nodeResponseData.pipe(res);
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.end();
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.end();
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.end();
 		});
@@ -3397,7 +3394,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -3435,7 +3432,7 @@ async function startClient() {
 					}).fields([{ name: 'avatar_file', minCount: 1, maxCount: 1 }])
 					(req, res, function(error) {
 						if(error) {
-							logDebugMessageToConsole('', new Error(error).stack, true);
+							logDebugMessageToConsole(null, error, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -3456,12 +3453,12 @@ async function startClient() {
 									node_setAvatar_fileSystem(jwtToken, iconDestinationFilePath, avatarDestinationFilePath)
 									.then(nodeResponseData => {
 										if(nodeResponseData.isError) {
-											logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+											logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 											
 											res.send({isError: true, message: 'error communicating with the MoarTube node'});
 										}
 										else {
-											logDebugMessageToConsole('uploaded avatar to node', '', true);
+											logDebugMessageToConsole('uploaded avatar to node', null, null, true);
 											
 											fs.unlinkSync(sourceFilePath);
 											fs.unlinkSync(iconDestinationFilePath);
@@ -3471,19 +3468,19 @@ async function startClient() {
 										}
 									})
 									.catch(error => {
-										logDebugMessageToConsole('', new Error(error).stack, true);
+										logDebugMessageToConsole(null, error, new Error().stack, true);
 										
 										res.send({isError: true, message: 'error communicating with the MoarTube node'});
 									});
 								})
 								.catch(error => {
-									logDebugMessageToConsole('', new Error(error).stack, true);
+									logDebugMessageToConsole(null, error, new Error().stack, true);
 									
 									res.send({isError: true, message: 'error communicating with the MoarTube node'});
 								});
 							})
 							.catch(error => {
-								logDebugMessageToConsole('', new Error(error).stack, true);
+								logDebugMessageToConsole(null, error, new Error().stack, true);
 								
 								res.send({isError: true, message: 'error communicating with the MoarTube node'});
 							});
@@ -3491,7 +3488,7 @@ async function startClient() {
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
@@ -3505,7 +3502,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.end();
 			}
@@ -3517,20 +3514,20 @@ async function startClient() {
 						nodeResponseData.pipe(res);
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.end();
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.end();
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.end();
 		});
@@ -3542,7 +3539,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -3580,7 +3577,7 @@ async function startClient() {
 					}).fields([{ name: 'banner_file', minCount: 1, maxCount: 1 }])
 					(req, res, function(error) {
 						if(error) {
-							logDebugMessageToConsole('', new Error(error).stack, true);
+							logDebugMessageToConsole(null, error, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -3600,12 +3597,12 @@ async function startClient() {
 								node_setBanner_fileSystem(jwtToken, bannerDestinationFilePath)
 								.then(nodeResponseData => {
 									if(nodeResponseData.isError) {
-										logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+										logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 										
 										res.send({isError: true, message: 'error communicating with the MoarTube node'});
 									}
 									else {
-										logDebugMessageToConsole('uploaded avatar to node', '', true);
+										logDebugMessageToConsole('uploaded avatar to node', null, null, true);
 										
 										fs.unlinkSync(bannerDestinationFilePath);
 										
@@ -3613,14 +3610,14 @@ async function startClient() {
 									}
 								})
 								.catch(error => {
-									logDebugMessageToConsole('', new Error(error).stack, true);
+									logDebugMessageToConsole(null, error, new Error().stack, true);
 									
 									res.send({isError: true, message: 'error communicating with the MoarTube node'});
 								});
 								
 							})
 							.catch(error => {
-								logDebugMessageToConsole('', new Error(error).stack, true);
+								logDebugMessageToConsole(null, error, new Error().stack, true);
 								
 								res.send({isError: true, message: 'error communicating with the MoarTube node'});
 							});
@@ -3628,7 +3625,7 @@ async function startClient() {
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
@@ -3642,7 +3639,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -3655,7 +3652,7 @@ async function startClient() {
 					node_setNodeName_filesystem(jwtToken, nodeName, nodeAbout, nodeId)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -3664,13 +3661,13 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
@@ -3684,7 +3681,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -3728,7 +3725,7 @@ async function startClient() {
 						}).fields([{ name: 'keyFile', minCount: 1, maxCount: 1 }, { name: 'certFile', minCount: 1, maxCount: 1 }, { name: 'caFiles', minCount: 0 }])
 						(req, res, function(error) {
 							if(error) {
-								logDebugMessageToConsole('', new Error(error).stack, true);
+								logDebugMessageToConsole(null, error, new Error().stack, true);
 								
 								res.send({isError: true, message: 'error communicating with the MoarTube node'});
 							}
@@ -3750,7 +3747,7 @@ async function startClient() {
 									node_setSecureConnection(jwtToken, isSecure, keyFile, certFile, caFiles)
 									.then(nodeResponseData => {
 										if(nodeResponseData.isError) {
-											logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+											logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 											
 											res.send({isError: true, message: nodeResponseData.message});
 										}
@@ -3762,7 +3759,7 @@ async function startClient() {
 										}
 									})
 									.catch(error => {
-										logDebugMessageToConsole('', new Error(error).stack, true);
+										logDebugMessageToConsole(null, error, new Error().stack, true);
 										
 										res.send({isError: true, message: 'error communicating with the MoarTube node'});
 									});
@@ -3774,7 +3771,7 @@ async function startClient() {
 						node_setSecureConnection(jwtToken, isSecure, null, null, null)
 						.then(nodeResponseData => {
 							if(nodeResponseData.isError) {
-								logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+								logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 								
 								res.send({isError: true, message: nodeResponseData.message});
 							}
@@ -3786,14 +3783,14 @@ async function startClient() {
 							}
 						})
 						.catch(error => {
-							logDebugMessageToConsole('', new Error(error).stack, true);
+							logDebugMessageToConsole(null, error, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						});
 					}
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
@@ -3807,7 +3804,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -3818,7 +3815,7 @@ async function startClient() {
 					node_setNetworkInternal_filesystem(jwtToken, nodeListeningPort)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: nodeResponseData.message});
 						}
@@ -3829,20 +3826,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -3854,7 +3851,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -3867,7 +3864,7 @@ async function startClient() {
 					node_setNetworkExternal_filesystem(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: nodeResponseData.message});
 						}
@@ -3876,20 +3873,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -3904,7 +3901,7 @@ async function startClient() {
 		node_isAuthenticated(req.session.jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -3935,7 +3932,7 @@ async function startClient() {
 								res.send({isError: false, result: result });
 							})
 							.catch(error => {
-								logDebugMessageToConsole('', new Error(error).stack, true);
+								logDebugMessageToConsole(null, error, new Error().stack, true);
 								
 								res.send({isError: true, message: 'error communicating with the MoarTube node'});
 							});
@@ -3954,7 +3951,7 @@ async function startClient() {
 								res.send({isError: false, result: result });
 							})
 							.catch(error => {
-								logDebugMessageToConsole('', new Error(error).stack, true);
+								logDebugMessageToConsole(null, error, new Error().stack, true);
 								
 								res.send({isError: true, message: 'error communicating with the MoarTube node'});
 							});
@@ -3965,14 +3962,14 @@ async function startClient() {
 					}
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -3984,7 +3981,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -3996,7 +3993,7 @@ async function startClient() {
 					node_setAccountCredentials_filesystem(jwtToken, username, password)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -4005,20 +4002,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -4030,7 +4027,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -4042,7 +4039,7 @@ async function startClient() {
 					node_setCloudflareCredentials_filesystem(jwtToken, cloudflareAccountId, cloudflareApiKey)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							res.send({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -4051,20 +4048,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 					
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -4096,7 +4093,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -4132,20 +4129,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -4157,7 +4154,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -4183,7 +4180,7 @@ async function startClient() {
 									res.send(jsonData);
 								}
 								catch (error) {
-									logDebugMessageToConsole('', new Error(error).stack, true);
+									logDebugMessageToConsole(null, error, new Error().stack, true);
 
 									res.send({isError: true, message: 'error communicating with the MoarTube node'});
 								}
@@ -4195,20 +4192,20 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -4220,7 +4217,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -4240,20 +4237,20 @@ async function startClient() {
 						res.send({isError: false, rtmpUrls: rtmpUrls});
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -4265,7 +4262,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -4283,20 +4280,20 @@ async function startClient() {
 						res.send({isError: false, isChatHistoryEnabled: isChatHistoryEnabled, chatHistoryLimit: chatHistoryLimit});
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -4308,7 +4305,7 @@ async function startClient() {
 		node_isAuthenticated(jwtToken)
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 				
 				res.send({isError: true, message: 'error communicating with the MoarTube node'});
 			}
@@ -4323,20 +4320,20 @@ async function startClient() {
 						res.send(nodeResponseData);
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						res.send({isError: true, message: 'error communicating with the MoarTube node'});
 					});
 				}
 				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', new Error().stack, true);
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
 
 					res.send({isError: true, message: 'you are not logged in'});
 				}
 			}
 		})
 		.catch(error => {
-			logDebugMessageToConsole('', new Error(error).stack, true);
+			logDebugMessageToConsole(null, error, new Error().stack, true);
 			
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
@@ -5868,8 +5865,8 @@ async function startClient() {
 		
 		return port != null && port != NaN && (port >= 0 && port <= 65535);
 	}
-	
-	function logDebugMessageToConsole(message, stackTrace, isLoggingToFile) {
+
+	function logDebugMessageToConsole(message, error, stackTrace, isLoggingToFile) {
 		const date = new Date(Date.now());
 		const year = date.getFullYear();
 		const month = ('0' + (date.getMonth() + 1)).slice(-2);
@@ -5878,17 +5875,30 @@ async function startClient() {
 		const minutes = ('0' + date.getMinutes()).slice(-2);
 		const seconds = ('0' + date.getSeconds()).slice(-2);
 		const humanReadableTimestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
+		if(message == null) {
+			message = 'none';
+		}
 		
 		var errorMessage = '<message: ' + message + ', date: ' + humanReadableTimestamp + '>';
 
-		if(stackTrace != '') {
+		if(error != null) {
+			if(typeof error === Error) {
+				errorMessage += '\n' + error.message + '\n';
+			}
+			else {
+				errorMessage += '\n' + error + '\n';
+			}
+		}
+
+		if(stackTrace != null) {
 			errorMessage += '\n' + stackTrace + '\n';
 		}
 		
 		console.log(errorMessage);
 		
 		errorMessage += '\n';
-		
+
 		/*
 		if(isLoggingToFile) {
 			const logFilePath = path.join(__dirname, '/_client_log.txt');
@@ -5938,7 +5948,7 @@ async function startClient() {
 	
 	function cleanVideosDirectory() {
 		return new Promise(function(resolve, reject) {
-			logDebugMessageToConsole('cleaning imported video directories', '', true);
+			logDebugMessageToConsole('cleaning imported video directories', null, null, true);
 			
 			if(fs.existsSync(TEMP_VIDEOS_DIRECTORY)) {
 				fs.readdir(TEMP_VIDEOS_DIRECTORY, function(error, videoDirectories) {
@@ -5989,19 +5999,19 @@ async function startClient() {
 	
 	function performEncodingDecodingAssessment() {
 		return new Promise(async function(resolve, reject) {
-			logDebugMessageToConsole('assessing system encoding/decoding capabilities', '', true);
+			logDebugMessageToConsole('assessing system encoding/decoding capabilities', null, null, true);
 			
 			try {
 				const systemCpu = await detectSystemCpu();
 				const systemGpu = await detectSystemGpu();
 				
-				logDebugMessageToConsole('CPU detected: ' + systemCpu.processingAgentName + ' ' + systemCpu.processingAgentModel, '', true);
-				logDebugMessageToConsole('GPU detected: ' + systemGpu.processingAgentName + ' ' + systemGpu.processingAgentModel, '', true);
+				logDebugMessageToConsole('CPU detected: ' + systemCpu.processingAgentName + ' ' + systemCpu.processingAgentModel, null, null, true);
+				logDebugMessageToConsole('GPU detected: ' + systemGpu.processingAgentName + ' ' + systemGpu.processingAgentModel, null, null, true);
 				
 				resolve();
 			}
 			catch(error) {
-				logDebugMessageToConsole('', new Error(error).stack, true);
+				logDebugMessageToConsole(null, error, new Error().stack, true);
 				
 				process.exit();
 			}
@@ -6028,7 +6038,7 @@ async function startClient() {
 				resolve({processingAgentName: processingAgentName, processingAgentModel: processingAgentModel});
 			})
 			.catch(function(error) {
-				logDebugMessageToConsole('', new Error(error).stack, true);
+				logDebugMessageToConsole(null, error, new Error().stack, true);
 				
 				reject(error);
 			});
@@ -6068,7 +6078,7 @@ async function startClient() {
 				resolve({processingAgentName: processingAgentName, processingAgentModel: processingAgentModel});
 			})
 			.catch(function(error) {
-				logDebugMessageToConsole('', new Error(error).stack, true);
+				logDebugMessageToConsole(null, error, new Error().stack, true);
 				
 				reject(error);
 			});
@@ -6518,7 +6528,7 @@ async function startClient() {
 				
 				startPublishingJob(inProgressPublishingJobs[inProgressPublishingJobs.length - 1])
 				.then((completedPublishingJob) => {
-					logDebugMessageToConsole('completed publishing job: ' + completedPublishingJob, '', true);
+					logDebugMessageToConsole('completed publishing job: ' + completedPublishingJob, null, null, true);
 
 					const index = inProgressPublishingJobs.findIndex(function(inProgressPublishingJob) {
 						return inProgressPublishingJob.videoId === completedPublishingJob.videoId && inProgressPublishingJob.format === completedPublishingJob.format && inProgressPublishingJob.resolution === completedPublishingJob.resolution;
@@ -6595,31 +6605,31 @@ async function startClient() {
 				node_setVideoLengths_database(jwtToken, videoId, lengthSeconds, lengthTimestamp)
 				.then(nodeResponseData => {
 					if(nodeResponseData.isError) {
-						logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+						logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 					}
 					else {
 						node_setVideoPublished_database(jwtToken, videoId)
 						.then(nodeResponseData => {
 							if(nodeResponseData.isError) {
-								logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+								logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							}
 							else {
-								logDebugMessageToConsole('video finished publishing for id: ' + videoId, '', true);
+								logDebugMessageToConsole('video finished publishing for id: ' + videoId, null, null, true);
 								
 								node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'published', videoId: videoId, lengthTimestamp: lengthTimestamp, lengthSeconds: lengthSeconds }}});
 							}
 						})
 						.catch(error => {
-							logDebugMessageToConsole('', new Error(error).stack, true);
+							logDebugMessageToConsole(null, error, new Error().stack, true);
 						});
 					}
 				})
 				.catch(error => {
-					logDebugMessageToConsole('', new Error(error).stack, true);
+					logDebugMessageToConsole(null, error, new Error().stack, true);
 				});
 			}
 			else {
-				logDebugMessageToConsole('expected video source file to be in <' + sourceFilePath + '> but found none', '', true);
+				logDebugMessageToConsole('expected video source file to be in <' + sourceFilePath + '> but found none', null, null, true);
 			}
 		}
 		
@@ -6660,7 +6670,7 @@ async function startClient() {
 					
 					process.stdout.on('data', function (data) {
 						const output = Buffer.from(data).toString();
-						logDebugMessageToConsole(output, '', true);
+						logDebugMessageToConsole(output, null, null, true);
 					});
 					
 					var lengthTimestamp = '00:00:00.00';
@@ -6672,10 +6682,10 @@ async function startClient() {
 						if(!publishVideoEncodingTracker[videoId].stopping) {
 							const stderrTemp = Buffer.from(data).toString();
 							
-							logDebugMessageToConsole(stderrTemp, '', false);
+							logDebugMessageToConsole(stderrTemp, null, null, false);
 							
 							if(stderrTemp.indexOf('time=') != -1) {
-								logDebugMessageToConsole(stderrTemp, '', true);
+								logDebugMessageToConsole(stderrTemp, null, null, true);
 								
 								if(lengthSeconds === 0) {
 									var index = stderrOutput.indexOf('Duration: ');
@@ -6702,11 +6712,11 @@ async function startClient() {
 					});
 					
 					process.on('spawn', function (code) {
-						logDebugMessageToConsole('performEncodingJob ffmpeg process spawned with arguments: ' + ffmpegArguments, '', true);
+						logDebugMessageToConsole('performEncodingJob ffmpeg process spawned with arguments: ' + ffmpegArguments, null, null, true);
 					});
 					
 					process.on('exit', function (code) {
-						logDebugMessageToConsole('performEncodingJob ffmpeg process exited with exit code: ' + code, '', true);
+						logDebugMessageToConsole('performEncodingJob ffmpeg process exited with exit code: ' + code, null, null, true);
 						
 						if(code === 0) {
 							resolve({jwtToken: jwtToken, videoId: videoId, format: format, resolution: resolution});
@@ -6717,7 +6727,7 @@ async function startClient() {
 					});
 					
 					process.on('error', function (code) {
-						logDebugMessageToConsole('performEncodingJob errorred with error code: ' + code, '', true);
+						logDebugMessageToConsole('performEncodingJob errorred with error code: ' + code, null, null, true);
 					});
 				}
 				else {
@@ -6766,7 +6776,7 @@ async function startClient() {
 					node_uploadVideo_fileSystem(jwtToken, videoId, format, resolution, paths)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							
 							reject({isError: true, message: 'error communicating with the MoarTube node'});
 						}
@@ -6781,7 +6791,7 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole('', new Error(error).stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack, true);
 						
 						reject({isError: true, message: 'error communicating with the MoarTube node'});
 					});
@@ -6795,7 +6805,7 @@ async function startClient() {
 	
 	function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUrl, format, resolution, isRecordingStreamRemotely, isRecordingStreamLocally) {
 		return new Promise(function(resolve, reject) {
-			logDebugMessageToConsole('starting live stream for id: ' + videoId, '', true);
+			logDebugMessageToConsole('starting live stream for id: ' + videoId, null, null, true);
 			
 			fs.mkdirSync(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/source'), { recursive: true });
 			fs.mkdirSync(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images'), { recursive: true });
@@ -6822,7 +6832,7 @@ async function startClient() {
 			process.stderr.on('data', function (data) {
 				if(!publishStreamTracker[videoId].stopping) {
 					const stderrTemp = Buffer.from(data).toString();
-					logDebugMessageToConsole(stderrTemp, '', true);
+					logDebugMessageToConsole(stderrTemp, null, null, true);
 					
 					if(stderrTemp.indexOf('time=') != -1) {
 						var index = stderrTemp.indexOf('time=');
@@ -6832,14 +6842,14 @@ async function startClient() {
 						node_setVideoLengths_database(jwtToken, videoId, lengthSeconds, lengthTimestamp)
 						.then(nodeResponseData => {
 							if(nodeResponseData.isError) {
-								logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+								logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							}
 							else {
 								// do nothing
 							}
 						})
 						.catch(error => {
-							logDebugMessageToConsole('', new Error(error).stack, true);
+							logDebugMessageToConsole(null, error, new Error().stack, true);
 						});
 					}
 				}
@@ -6848,7 +6858,7 @@ async function startClient() {
 			var segmentInterval;
 
 			process.on('spawn', function (code) {
-				logDebugMessageToConsole('performStreamingJob ffmpeg process spawned with arguments: ' + ffmpegArguments, '', true);
+				logDebugMessageToConsole('performStreamingJob ffmpeg process spawned with arguments: ' + ffmpegArguments, null, null, true);
 				
 				const segmentHistoryLength = 20;
 				
@@ -6858,7 +6868,7 @@ async function startClient() {
 							node_getNextExpectedSegmentIndex_filesystem(jwtToken, videoId, format, resolution)
 							.then(nodeResponseData => {
 								if(nodeResponseData.isError) {
-									logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+									logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 								}
 								else {
 									const nextExpectedSegmentIndex = nodeResponseData.nextExpectedSegmentIndex;
@@ -6881,13 +6891,13 @@ async function startClient() {
 										});
 									}
 									
-									logDebugMessageToConsole('node expects the next segment index to be sent: ' + nextExpectedSegmentIndex, '', true);
+									logDebugMessageToConsole('node expects the next segment index to be sent: ' + nextExpectedSegmentIndex, null, null, true);
 									
 									const expectedSegmentFileName = 'segment-' + resolution + '-' + nextExpectedSegmentIndex + '.ts';
 									const expectedSegmentFilePath = path.join(segmentsDirectoryPath, '/' + expectedSegmentFileName);
 									
 									if(fs.existsSync(manifestFilePath) && fs.existsSync(expectedSegmentFilePath)) {
-										logDebugMessageToConsole('generating live images for video: ' + videoId, '', true);
+										logDebugMessageToConsole('generating live images for video: ' + videoId, null, null, true);
 										
 										const imagesDirectoryPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images');
 										
@@ -6902,45 +6912,45 @@ async function startClient() {
 										]);
 										
 										process1.on('spawn', function (code) {
-											logDebugMessageToConsole('live thumbnail generating ffmpeg process spawned', '', true);
+											logDebugMessageToConsole('live thumbnail generating ffmpeg process spawned', null, null, true);
 										});
 										
 										process1.on('exit', function (code) {
-											logDebugMessageToConsole('live thumbnail generating ffmpeg process exited with exit code: ' + code, '', true);
+											logDebugMessageToConsole('live thumbnail generating ffmpeg process exited with exit code: ' + code, null, null, true);
 											
 											if(code === 0) {
 												const thumbnailPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images/thumbnail.jpg');
 												
 												if(fs.existsSync(thumbnailPath)) {
-													logDebugMessageToConsole('generated live thumbnail for video: ' + videoId, '', true);
+													logDebugMessageToConsole('generated live thumbnail for video: ' + videoId, null, null, true);
 													
-													logDebugMessageToConsole('uploading live thumbnail to node for video: ' + videoId, '', true);
+													logDebugMessageToConsole('uploading live thumbnail to node for video: ' + videoId, null, null, true);
 													
 													node_setThumbnail_fileSystem(jwtToken, videoId, thumbnailPath)
 													.then(nodeResponseData => {
 														if(nodeResponseData.isError) {
-															logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+															logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 														}
 														else {
-															logDebugMessageToConsole('uploaded live thumbnail to node for video: ' + videoId, '', true);
+															logDebugMessageToConsole('uploaded live thumbnail to node for video: ' + videoId, null, null, true);
 															
 															//fs.unlinkSync(thumbnailPath);
 														}
 													})
 													.catch(error => {
-														logDebugMessageToConsole('', new Error(error).stack, true);
+														logDebugMessageToConsole(null, error, new Error().stack, true);
 													});
 												} else {
-													logDebugMessageToConsole('expected a live thumbnail to be generated in <' + thumbnailPath + '> but found none', '', true);
+													logDebugMessageToConsole('expected a live thumbnail to be generated in <' + thumbnailPath + '> but found none', null, null, true);
 												}
 											}
 											else {
-												logDebugMessageToConsole('live thumbnail generating exited with code: ' + code, '', true);
+												logDebugMessageToConsole('live thumbnail generating exited with code: ' + code, null, null, true);
 											}
 										});
 										
 										process1.on('error', function (code) {
-											logDebugMessageToConsole('live thumbnail generating errorred with error code: ' + code, '', true);
+											logDebugMessageToConsole('live thumbnail generating errorred with error code: ' + code, null, null, true);
 										});
 
 										const previewImagePath = path.join(imagesDirectoryPath, 'preview.jpg');
@@ -6954,45 +6964,45 @@ async function startClient() {
 										]);
 										
 										process2.on('spawn', function (code) {
-											logDebugMessageToConsole('live preview generating ffmpeg process spawned', '', true);
+											logDebugMessageToConsole('live preview generating ffmpeg process spawned', null, null, true);
 										});
 										
 										process2.on('exit', function (code) {
-											logDebugMessageToConsole('live preview generating ffmpeg process exited with exit code: ' + code, '', true);
+											logDebugMessageToConsole('live preview generating ffmpeg process exited with exit code: ' + code, null, null, true);
 											
 											if(code === 0) {
 												const previewPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images/preview.jpg');
 												
 												if(fs.existsSync(previewPath)) {
-													logDebugMessageToConsole('generated live preview for video: ' + videoId, '', true);
+													logDebugMessageToConsole('generated live preview for video: ' + videoId, null, null, true);
 													
-													logDebugMessageToConsole('uploading live preview to node for video: ' + videoId, '', true);
+													logDebugMessageToConsole('uploading live preview to node for video: ' + videoId, null, null, true);
 													
 													node_setPreview_fileSystem(jwtToken, videoId, previewPath)
 													.then(nodeResponseData => {
 														if(nodeResponseData.isError) {
-															logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+															logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 														}
 														else {
-															logDebugMessageToConsole('uploaded live preview to node for video: ' + videoId, '', true);
+															logDebugMessageToConsole('uploaded live preview to node for video: ' + videoId, null, null, true);
 															
 															//fs.unlinkSync(previewPath);
 														}
 													})
 													.catch(error => {
-														logDebugMessageToConsole('', new Error(error).stack, true);
+														logDebugMessageToConsole(null, error, new Error().stack, true);
 													});
 												} else {
-													logDebugMessageToConsole('expected a live preview to be generated in <' + previewPath + '> but found none', '', true);
+													logDebugMessageToConsole('expected a live preview to be generated in <' + previewPath + '> but found none', null, null, true);
 												}
 											}
 											else {
-												logDebugMessageToConsole('live preview generating exited with code: ' + code, '', true);
+												logDebugMessageToConsole('live preview generating exited with code: ' + code, null, null, true);
 											}
 										});
 										
 										process2.on('error', function (code) {
-											logDebugMessageToConsole('live preview generating errorred with error code: ' + code, '', true);
+											logDebugMessageToConsole('live preview generating errorred with error code: ' + code, null, null, true);
 										});
 
 										const posterImagePath = path.join(imagesDirectoryPath, 'poster.jpg');
@@ -7006,45 +7016,45 @@ async function startClient() {
 										]);
 									
 										process3.on('spawn', function (code) {
-											logDebugMessageToConsole('live poster generating ffmpeg process spawned', '', true);
+											logDebugMessageToConsole('live poster generating ffmpeg process spawned', null, null, true);
 										});
 										
 										process3.on('exit', function (code) {
-											logDebugMessageToConsole('live poster generating ffmpeg process exited with exit code: ' + code, '', true);
+											logDebugMessageToConsole('live poster generating ffmpeg process exited with exit code: ' + code, null, null, true);
 											
 											if(code === 0) {
 												const posterPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images/poster.jpg');
 												
 												if(fs.existsSync(posterPath)) {
-													logDebugMessageToConsole('generated live poster for video: ' + videoId, '', true);
+													logDebugMessageToConsole('generated live poster for video: ' + videoId, null, null, true);
 													
-													logDebugMessageToConsole('uploading live poster to node for video: ' + videoId, '', true);
+													logDebugMessageToConsole('uploading live poster to node for video: ' + videoId, null, null, true);
 													
 													node_setPoster_fileSystem(jwtToken, videoId, posterPath)
 													.then(nodeResponseData => {
 														if(nodeResponseData.isError) {
-															logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+															logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 														}
 														else {
-															logDebugMessageToConsole('uploaded live poster to node for video: ' + videoId, '', true);
+															logDebugMessageToConsole('uploaded live poster to node for video: ' + videoId, null, null, true);
 															
 															//fs.unlinkSync(posterPath);
 														}
 													})
 													.catch(error => {
-														logDebugMessageToConsole('', new Error(error).stack, true);
+														logDebugMessageToConsole(null, error, new Error().stack, true);
 													});
 												} else {
-													logDebugMessageToConsole('expected a live poster to be generated in <' + posterPath + '> but found none', '', true);
+													logDebugMessageToConsole('expected a live poster to be generated in <' + posterPath + '> but found none', null, null, true);
 												}
 											}
 											else {
-												logDebugMessageToConsole('live poster generating exited with code: ' + code, '', true);
+												logDebugMessageToConsole('live poster generating exited with code: ' + code, null, null, true);
 											}
 										});
 										
 										process3.on('error', function (code) {
-											logDebugMessageToConsole('live poster generating errorred with error code: ' + code, '', true);
+											logDebugMessageToConsole('live poster generating errorred with error code: ' + code, null, null, true);
 										});
 										
 										
@@ -7059,7 +7069,7 @@ async function startClient() {
 										node_uploadStream_fileSystem(jwtToken, videoId, 'm3u8', resolution, directoryPaths)
 										.then(nodeResponseData => {
 											if(nodeResponseData.isError) {
-												logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+												logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 											}
 											else {
 												if(isRecordingStreamLocally) {
@@ -7071,24 +7081,24 @@ async function startClient() {
 													});
 
 													inputStream.on('error', error => {
-														logDebugMessageToConsole('', new Error(error).stack, true);
+														logDebugMessageToConsole(null, error, new Error().stack, true);
 													});
 
 													inputStream.pipe(outputStream)
 													.on('error', error => {
-														logDebugMessageToConsole('', new Error(error).stack, true);
+														logDebugMessageToConsole(null, error, new Error().stack, true);
 													});
 												}
 											}
 										})
 										.catch(error => {
-											logDebugMessageToConsole('', new Error(error).stack, true);
+											logDebugMessageToConsole(null, error, new Error().stack, true);
 										});
 										
 										node_getVideoBandwidth_database(jwtToken, videoId)
 										.then(nodeResponseData => {
 											if(nodeResponseData.isError) {
-												logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+												logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 											}
 											else {
 												const bandwidth = nodeResponseData.bandwidth;
@@ -7097,7 +7107,7 @@ async function startClient() {
 											}
 										})
 										.catch(error => {
-											logDebugMessageToConsole('', new Error(error).stack, true);
+											logDebugMessageToConsole(null, error, new Error().stack, true);
 										});
 										
 										if(!isRecordingStreamRemotely) {
@@ -7109,14 +7119,14 @@ async function startClient() {
 												node_removeAdaptiveStreamSegment(jwtToken, videoId, format, resolution, segmentName)
 												.then(nodeResponseData => {
 													if(nodeResponseData.isError) {
-														logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+														logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 													}
 													else {
 														console.log('segment removed');
 													}
 												})
 												.catch(error => {
-													logDebugMessageToConsole('', new Error(error).stack, true);
+													logDebugMessageToConsole(null, error, new Error().stack, true);
 												});
 											}
 										}
@@ -7124,7 +7134,7 @@ async function startClient() {
 								}
 							})
 							.catch(error => {
-								logDebugMessageToConsole('', new Error(error).stack, true);
+								logDebugMessageToConsole(null, error, new Error().stack, true);
 							});
 						})();
 					}
@@ -7137,41 +7147,41 @@ async function startClient() {
 			});
 			
 			process.on('exit', function (code) {
-				logDebugMessageToConsole('performStreamingJob live stream process exited with exit code: ' + code, '', true);
+				logDebugMessageToConsole('performStreamingJob live stream process exited with exit code: ' + code, null, null, true);
 				
 				if(segmentInterval != null) {
 					clearInterval(segmentInterval);
 				}
 				
 				if(publishStreamTracker.hasOwnProperty(videoId)) {
-					logDebugMessageToConsole('performStreamingJob checking if live stream process was interrupted by user...', '', true);
+					logDebugMessageToConsole('performStreamingJob checking if live stream process was interrupted by user...', null, null, true);
 					
 					if(!publishStreamTracker[videoId].stopping) {
-						logDebugMessageToConsole('performStreamingJob determined live stream process was interrupted by user', '', true);
+						logDebugMessageToConsole('performStreamingJob determined live stream process was interrupted by user', null, null, true);
 						
 						node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
 						
 						node_stopVideoStreaming_database(jwtToken, videoId)
 						.then((nodeResponseData) => {
 							if(nodeResponseData.isError) {
-								logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
+								logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 							}
 							else {
 								node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId }}});
 							}
 						})
 						.catch(error => {
-							logDebugMessageToConsole('', new Error(error).stack, true);
+							logDebugMessageToConsole(null, error, new Error().stack, true);
 						});
 					}
 					else {
-						logDebugMessageToConsole('performStreamingJob determined live stream process was interrupted by user', '', true);
+						logDebugMessageToConsole('performStreamingJob determined live stream process was interrupted by user', null, null, true);
 					}
 				}
 			});
 			
 			process.on('error', function (code) {
-				logDebugMessageToConsole('performEncodingJob errored with error code: ' + code, '', true);
+				logDebugMessageToConsole('performEncodingJob errored with error code: ' + code, null, null, true);
 				
 				if(segmentInterval != null) {
 					clearInterval(segmentInterval);
