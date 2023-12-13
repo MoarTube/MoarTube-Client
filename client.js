@@ -16,7 +16,6 @@ const axios = require('axios');
 const FormData = require('form-data');
 const portscanner = require('portscanner');
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 var USER_DIRECTORY;
 var PUBLIC_DIRECTORY;
@@ -488,18 +487,10 @@ async function startClient() {
 		}
 	});
 	
-	app.get('/account/signout', (req, res, next) => {
+	app.get('/account/signout', (req, res) => {
 		logDebugMessageToConsole('signing user out', '', true);
 		
-		req.session.jwtToken = '';
-		
-		if(websocketClient != null) {
-			websocketClient.canReconnect = false;
-			
-			websocketClient.close();
-		}
-		
-		res.redirect('/signin');
+		signUserOut(req, res);
 	});
 	
 	
@@ -514,7 +505,7 @@ async function startClient() {
 			if(nodeResponseData.isError) {
 				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
 				
-				res.send('error communicating with the MoarTube node');
+				signUserOut(req, res);
 			}
 			else {
 				if(nodeResponseData.isAuthenticated) {
@@ -523,7 +514,7 @@ async function startClient() {
 						if(nodeResponseData.isError) {
 							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
 							
-							res.send('error communicating with the MoarTube node');
+							signUserOut(req, res);
 						}
 						else {
 							const nodeSettings = nodeResponseData.nodeSettings;
@@ -542,7 +533,7 @@ async function startClient() {
 					.catch(error => {
 						logDebugMessageToConsole('', new Error(error).stack, true);
 						
-						res.send('error communicating with the MoarTube node');
+						signUserOut(req, res);
 					});
 				}
 				else {
@@ -553,7 +544,7 @@ async function startClient() {
 		.catch(error => {
 			logDebugMessageToConsole('', new Error(error).stack, true);
 			
-			res.send('error communicating with the MoarTube node');
+			signUserOut(req, res);
 		});
 	});
 	
@@ -610,7 +601,7 @@ async function startClient() {
 			if(nodeResponseData.isError) {
 				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
 				
-				res.send('error communicating with the MoarTube node');
+				signUserOut(req, res);
 			}
 			else {
 				if(nodeResponseData.isAuthenticated) {
@@ -619,7 +610,7 @@ async function startClient() {
 						if(nodeResponseData.isError) {
 							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
 							
-							res.send('error communicating with the MoarTube node');
+							signUserOut(req, res);
 						}
 						else {
 							const nodeSettings = nodeResponseData.nodeSettings;
@@ -638,7 +629,7 @@ async function startClient() {
 					.catch(error => {
 						logDebugMessageToConsole('', new Error(error).stack, true);
 						
-						res.send('error communicating with the MoarTube node');
+						signUserOut(req, res);
 					});
 				}
 				else {
@@ -649,7 +640,7 @@ async function startClient() {
 		.catch(error => {
 			logDebugMessageToConsole('', new Error(error).stack, true);
 			
-			res.send('error communicating with the MoarTube node');
+			signUserOut(req, res);
 		});
 	});
 	
@@ -662,7 +653,7 @@ async function startClient() {
 			if(nodeResponseData.isError) {
 				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
 				
-				res.send('error communicating with the MoarTube node');
+				signUserOut(req, res);
 			}
 			else {
 				if(nodeResponseData.isAuthenticated) {
@@ -671,7 +662,7 @@ async function startClient() {
 						if(nodeResponseData.isError) {
 							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
 							
-							res.send('error communicating with the MoarTube node');
+							signUserOut(req, res);
 						}
 						else {
 							const nodeSettings = nodeResponseData.nodeSettings;
@@ -690,7 +681,7 @@ async function startClient() {
 					.catch(error => {
 						logDebugMessageToConsole('', new Error(error).stack, true);
 						
-						res.send('error communicating with the MoarTube node');
+						signUserOut(req, res);
 					});
 				}
 				else {
@@ -701,7 +692,7 @@ async function startClient() {
 		.catch(error => {
 			logDebugMessageToConsole('', new Error(error).stack, true);
 			
-			res.send('error communicating with the MoarTube node');
+			signUserOut(req, res);
 		});
 	});
 	
@@ -2524,7 +2515,7 @@ async function startClient() {
 			if(nodeResponseData.isError) {
 				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
 				
-				res.send('error communicating with the MoarTube node');
+				signUserOut(req, res);
 			}
 			else {
 				if(nodeResponseData.isAuthenticated) {
@@ -2533,7 +2524,7 @@ async function startClient() {
 						if(nodeResponseData.isError) {
 							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
 							
-							res.send('error communicating with the MoarTube node');
+							signUserOut(req, res);
 						}
 						else {
 							const nodeSettings = nodeResponseData.nodeSettings;
@@ -2552,7 +2543,7 @@ async function startClient() {
 					.catch(error => {
 						logDebugMessageToConsole('', new Error(error).stack, true);
 						
-						res.send('error communicating with the MoarTube node');
+						signUserOut(req, res);
 					});
 				}
 				else {
@@ -2563,7 +2554,7 @@ async function startClient() {
 		.catch(error => {
 			logDebugMessageToConsole('', new Error(error).stack, true);
 			
-			res.send('error communicating with the MoarTube node');
+			signUserOut(req, res);
 		});
 	});
 	
@@ -2897,7 +2888,7 @@ async function startClient() {
 			if(nodeResponseData.isError) {
 				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
 				
-				res.send('error communicating with the MoarTube node');
+				signUserOut(req, res);
 			}
 			else {
 				if(nodeResponseData.isAuthenticated) {
@@ -2906,7 +2897,7 @@ async function startClient() {
 						if(nodeResponseData.isError) {
 							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
 							
-							res.send('error communicating with the MoarTube node');
+							signUserOut(req, res);
 						}
 						else {
 							const nodeSettings = nodeResponseData.nodeSettings;
@@ -2925,7 +2916,7 @@ async function startClient() {
 					.catch(error => {
 						logDebugMessageToConsole('', new Error(error).stack, true);
 						
-						res.send('error communicating with the MoarTube node');
+						signUserOut(req, res);
 					});
 				}
 				else {
@@ -2936,7 +2927,7 @@ async function startClient() {
 		.catch(error => {
 			logDebugMessageToConsole('', new Error(error).stack, true);
 			
-			res.send('error communicating with the MoarTube node');
+			signUserOut(req, res);
 		});
 	});
 	
@@ -3238,8 +3229,8 @@ async function startClient() {
 		.then(nodeResponseData => {
 			if(nodeResponseData.isError) {
 				logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
-				
-				res.send('error communicating with the MoarTube node');
+
+				signUserOut(req, res);
 			}
 			else {
 				if(nodeResponseData.isAuthenticated) {
@@ -3248,7 +3239,7 @@ async function startClient() {
 						if(nodeResponseData.isError) {
 							logDebugMessageToConsole(nodeResponseData.message, new Error().stack, true);
 							
-							res.send('error communicating with the MoarTube node');
+							signUserOut(req, res);
 						}
 						else {
 							const nodeSettings = nodeResponseData.nodeSettings;
@@ -3267,7 +3258,7 @@ async function startClient() {
 					.catch(error => {
 						logDebugMessageToConsole('', new Error(error).stack, true);
 						
-						res.send('error communicating with the MoarTube node');
+						signUserOut(req, res);
 					});
 				}
 				else {
@@ -3278,7 +3269,7 @@ async function startClient() {
 		.catch(error => {
 			logDebugMessageToConsole('', new Error(error).stack, true);
 			
-			res.send('error communicating with the MoarTube node');
+			signUserOut(req, res);
 		});
 	});
 	
@@ -5856,6 +5847,18 @@ async function startClient() {
 	
 	/* helper functions */
 
+	function signUserOut(req, res) {
+		req.session.jwtToken = '';
+		
+		if(websocketClient != null) {
+			websocketClient.canReconnect = false;
+			
+			websocketClient.close();
+		}
+		
+		res.redirect('/signin');
+	}
+
 	function isPublicNodeAddressValid(publicNodeAddress) {
 		return publicNodeAddress != null && publicNodeAddress.length > 0 && publicNodeAddress.length <= 100;
 	}
@@ -7191,6 +7194,8 @@ function setClientSettings(clientSettings) {
 }
 
 function loadConfig() {
+	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 	sharp.cache(false);
 
 	if(global != null && global.electronPaths != null) {
