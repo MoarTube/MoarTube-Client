@@ -19,6 +19,13 @@ A repository containing the client software for managing your [MoarTube](https:/
  - Captcha functionality to limit abuse
  - Publicize your node on [MoarTube](http://www.moartube.com), or run your node privately
 
+## How to Get Started
+Download the MoarTube Client from the [releases](https://github.com/cconley717/MoarTube-Client/releases) page and run it, or follow and manual approach below. That's all! Default login credentials for your node is:
+
+**username**: admin
+
+**password**: admin
+
 ## Node.js Install Guide
 
 ### Ubuntu Linux
