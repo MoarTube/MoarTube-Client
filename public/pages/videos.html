@@ -1340,7 +1340,7 @@
 								else {
 									videoAliasUrl = data.videoAliasUrl;
 									
-									if(videoAliasUrl !== '') {
+									if(videoAliasUrl === '') {
 										getCaptcha('/alias/captcha')
 										.then((objectURL) => {
 											const html = '<div id="alias-captcha-container"><div id="alias-captcha-img-container"><img src="' + objectURL + '"></div>\
@@ -1394,8 +1394,6 @@
 										});
 									}
 									else {
-										videoAliasUrl = 'MoarTube Aliaser link unavailable';
-
 										showShareLinks(videoId, nodeVideoUrl, videoAliasUrl);
 									}
 								}
