@@ -1,5 +1,5 @@
 # MoarTube-Client
-A repository containing the client software for communication with nodes on the [MoarTube platform](http://www.moartube.com).
+A repository containing the client software for communication with nodes on the [MoarTube platform](http://www.moartube.com). The software is a cross-platform Electron application that makes getting started managing your node a breeze.
 <br/>
 <br/>
 <br/>
