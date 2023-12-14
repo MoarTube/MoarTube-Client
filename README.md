@@ -18,7 +18,7 @@ A repository containing the client software for managing your [MoarTube](https:/
  - HTTPS/WSS
  - GPU acceleration for Nvidia and AMD (Windows only)
  - Admin panel for managing videos and live streams
- - Discussion section and live stream chat for all videos
+ - Discussion section and live stream chat
  - Dark mode option and browser appearance configuration recognition
  - Reports section for comments and video
  - Comment monitoring overview with moderation functionality
