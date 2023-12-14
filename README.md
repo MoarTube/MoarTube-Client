@@ -3,6 +3,8 @@ A repository containing the client software for managing your [MoarTube](https:/
 
 ![image](https://github.com/cconley717/MoarTube-Client/assets/26640616/0d8ac95f-f68b-4e36-849e-28139b45ce50)
 
+![image](https://github.com/cconley717/MoarTube-Client/assets/26640616/918aa074-b6e2-49f1-8d14-5c2ed1bcd582)
+
 # Features
  - Cross platform support for Windows/macOS/Linux
  - Video on demand (VoD) and HLS live streaming
