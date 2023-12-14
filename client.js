@@ -6428,6 +6428,10 @@ async function startClient() {
 				filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
 			}
 		}
+
+		
+		const hlsSegmentOutputPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
+		const manifestFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
 		
 		var ffmpegArguments = [];
 		
@@ -6444,11 +6448,11 @@ async function startClient() {
 					'-c:a', 'aac',
 					'-f', 'hls', 
 					'-hls_time', '3', '-hls_init_time', '3', '-hls_list_size', '20',
-					'-hls_segment_filename', './temp/media/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts',
+					'-hls_segment_filename', hlsSegmentOutputPath,
 					'-hls_base_url', '/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/', 
 					'-hls_playlist_type', 'event', 
 					'-hls_flags', 'append_list',
-					'./temp/media/videos/' + videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8'
+					manifestFilePath
 				];
 			}
 		}
@@ -6470,11 +6474,11 @@ async function startClient() {
 						'-c:a', 'aac',
 						'-f', 'hls', 
 						'-hls_time', '3', '-hls_init_time', '3', '-hls_list_size', '20',
-						'-hls_segment_filename', './temp/media/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts',
+						'-hls_segment_filename', hlsSegmentOutputPath,
 						'-hls_base_url', '/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/', 
 						'-hls_playlist_type', 'event', 
 						'-hls_flags', 'append_list',
-						'./temp/media/videos/' + videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8'
+						manifestFilePath
 					];
 				}
 			}
@@ -6493,11 +6497,11 @@ async function startClient() {
 						'-c:a', 'aac',
 						'-f', 'hls', 
 						'-hls_time', '3', '-hls_init_time', '3', '-hls_list_size', '20',
-						'-hls_segment_filename', './temp/media/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts',
+						'-hls_segment_filename', hlsSegmentOutputPath,
 						'-hls_base_url', '/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/', 
 						'-hls_playlist_type', 'event', 
 						'-hls_flags', 'append_list',
-						'./temp/media/videos/' + videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8'
+						manifestFilePath
 					];
 				}
 			}
