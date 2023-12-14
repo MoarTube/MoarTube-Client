@@ -1,6 +1,8 @@
 # MoarTube-Client
 A repository containing the client software for managing your [MoarTube](https://www.moartube.com) node. The software is a cross-platform Electron application that makes managing your videos as simple as reading this sentence.
 
+![image](https://github.com/cconley717/MoarTube-Client/assets/26640616/0d8ac95f-f68b-4e36-849e-28139b45ce50)
+
 # Features
  - Cross platform support for Windows/macOS/Linux
  - Video on demand (VoD) and HLS live streaming
