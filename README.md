@@ -53,6 +53,6 @@ Open a web browser at [localhost:8080](http://localhost:8080) to view the MoarTu
 
 # Note
 
-The MoarTube Client executable will likely display a warning when you run it. Since the software distribution is not code signed, it will remain unsigned as I can't justify spending a thousand dollars to obtain certification for a project that I just launched.
+The MoarTube Client executable will likely display a warning when you run it since the software distribution is not code signed. It will remain unsigned for the time being as I can't justify spending a thousand dollars to obtain certification for a project that I just launched.
 
 Always obtain the MoarTube Client from official channels; [releases](https://github.com/cconley717/MoarTube-Client/releases).
