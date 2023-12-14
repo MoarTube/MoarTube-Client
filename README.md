@@ -20,7 +20,7 @@ A repository containing the client software for managing your [MoarTube](https:/
  - Admin panel for managing videos and live streams
  - Discussion section and live stream chat
  - Dark mode option and browser appearance configuration recognition
- - Reports section for comments and video
+ - Reports section for comments and videos
  - Comment monitoring overview with moderation functionality
  - Captcha functionality to limit abuse
  - Run in the cloud or on your home WiFi
