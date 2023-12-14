@@ -50,3 +50,9 @@ Run the command **npm install**
 Run the command **node client.js**
 
 Open a web browser at [localhost:8080](http://localhost:8080) to view the MoarTube Client user interface
+
+# Note
+
+The MoarTube Client will likely display a warning when you run it. Since the software distribution is not code signed, it will remain unsigned as I can't justify spending a thousand dollars to obtain certification for a project that I just launched.
+
+Always obtain the MoarTube Client from official channels; [releases](https://github.com/cconley717/MoarTube-Client/releases).
