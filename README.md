@@ -1,5 +1,5 @@
 # MoarTube-Client
-A repository containing the client software for managing your [MoarTube](https://www.moartube.com) node. The software is a cross-platform Electron application that makes managing your videos as simple as reading this sentence.
+A repository containing the client software for managing your [MoarTube Node](https://github.com/cconley717/MoarTube-Node). The software is a cross-platform Electron (or terminal) application that makes managing your videos as simple as reading this sentence.
 
 ![image](https://github.com/cconley717/MoarTube-Client/assets/26640616/0d8ac95f-f68b-4e36-849e-28139b45ce50)
 
@@ -18,6 +18,7 @@ A repository containing the client software for managing your [MoarTube](https:/
  - HTTPS/WSS
  - GPU acceleration for Nvidia and AMD (Windows only)
  - Admin panel for managing videos and live streams
+ - Different video player modes: streamer, theater, fullscreen
  - Discussion section and live stream chat
  - Dark mode option and browser appearance configuration recognition
  - Reports section for comments and videos
@@ -27,7 +28,7 @@ A repository containing the client software for managing your [MoarTube](https:/
  - Publicize your node on [MoarTube](http://www.moartube.com), or run your node privately
 
 ## How to Get Started
-Download the MoarTube Client from the [releases](https://github.com/cconley717/MoarTube-Client/releases) page for your operating system and run it, or follow the manual approach to set up your client. After that, head over to [MoarTube Node](https://github.com/cconley717/MoarTube-Node) if you haven't already.
+Download the MoarTube Client from the [releases](https://github.com/cconley717/MoarTube-Client/releases) page for your operating system and run it, or follow the manual approach to set up your client. When ready, head over to [MoarTube Node](https://github.com/cconley717/MoarTube-Node) if you haven't already.
 
 The default login credentials for your node are below. Be sure to change these upon logging in.
 
