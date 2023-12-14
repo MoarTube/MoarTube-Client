@@ -1,5 +1,5 @@
 # MoarTube-Client
-A repository containing the client software for managing your [MoarTube node](https://github.com/cconley717/MoarTube-Node). The software is a cross-platform Electron (or terminal) application that makes managing your videos as simple as reading this sentence.
+A repository containing the client software for managing your [MoarTube Node](https://github.com/cconley717/MoarTube-Node). The software is a cross-platform Electron (or terminal) application that makes managing your videos as simple as reading this sentence.
 
 ![image](https://github.com/cconley717/MoarTube-Client/assets/26640616/0d8ac95f-f68b-4e36-849e-28139b45ce50)
 
