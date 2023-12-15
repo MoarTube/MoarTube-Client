@@ -1297,7 +1297,8 @@ async function startClient() {
 					const resolution = req.body.resolution;
 					const isRecordingStreamRemotely = req.body.isRecordingStreamRemotely;
 					const isRecordingStreamLocally = req.body.isRecordingStreamLocally;
-					
+					const networkAddress = req.body.networkAddress;
+
 					if(!isPortValid(rtmpPort)) {
 						res.send({isError: true, message: 'rtmpPort is not valid'});
 					}
@@ -1310,7 +1311,7 @@ async function startClient() {
 								if (portStatus === 'closed') {
 									const uuid = 'moartube';
 									
-									node_streamVideo_database(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally)
+									node_streamVideo_database(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress)
 									.then(nodeResponseData => {
 										if(nodeResponseData.isError) {
 											logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -1330,7 +1331,7 @@ async function startClient() {
 													res.send({isError: true, message: 'error communicating with the MoarTube node'});
 												}
 												else {
-													const rtmpUrl = 'rtmp://127.0.0.1:' + rtmpPort + '/live/' + uuid;
+													const rtmpUrl = 'rtmp://' + networkAddress + ':' + rtmpPort + '/live/' + uuid;
 													
 													performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUrl, 'm3u8', resolution, isRecordingStreamRemotely, isRecordingStreamLocally);
 													
@@ -1537,7 +1538,7 @@ async function startClient() {
 						nodeResponseData.pipe(res);
 					})
 					.catch(error => {
-						logDebugMessageToConsole(null, error, new Error().stack, true);
+						logDebugMessageToConsole('thumbnail not found', error, new Error().stack, true);
 						
 						res.status(404).send('thumbnail not found');
 					});
@@ -4211,7 +4212,7 @@ async function startClient() {
 		});
 	});
 	
-	app.get('/stream/:videoId/rtmp/urls', (req, res) => {
+	app.get('/stream/:videoId/rtmp/information', (req, res) => {
 		const jwtToken = req.session.jwtToken;
 		
 		node_isAuthenticated(jwtToken)
@@ -4228,13 +4229,16 @@ async function startClient() {
 					node_getVideoData_database(jwtToken, videoId)
 					.then(nodeResponseData => {
 						const meta = JSON.parse(nodeResponseData.videoData.meta);
-						
+
+						const netorkAddress = meta.networkAddress;
 						const rtmpPort = meta.rtmpPort;
 						const uuid = meta.uuid;
-						
-						const rtmpUrls = getRtmpStreamUrls(rtmpPort, uuid);
-						
-						res.send({isError: false, rtmpUrls: rtmpUrls});
+
+						const rtmpStreamUrl = 'rtmp://' + netorkAddress + ':' + rtmpPort + '/live/' + uuid;
+						const rtmpServerUrl = 'rtmp://' + netorkAddress + ':' + rtmpPort + '/live';
+						const rtmpStreamkey = uuid;
+
+						res.send({isError: false, rtmpStreamUrl: rtmpStreamUrl, rtmpServerUrl: rtmpServerUrl, rtmpStreamkey: rtmpStreamkey});
 					})
 					.catch(error => {
 						logDebugMessageToConsole(null, error, new Error().stack, true);
@@ -4338,7 +4342,13 @@ async function startClient() {
 			res.send({isError: true, message: 'error communicating with the MoarTube node'});
 		});
 	});
-	
+
+	app.get('/network', (req, res) => {
+		const networkAddresses = getNetworkAddresses();
+		
+		res.send({isError: false, networkAddresses: networkAddresses});
+	});
+
 	app.get('/heartbeat', (req, res) => {
 		res.end();
 	});
@@ -4417,7 +4427,7 @@ async function startClient() {
 		});
 	}
 	
-	function node_streamVideo_database(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally) {
+	function node_streamVideo_database(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress) {
 		return new Promise(function(resolve, reject) {
 			axios.post(MOARTUBE_NODE_HTTP_PROTOCOL + '://' + MOARTUBE_NODE_IP + ':' + MOARTUBE_NODE_PORT + '/stream/start', {
 				title: title,
@@ -4426,7 +4436,8 @@ async function startClient() {
 				rtmpPort: rtmpPort,
 				uuid: uuid,
 				isRecordingStreamRemotely: isRecordingStreamRemotely,
-				isRecordingStreamLocally: isRecordingStreamLocally
+				isRecordingStreamLocally: isRecordingStreamLocally,
+				networkAddress: networkAddress
 			}, {
 			  headers: {
 				Authorization: jwtToken
@@ -6084,29 +6095,33 @@ async function startClient() {
 			});
 		});
 	}
-	
-	function getRtmpStreamUrls(rtmpPort, uuid) {
+
+	function getNetworkAddresses() {
 		const os = require('os');
 		
 		const networkInterfaces = os.networkInterfaces();
-		
-		const rtmpUrls = [];
-		
-		rtmpUrls.push('rtmp://127.0.0.1:' + rtmpPort + '/live/' + uuid);
+
+		const ipv4Addresses = ['127.0.0.1'];
+		const ipv6Addresses = ['::1'];
 		
 		for(const networkInterfaceKey of Object.keys(networkInterfaces)) {
 			const networkInterface = networkInterfaces[networkInterfaceKey];
 			
-			for(networkInterfaceElement of networkInterface) {
-				const address = networkInterfaceElement.address;
-				
-				const rtmpUrl = 'rtmp://' + address + ':' + rtmpPort + '/live/' + uuid;
-				
-				rtmpUrls.push(rtmpUrl);
+			for(const networkInterfaceElement of networkInterface) {
+				const networkAddress = networkInterfaceElement.address;
+
+				if(networkInterfaceElement.family === 'IPv4' && networkAddress !== '127.0.0.1') {
+					ipv4Addresses.push(networkAddress);
+				}
+				else if(networkInterfaceElement.family === 'IPv6' && networkAddress !== '::1') {
+					ipv6Addresses.push(networkAddress);
+				}
 			}
 		}
+
+		const networkAddresses = ipv4Addresses.concat(ipv6Addresses);
 		
-		return rtmpUrls;
+		return networkAddresses;
 	}
 	
 	function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePath, destinationFilePath) {
@@ -7126,7 +7141,7 @@ async function startClient() {
 														logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
 													}
 													else {
-														console.log('segment removed');
+														logDebugMessageToConsole('segment removed: ' + segmentName, null, null, true);
 													}
 												})
 												.catch(error => {
