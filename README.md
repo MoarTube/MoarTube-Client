@@ -28,7 +28,7 @@ A repository containing the client software for managing your [MoarTube Node](ht
  - Publicize your node on [MoarTube](http://www.moartube.com), or run your node privately
 
 ## How to Get Started
-Download the MoarTube Client from the [releases](https://github.com/cconley717/MoarTube-Client/releases) page for your operating system and run it, or follow the manual approach to set up your client. When ready, head over to [MoarTube Node](https://github.com/cconley717/MoarTube-Node) if you haven't already.
+Download the MoarTube Client from the [releases](https://github.com/cconley717/MoarTube-Client/releases) page for your operating system and run it, or follow the manual approach to set up your client. When ready, head over to [MoarTube Node](https://github.com/cconley717/MoarTube-Node) if you haven't yet.
 
 The default login credentials for your node are below. Be sure to change these upon logging in.
 
