@@ -1,11 +1,12 @@
 # MoarTube-Client
 A repository containing the client software for managing your [MoarTube Node](https://github.com/cconley717/MoarTube-Node). The software is a cross-platform Electron (or terminal) application that makes managing your videos and live streams as simple as reading this sentence.
 
-![image](https://github.com/cconley717/MoarTube-Client/assets/26640616/0d8ac95f-f68b-4e36-849e-28139b45ce50)
+# How to Get Started
+Download the MoarTube Client from the [releases](https://github.com/cconley717/MoarTube-Client/releases) page for your operating system and run it, or follow the manual approach to set up your client. When ready, head over to [MoarTube Node](https://github.com/cconley717/MoarTube-Node) if you haven't yet.
 
-![image](https://github.com/cconley717/MoarTube-Client/assets/26640616/918aa074-b6e2-49f1-8d14-5c2ed1bcd582)
+The default login credentials for your node are below. Be sure to change these upon logging in.
 
-![image](https://github.com/cconley717/MoarTube-Client/assets/26640616/068ec86b-a3d8-4285-9b64-4b71f64cce41)
+**username**: admin<br/>**password**: admin
 
 # Features
  - Cross platform support for Windows/macOS/Linux
@@ -26,15 +27,13 @@ A repository containing the client software for managing your [MoarTube Node](ht
  - Captcha functionality to limit abuse
  - Run in the cloud or on your home WiFi
  - Publicize your node on [MoarTube](http://www.moartube.com), or run your node privately
+ - Dual box compatible; broadcast an RTMP stream with software such as OBS from a primary system over a network (WAN or LAN) to a secondary system running the MoarTube Client, separating streaming from stream processing. This is achieved without any special plugins, such as NDI.
 
-## How to Get Started
-Download the MoarTube Client from the [releases](https://github.com/cconley717/MoarTube-Client/releases) page for your operating system and run it, or follow the manual approach to set up your client. When ready, head over to [MoarTube Node](https://github.com/cconley717/MoarTube-Node) if you haven't yet.
+![image](https://github.com/cconley717/MoarTube-Client/assets/26640616/0d8ac95f-f68b-4e36-849e-28139b45ce50)
 
-The default login credentials for your node are below. Be sure to change these upon logging in.
+![image](https://github.com/cconley717/MoarTube-Client/assets/26640616/918aa074-b6e2-49f1-8d14-5c2ed1bcd582)
 
-**username**: admin
-
-**password**: admin
+![image](https://github.com/cconley717/MoarTube-Client/assets/26640616/068ec86b-a3d8-4285-9b64-4b71f64cce41)
 
 # Manual Approach
 
