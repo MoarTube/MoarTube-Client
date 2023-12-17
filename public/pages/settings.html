@@ -411,7 +411,7 @@
 			
 			function getNodeInformation() {
 				return new Promise(function(resolve, reject) {
-					$.ajax({type: 'GET', url: '/node/information'})
+					$.ajax({type: 'GET', url: '/node'})
 					.done(function (data, textStatus, xhr) {
 						if(data.isError) {
 							reject();

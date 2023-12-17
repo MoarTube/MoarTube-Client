@@ -233,7 +233,7 @@
 			}
 
             function getNodeInformation() {
-				$.ajax({type: 'GET', url: '/node/information'})
+				$.ajax({type: 'GET', url: '/node'})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
 						
@@ -257,7 +257,7 @@
 			}
 
             function getComments() {
-                $.ajax({type: 'GET', url: '/videos/comments/all'})
+                $.ajax({type: 'GET', url: '/comments/all'})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
 						

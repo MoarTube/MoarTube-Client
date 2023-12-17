@@ -361,7 +361,7 @@
 			
 			function getNodeInformation() {
 				return new Promise(function(resolve, reject) {
-					$.ajax({type: 'GET', url: '/node/information'})
+					$.ajax({type: 'GET', url: '/node'})
 					.done(function (data, textStatus, xhr)
 					{
 						if(data.isError) {
@@ -1145,7 +1145,7 @@
 						const isRecordingStreamLocally = result.value.isRecordingStreamLocally;
 						const networkAddress = result.value.networkAddress;
 						
-						$.ajax({type: 'POST', url: '/stream/start', data: JSON.stringify({ title: title, description: description, tags: tags, rtmpPort: rtmpPort, resolution: resolution, isRecordingStreamRemotely: isRecordingStreamRemotely, isRecordingStreamLocally: isRecordingStreamLocally, networkAddress: networkAddress }), contentType: 'application/json; charset=utf-8'})
+						$.ajax({type: 'POST', url: '/streams/start', data: JSON.stringify({ title: title, description: description, tags: tags, rtmpPort: rtmpPort, resolution: resolution, isRecordingStreamRemotely: isRecordingStreamRemotely, isRecordingStreamLocally: isRecordingStreamLocally, networkAddress: networkAddress }), contentType: 'application/json; charset=utf-8'})
 						.always(function() {
 							
 						})
@@ -2305,7 +2305,7 @@
 					});
 				}
 				else if(jobType === 'streaming') {
-					$.ajax({type: 'POST', url: '/videos/' + videoId + '/streaming/stop'})
+					$.ajax({type: 'POST', url: '/streams/' + videoId + '/stop'})
 					.done(function (data, textStatus, xhr) {
 						if(data.isError) {
 							alert(data.message);
@@ -2664,7 +2664,7 @@
 					showConfirmButton: false,
 					html: html,
 					didOpen: () => {
-						$.ajax({type: 'GET', url: '/stream/' + videoId + '/rtmp/information'})
+						$.ajax({type: 'GET', url: '/streams/' + videoId + '/rtmp/information'})
 						.done(function (data, textStatus, xhr) {
 							if(data.isError) {
 								Swal.fire({
@@ -2735,7 +2735,7 @@
 					showConfirmButton: false,
 					html: html,
 					didOpen: () => {
-						$.ajax({type: 'GET', url: '/stream/' + videoId + '/chat/settings'})
+						$.ajax({type: 'GET', url: '/streams/' + videoId + '/chat/settings'})
 						.done(function (data, textStatus, xhr) {
 							if(data.isError) {
 								Swal.fire({
@@ -2772,7 +2772,7 @@
 								});
 					
 								function saveChatSettings(isChatHistoryEnabled, chatHistoryLimit) {
-									$.post({url: '/stream/' + videoId + '/chat/settings', data: JSON.stringify({isChatHistoryEnabled: isChatHistoryEnabled, chatHistoryLimit: chatHistoryLimit}), contentType: 'application/json; charset=utf-8'})
+									$.post({url: '/streams/' + videoId + '/chat/settings', data: JSON.stringify({isChatHistoryEnabled: isChatHistoryEnabled, chatHistoryLimit: chatHistoryLimit}), contentType: 'application/json; charset=utf-8'})
 									.done(function(data) {
 										if(data.isError) {
 											showNotification(data.message, 'alert-primary');

@@ -31,18 +31,18 @@
 										<p class="mb-0">Enter your node credentials to sign in</p>
 									</div>
 									<div class="card-body">
-										<form id="sign-in-form" role="form" method="POST" action="/signin">
+										<form id="sign-in-form" role="form" method="POST" action="/account/signin">
 											<div class="mb-3">
-												<input type="text" class="form-control form-control-lg" placeholder="Username" name="username">
+												<input type="text" class="form-control form-control-lg" placeholder="Username" name="username" value="admin">
 											</div>
 											<div class="mb-3">
-												<input type="password" class="form-control form-control-lg" placeholder="Password" name="password">
+												<input type="password" class="form-control form-control-lg" placeholder="Password" name="password" value="admin">
 											</div>
 											<div class="mb-3">
-												<input type="text" class="form-control form-control-lg" placeholder="domain / ip address" name="moarTubeNodeIp">
+												<input type="text" class="form-control form-control-lg" placeholder="domain / ip address" name="moarTubeNodeIp" value="localhost">
 											</div>
 											<div class="mb-3">
-												<input type="text" class="form-control form-control-lg" placeholder="port" name="moarTubeNodePort">
+												<input type="text" class="form-control form-control-lg" placeholder="port" name="moarTubeNodePort" value="80">
 											</div>
 											<div class="form-check form-switch">
 												<input class="form-check-input" type="checkbox" id="rememberMe" name="rememberMe">
