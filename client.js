@@ -177,7 +177,7 @@ async function startClient() {
 						else {
 							const nodeSettings = nodeResponseData.nodeSettings;
 							
-							if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
+							if(nodeSettings.isNodeConfigured) {
 								res.redirect('/videos');
 							}
 							else {
@@ -231,7 +231,7 @@ async function startClient() {
 						else {
 							const nodeSettings = nodeResponseData.nodeSettings;
 							
-							if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
+							if(nodeSettings.isNodeConfigured) {
 								res.redirect('/videos');
 							}
 							else {
@@ -456,7 +456,7 @@ async function startClient() {
 								else {
 									const nodeSettings = nodeResponseData.nodeSettings;
 									
-									if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
+									if(nodeSettings.isNodeConfigured) {
 										res.send({isError: false, isAuthenticated: true, redirectUrl: '/videos'});
 									}
 									else {
@@ -516,7 +516,7 @@ async function startClient() {
 						else {
 							const nodeSettings = nodeResponseData.nodeSettings;
 							
-							if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
+							if(nodeSettings.isNodeConfigured) {
 								res.redirect('/settings');
 							}
 							else {
@@ -545,49 +545,6 @@ async function startClient() {
 		});
 	});
 	
-	app.post('/configure/skip', (req, res) => {
-		const jwtToken = req.session.jwtToken;
-		
-		node_isAuthenticated(jwtToken)
-		.then(nodeResponseData => {
-			if(nodeResponseData.isError) {
-				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-				
-				res.send({isError: true, message: 'error communicating with the MoarTube node'});
-			}
-			else {
-				if(nodeResponseData.isAuthenticated) {
-					node_setConfigurationSkipped(jwtToken)
-					.then(nodeResponseData => {
-						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-							
-							res.send({isError: true, message: nodeResponseData.message});
-						}
-						else {
-							res.send({isError: false});
-						}
-					})
-					.catch(error => {
-						logDebugMessageToConsole(null, error, new Error().stack, true);
-						
-						res.send({isError: true, message: 'error communicating with the MoarTube node'});
-					});
-				}
-				else {
-					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
-					
-					res.send({isError: true, message: 'you are not logged in'});
-				}
-			}
-		})
-		.catch(error => {
-			logDebugMessageToConsole(null, error, new Error().stack, true);
-			
-			res.send({isError: true, message: 'error communicating with the MoarTube node'});
-		});
-	});
-	
 	
 	// Serve the videos page
 	app.get('/videos', (req, res) => {
@@ -612,7 +569,7 @@ async function startClient() {
 						else {
 							const nodeSettings = nodeResponseData.nodeSettings;
 							
-							if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
+							if(nodeSettings.isNodeConfigured) {
 								const pagePath = path.join(PUBLIC_DIRECTORY, 'pages/videos.html');
 								const fileStream = fs.createReadStream(pagePath);
 								res.setHeader('Content-Type', 'text/html');
@@ -664,7 +621,7 @@ async function startClient() {
 						else {
 							const nodeSettings = nodeResponseData.nodeSettings;
 							
-							if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
+							if(nodeSettings.isNodeConfigured) {
 								const pagePath = path.join(PUBLIC_DIRECTORY, 'pages/comments.html');
 								const fileStream = fs.createReadStream(pagePath);
 								res.setHeader('Content-Type', 'text/html');
@@ -2527,7 +2484,7 @@ async function startClient() {
 						else {
 							const nodeSettings = nodeResponseData.nodeSettings;
 							
-							if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
+							if(nodeSettings.isNodeConfigured) {
 								const pagePath = path.join(PUBLIC_DIRECTORY, 'pages/reports-videos.html');
 								const fileStream = fs.createReadStream(pagePath);
 								res.setHeader('Content-Type', 'text/html');
@@ -2900,7 +2857,7 @@ async function startClient() {
 						else {
 							const nodeSettings = nodeResponseData.nodeSettings;
 							
-							if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
+							if(nodeSettings.isNodeConfigured) {
 								const pagePath = path.join(PUBLIC_DIRECTORY, 'pages/reports-comments.html');
 								const fileStream = fs.createReadStream(pagePath);
 								res.setHeader('Content-Type', 'text/html');
@@ -3242,7 +3199,7 @@ async function startClient() {
 						else {
 							const nodeSettings = nodeResponseData.nodeSettings;
 							
-							if(nodeSettings.isNodeConfigured || nodeSettings.isNodeConfigurationSkipped) {
+							if(nodeSettings.isNodeConfigured) {
 								const pagePath = path.join(PUBLIC_DIRECTORY, 'pages/settings.html');
 								const fileStream = fs.createReadStream(pagePath);
 								res.setHeader('Content-Type', 'text/html');
@@ -5452,24 +5409,6 @@ async function startClient() {
 				publicNodeAddress: publicNodeAddress,
 				publicNodePort: publicNodePort
 			}, {
-			  headers: {
-				Authorization: jwtToken
-			  }
-			})
-			.then(response => {
-				const data = response.data;
-				
-				resolve(data);
-			})
-			.catch(error => {
-				reject(error);
-			});
-		});
-	}
-	
-	function node_setConfigurationSkipped(jwtToken) {
-		return new Promise(function(resolve, reject) {
-			axios.post(MOARTUBE_NODE_HTTP_PROTOCOL + '://' + MOARTUBE_NODE_IP + ':' + MOARTUBE_NODE_PORT + '/configure/skip', {}, {
 			  headers: {
 				Authorization: jwtToken
 			  }
