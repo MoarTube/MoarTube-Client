@@ -3675,6 +3675,51 @@ async function startClient() {
 			}
 		});
 	});
+
+	app.post('/settings/node/private', (req, res) => {
+		const jwtToken = req.session.jwtToken;
+		
+		node_isAuthenticated(jwtToken)
+		.then(nodeResponseData => {
+			if(nodeResponseData.isError) {
+				logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+				
+				res.send({isError: true, message: 'error communicating with the MoarTube node'});
+			}
+			else {
+				if(nodeResponseData.isAuthenticated) {
+					const isNodePrivate = req.body.isNodePrivate;
+					
+					node_setPrivate(jwtToken, isNodePrivate)
+					.then(nodeResponseData => {
+						if(nodeResponseData.isError) {
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+							
+							res.send({isError: true, message: nodeResponseData.message});
+						}
+						else {
+							res.send({isError: false});
+						}
+					})
+					.catch(error => {
+						logDebugMessageToConsole(null, error, new Error().stack, true);
+						
+						res.send({isError: true, message: 'error communicating with the MoarTube node'});
+					});
+				}
+				else {
+					logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+					
+					res.send({isError: true, message: 'you are not logged in'});
+				}
+			}
+		})
+		.catch(error => {
+			logDebugMessageToConsole(null, error, new Error().stack, true);
+			
+			res.send({isError: true, message: 'error communicating with the MoarTube node'});
+		});
+	});
 	
 	app.post('/settings/node/secure', (req, res) => {
 		const jwtToken = req.session.jwtToken;
@@ -3861,7 +3906,7 @@ async function startClient() {
 					const publicNodeProtocol = req.body.publicNodeProtocol;
 					const publicNodeAddress = req.body.publicNodeAddress;
 					const publicNodePort = req.body.publicNodePort;
-					
+
 					node_setNetworkExternal_filesystem(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
@@ -4415,6 +4460,26 @@ async function startClient() {
 				username: username,
 				password: password,
 				rememberMe: rememberMe
+			})
+			.then(response => {
+				const data = response.data;
+				
+				resolve(data);
+			})
+			.catch(error => {
+				reject(error);
+			});
+		});
+	}
+
+	function node_setPrivate(jwtToken, isNodePrivate) {
+		return new Promise(function(resolve, reject) {
+			axios.post(MOARTUBE_NODE_HTTP_PROTOCOL + '://' + MOARTUBE_NODE_IP + ':' + MOARTUBE_NODE_PORT + '/settings/node/private', {
+				isNodePrivate: isNodePrivate
+			}, {
+			  headers: {
+				Authorization: jwtToken
+			  }
 			})
 			.then(response => {
 				const data = response.data;

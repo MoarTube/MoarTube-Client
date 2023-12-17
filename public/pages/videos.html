@@ -1318,7 +1318,7 @@
 							}
 						})
 						.fail(function() {
-							alert('video file publish error occurred');
+							alert('video publish error occurred');
 						});
 						
 						return false;
@@ -1357,12 +1357,10 @@
 							
 							$.ajax({type: 'GET', url: '/videos/' + videoId + '/alias'})
 							.done(function (data, textStatus, xhr) {
-								var videoAliasUrl;
+								var videoAliasUrl = 'MoarTube Aliaser link unavailable';
 
 								if(data.isError) {
-									videoAliasUrl = 'MoarTube Aliaser link unavailable';
-									
-									showShareLinks(videoId, nodeVideoUrl, videoAliasUrl);
+									showShareLinks(videoId, nodeVideoUrl, data.message);
 								}
 								else {
 									videoAliasUrl = data.videoAliasUrl;
@@ -1412,12 +1410,12 @@
 													}
 												})
 												.fail(function() {
-													console.log('unable to communicate with node');
+													showShareLinks(videoId, nodeVideoUrl, videoAliasUrl);
 												});
 											});
 										})
 										.catch(error => {
-											
+											showShareLinks(videoId, nodeVideoUrl, videoAliasUrl);
 										});
 									}
 									else {
@@ -1738,7 +1736,7 @@
 											}
 										})
 										.fail(function() {
-											alert('video file publish error occurred');
+											alert('video publish error occurred');
 											
 											$(checkbox).attr('disabled', false);
 										})
@@ -1759,7 +1757,7 @@
 											}
 										})
 										.fail(function() {
-											alert('video file publish error occurred');
+											alert('video unpublish error occurred');
 										});
 									}
 								});
@@ -1858,7 +1856,7 @@
 							}
 						})
 						.fail(function() {
-							alert('video file publish error occurred');
+							alert('error occurred');
 						});
 					}
 				});
@@ -2262,7 +2260,7 @@
 							}
 						})
 						.fail(function() {
-							alert('video file publish error occurred');
+							alert('video finalize error occurred');
 						});
 					}
 				});
@@ -2289,7 +2287,7 @@
 						}
 					})
 					.fail(function() {
-						alert('video file publish error occurred');
+						alert('video import stop error occurred');
 					});
 				}
 				else if(jobType === 'publishing') {
@@ -2303,7 +2301,7 @@
 						}
 					})
 					.fail(function() {
-						alert('video file publish error occurred');
+						alert('video publish stop error occurred');
 					});
 				}
 				else if(jobType === 'streaming') {
@@ -2317,7 +2315,7 @@
 						}
 					})
 					.fail(function() {
-						alert('video file publish error occurred');
+						alert('video stream stop error occurred');
 					});
 				}
 			}
@@ -2392,8 +2390,10 @@
 								$('#index-captcha-input').remove();
 								
 								Swal.update({ 
+									icon: 'info',
 									title: 'hmmm',
-									html: error
+									html: error,
+									showConfirmButton: false
 								});
 								
 								$(checkbox).prop('checked', !isIndexing);

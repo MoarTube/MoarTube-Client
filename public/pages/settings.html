@@ -251,6 +251,20 @@
 								</form>
 								<div class="card-body pt-0 pb-0">
 									<div class="">
+										<p class="mb-0">Run this Node Privately</p>
+									</div>
+									<div class="card-body pt-0">
+										<div class="row">
+											<div class="col-6">
+												<div class="form-check form-switch my-auto">
+													<input id="node-setting-private-node-checkbox" class="form-check-input" type="checkbox" onclick="toggleNodeSettingPrivateNodeCheckbox(this)"/>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+								<div class="card-body pt-0 pb-0">
+									<div class="">
 										<p class="mb-0">Secure Connection (HTTPS)</p>
 									</div>
 									<div class="card-body pt-0">
@@ -301,7 +315,7 @@
 												<div class="col-4">
 													<label class="form-label">public ip address / domain</label>
 													<div class="input-group">
-														<input id="public-node-address-input" name="publicNodeAddress" class="form-control" type="text" placeholder="moartube.example.com / xxx.xxx.xxx.xxx" onfocus="focused(this)" onfocusout="defocused(this)">
+														<input id="public-node-address-input" name="publicNodeAddress" class="form-control" type="text" placeholder="example.com / xxx.xxx.xxx.xxx" onfocus="focused(this)" onfocusout="defocused(this)">
 													</div>
 												</div>
 												<div class="col-4">
@@ -506,6 +520,8 @@
 						$('#node-about-textarea').val(nodeSettings.nodeAbout);
 						$('#node-id-input').val(nodeSettings.nodeId);
 						
+						$('#node-setting-private-node-checkbox').prop('checked', nodeSettings.isNodePrivate);
+
 						$('#node-setting-secure-connection-checkbox').prop('checked', nodeSettings.isSecure);
 						
 						$('#node-listening-port-input').val(nodeSettings.nodeListeningPort);
@@ -640,7 +656,7 @@
 				Swal.fire({
 					title: 'please wait',
 					text: '...changing node listening port...',
-					timer: 5000,
+					timer: 10000,
 					timerProgressBar: true,
 					allowOutsideClick: false,
 					didOpen: () => {
@@ -782,7 +798,31 @@
 					}
 				})
 				.fail(function() {
-					alert('video file publish error occurred');
+					$(checkbox).prop('checked', !isGpuAccelerationEnabled);
+				});
+			}
+
+			function toggleNodeSettingPrivateNodeCheckbox(checkbox) {
+				const isNodePrivate = $(checkbox).is(':checked');
+				
+				$(checkbox).prop('disabled', true);
+				
+				$.ajax({type: 'POST', url: '/settings/node/private', data: JSON.stringify({isNodePrivate: isNodePrivate}), contentType: 'application/json; charset=utf-8'})
+				.always(function() {
+					$(checkbox).prop('disabled', false);
+				})
+				.done(function (data, textStatus, xhr) {
+					if(data.isError) {
+						$(checkbox).prop('checked', !isNodePrivate);
+						
+						showAlert(true, data.message);
+					}
+					else {
+						// do nothing
+					}
+				})
+				.fail(function() {
+					$(checkbox).prop('checked', !isNodePrivate);
 				});
 			}
 			
@@ -853,9 +893,7 @@
 									showAlert(false);
 								}
 							});
-							
-							
-							
+
 							return false;
 						}
 					})
