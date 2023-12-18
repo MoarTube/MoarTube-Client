@@ -67,7 +67,7 @@ function node_doSignin(username, password, rememberMe) {
 
 function node_getSettings(jwtToken) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/node/settings', {
+        axios.get(getMoarTubeNodeUrl() + '/settings/node', {
           headers: {
             Authorization: jwtToken
           }
@@ -1216,7 +1216,7 @@ function node_setNetworkInternal(jwtToken, listeningNodePort) {
 
 function node_setAccountCredentials(jwtToken, username, password) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/node/account/update', {
+        axios.post(getMoarTubeNodeUrl() + '/settings/node/account', {
             username: username,
             password: password
         }, {

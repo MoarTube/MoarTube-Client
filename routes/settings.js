@@ -813,7 +813,7 @@ router.post('/node/network/external', (req, res) => {
     });
 });
 
-router.post('/node/account/update', (req, res) => {
+router.post('/node/account', (req, res) => {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
