@@ -7,14 +7,11 @@ const {
     logDebugMessageToConsole, getMoarTubeNodeWebsocketUrl, getPublicDirectoryPath, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodeIp, 
     setMoarTubeNodePort, setWebsocketClient, websocketServerBroadcast
 } = require('../utils/helpers');
-
 const { isPublicNodeAddressValid, isPortValid } = require('../utils/validators');
-
 const { node_isAuthenticated, node_doHeartBeat, node_doSignin, node_doSignout, node_getSettings } = require('../utils/node-communications');
-
 const { stoppingVideoImport, stoppedVideoImport } = require('../utils/trackers/import-video-tracker');
-
 const { stoppingLiveStream, stoppedLiveStream } = require('../utils/trackers/live-stream-tracker');
+const { stoppingPublishVideoEncoding, stoppedPublishVideoEncoding } = require('../utils/trackers/publish-video-encoding-tracker');
 
 const router = express.Router();
 
@@ -177,24 +174,13 @@ router.post('/signin', (req, res) => {
                                                 stoppingVideoImport(parsedMessage.data.payload.videoId);
                                             }
                                             else if(parsedMessage.data.payload.type === 'importing_stopped') {
-                                                stoppedVideoImport(parsedMessage.data.payload.videoId);
+                                                stoppedVideoImport(parsedMessage.data.payload.videoId, parsedMessage.data);
                                             }
                                             else if(parsedMessage.data.payload.type === 'publishing_stopping') {
-                                                if(publishVideoEncodingTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
-                                                    publishVideoEncodingTracker[parsedMessage.data.payload.videoId].stopping = true;
-                                                }
+                                                stoppingPublishVideoEncoding(parsedMessage.data.payload.videoId);
                                             }
                                             else if(parsedMessage.data.payload.type === 'publishing_stopped') {
-                                                if(publishVideoEncodingTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
-                                                    const processes = publishVideoEncodingTracker[parsedMessage.data.payload.videoId].processes;
-                                                    processes.forEach(function(process) {
-                                                        process.kill(); // no point in being graceful about it; just kill it
-                                                    });
-                                                    
-                                                    //delete publishVideoEncodingTracker[parsedMessage.data.payload.videoId];
-                                                }
-                                                
-                                                websocketServerBroadcast(parsedMessage.data);
+                                                stoppedPublishVideoEncoding(parsedMessage.data.payload.videoId, parsedMessage.data);
                                             }
                                             else if(parsedMessage.data.payload.type === 'streaming_stopping') {
                                                 stoppingLiveStream(parsedMessage.data.payload.videoId);

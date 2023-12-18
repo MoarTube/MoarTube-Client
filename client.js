@@ -17,11 +17,13 @@ const {
     getPublicDirectoryPath,
     getTempDirectoryPath,
     getMoarTubeClientPort,
+	getFfmpegPath,
     setPublicDirectoryPath,
     setUserDirectoryPath,
     setTempDirectoryPath,
     setTempCertificatesDirectoryPath,
     setTempVideosDirectoryPath,
+	setFfmpegPath,
     setMoarTubeClientPort,
 	setWebsocketServer
 } = require('./utils/helpers');
@@ -60,8 +62,9 @@ async function startClient() {
 		logDebugMessageToConsole(null, reason, reason.stack, true);
 	});
 
-	logDebugMessageToConsole('using ffmpeg at path: ' + ffmpegPath, null, null, true);
-	logDebugMessageToConsole(execSync(ffmpegPath + ' -version').toString(), null, null, true);
+	setFfmpegPath(ffmpegPath);
+
+	logDebugMessageToConsole(execSync(getFfmpegPath() + ' -version').toString(), null, null, true);
 
 	logDebugMessageToConsole('creating required directories', null, null, true);
 	
@@ -69,7 +72,7 @@ async function startClient() {
 
 	await cleanVideosDirectory();
 	
-	performEncodingDecodingAssessment();
+	await performEncodingDecodingAssessment();
 
 	startPublishInterval();
 	

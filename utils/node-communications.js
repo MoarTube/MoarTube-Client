@@ -1,9 +1,18 @@
+const fs = require('fs');
 const axios = require('axios');
+const FormData = require('form-data');
+
 const { getMoarTubeNodeUrl } = require('./helpers');
+
+function node_doSignout(req, res) {
+    delete req.session.jwtToken;
+    
+    res.redirect('/account/signin');
+}
 
 function node_isAuthenticated(jwtToken) {
     return new Promise(function(resolve, reject) {
-        if(jwtToken == null || jwtToken === '') {
+        if(jwtToken == null) {
             resolve({isError: false, isAuthenticated: false});
         }
         else {
@@ -54,12 +63,6 @@ function node_doSignin(username, password, rememberMe) {
             reject(error);
         });
     });
-}
-
-function node_doSignout(req, res) {
-    delete req.session.jwtToken;
-    
-    res.redirect('/account/signin');
 }
 
 function node_getSettings(jwtToken) {

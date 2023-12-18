@@ -509,6 +509,9 @@
 									else if(row.is_imported) {
 										status = 'imported'
 									}
+									else {
+										status = 'error';
+									}
 									
 									$('#videos_table tbody').append(generateVideoTableRow(videoId, thumbnail, title, tags, lengthTimestamp, views, comments, likes, dislikes, bandwidth, status, isIndexed));
 								});
@@ -793,6 +796,9 @@
 								else if(data.payload.isImported) {
 									status = 'imported'
 								}
+								else {
+									status = 'error';
+								}
 								
 								if($('#videos_table_row_' + videoId).length === 0) {
 									$('#videos_table tbody').prepend(generateVideoTableRow(videoId, thumbnail, title, tags, lengthTimestamp, views, comments, likes, dislikes, bandwidth, status, isIndexed));
@@ -887,7 +893,7 @@
 						
 						formData.append('video_file', videoFile);
 
-						$.ajax({type: 'POST', url: '/video/import?title=' + title + '&description=' + description + '&tags=' + tags, data: formData, processData: false, contentType: false})
+						$.ajax({type: 'POST', url: '/videos/import?title=' + title + '&description=' + description + '&tags=' + tags, data: formData, processData: false, contentType: false})
 						.always(function() {
 							
 						})

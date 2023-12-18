@@ -1,27 +1,24 @@
-const { logDebugMessageToConsole, deleteDirectoryRecursive, timestampToSeconds, websocketClientBroadcast, getTempVideosDirectoryPath } = require('../helpers');
+const fs = require('fs');
+const path = require('path');
+const spawn = require('child_process').spawn;
+const spawnSync = require('child_process').spawnSync;
+
+const { logDebugMessageToConsole, deleteDirectoryRecursive, timestampToSeconds, websocketClientBroadcast, getTempVideosDirectoryPath, getFfmpegPath, getClientSettings } = require('../helpers');
 const { node_setVideoPublishing, node_setVideoLengths, node_setVideoPublished, node_uploadVideo } = require('../node-communications');
+const { getPendingPublishVideoTracker, getPendingPublishVideoTrackerQueueSize, dequeuePendingPublishVideo } = require('../trackers/pending-publish-video-tracker');
+const { addToPublishVideoEncodingTracker, isPublishVideoEncodingStopping, addProcessToPublishVideoEncodingTracker } = require('../trackers/publish-video-encoding-tracker');
 
 var inProgressPublishingJobCount = 0;
 var maximumInProgressPublishingJobCount = 5;
 
 const inProgressPublishingJobs = [];
 
-
-
-// here
-const pendingPublishingJobs = [];
-const publishVideoEncodingTracker = {};
-
-
-
-
-
 function startPublishInterval() {
     setInterval(function() {
-        while(pendingPublishingJobs.length > 0 && inProgressPublishingJobCount < maximumInProgressPublishingJobCount) {
+        while(getPendingPublishVideoTrackerQueueSize() > 0 && inProgressPublishingJobCount < maximumInProgressPublishingJobCount) {
             inProgressPublishingJobCount++;
             
-            inProgressPublishingJobs.push(pendingPublishingJobs.shift());
+            inProgressPublishingJobs.push(dequeuePendingPublishVideo());
             
             startPublishingJob(inProgressPublishingJobs[inProgressPublishingJobs.length - 1])
             .then((completedPublishingJob) => {
@@ -33,7 +30,7 @@ function startPublishInterval() {
                 
                 inProgressPublishingJobs.splice(index, 1);
                 
-                const videoIdHasPendingPublishingJobExists = pendingPublishingJobs.some((pendingPublishingJob) => pendingPublishingJob.hasOwnProperty('videoId') && pendingPublishingJob.videoId === completedPublishingJob.videoId);
+                const videoIdHasPendingPublishingJobExists = getPendingPublishVideoTracker().some((pendingPublishingJob) => pendingPublishingJob.hasOwnProperty('videoId') && pendingPublishingJob.videoId === completedPublishingJob.videoId);
                 const videoIdHasInProgressPublishingJobExists = inProgressPublishingJobs.some((inProgressPublishingJob) => inProgressPublishingJob.hasOwnProperty('videoId') && inProgressPublishingJob.videoId === completedPublishingJob.videoId);
                 
                 if(!videoIdHasPendingPublishingJobExists && !videoIdHasInProgressPublishingJobExists) {
@@ -63,8 +60,8 @@ function startPublishingJob(publishingJob) {
                 resolve(publishingJob);
             }
             else {
-                publishVideoEncodingTracker[videoId] = {processes: [], stopping: false};
-                
+                addToPublishVideoEncodingTracker(videoId);
+
                 performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExtension)
                 .then((data) => {
                     performUploadingJob(jwtToken, videoId, format, resolution)
@@ -83,57 +80,9 @@ function startPublishingJob(publishingJob) {
     });
 }
 
-function finishVideoPublish(jwtToken, videoId, sourceFileExtension) {
-    deleteDirectoryRecursive(path.join(getTempVideosDirectoryPath(), videoId + '/adaptive'));
-    deleteDirectoryRecursive(path.join(getTempVideosDirectoryPath(), videoId + '/progressive'));
-    
-    const sourceFilePath =  path.join(getTempVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
-    
-    if(fs.existsSync(sourceFilePath)) {
-        const result = spawnSync(ffmpegPath, [
-            '-i', sourceFilePath
-        ], 
-        {encoding: 'utf-8' }
-        );
-        
-        const durationIndex = result.stderr.indexOf('Duration: ');
-        const lengthTimestamp = result.stderr.substr(durationIndex + 10, 11);
-        const lengthSeconds = timestampToSeconds(lengthTimestamp);
-        
-        node_setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-            }
-            else {
-                node_setVideoPublished(jwtToken, videoId)
-                .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-                    }
-                    else {
-                        logDebugMessageToConsole('video finished publishing for id: ' + videoId, null, null, true);
-                        
-                        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'published', videoId: videoId, lengthTimestamp: lengthTimestamp, lengthSeconds: lengthSeconds }}});
-                    }
-                })
-                .catch(error => {
-                    logDebugMessageToConsole(null, error, new Error().stack, true);
-                });
-            }
-        })
-        .catch(error => {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
-        });
-    }
-    else {
-        logDebugMessageToConsole('expected video source file to be in <' + sourceFilePath + '> but found none', null, null, true);
-    }
-}
-
 function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExtension) {
     return new Promise(function(resolve, reject) {
-        if(!publishVideoEncodingTracker[videoId].stopping) {
+        if(!isPublishVideoEncodingStopping(videoId)) {
             const sourceFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
             
             const destinationFileExtension = '.' + format;
@@ -162,9 +111,9 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
             
             const ffmpegArguments = generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePath, destinationFilePath);
             
-            const process = spawn(ffmpegPath, ffmpegArguments);
-            
-            publishVideoEncodingTracker[videoId].processes.push(process);
+            const process = spawn(getFfmpegPath(), ffmpegArguments);
+
+            addProcessToPublishVideoEncodingTracker(videoId, process);
             
             process.stdout.on('data', function (data) {
                 const output = Buffer.from(data).toString();
@@ -177,7 +126,7 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
             
             var stderrOutput = '';
             process.stderr.on('data', function (data) {
-                if(!publishVideoEncodingTracker[videoId].stopping) {
+                if(!isPublishVideoEncodingStopping(videoId)) {
                     const stderrTemp = Buffer.from(data).toString();
                     
                     logDebugMessageToConsole(stderrTemp, null, null, false);
@@ -236,7 +185,7 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
 
 function performUploadingJob(jwtToken, videoId, format, resolution) {
     return new Promise(function(resolve, reject) {			
-        if(!publishVideoEncodingTracker[videoId].stopping) {
+        if(!isPublishVideoEncodingStopping(videoId)) {
             const paths = [];
             
             if(format === 'm3u8') {
@@ -300,7 +249,59 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
     });
 }
 
+function finishVideoPublish(jwtToken, videoId, sourceFileExtension) {
+    deleteDirectoryRecursive(path.join(getTempVideosDirectoryPath(), videoId + '/adaptive'));
+    deleteDirectoryRecursive(path.join(getTempVideosDirectoryPath(), videoId + '/progressive'));
+    
+    const sourceFilePath =  path.join(getTempVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
+    
+    if(fs.existsSync(sourceFilePath)) {
+        const result = spawnSync(getFfmpegPath(), [
+            '-i', sourceFilePath
+        ], 
+        {encoding: 'utf-8' }
+        );
+        
+        const durationIndex = result.stderr.indexOf('Duration: ');
+        const lengthTimestamp = result.stderr.substr(durationIndex + 10, 11);
+        const lengthSeconds = timestampToSeconds(lengthTimestamp);
+        
+        node_setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp)
+        .then(nodeResponseData => {
+            if(nodeResponseData.isError) {
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            }
+            else {
+                node_setVideoPublished(jwtToken, videoId)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                    }
+                    else {
+                        logDebugMessageToConsole('video finished publishing for id: ' + videoId, null, null, true);
+                        
+                        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'published', videoId: videoId, lengthTimestamp: lengthTimestamp, lengthSeconds: lengthSeconds }}});
+                    }
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                });
+            }
+        })
+        .catch(error => {
+            logDebugMessageToConsole(null, error, new Error().stack, true);
+        });
+    }
+    else {
+        logDebugMessageToConsole('expected video source file to be in <' + sourceFilePath + '> but found none', null, null, true);
+    }
+}
+
 function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePath, destinationFilePath) {
+    /*
+    TODO: the user will want to tune their own encoding settings; hardcoded defaults below are assumed for typical use cases
+    */
+
     var scale = '';
     var width = '';
     var height = '';
@@ -549,7 +550,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
     
     return ffmpegArguments;
 }
-
 
 module.exports = {
     startPublishInterval

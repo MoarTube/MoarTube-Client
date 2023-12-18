@@ -1,4 +1,4 @@
-const { logDebugMessageToConsole, getTempVideosDirectoryPath, websocketClientBroadcast } = require('../helpers');
+const { logDebugMessageToConsole, getTempVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath } = require('../helpers');
 const { addProcessToLiveStreamTracker, isLiveStreamStopping, liveStreamExists } = require('../trackers/live-stream-tracker');
 
 
@@ -25,7 +25,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
         
         const ffmpegArguments = generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely);
         
-        var process = spawn(ffmpegPath, ffmpegArguments);
+        var process = spawn(getFfmpegPath(), ffmpegArguments);
 
         addProcessToLiveStreamTracker(videoId, process);
         
@@ -105,7 +105,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                     
                                     const thumbnailImagePath = path.join(imagesDirectoryPath, 'thumbnail.jpg');
                                     
-                                    var process1 = spawn(ffmpegPath, [
+                                    var process1 = spawn(getFfmpegPath(), [
                                         '-i', expectedSegmentFilePath, 
                                         '-vf', 'select=\'gte(t,3*25/100)\',crop=min(iw\\,ih):min(iw\\,ih),scale=100:100,setsar=1',
                                         '-vframes', '1',
@@ -157,7 +157,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
 
                                     const previewImagePath = path.join(imagesDirectoryPath, 'preview.jpg');
                                     
-                                    var process2 = spawn(ffmpegPath, [
+                                    var process2 = spawn(getFfmpegPath(), [
                                         '-i', expectedSegmentFilePath, 
                                         '-vf', 'select=\'gte(t,3*25/100)\',scale=512:288:force_original_aspect_ratio=decrease,pad=512:288:(ow-iw)/2:(oh-ih)/2,setsar=1',
                                         '-vframes', '1',
@@ -209,7 +209,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
 
                                     const posterImagePath = path.join(imagesDirectoryPath, 'poster.jpg');
                                     
-                                    var process3 = spawn(ffmpegPath, [
+                                    var process3 = spawn(getFfmpegPath(), [
                                         '-i', expectedSegmentFilePath, 
                                         '-vf', 'select=\'gte(t,3*25/100)\',scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1',
                                         '-vframes', '1',

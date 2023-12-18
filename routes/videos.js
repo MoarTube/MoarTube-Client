@@ -7,7 +7,7 @@ const multer = require('multer');
 
 sharp.cache(false);
 
-const { logDebugMessageToConsole, deleteDirectoryRecursive, getPublicDirectoryPath, getTempVideosDirectoryPath, timestampToSeconds, websocketClientBroadcast } = require('../utils/helpers');
+const { logDebugMessageToConsole, deleteDirectoryRecursive, getPublicDirectoryPath, getTempVideosDirectoryPath, timestampToSeconds, websocketClientBroadcast, getFfmpegPath } = require('../utils/helpers');
 const { 
     node_isAuthenticated, node_doSignout, node_getSettings, node_stopVideoImporting, node_getVideoInformation, node_doVideosSearch, 
     node_getThumbnail, node_getPreview, node_getPoster, node_getVideoData, node_unpublishVideo, node_stopVideoPublishing, node_stopVideoStreaming, node_importVideo,
@@ -16,6 +16,7 @@ const {
     node_removeVideoFromIndex, node_aliasVideo, node_getVideoAlias
 } = require('../utils/node-communications');
 const { addVideoToImportVideoTracker, isVideoImportStopping } = require('../utils/trackers/import-video-tracker');
+const { queuePendingPublishVideo } = require('../utils/trackers/pending-publish-video-tracker');
 
 const router = express.Router();
 
@@ -252,7 +253,7 @@ router.post('/import', (req, res) => {
                                             res.send({isError: true, message: 'error communicating with the MoarTube node'});
                                         }
                                         else {
-                                            const result = spawnSync(ffmpegPath, [
+                                            const result = spawnSync(getFfmpegPath(), [
                                                 '-i', videoFilePath
                                             ], 
                                             {encoding: 'utf-8' }
@@ -274,7 +275,7 @@ router.post('/import', (req, res) => {
                                             
                                             const imageExtractionTimestamp = Math.floor(lengthSeconds * 0.25);
                                             
-                                            spawnSync(ffmpegPath, ['-ss', imageExtractionTimestamp, '-i', videoFilePath, sourceImagePath]);
+                                            spawnSync(getFfmpegPath(), ['-ss', imageExtractionTimestamp, '-i', videoFilePath, sourceImagePath]);
                                             
                                             sharp(sourceImagePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toFile(thumbnailImagePath)
                                             .then(() => {
@@ -499,7 +500,7 @@ router.post('/:videoId/importing/stop', (req, res) => {
     });
 });
 
-router.post(':videoId/publishing/stop', (req, res) => {
+router.post('/:videoId/publishing/stop', (req, res) => {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
@@ -599,7 +600,7 @@ router.post('/:videoId/publish', (req, res) => {
                                             const format = publishing.format;
                                             const resolution = publishing.resolution;
 
-                                            pendingPublishingJobs.push({
+                                            queuePendingPublishVideo({
                                                 jwtToken: jwtToken,
                                                 videoId: videoId,
                                                 format: format,

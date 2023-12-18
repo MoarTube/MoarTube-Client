@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const webSocket = require('ws');
 
 let userDirectory;
 let publicDirectory;
@@ -11,6 +12,8 @@ let moartubeNodeIp;
 let moartubeNodePort;
 let moartubeNodeHttpProtocol;
 let moartubeNodeWebsocketProtocol;
+
+let ffmpegPath;
 
 let websocketServer;
 let websocketClient;
@@ -32,11 +35,15 @@ function logDebugMessageToConsole(message, error, stackTrace, isLoggingToFile) {
     var errorMessage = '<message: ' + message + ', date: ' + humanReadableTimestamp + '>';
 
     if(error != null) {
-        if(typeof error === Error) {
+        if(error.message != null) {
             errorMessage += '\n' + error.message + '\n';
         }
-        else {
-            errorMessage += '\n' + error + '\n';
+
+        if(error.stack != null) {
+            errorMessage += '\n' + error.stack + '\n';
+        }
+        else if(error.stackTrace != null) {
+            errorMessage += '\n' + error.stackTrace + '\n';
         }
     }
 
@@ -277,6 +284,21 @@ function cleanVideosDirectory() {
     });
 }
 
+function setFfmpegPath(value) {
+    if(fs.existsSync(value)) {
+        ffmpegPath = value;
+
+        logDebugMessageToConsole('using ffmpeg at path: ' + ffmpegPath, null, null, true);
+    }
+    else {
+        throw new Error('ffmpeg does not exist at path: ' + value);
+    }
+}
+
+function getFfmpegPath() {
+    return ffmpegPath;
+}
+
 function websocketClientBroadcast(message) {
     if(websocketClient != null) {
         websocketClient.send(JSON.stringify(message));
@@ -440,6 +462,7 @@ module.exports = {
     getMoarTubeNodeUrl,
     getMoarTubeNodeWebsocketUrl,
     getClientSettings,
+    getFfmpegPath,
     getWebsocketServer,
     getWebsocketClient,
     setPublicDirectoryPath,
@@ -453,6 +476,7 @@ module.exports = {
     setMoarTubeNodeHttpProtocol,
     setMoarTubeNodeWebsocketProtocol,
     setClientSettings,
+    setFfmpegPath,
     setWebsocketServer,
     setWebsocketClient
 };

@@ -24,13 +24,13 @@ function stoppingVideoImport(videoId) {
     }
 }
 
-function stoppedVideoImport(videoId) {
+function stoppedVideoImport(videoId, data) {
     if(videoImportExists(videoId)) {
         IMPORT_VIDEO_TRACKER[videoId].req.destroy();
             
-        //delete importVideoTracker[videoId];
+        //delete IMPORT_VIDEO_TRACKER[videoId];
         
-        websocketServerBroadcast(parsedMessage.data);
+        websocketServerBroadcast(data);
     }
 }
 
