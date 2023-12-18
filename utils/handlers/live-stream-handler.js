@@ -1,9 +1,11 @@
-const { logDebugMessageToConsole, getTempVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath } = require('../helpers');
+const fs = require('fs');
+const path = require('path');
+const spawn = require('child_process').spawn;
+
+const { logDebugMessageToConsole, getTempVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds } = require('../helpers');
+const { node_setVideoLengths, node_getNextExpectedSegmentIndex, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, 
+    node_removeAdaptiveStreamSegment, node_stopVideoStreaming } = require('../node-communications');
 const { addProcessToLiveStreamTracker, isLiveStreamStopping, liveStreamExists } = require('../trackers/live-stream-tracker');
-
-
-
-
 
 function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUrl, format, resolution, isRecordingStreamRemotely, isRecordingStreamLocally) {
     return new Promise(function(resolve, reject) {
@@ -41,7 +43,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                     lengthTimestamp = stderrTemp.substr(index + 5, 11);
                     lengthSeconds = timestampToSeconds(lengthTimestamp);
                     
-                    node_setVideoLengths_database(jwtToken, videoId, lengthSeconds, lengthTimestamp)
+                    node_setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp)
                     .then(nodeResponseData => {
                         if(nodeResponseData.isError) {
                             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -128,7 +130,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                                 
                                                 logDebugMessageToConsole('uploading live thumbnail to node for video: ' + videoId, null, null, true);
                                                 
-                                                node_setThumbnail_fileSystem(jwtToken, videoId, thumbnailPath)
+                                                node_setThumbnail(jwtToken, videoId, thumbnailPath)
                                                 .then(nodeResponseData => {
                                                     if(nodeResponseData.isError) {
                                                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -180,7 +182,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                                 
                                                 logDebugMessageToConsole('uploading live preview to node for video: ' + videoId, null, null, true);
                                                 
-                                                node_setPreview_fileSystem(jwtToken, videoId, previewPath)
+                                                node_setPreview(jwtToken, videoId, previewPath)
                                                 .then(nodeResponseData => {
                                                     if(nodeResponseData.isError) {
                                                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -232,7 +234,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                                 
                                                 logDebugMessageToConsole('uploading live poster to node for video: ' + videoId, null, null, true);
                                                 
-                                                node_setPoster_fileSystem(jwtToken, videoId, posterPath)
+                                                node_setPoster(jwtToken, videoId, posterPath)
                                                 .then(nodeResponseData => {
                                                     if(nodeResponseData.isError) {
                                                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -359,7 +361,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                     
                     websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
                     
-                    node_stopVideoStreaming_database(jwtToken, videoId)
+                    node_stopVideoStreaming(jwtToken, videoId)
                     .then((nodeResponseData) => {
                         if(nodeResponseData.isError) {
                             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);

@@ -3,12 +3,9 @@ const portscanner = require('portscanner');
 
 const { logDebugMessageToConsole, websocketClientBroadcast } = require('../utils/helpers');
 const { isPortValid } = require('../utils/validators');
-const { 
-    node_isAuthenticated, node_stopVideoStreaming, node_streamVideo, node_setSourceFileExtension, node_getVideoData,
-    node_setVideoChatSettings 
-} = require('../utils/node-communications');
-
+const { node_isAuthenticated, node_stopVideoStreaming, node_streamVideo, node_setSourceFileExtension, node_getVideoData, node_setVideoChatSettings } = require('../utils/node-communications');
 const { addLiveStreamToLiveStreamTracker } = require('../utils/trackers/live-stream-tracker');
+const { performStreamingJob } = require('../utils/handlers/live-stream-handler');
 
 const router = express.Router();
 

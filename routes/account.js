@@ -186,7 +186,7 @@ router.post('/signin', (req, res) => {
                                                 stoppingLiveStream(parsedMessage.data.payload.videoId);
                                             }
                                             else if(parsedMessage.data.payload.type === 'streaming_stopped') {
-                                                stoppedLiveStream(parsedMessage.data.payload.videoId);
+                                                stoppedLiveStream(parsedMessage.data.payload.videoId, parsedMessage.data);
                                             }
                                             else {
                                                 websocketServerBroadcast(parsedMessage.data);

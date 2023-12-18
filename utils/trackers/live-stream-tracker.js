@@ -33,7 +33,7 @@ function stoppingLiveStream(videoId) {
     }
 }
 
-function stoppedLiveStream(videoId) {
+function stoppedLiveStream(videoId, data) {
     if(liveStreamExists(videoId)) {
         const process = LIVE_STREAM_TRACKER[videoId].process;
 
@@ -41,7 +41,7 @@ function stoppedLiveStream(videoId) {
             
         //delete LIVE_STREAM_TRACKER[videoId];
         
-        websocketServerBroadcast(parsedMessage.data);
+        websocketServerBroadcast(data);
     }
 }
 
