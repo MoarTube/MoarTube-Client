@@ -1,29 +1,6 @@
 const axios = require('axios');
 const { getMoarTubeNodeUrl } = require('./helpers');
 
-
-let websocketClient;
-
-
-function node_getWebsocketClient() {
-    return websocketClient;
-}
-
-function node_setWebsocketClient(ws) {
-    // only one websocket connection needs to be maintained between MoarTube Client and MoarTube Node at any given time
-    if(websocketClient != null) {
-        websocketClient.close();
-    }
-
-    websocketClient = ws;
-}
-
-function node_broadcastMessage_websocket(message) {
-    if(websocketClient != null) {
-        websocketClient.send(JSON.stringify(message));
-    }
-}
-
 function node_isAuthenticated(jwtToken) {
     return new Promise(function(resolve, reject) {
         if(jwtToken == null || jwtToken === '') {
@@ -1436,9 +1413,6 @@ function node_removeAdaptiveStreamSegment(jwtToken, videoId, format, resolution,
 module.exports = {
     node_isAuthenticated,
     node_doHeartBeat,
-    node_setWebsocketClient,
-    node_getWebsocketClient,
-    node_broadcastMessage_websocket,
     node_doSignin,
     node_doSignout,
     node_getSettings,

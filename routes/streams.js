@@ -1,12 +1,14 @@
 const express = require('express');
 const portscanner = require('portscanner');
 
-const { logDebugMessageToConsole } = require('../utils/helpers');
+const { logDebugMessageToConsole, websocketClientBroadcast } = require('../utils/helpers');
 const { isPortValid } = require('../utils/validators');
 const { 
-    node_isAuthenticated, node_broadcastMessage_websocket, node_stopVideoStreaming, node_streamVideo, node_setSourceFileExtension, node_getVideoData,
+    node_isAuthenticated, node_stopVideoStreaming, node_streamVideo, node_setSourceFileExtension, node_getVideoData,
     node_setVideoChatSettings 
 } = require('../utils/node-communications');
+
+const { addLiveStreamToLiveStreamTracker } = require('../utils/trackers/live-stream-tracker');
 
 const router = express.Router();
 
@@ -52,8 +54,8 @@ router.post('/start', (req, res) => {
                                     }
                                     else {
                                         const videoId = nodeResponseData.videoId;
-                                        
-                                        publishStreamTracker[videoId] = {process: null, stopping: false};
+
+                                        addLiveStreamToLiveStreamTracker(videoId);
                                         
                                         node_setSourceFileExtension(jwtToken, videoId, '.ts')
                                         .then(nodeResponseData => {
@@ -117,7 +119,7 @@ router.post('/:videoId/stop', (req, res) => {
             if(nodeResponseData.isAuthenticated) {
                 const videoId = req.params.videoId;
                 
-                node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
+                websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
                 
                 node_stopVideoStreaming(jwtToken, videoId)
                 .then((nodeResponseData) => {
@@ -127,7 +129,7 @@ router.post('/:videoId/stop', (req, res) => {
                         res.send({isError: true, message: 'error communicating with the MoarTube node'});
                     }
                     else {
-                        node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId }}});
+                        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId }}});
                         
                         res.send({isError: false});
                     }
@@ -152,7 +154,7 @@ router.post('/:videoId/stop', (req, res) => {
     });
 });
 
-app.get('/:videoId/rtmp/information', (req, res) => {
+router.get('/:videoId/rtmp/information', (req, res) => {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
@@ -200,7 +202,7 @@ app.get('/:videoId/rtmp/information', (req, res) => {
     });
 });
 
-app.get('/:videoId/chat/settings', (req, res) => {
+router.get('/:videoId/chat/settings', (req, res) => {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
@@ -243,7 +245,7 @@ app.get('/:videoId/chat/settings', (req, res) => {
     });
 });
 
-app.post('/:videoId/chat/settings', (req, res) => {
+router.post('/:videoId/chat/settings', (req, res) => {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)

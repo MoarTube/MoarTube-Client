@@ -1,18 +1,19 @@
 const path = require('path');
 const fs = require('fs');
 
-let USER_DIRECTORY;
-let PUBLIC_DIRECTORY;
-let TEMP_DIRECTORY;
-let TEMP_CERTIFICATES_DIRECTORY;
-let TEMP_VIDEOS_DIRECTORY;
-let MOARTUBE_CLIENT_PORT;
-let MOARTUBE_NODE_IP;
-let MOARTUBE_NODE_PORT;
-let MOARTUBE_NODE_HTTP_PROTOCOL;
-let MOARTUBE_NODE_WEBSOCKET_PROTOCOL;
+let userDirectory;
+let publicDirectory;
+let tempDirectory;
+let tempCertificatesDirectory;
+let tempVideosDirectory;
+let moartubeClientPort;
+let moartubeNodeIp;
+let moartubeNodePort;
+let moartubeNodeHttpProtocol;
+let moartubeNodeWebsocketProtocol;
 
-let 
+let websocketServer;
+let websocketClient;
 
 function logDebugMessageToConsole(message, error, stackTrace, isLoggingToFile) {
     const date = new Date(Date.now());
@@ -201,6 +202,30 @@ function performEncodingDecodingAssessment() {
     });
 }
 
+function createRequiredAssets() {
+    if (!fs.existsSync(getUserDirectoryPath())) {
+		fs.mkdirSync(getUserDirectoryPath(), { recursive: true });
+	}
+
+	if (!fs.existsSync(getTempCertificatesDirectoryPath())) {
+		fs.mkdirSync(getTempCertificatesDirectoryPath(), { recursive: true });
+	}
+
+	if (!fs.existsSync(getTempVideosDirectoryPath())) {
+		fs.mkdirSync(getTempVideosDirectoryPath(), { recursive: true });
+	}
+
+	if (!fs.existsSync(path.join(getUserDirectoryPath(), '_client_settings.json'))) {
+		fs.writeFileSync(path.join(getUserDirectoryPath(), '_client_settings.json'), JSON.stringify({
+			"processingAgent":{
+				"processingAgentType":"cpu",
+				"processingAgentName":"",
+				"processingAgentModel":""
+			}
+		}));
+	}
+}
+
 function cleanVideosDirectory() {
     return new Promise(function(resolve, reject) {
         logDebugMessageToConsole('cleaning imported video directories', null, null, true);
@@ -252,47 +277,64 @@ function cleanVideosDirectory() {
     });
 }
 
+function websocketClientBroadcast(message) {
+    if(websocketClient != null) {
+        websocketClient.send(JSON.stringify(message));
+    }
+}
+
+function websocketServerBroadcast(message) {
+    websocketServer.clients.forEach(function each(client) {
+        if (client.readyState === webSocket.OPEN) {
+            client.send(JSON.stringify(message));
+        }
+    });
+}
+
+
+
+
 
 /* getters */
 
 function getUserDirectoryPath() {
-    return USER_DIRECTORY;
+    return userDirectory;
 }
 
 function getPublicDirectoryPath() {
-    return PUBLIC_DIRECTORY;
+    return publicDirectory;
 }
 
 function getTempDirectoryPath() {
-    return TEMP_DIRECTORY;
+    return tempDirectory;
 }
 
 function getTempCertificatesDirectoryPath() {
-    return TEMP_CERTIFICATES_DIRECTORY;
+    return tempCertificatesDirectory;
 }
 
 function getTempVideosDirectoryPath() {
-    return TEMP_VIDEOS_DIRECTORY;
+    return tempVideosDirectory;
 }
 
 function getMoarTubeClientPort() {
-    return MOARTUBE_CLIENT_PORT;
+    return moartubeClientPort;
 }
 
 function getMoarTubeNodeIp() {
-    return MOARTUBE_NODE_IP;
+    return moartubeNodeIp;
 }
 
 function getMoarTubeNodePort() {
-    return MOARTUBE_NODE_PORT;
+    return moartubeNodePort;
 }
 
 function getMoarTubeNodeHttpProtocol() {
-    return MOARTUBE_NODE_HTTP_PROTOCOL;
+    return moartubeNodeHttpProtocol;
 }
 
 function getMoarTubeNodeWebsocketProtocol() {
-    return MOARTUBE_NODE_WEBSOCKET_PROTOCOL;
+    return moartubeNodeWebsocketProtocol;
 }
 
 function getMoarTubeNodeUrl() {
@@ -309,51 +351,67 @@ function getClientSettings() {
 	return clientSettings;
 }
 
+function getWebsocketServer() {
+    return websocketServer;
+}
+
+function getWebsocketClient() {
+    return websocketClient;
+}
+
 
 /* setters */
 
 function setPublicDirectoryPath(path) {
-    PUBLIC_DIRECTORY = path;
+    publicDirectory = path;
 }
 
 function setUserDirectoryPath(path) {
-    USER_DIRECTORY = path;
+    userDirectory = path;
 }
 
 function setTempDirectoryPath(path) {
-    TEMP_DIRECTORY = path;
+    tempDirectory = path;
 }
 
 function setTempCertificatesDirectoryPath(path) {
-    TEMP_CERTIFICATES_DIRECTORY = path;
+    tempCertificatesDirectory = path;
 }
 
 function setTempVideosDirectoryPath(path) {
-    TEMP_VIDEOS_DIRECTORY = path;
+    tempVideosDirectory = path;
 }
 
 function setMoarTubeClientPort(port) {
-    MOARTUBE_CLIENT_PORT = port;
+    moartubeClientPort = port;
 }
 
 function setMoarTubeNodeIp(ip) {
-    MOARTUBE_NODE_IP = ip;
+    moartubeNodeIp = ip;
 }
 
 function setMoarTubeNodePort(port) {
-    MOARTUBE_NODE_PORT = port;
+    moartubeNodePort = port;
 }
 
 function setMoarTubeNodeHttpProtocol(httpProtocol) {
-    MOARTUBE_NODE_HTTP_PROTOCOL = httpProtocol;
+    moartubeNodeHttpProtocol = httpProtocol;
 }
 
 function setMoarTubeNodeWebsocketProtocol(websocketprotocol) {
-    MOARTUBE_NODE_WEBSOCKET_PROTOCOL = websocketprotocol;
+    moartubeNodeWebsocketProtocol = websocketprotocol;
 }
 
 function setClientSettings(clientSettings) {
 	fs.writeFileSync(path.join(getUserDirectoryPath(), '_client_settings.json'), JSON.stringify(clientSettings));
+}
+
+function setWebsocketServer(wss) {
+    websocketServer = wss;
+}
+
+function setWebsocketClient(wsc) {
+    websocketClient = wsc;
 }
 
 module.exports = {
@@ -365,7 +423,10 @@ module.exports = {
     detectSystemCpu,
     getNetworkAddresses,
     performEncodingDecodingAssessment,
+    createRequiredAssets,
     cleanVideosDirectory,
+    websocketClientBroadcast,
+    websocketServerBroadcast,
     getUserDirectoryPath,
     getPublicDirectoryPath,
     getTempDirectoryPath,
@@ -379,6 +440,8 @@ module.exports = {
     getMoarTubeNodeUrl,
     getMoarTubeNodeWebsocketUrl,
     getClientSettings,
+    getWebsocketServer,
+    getWebsocketClient,
     setPublicDirectoryPath,
     setUserDirectoryPath,
     setTempDirectoryPath,
@@ -389,5 +452,7 @@ module.exports = {
     setMoarTubeNodePort,
     setMoarTubeNodeHttpProtocol,
     setMoarTubeNodeWebsocketProtocol,
-    setClientSettings
+    setClientSettings,
+    setWebsocketServer,
+    setWebsocketClient
 };

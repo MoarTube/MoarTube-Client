@@ -12,22 +12,27 @@ const crypto = require('crypto');
 const { 
 	logDebugMessageToConsole, 
 	performEncodingDecodingAssessment,
+	createRequiredAssets,
 	cleanVideosDirectory,
-	getUserDirectoryPath,
     getPublicDirectoryPath,
     getTempDirectoryPath,
-    getTempCertificatesDirectoryPath,
-    getTempVideosDirectoryPath,
     getMoarTubeClientPort,
     setPublicDirectoryPath,
     setUserDirectoryPath,
     setTempDirectoryPath,
     setTempCertificatesDirectoryPath,
     setTempVideosDirectoryPath,
-    setMoarTubeClientPort
+    setMoarTubeClientPort,
+	setWebsocketServer
 } = require('./utils/helpers');
 
-const { startPublishInterval } = require('./utils/video-publish-handler');
+const { 
+	startPublishInterval 
+} = require('./utils/handlers/video-publish-handler');
+
+const {
+	node_isAuthenticated 
+} = require('./utils/node-communications');
 
 const homeRoutes = require('./routes/home');
 const accountRoutes = require('./routes/account');
@@ -60,27 +65,7 @@ async function startClient() {
 
 	logDebugMessageToConsole('creating required directories', null, null, true);
 	
-	if (!fs.existsSync(getUserDirectoryPath())) {
-		fs.mkdirSync(getUserDirectoryPath(), { recursive: true });
-	}
-
-	if (!fs.existsSync(getTempCertificatesDirectoryPath())) {
-		fs.mkdirSync(getTempCertificatesDirectoryPath(), { recursive: true });
-	}
-
-	if (!fs.existsSync(getTempVideosDirectoryPath())) {
-		fs.mkdirSync(getTempVideosDirectoryPath(), { recursive: true });
-	}
-
-	if (!fs.existsSync(path.join(getUserDirectoryPath(), '_client_settings.json'))) {
-		fs.writeFileSync(path.join(getUserDirectoryPath(), '_client_settings.json'), JSON.stringify({
-			"processingAgent":{
-				"processingAgentType":"cpu",
-				"processingAgentName":"",
-				"processingAgentModel":""
-			}
-		}));
-	}
+	createRequiredAssets();
 
 	await cleanVideosDirectory();
 	
@@ -139,7 +124,7 @@ async function startClient() {
 			perMessageDeflate: false 
 		});
 
-
+		setWebsocketServer(websocketServer);
 
 		websocketServer.on('connection', function connection(ws) {
 			logDebugMessageToConsole('browser websocket client connected', null, null, true);

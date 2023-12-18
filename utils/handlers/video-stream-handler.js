@@ -1,5 +1,5 @@
-const { logDebugMessageToConsole, getTempVideosDirectoryPath } = require('./helpers');
-const { node_setVideoPublishing, node_setVideoLengths, node_setVideoPublished, node_broadcastMessage_websocket, node_uploadVideo } = require('./node-communications');
+const { logDebugMessageToConsole, getTempVideosDirectoryPath, websocketClientBroadcast } = require('../helpers');
+const { addProcessToLiveStreamTracker, isLiveStreamStopping, liveStreamExists } = require('../trackers/live-stream-tracker');
 
 
 
@@ -26,13 +26,13 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
         const ffmpegArguments = generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely);
         
         var process = spawn(ffmpegPath, ffmpegArguments);
-        
-        publishStreamTracker[videoId].process = process;
+
+        addProcessToLiveStreamTracker(videoId, process);
         
         var lengthSeconds = 0;
         var lengthTimestamp = '';
         process.stderr.on('data', function (data) {
-            if(!publishStreamTracker[videoId].stopping) {
+            if(!isLiveStreamStopping(videoId)) {
                 const stderrTemp = Buffer.from(data).toString();
                 logDebugMessageToConsole(stderrTemp, null, null, true);
                 
@@ -65,7 +65,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
             const segmentHistoryLength = 20;
             
             segmentInterval = setInterval(function() {
-                if(!publishStreamTracker[videoId].stopping) {
+                if(!isLiveStreamStopping(videoId)) {
                     (function() {
                         node_getNextExpectedSegmentIndex(jwtToken, videoId, format, resolution)
                         .then(nodeResponseData => {
@@ -101,7 +101,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                 if(fs.existsSync(manifestFilePath) && fs.existsSync(expectedSegmentFilePath)) {
                                     logDebugMessageToConsole('generating live images for video: ' + videoId, null, null, true);
                                     
-                                    const imagesDirectoryPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images');
+                                    const imagesDirectoryPath = path.join(getTempVideosDirectoryPath(), videoId + '/images');
                                     
                                     const thumbnailImagePath = path.join(imagesDirectoryPath, 'thumbnail.jpg');
                                     
@@ -121,7 +121,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                         logDebugMessageToConsole('live thumbnail generating ffmpeg process exited with exit code: ' + code, null, null, true);
                                         
                                         if(code === 0) {
-                                            const thumbnailPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images/thumbnail.jpg');
+                                            const thumbnailPath = path.join(getTempVideosDirectoryPath(), videoId + '/images/thumbnail.jpg');
                                             
                                             if(fs.existsSync(thumbnailPath)) {
                                                 logDebugMessageToConsole('generated live thumbnail for video: ' + videoId, null, null, true);
@@ -173,7 +173,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                         logDebugMessageToConsole('live preview generating ffmpeg process exited with exit code: ' + code, null, null, true);
                                         
                                         if(code === 0) {
-                                            const previewPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images/preview.jpg');
+                                            const previewPath = path.join(getTempVideosDirectoryPath(), videoId + '/images/preview.jpg');
                                             
                                             if(fs.existsSync(previewPath)) {
                                                 logDebugMessageToConsole('generated live preview for video: ' + videoId, null, null, true);
@@ -225,7 +225,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                         logDebugMessageToConsole('live poster generating ffmpeg process exited with exit code: ' + code, null, null, true);
                                         
                                         if(code === 0) {
-                                            const posterPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/images/poster.jpg');
+                                            const posterPath = path.join(getTempVideosDirectoryPath(), videoId + '/images/poster.jpg');
                                             
                                             if(fs.existsSync(posterPath)) {
                                                 logDebugMessageToConsole('generated live poster for video: ' + videoId, null, null, true);
@@ -301,7 +301,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                         else {
                                             const bandwidth = nodeResponseData.bandwidth;
                                             
-                                            node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: {type: 'streaming', videoId: videoId, lengthTimestamp: lengthTimestamp, bandwidth: bandwidth}}});
+                                            websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: {type: 'streaming', videoId: videoId, lengthTimestamp: lengthTimestamp, bandwidth: bandwidth}}});
                                         }
                                     })
                                     .catch(error => {
@@ -351,13 +351,13 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                 clearInterval(segmentInterval);
             }
             
-            if(publishStreamTracker.hasOwnProperty(videoId)) {
+            if(liveStreamExists(videoId)) {
                 logDebugMessageToConsole('performStreamingJob checking if live stream process was interrupted by user...', null, null, true);
                 
-                if(!publishStreamTracker[videoId].stopping) {
+                if(!isLiveStreamStopping(videoId)) {
                     logDebugMessageToConsole('performStreamingJob determined live stream process was interrupted by user', null, null, true);
                     
-                    node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
+                    websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
                     
                     node_stopVideoStreaming_database(jwtToken, videoId)
                     .then((nodeResponseData) => {
@@ -365,7 +365,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         }
                         else {
-                            node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId }}});
+                            websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId }}});
                         }
                     })
                     .catch(error => {
@@ -461,8 +461,8 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
     }
 
     
-    const hlsSegmentOutputPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
-    const manifestFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
+    const hlsSegmentOutputPath = path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
+    const manifestFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
     
     var ffmpegArguments = [];
     

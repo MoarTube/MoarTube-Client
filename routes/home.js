@@ -60,13 +60,13 @@ router.get('/node', (req, res) => {
     res.send({isError: false, nodeInformation: nodeInformation});
 });
 
-app.get('/network', (req, res) => {
+router.get('/network', (req, res) => {
     const networkAddresses = getNetworkAddresses();
     
     res.send({isError: false, networkAddresses: networkAddresses});
 });
 
-app.get('/heartbeat', (req, res) => {
+router.get('/heartbeat', (req, res) => {
     res.end();
 });
 

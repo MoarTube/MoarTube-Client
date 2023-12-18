@@ -7,15 +7,15 @@ const multer = require('multer');
 
 sharp.cache(false);
 
-const { logDebugMessageToConsole, deleteDirectoryRecursive, getPublicDirectoryPath, getTempVideosDirectoryPath, timestampToSeconds } = require('../utils/helpers');
+const { logDebugMessageToConsole, deleteDirectoryRecursive, getPublicDirectoryPath, getTempVideosDirectoryPath, timestampToSeconds, websocketClientBroadcast } = require('../utils/helpers');
 const { 
-    node_isAuthenticated, node_doSignout, node_getSettings, node_broadcastMessage_websocket, node_stopVideoImporting, node_getVideoInformation, node_doVideosSearch, 
+    node_isAuthenticated, node_doSignout, node_getSettings, node_stopVideoImporting, node_getVideoInformation, node_doVideosSearch, 
     node_getThumbnail, node_getPreview, node_getPoster, node_getVideoData, node_unpublishVideo, node_stopVideoPublishing, node_stopVideoStreaming, node_importVideo,
     node_setVideoError, node_setSourceFileExtension, node_setThumbnail, node_setPreview, node_setPoster, node_setVideoLengths, node_setVideoImported, node_getVideosTags,
     node_getSourceFileExtension, node_getVideosTagsAll, node_getVideoPublishes, node_setVideoInformation, node_deleteVideos, node_finalizeVideos, node_addVideoToIndex,
     node_removeVideoFromIndex, node_aliasVideo, node_getVideoAlias
 } = require('../utils/node-communications');
-const { addVideoToImportVideoTracker, isVideoImportStopping } = require('../utils/import-video-tracker');
+const { addVideoToImportVideoTracker, isVideoImportStopping } = require('../utils/trackers/import-video-tracker');
 
 const router = express.Router();
 
@@ -172,7 +172,7 @@ router.post('/import', (req, res) => {
                                     if(currentTime - lastImportingTime >= 100) {
                                         lastImportingTime = currentTime;
                                         
-                                        node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing', videoId: videoId, progress: importProgress }}});
+                                        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing', videoId: videoId, progress: importProgress }}});
                                     }
                                 }
                             });
@@ -356,7 +356,7 @@ router.post('/import', (req, res) => {
                                                                                                 else {
                                                                                                     logDebugMessageToConsole('flagging video as imported to node for video: ' + videoId, null, null, true);
                                                                                                     
-                                                                                                    node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'imported', videoId: videoId, lengthTimestamp: lengthTimestamp }}});
+                                                                                                    websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'imported', videoId: videoId, lengthTimestamp: lengthTimestamp }}});
                                                                                                     
                                                                                                     res.send({isError: false});
                                                                                                 }
@@ -464,7 +464,7 @@ router.post('/:videoId/importing/stop', (req, res) => {
             if(nodeResponseData.isAuthenticated) {
                 const videoId = req.params.videoId;
                 
-                node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing_stopping', videoId: videoId }}});
+                websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing_stopping', videoId: videoId }}});
                 
                 node_stopVideoImporting(jwtToken, videoId)
                 .then((nodeResponseData) => {
@@ -474,7 +474,7 @@ router.post('/:videoId/importing/stop', (req, res) => {
                         res.send({isError: true, message: 'error communicating with the MoarTube node'});
                     }
                     else {
-                        node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing_stopped', videoId: videoId }}});
+                        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing_stopped', videoId: videoId }}});
                         
                         res.send({isError: false});
                     }
@@ -513,7 +513,7 @@ router.post(':videoId/publishing/stop', (req, res) => {
             if(nodeResponseData.isAuthenticated) {
                 const videoId = req.params.videoId;
                 
-                node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing_stopping', videoId: videoId }}});
+                websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing_stopping', videoId: videoId }}});
                 
                 node_stopVideoPublishing(jwtToken, videoId)
                 .then((nodeResponseData) => {
@@ -523,7 +523,7 @@ router.post(':videoId/publishing/stop', (req, res) => {
                         res.send({isError: true, message: 'error communicating with the MoarTube node'});
                     }
                     else {
-                        node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing_stopped', videoId: videoId }}});
+                        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing_stopped', videoId: videoId }}});
                 
                         res.send({isError: false});
                     }
@@ -606,7 +606,7 @@ router.post('/:videoId/publish', (req, res) => {
                                                 resolution: resolution,
                                                 sourceFileExtension: sourceFileExtension,
                                                 idleInterval: setInterval(function() {
-                                                    node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing', videoId: videoId, format: format, resolution: resolution, progress: 0 }}});
+                                                    websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing', videoId: videoId, format: format, resolution: resolution, progress: 0 }}});
                                                 }, 1000)
                                             });
                                         }
@@ -998,7 +998,7 @@ router.post('/delete', (req, res) => {
                         const nonDeletedVideoIds = nodeResponseData.nonDeletedVideoIds;
 
                         for(const deletedVideoId of deletedVideoIds) {
-                            const deletedVideoIdPath = path.join(TEMP_VIDEOS_DIRECTORY, deletedVideoId);
+                            const deletedVideoIdPath = path.join(getTempVideosDirectoryPath(), deletedVideoId);
                             
                             deleteDirectoryRecursive(deletedVideoIdPath);
                         }
@@ -1052,11 +1052,11 @@ router.post('/finalize', (req, res) => {
                         const nonFinalizedVideoIds = nodeResponseData.nonFinalizedVideoIds;
                         
                         for(const finalizedVideoId of finalizedVideoIds) {
-                            const videoDirectory = path.join(TEMP_VIDEOS_DIRECTORY, finalizedVideoId);
+                            const videoDirectory = path.join(getTempVideosDirectoryPath(), finalizedVideoId);
                             
                             deleteDirectoryRecursive(videoDirectory);
                             
-                            node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'finalized', videoId: finalizedVideoId }}});
+                            websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'finalized', videoId: finalizedVideoId }}});
                         }
                         
                         res.send({isError: false, finalizedVideoIds: finalizedVideoIds, nonFinalizedVideoIds: nonFinalizedVideoIds});

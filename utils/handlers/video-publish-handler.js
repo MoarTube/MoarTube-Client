@@ -1,12 +1,20 @@
-const { logDebugMessageToConsole, deleteDirectoryRecursive, timestampToSeconds } = require('./helpers');
-const { node_setVideoPublishing, node_setVideoLengths, node_setVideoPublished, node_broadcastMessage_websocket, node_uploadVideo } = require('./node-communications');
+const { logDebugMessageToConsole, deleteDirectoryRecursive, timestampToSeconds, websocketClientBroadcast, getTempVideosDirectoryPath } = require('../helpers');
+const { node_setVideoPublishing, node_setVideoLengths, node_setVideoPublished, node_uploadVideo } = require('../node-communications');
 
 var inProgressPublishingJobCount = 0;
 var maximumInProgressPublishingJobCount = 5;
 
 const inProgressPublishingJobs = [];
+
+
+
+// here
 const pendingPublishingJobs = [];
 const publishVideoEncodingTracker = {};
+
+
+
+
 
 function startPublishInterval() {
     setInterval(function() {
@@ -76,10 +84,10 @@ function startPublishingJob(publishingJob) {
 }
 
 function finishVideoPublish(jwtToken, videoId, sourceFileExtension) {
-    deleteDirectoryRecursive(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive'));
-    deleteDirectoryRecursive(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive'));
+    deleteDirectoryRecursive(path.join(getTempVideosDirectoryPath(), videoId + '/adaptive'));
+    deleteDirectoryRecursive(path.join(getTempVideosDirectoryPath(), videoId + '/progressive'));
     
-    const sourceFilePath =  path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/source/' + videoId + sourceFileExtension);
+    const sourceFilePath =  path.join(getTempVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
     
     if(fs.existsSync(sourceFilePath)) {
         const result = spawnSync(ffmpegPath, [
@@ -106,7 +114,7 @@ function finishVideoPublish(jwtToken, videoId, sourceFileExtension) {
                     else {
                         logDebugMessageToConsole('video finished publishing for id: ' + videoId, null, null, true);
                         
-                        node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'published', videoId: videoId, lengthTimestamp: lengthTimestamp, lengthSeconds: lengthSeconds }}});
+                        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'published', videoId: videoId, lengthTimestamp: lengthTimestamp, lengthSeconds: lengthSeconds }}});
                     }
                 })
                 .catch(error => {
@@ -126,30 +134,30 @@ function finishVideoPublish(jwtToken, videoId, sourceFileExtension) {
 function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExtension) {
     return new Promise(function(resolve, reject) {
         if(!publishVideoEncodingTracker[videoId].stopping) {
-            const sourceFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/source/' + videoId + sourceFileExtension);
+            const sourceFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
             
             const destinationFileExtension = '.' + format;
             var destinationFilePath = '';
             
             if(format === 'm3u8') {
-                fs.mkdirSync(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive/m3u8/' + resolution), { recursive: true });
+                fs.mkdirSync(path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution), { recursive: true });
                 
-                destinationFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive/m3u8/manifest-' + resolution + destinationFileExtension);
+                destinationFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + destinationFileExtension);
             }
             else if(format === 'mp4') {
-                fs.mkdirSync(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/mp4/' + resolution), { recursive: true });
+                fs.mkdirSync(path.join(getTempVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution), { recursive: true });
                 
-                destinationFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/mp4/' + resolution + '/' + resolution + destinationFileExtension);
+                destinationFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution + '/' + resolution + destinationFileExtension);
             }
             else if(format === 'webm') {
-                fs.mkdirSync(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/webm/' + resolution), { recursive: true });
+                fs.mkdirSync(path.join(getTempVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution), { recursive: true });
                 
-                destinationFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/webm/' + resolution + '/' + resolution + destinationFileExtension);
+                destinationFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution + '/' + resolution + destinationFileExtension);
             }
             else if(format === 'ogv') {
-                fs.mkdirSync(path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/ogv/' + resolution), { recursive: true });
+                fs.mkdirSync(path.join(getTempVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution), { recursive: true });
                 
-                destinationFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/ogv/' + resolution + '/' + resolution + destinationFileExtension);
+                destinationFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution + '/' + resolution + destinationFileExtension);
             }
             
             const ffmpegArguments = generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePath, destinationFilePath);
@@ -196,7 +204,7 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
                     if(currentTimeSeconds > 0 && lengthSeconds > 0) {
                         const encodingProgress = Math.ceil(((currentTimeSeconds / lengthSeconds) * 100) / 2);
                         
-                        node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing', videoId: videoId, format: format, resolution: resolution, progress: encodingProgress }}});
+                        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing', videoId: videoId, format: format, resolution: resolution, progress: encodingProgress }}});
                     }
                 }
             });
@@ -232,8 +240,8 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
             const paths = [];
             
             if(format === 'm3u8') {
-                const manifestFilePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
-                const segmentsDirectoryPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive/m3u8/' + resolution);
+                const manifestFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
+                const segmentsDirectoryPath = path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution);
                 
                 paths.push({fileName : 'manifest-' + resolution + '.m3u8', filePath: manifestFilePath});
                 
@@ -246,19 +254,19 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
             }
             else if(format === 'mp4') {
                 const fileName = resolution + '.mp4';
-                const filePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/mp4/' + resolution + '/' + fileName);
+                const filePath = path.join(getTempVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution + '/' + fileName);
                 
                 paths.push({fileName : fileName, filePath: filePath});
             }
             else if(format === 'webm') {
                 const fileName = resolution + '.webm';
-                const filePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/webm/' + resolution + '/' + fileName);
+                const filePath = path.join(getTempVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution + '/' + fileName);
                 
                 paths.push({fileName : fileName, filePath: filePath});
             }
             else if(format === 'ogv') {
                 const fileName = resolution + '.ogv';
-                const filePath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/progressive/ogv/' + resolution + '/' + fileName);
+                const filePath = path.join(getTempVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution + '/' + fileName);
                 
                 paths.push({fileName : fileName, filePath: filePath});
             }
@@ -362,7 +370,7 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
         }
     }
 
-    const hlsSegmentOutputPath = path.join(TEMP_VIDEOS_DIRECTORY, videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
+    const hlsSegmentOutputPath = path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
     
     var ffmpegArguments = [];
     

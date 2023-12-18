@@ -3,11 +3,18 @@ const webSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
 
-const { logDebugMessageToConsole, getMoarTubeNodeWebsocketUrl, getPublicDirectoryPath, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodeIp, setMoarTubeNodePort } = require('../utils/helpers');
+const { 
+    logDebugMessageToConsole, getMoarTubeNodeWebsocketUrl, getPublicDirectoryPath, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodeIp, 
+    setMoarTubeNodePort, setWebsocketClient, websocketServerBroadcast
+} = require('../utils/helpers');
+
 const { isPublicNodeAddressValid, isPortValid } = require('../utils/validators');
-const { node_isAuthenticated, node_doHeartBeat, node_doSignin, node_doSignout, node_getSettings, node_getWebsocketClient, node_setWebsocketClient } = require('../utils/node-communications');
-const { stoppingVideoImport, stoppedVideoImport } = require('../utils/import-video-tracker');
-const { stoppingVideoStream, stoppedVideoStream } = require('../utils/video-stream-tracker');
+
+const { node_isAuthenticated, node_doHeartBeat, node_doSignin, node_doSignout, node_getSettings } = require('../utils/node-communications');
+
+const { stoppingVideoImport, stoppedVideoImport } = require('../utils/trackers/import-video-tracker');
+
+const { stoppingLiveStream, stoppedLiveStream } = require('../utils/trackers/live-stream-tracker');
 
 const router = express.Router();
 
@@ -126,7 +133,7 @@ router.post('/signin', (req, res) => {
                             try {
                                 const websocketClient = new webSocket(getMoarTubeNodeWebsocketUrl());
 
-                                node_setWebsocketClient(websocketClient);
+                                setWebsocketClient(websocketClient);
                                 
                                 var pingIntervalTimer;
                                 var pingTimeoutTimer;
@@ -190,15 +197,14 @@ router.post('/signin', (req, res) => {
                                                 websocketServerBroadcast(parsedMessage.data);
                                             }
                                             else if(parsedMessage.data.payload.type === 'streaming_stopping') {
-                                                stoppingVideoStream(parsedMessage.data.payload.videoId);
+                                                stoppingLiveStream(parsedMessage.data.payload.videoId);
                                             }
                                             else if(parsedMessage.data.payload.type === 'streaming_stopped') {
-                                                stoppedVideoStream(parsedMessage.data.payload.videoId);
+                                                stoppedLiveStream(parsedMessage.data.payload.videoId);
                                             }
                                             else {
                                                 websocketServerBroadcast(parsedMessage.data);
                                             }
-                                            
                                         }
                                         else if(parsedMessage.data.eventName === 'video_data') {
                                             websocketServerBroadcast(parsedMessage.data);
@@ -212,7 +218,7 @@ router.post('/signin', (req, res) => {
                                     clearInterval(pingIntervalTimer);
                                     clearInterval(pingTimeoutTimer);
 
-                                    node_setWebsocketClient(null);
+                                    setWebsocketClient(null);
 
                                     setTimeout(connectWebsocketClient, 1000);
                                 });

@@ -7,7 +7,7 @@ const multer = require('multer');
 sharp.cache(false);
 
 const { 
-    logDebugMessageToConsole, getPublicDirectoryPath, getClientSettings, getTempCertificatesDirectoryPath, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol,
+    logDebugMessageToConsole, getPublicDirectoryPath, getTempCertificatesDirectoryPath, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol,
     setMoarTubeNodePort, detectOperatingSystem, detectSystemGpu, detectSystemCpu, getClientSettings, setClientSettings
 } = require('../utils/helpers');
 const { 
@@ -813,7 +813,7 @@ router.post('/node/network/external', (req, res) => {
     });
 });
 
-app.post('/node/account/update', (req, res) => {
+router.post('/node/account/update', (req, res) => {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
