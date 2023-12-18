@@ -1,5 +1,5 @@
-const { node_setVideoPublishing, node_setVideoLengths, node_setVideoPublished, node_broadcastMessage_websocket, node_uploadVideo } = require('./node-communications');
 const { logDebugMessageToConsole, deleteDirectoryRecursive, timestampToSeconds } = require('./helpers');
+const { node_setVideoPublishing, node_setVideoLengths, node_setVideoPublished, node_broadcastMessage_websocket, node_uploadVideo } = require('./node-communications');
 
 var inProgressPublishingJobCount = 0;
 var maximumInProgressPublishingJobCount = 5;

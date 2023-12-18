@@ -1325,6 +1325,114 @@ function node_uploadVideo(jwtToken, videoId, format, resolution, directoryPaths)
     });
 }
 
+function node_setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled, chatHistoryLimit) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/stream/' + videoId + '/chat/settings', {
+            isChatHistoryEnabled: isChatHistoryEnabled,
+            chatHistoryLimit: chatHistoryLimit
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_getNextExpectedSegmentIndex(jwtToken, videoId, format, resolution) {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/streams/' + videoId + '/adaptive/' + format + '/' + resolution + '/segments/nextExpectedSegmentIndex', {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_getVideoBandwidth(jwtToken, videoId) {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/streams/' + videoId + '/bandwidth', {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_uploadStream(jwtToken, videoId, format, resolution, directoryPaths) {
+    return new Promise(function(resolve, reject) {
+        const formData = new FormData();
+        for (directoryPath of directoryPaths) {
+            const fileName = directoryPath.fileName;
+            const filePath = directoryPath.filePath;
+            const fileStream = fs.createReadStream(filePath);
+            
+            formData.append('video_files', fileStream, fileName);
+        }
+
+        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/stream', formData, {
+            params: {
+                format: format,
+                resolution: resolution
+            },
+            headers: {
+                Authorization: jwtToken
+            }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_removeAdaptiveStreamSegment(jwtToken, videoId, format, resolution, segmentName) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/streams/' + videoId + '/adaptive/' + format + '/' + resolution + '/segments/remove', {
+            segmentName: segmentName
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 module.exports = {
     node_isAuthenticated,
     node_doHeartBeat,
@@ -1392,5 +1500,10 @@ module.exports = {
     node_setAccountCredentials,
     node_getIndexerCaptcha,
     node_getAliaserCaptcha,
-    node_uploadVideo
+    node_uploadVideo,
+    node_setVideoChatSettings,
+    node_getNextExpectedSegmentIndex,
+    node_getVideoBandwidth,
+    node_uploadStream,
+    node_removeAdaptiveStreamSegment
 };

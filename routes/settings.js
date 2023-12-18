@@ -4,6 +4,8 @@ const fs = require('fs');
 const sharp = require('sharp');
 const multer = require('multer');
 
+sharp.cache(false);
+
 const { 
     logDebugMessageToConsole, getPublicDirectoryPath, getClientSettings, getTempCertificatesDirectoryPath, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol,
     setMoarTubeNodePort, detectOperatingSystem, detectSystemGpu, detectSystemCpu, getClientSettings, setClientSettings

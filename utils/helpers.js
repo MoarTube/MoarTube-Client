@@ -12,6 +12,8 @@ let MOARTUBE_NODE_PORT;
 let MOARTUBE_NODE_HTTP_PROTOCOL;
 let MOARTUBE_NODE_WEBSOCKET_PROTOCOL;
 
+let 
+
 function logDebugMessageToConsole(message, error, stackTrace, isLoggingToFile) {
     const date = new Date(Date.now());
     const year = date.getFullYear();

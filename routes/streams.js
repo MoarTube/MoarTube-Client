@@ -3,7 +3,10 @@ const portscanner = require('portscanner');
 
 const { logDebugMessageToConsole } = require('../utils/helpers');
 const { isPortValid } = require('../utils/validators');
-const { node_isAuthenticated, node_broadcastMessage_websocket, node_stopVideoStreaming, node_streamVideo, node_setSourceFileExtension } = require('../utils/node-communications');
+const { 
+    node_isAuthenticated, node_broadcastMessage_websocket, node_stopVideoStreaming, node_streamVideo, node_setSourceFileExtension, node_getVideoData,
+    node_setVideoChatSettings 
+} = require('../utils/node-communications');
 
 const router = express.Router();
 
@@ -149,6 +152,135 @@ router.post('/:videoId/stop', (req, res) => {
     });
 });
 
+app.get('/:videoId/rtmp/information', (req, res) => {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const videoId = req.params.videoId;
+                
+                node_getVideoData(jwtToken, videoId)
+                .then(nodeResponseData => {
+                    const meta = JSON.parse(nodeResponseData.videoData.meta);
 
+                    const netorkAddress = meta.networkAddress;
+                    const rtmpPort = meta.rtmpPort;
+                    const uuid = meta.uuid;
+
+                    const rtmpStreamUrl = 'rtmp://' + netorkAddress + ':' + rtmpPort + '/live/' + uuid;
+                    const rtmpServerUrl = 'rtmp://' + netorkAddress + ':' + rtmpPort + '/live';
+                    const rtmpStreamkey = uuid;
+
+                    res.send({isError: false, rtmpStreamUrl: rtmpStreamUrl, rtmpServerUrl: rtmpServerUrl, rtmpStreamkey: rtmpStreamkey});
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+});
+
+app.get('/:videoId/chat/settings', (req, res) => {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const videoId = req.params.videoId;
+                
+                node_getVideoData(jwtToken, videoId)
+                .then(nodeResponseData => {
+                    const meta = JSON.parse(nodeResponseData.videoData.meta);
+                    
+                    const isChatHistoryEnabled = meta.chatSettings.isChatHistoryEnabled;
+                    const chatHistoryLimit = meta.chatSettings.chatHistoryLimit;
+                    
+                    res.send({isError: false, isChatHistoryEnabled: isChatHistoryEnabled, chatHistoryLimit: chatHistoryLimit});
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+});
+
+app.post('/:videoId/chat/settings', (req, res) => {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const videoId = req.params.videoId;
+                const isChatHistoryEnabled = req.body.isChatHistoryEnabled;
+                const chatHistoryLimit = req.body.chatHistoryLimit;
+                
+                node_setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled, chatHistoryLimit)
+                .then(nodeResponseData => {
+                    res.send(nodeResponseData);
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+});
 
 module.exports = router;

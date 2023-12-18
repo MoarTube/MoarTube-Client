@@ -7,6 +7,7 @@ const { logDebugMessageToConsole, getMoarTubeNodeWebsocketUrl, getPublicDirector
 const { isPublicNodeAddressValid, isPortValid } = require('../utils/validators');
 const { node_isAuthenticated, node_doHeartBeat, node_doSignin, node_doSignout, node_getSettings, node_getWebsocketClient, node_setWebsocketClient } = require('../utils/node-communications');
 const { stoppingVideoImport, stoppedVideoImport } = require('../utils/import-video-tracker');
+const { stoppingVideoStream, stoppedVideoStream } = require('../utils/video-stream-tracker');
 
 const router = express.Router();
 
@@ -189,19 +190,10 @@ router.post('/signin', (req, res) => {
                                                 websocketServerBroadcast(parsedMessage.data);
                                             }
                                             else if(parsedMessage.data.payload.type === 'streaming_stopping') {
-                                                if(publishStreamTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
-                                                    publishStreamTracker[parsedMessage.data.payload.videoId].stopping = true;
-                                                }
+                                                stoppingVideoStream(parsedMessage.data.payload.videoId);
                                             }
                                             else if(parsedMessage.data.payload.type === 'streaming_stopped') {
-                                                if(publishStreamTracker.hasOwnProperty(parsedMessage.data.payload.videoId)) {
-                                                    const process = publishStreamTracker[parsedMessage.data.payload.videoId].process;
-                                                    process.kill(); // no point in being graceful about it; just kill it
-                                                    
-                                                    //delete publishStreamTracker[parsedMessage.data.payload.videoId];
-                                                }
-                                                
-                                                websocketServerBroadcast(parsedMessage.data);
+                                                stoppedVideoStream(parsedMessage.data.payload.videoId);
                                             }
                                             else {
                                                 websocketServerBroadcast(parsedMessage.data);

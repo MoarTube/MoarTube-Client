@@ -5,6 +5,8 @@ const spawnSync = require('child_process').spawnSync;
 const sharp = require('sharp');
 const multer = require('multer');
 
+sharp.cache(false);
+
 const { logDebugMessageToConsole, deleteDirectoryRecursive, getPublicDirectoryPath, getTempVideosDirectoryPath, timestampToSeconds } = require('../utils/helpers');
 const { 
     node_isAuthenticated, node_doSignout, node_getSettings, node_broadcastMessage_websocket, node_stopVideoImporting, node_getVideoInformation, node_doVideosSearch, 
