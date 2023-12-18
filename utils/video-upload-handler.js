@@ -1,5 +1,5 @@
-const { node_setVideoPublishing, node_setVideoLengths, node_setVideoPublished, node_broadcastMessage_websocket } = require('../utils/node-communications');
-const { logDebugMessageToConsole, deleteDirectoryRecursive, timestampToSeconds } = require('../utils/helpers');
+const { node_setVideoPublishing, node_setVideoLengths, node_setVideoPublished, node_broadcastMessage_websocket, node_uploadVideo } = require('./node-communications');
+const { logDebugMessageToConsole, deleteDirectoryRecursive, timestampToSeconds } = require('./helpers');
 
 var inProgressPublishingJobCount = 0;
 var maximumInProgressPublishingJobCount = 5;
@@ -263,7 +263,7 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
                 paths.push({fileName : fileName, filePath: filePath});
             }
             
-            node_uploadVideo_fileSystem(jwtToken, videoId, format, resolution, paths)
+            node_uploadVideo(jwtToken, videoId, format, resolution, paths)
             .then(nodeResponseData => {
                 if(nodeResponseData.isError) {
                     logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);

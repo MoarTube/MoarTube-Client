@@ -632,6 +632,24 @@ function node_getVideosTags(jwtToken) {
     });
 }
 
+function node_getVideoReports(jwtToken) {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/node/reports/videos', {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 function node_getVideoReportsArchive(jwtToken) {
     return new Promise(function(resolve, reject) {
         axios.get(getMoarTubeNodeUrl() + '/node/reports/archive/videos', {
@@ -907,6 +925,405 @@ function node_removeComment(jwtToken, videoId, commentId, timestamp) {
     });
 }
 
+function node_getVideoPublishes(jwtToken, videoId) {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/publishes', {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_setVideoInformation(jwtToken, videoId, title, description, tags) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/information', {
+            title: title,
+            description: description,
+            tags: tags
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_deleteVideos(jwtToken, videoIdsJson) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/videos/delete', {
+            videoIdsJson: videoIdsJson
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_finalizeVideos(jwtToken, videoIdsJson) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/videos/finalize', {
+            videoIdsJson: videoIdsJson
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_addVideoToIndex(jwtToken, videoId, captchaResponse, containsAdultContent, termsOfServiceAgreed) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/index/add', {
+            captchaResponse: captchaResponse,
+            containsAdultContent: containsAdultContent,
+            termsOfServiceAgreed: termsOfServiceAgreed
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_removeVideoFromIndex(jwtToken, videoId) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/index/remove', {
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_aliasVideo(jwtToken, videoId, captchaResponse) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/alias', {
+            captchaResponse: captchaResponse
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_getVideoAlias(jwtToken, videoId) {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/alias', {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_setAvatar(jwtToken, iconPath, avatarPath) {
+    return new Promise(function(resolve, reject) {
+        const iconFileStream = fs.createReadStream(iconPath);
+        const avatarFileStream = fs.createReadStream(avatarPath);
+        
+        const formData = new FormData();
+        formData.append('iconFile', iconFileStream, 'icon.png');
+        formData.append('avatarFile', avatarFileStream, 'avatar.png');
+        
+        const headers = formData.getHeaders();
+        headers.Authorization = jwtToken;
+        
+        axios.post(getMoarTubeNodeUrl() + '/settings/node/avatar', formData, {
+          headers: headers
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_getBanner(jwtToken) {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/settings/banner', {
+          headers: {
+            Authorization: jwtToken
+          },
+          responseType: 'stream'
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_setBanner(jwtToken, bannerPath) {
+    return new Promise(function(resolve, reject) {
+        const bannerFileStream = fs.createReadStream(bannerPath);
+        
+        const formData = new FormData();
+        formData.append('bannerFile', bannerFileStream, 'banner.png');
+        
+        const headers = formData.getHeaders();
+        headers.Authorization = jwtToken;
+        
+        axios.post(getMoarTubeNodeUrl() + '/settings/banner', formData, {
+          headers: headers
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_setNodeName(jwtToken, nodeName, nodeAbout, nodeId) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/settings/node/personalize', {
+            nodeName: nodeName,
+            nodeAbout: nodeAbout,
+            nodeId: nodeId
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_setSecureConnection(jwtToken, isSecure, keyFile, certFile, caFiles) {
+    return new Promise(function(resolve, reject) {
+        const formData = new FormData();
+        
+        if(keyFile != null) {
+            const keyFileStream = fs.createReadStream(keyFile.path);
+            formData.append('keyFile', keyFileStream, 'private_key.pem');
+        }
+        
+        if(certFile != null) {
+            const certFileStream = fs.createReadStream(certFile.path);
+            formData.append('certFile', certFileStream, 'certificate.pem');
+        }
+        
+        if(caFiles != null) {
+            for(const caFile of caFiles) {
+                const caFileStream = fs.createReadStream(caFile.path);
+                
+                formData.append('caFiles', caFileStream, caFile.filename);
+            }
+        }
+        
+        const headers = formData.getHeaders();
+        headers.Authorization = jwtToken;
+        
+        axios.post(getMoarTubeNodeUrl() + '/settings/node/secure?isSecure=' + isSecure, formData, {
+          headers: headers
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_setNetworkInternal(jwtToken, listeningNodePort) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/settings/node/network/internal', {
+            listeningNodePort: listeningNodePort
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_setAccountCredentials(jwtToken, username, password) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/node/account/update', {
+            username: username,
+            password: password
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_getIndexerCaptcha(jwtToken) {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/index/captcha', {
+          headers: {
+            Authorization: jwtToken
+          },
+          responseType: 'stream'
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_getAliaserCaptcha(jwtToken) {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/alias/captcha', {
+          headers: {
+            Authorization: jwtToken
+          },
+          responseType: 'stream'
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_uploadVideo(jwtToken, videoId, format, resolution, directoryPaths) {
+    return new Promise(function(resolve, reject) {
+        const formData = new FormData();
+        
+        for (directoryPath of directoryPaths) {
+            const fileName = directoryPath.fileName;
+            const filePath = directoryPath.filePath;
+            const fileStream = fs.createReadStream(filePath);
+            
+            formData.append('video_files', fileStream, fileName);
+        }
+
+        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/upload', formData, {
+            params: {
+                format: format,
+                resolution: resolution
+            },
+            headers: {
+                Authorization: jwtToken
+            }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
 
 module.exports = {
     node_isAuthenticated,
@@ -917,7 +1334,6 @@ module.exports = {
     node_doSignin,
     node_doSignout,
     node_getSettings,
-    node_getAvatar,
     node_setPrivate,
     node_setExternalNetwork,
     node_getReportCount,
@@ -943,6 +1359,7 @@ module.exports = {
     node_setVideoPublished,
     node_getAllComments,
     node_getVideosTags,
+    node_getVideoReports,
     node_getVideoReportsArchive,
     node_streamVideo,
     node_getSourceFileExtension,
@@ -956,5 +1373,24 @@ module.exports = {
     node_archiveCommentReport,
     node_removeCommentReport,
     node_removeCommentReportArchive,
-    node_removeComment
+    node_removeComment,
+    node_getVideoPublishes,
+    node_setVideoInformation,
+    node_deleteVideos,
+    node_finalizeVideos,
+    node_addVideoToIndex,
+    node_removeVideoFromIndex,
+    node_aliasVideo,
+    node_getVideoAlias,
+    node_getAvatar,
+    node_setAvatar,
+    node_getBanner,
+    node_setBanner,
+    node_setNodeName,
+    node_setSecureConnection,
+    node_setNetworkInternal,
+    node_setAccountCredentials,
+    node_getIndexerCaptcha,
+    node_getAliaserCaptcha,
+    node_uploadVideo
 };

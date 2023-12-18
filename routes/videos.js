@@ -3,13 +3,15 @@ const path = require('path');
 const fs = require('fs');
 const spawnSync = require('child_process').spawnSync;
 const sharp = require('sharp');
+const multer = require('multer');
 
 const { logDebugMessageToConsole, deleteDirectoryRecursive, getPublicDirectoryPath, getTempVideosDirectoryPath, timestampToSeconds } = require('../utils/helpers');
 const { 
     node_isAuthenticated, node_doSignout, node_getSettings, node_broadcastMessage_websocket, node_stopVideoImporting, node_getVideoInformation, node_doVideosSearch, 
     node_getThumbnail, node_getPreview, node_getPoster, node_getVideoData, node_unpublishVideo, node_stopVideoPublishing, node_stopVideoStreaming, node_importVideo,
     node_setVideoError, node_setSourceFileExtension, node_setThumbnail, node_setPreview, node_setPoster, node_setVideoLengths, node_setVideoImported, node_getVideosTags,
-    node_getSourceFileExtension, node_getVideosTagsAll
+    node_getSourceFileExtension, node_getVideosTagsAll, node_getVideoPublishes, node_setVideoInformation, node_deleteVideos, node_finalizeVideos, node_addVideoToIndex,
+    node_removeVideoFromIndex, node_aliasVideo, node_getVideoAlias
 } = require('../utils/node-communications');
 const { addVideoToImportVideoTracker, isVideoImportStopping } = require('../utils/import-video-tracker');
 
@@ -785,23 +787,482 @@ router.get('/tags/all', (req, res) => {
     });
 });
 
+router.get('/:videoId/publishes', (req, res) => {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const videoId = req.params.videoId;
+                
+                node_getVideoPublishes(jwtToken, videoId)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        
+                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                    }
+                    else {
+                        res.send({isError: false, publishes: nodeResponseData.publishes});
+                    }
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+                
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+});
 
+router.get('/:videoId/information', (req, res) => {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const videoId = req.params.videoId;
+                
+                node_getVideoInformation(jwtToken, videoId)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        
+                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                    }
+                    else {
+                        res.send({isError: false, information: nodeResponseData.information});
+                    }
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+                
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+});
 
+router.get('/:videoId/information', (req, res) => {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const videoId = req.params.videoId;
+                
+                node_getVideoInformation(jwtToken, videoId)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        
+                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                    }
+                    else {
+                        res.send({isError: false, information: nodeResponseData.information});
+                    }
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+                
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+});
 
+router.post('/:videoId/information', (req, res) => {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const videoId = req.params.videoId;
+                const title = req.body.title;
+                const description = req.body.description;
+                const tags = req.body.tags;
+                
+                node_setVideoInformation(jwtToken, videoId, title, description, tags)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        
+                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                    }
+                    else {
+                        res.send({isError: false, information: nodeResponseData.information});
+                    }
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+                
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+});
 
+router.post('/delete', (req, res) => {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const videoIdsJson = req.body.videoIdsJson;
+                
+                node_deleteVideos(jwtToken, videoIdsJson)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        
+                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                    }
+                    else {
+                        const deletedVideoIds = nodeResponseData.deletedVideoIds;
+                        const nonDeletedVideoIds = nodeResponseData.nonDeletedVideoIds;
 
+                        for(const deletedVideoId of deletedVideoIds) {
+                            const deletedVideoIdPath = path.join(TEMP_VIDEOS_DIRECTORY, deletedVideoId);
+                            
+                            deleteDirectoryRecursive(deletedVideoIdPath);
+                        }
+                        
+                        res.send({isError: false, deletedVideoIds: deletedVideoIds, nonDeletedVideoIds: nonDeletedVideoIds});
+                    }
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+                
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+});
 
+router.post('/finalize', (req, res) => {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const videoIdsJson = req.body.videoIdsJson;
+                
+                node_finalizeVideos(jwtToken, videoIdsJson)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        
+                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                    }
+                    else {
+                        const finalizedVideoIds = nodeResponseData.finalizedVideoIds;
+                        const nonFinalizedVideoIds = nodeResponseData.nonFinalizedVideoIds;
+                        
+                        for(const finalizedVideoId of finalizedVideoIds) {
+                            const videoDirectory = path.join(TEMP_VIDEOS_DIRECTORY, finalizedVideoId);
+                            
+                            deleteDirectoryRecursive(videoDirectory);
+                            
+                            node_broadcastMessage_websocket({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'finalized', videoId: finalizedVideoId }}});
+                        }
+                        
+                        res.send({isError: false, finalizedVideoIds: finalizedVideoIds, nonFinalizedVideoIds: nonFinalizedVideoIds});
+                    }
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+                
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+});
 
+router.post('/:videoId/index/add', (req, res) => {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const videoId = req.params.videoId;
+                const captchaResponse = req.body.captchaResponse;
+                const containsAdultContent = req.body.containsAdultContent;
+                const termsOfServiceAgreed = req.body.termsOfServiceAgreed;
 
+                node_addVideoToIndex(jwtToken, videoId, captchaResponse, containsAdultContent, termsOfServiceAgreed)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        
+                        res.send({isError: true, message: nodeResponseData.message});
+                    }
+                    else {
+                        res.send({isError: false});
+                    }
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+                
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+});
 
+router.post('/:videoId/index/remove', (req, res) => {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const videoId = req.params.videoId;
 
+                node_removeVideoFromIndex(jwtToken, videoId)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        
+                        res.send({isError: true, message: nodeResponseData.message});
+                    }
+                    else {
+                        res.send({isError: false});
+                    }
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+                
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+});
 
+router.post('/:videoId/alias', (req, res) => {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const videoId = req.params.videoId;
+                const captchaResponse = req.body.captchaResponse;
+                
+                node_aliasVideo(jwtToken, videoId, captchaResponse)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        
+                        res.send({isError: true, message: nodeResponseData.message});
+                    }
+                    else {
+                        res.send({isError: false, videoAliasUrl: nodeResponseData.videoAliasUrl});
+                    }
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+                
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+});
 
-
-
-
-
-
+router.get('/:videoId/alias', (req, res) => {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const videoId = req.params.videoId;
+                
+                node_getVideoAlias(jwtToken, videoId)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        
+                        res.send({isError: true, message: nodeResponseData.message});
+                    }
+                    else {
+                        res.send({isError: false, videoAliasUrl: nodeResponseData.videoAliasUrl});
+                    }
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+                
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+});
 
 
 

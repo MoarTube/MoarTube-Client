@@ -105,7 +105,7 @@ router.get('/all', (req, res) => {
     });
 });
 
-router.get('/reports/comments/archive/all', (req, res) => {
+router.get('/archive/all', (req, res) => {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
@@ -150,7 +150,7 @@ router.get('/reports/comments/archive/all', (req, res) => {
     });
 });
 
-router.post('/reports/comment/archive', (req, res) => {
+router.post('/archive', (req, res) => {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
@@ -195,7 +195,7 @@ router.post('/reports/comment/archive', (req, res) => {
     });
 });
 
-router.post('/reports/comment/delete', (req, res) => {
+router.post('/delete', (req, res) => {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
@@ -240,7 +240,7 @@ router.post('/reports/comment/delete', (req, res) => {
     });
 });
 
-router.post('/reports/archive/comment/delete', (req, res) => {
+router.post('/archive/delete', (req, res) => {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)

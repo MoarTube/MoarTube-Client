@@ -1,3 +1,6 @@
+const path = require('path');
+const fs = require('fs');
+
 let USER_DIRECTORY;
 let PUBLIC_DIRECTORY;
 let TEMP_DIRECTORY;
@@ -80,7 +83,172 @@ function timestampToSeconds(timestamp) {
     return (hours * 3600) + (minutes * 60) + seconds;
 }
 
+function detectOperatingSystem() {
+    const os = require('os');
+    
+    const platform = os.platform();
+    
+    return platform;
+}
 
+function detectSystemGpu() {
+    return new Promise(function(resolve, reject) {
+        const systemInformation = require('systeminformation');
+        
+        systemInformation.graphics()
+        .then(function(data) {
+            var processingAgentName = '';
+            var processingAgentModel = '';
+            
+            data.controllers.forEach(function(controller) {
+                if(controller.vendor.toLowerCase().includes('nvidia')) {
+                    processingAgentName = 'NVIDIA';
+                    processingAgentModel = controller.model.replace(/^.*\bNVIDIA\s*/, '');
+                    
+                    return;
+                }
+                else if(controller.vendor.toLowerCase().includes('amd') || controller.vendor.toLowerCase().includes('advanced micro devices')) {
+                    processingAgentName = 'AMD';
+                    processingAgentModel = controller.model.replace(/^.*\bAMD\s*/, '');
+                    
+                    return;
+                }
+                else {
+                    processingAgentName = 'none';
+                    processingAgentModel = 'none';
+                    
+                    return;
+                }
+            });
+            
+            resolve({processingAgentName: processingAgentName, processingAgentModel: processingAgentModel});
+        })
+        .catch(function(error) {
+            logDebugMessageToConsole(null, error, new Error().stack, true);
+            
+            reject(error);
+        });
+    });
+}
+
+function detectSystemCpu() {
+    return new Promise(function(resolve, reject) {
+        const systemInformation = require('systeminformation');
+        
+        systemInformation.cpu()
+        .then(function(data) {
+            const processingAgentName = data.manufacturer;
+            const processingAgentModel = data.brand;
+            
+            resolve({processingAgentName: processingAgentName, processingAgentModel: processingAgentModel});
+        })
+        .catch(function(error) {
+            logDebugMessageToConsole(null, error, new Error().stack, true);
+            
+            reject(error);
+        });
+    });
+}
+
+function getNetworkAddresses() {
+    const os = require('os');
+    
+    const networkInterfaces = os.networkInterfaces();
+
+    const ipv4Addresses = ['127.0.0.1'];
+    const ipv6Addresses = ['::1'];
+    
+    for(const networkInterfaceKey of Object.keys(networkInterfaces)) {
+        const networkInterface = networkInterfaces[networkInterfaceKey];
+        
+        for(const networkInterfaceElement of networkInterface) {
+            const networkAddress = networkInterfaceElement.address;
+
+            if(networkInterfaceElement.family === 'IPv4' && networkAddress !== '127.0.0.1') {
+                ipv4Addresses.push(networkAddress);
+            }
+            else if(networkInterfaceElement.family === 'IPv6' && networkAddress !== '::1') {
+                ipv6Addresses.push(networkAddress);
+            }
+        }
+    }
+
+    const networkAddresses = ipv4Addresses.concat(ipv6Addresses);
+    
+    return networkAddresses;
+}
+
+function performEncodingDecodingAssessment() {
+    return new Promise(async function(resolve, reject) {
+        logDebugMessageToConsole('assessing system encoding/decoding capabilities', null, null, true);
+        
+        try {
+            const systemCpu = await detectSystemCpu();
+            const systemGpu = await detectSystemGpu();
+            
+            logDebugMessageToConsole('CPU detected: ' + systemCpu.processingAgentName + ' ' + systemCpu.processingAgentModel, null, null, true);
+            logDebugMessageToConsole('GPU detected: ' + systemGpu.processingAgentName + ' ' + systemGpu.processingAgentModel, null, null, true);
+            
+            resolve();
+        }
+        catch(error) {
+            logDebugMessageToConsole(null, error, new Error().stack, true);
+            
+            process.exit();
+        }
+    });
+}
+
+function cleanVideosDirectory() {
+    return new Promise(function(resolve, reject) {
+        logDebugMessageToConsole('cleaning imported video directories', null, null, true);
+        
+        if(fs.existsSync(getTempVideosDirectoryPath())) {
+            fs.readdir(getTempVideosDirectoryPath(), function(error, videoDirectories) {
+                if (error) {
+                    reject(error);
+                }
+                else {
+                    if(videoDirectories.length === 0) {
+                        resolve();
+                    }
+                    else {
+                        for(const videoDirectory of videoDirectories) {
+                            const videoDirectoryPath = path.join(getTempVideosDirectoryPath(), videoDirectory);
+                            
+                            if(fs.existsSync(videoDirectoryPath)) {
+                                if (fs.statSync(videoDirectoryPath).isDirectory()) {
+                                    fs.readdir(videoDirectoryPath, function(error, directories) {
+                                        if (error) {
+                                            reject(error);
+                                        }
+                                        else {
+                                            for(directory of directories) {
+                                                if(directory !== 'source') {
+                                                    const directoryPath = path.join(videoDirectoryPath, directory);
+                                                    
+                                                    deleteDirectoryRecursive(directoryPath);
+                                                }
+                                            }
+                                            
+                                            resolve();
+                                        }
+                                    });
+                                }
+                            }
+                            else {
+                                reject('expected path does not exist: ' + videoDirectoryPath);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        else {
+            reject('expected path does not exist: ' + getTempVideosDirectoryPath());
+        }
+    });
+}
 
 
 /* getters */
@@ -133,6 +301,12 @@ function getMoarTubeNodeWebsocketUrl() {
     return (getMoarTubeNodeWebsocketProtocol() + '://' + getMoarTubeNodeIp() + ':' + getMoarTubeNodePort());
 }
 
+function getClientSettings() {
+	const clientSettings = JSON.parse(fs.readFileSync(path.join(getUserDirectoryPath(), '_client_settings.json'), 'utf8'));
+
+	return clientSettings;
+}
+
 
 /* setters */
 
@@ -176,10 +350,20 @@ function setMoarTubeNodeWebsocketProtocol(websocketprotocol) {
     MOARTUBE_NODE_WEBSOCKET_PROTOCOL = websocketprotocol;
 }
 
+function setClientSettings(clientSettings) {
+	fs.writeFileSync(path.join(getUserDirectoryPath(), '_client_settings.json'), JSON.stringify(clientSettings));
+}
+
 module.exports = {
     logDebugMessageToConsole,
     deleteDirectoryRecursive,
     timestampToSeconds,
+    detectOperatingSystem,
+    detectSystemGpu,
+    detectSystemCpu,
+    getNetworkAddresses,
+    performEncodingDecodingAssessment,
+    cleanVideosDirectory,
     getUserDirectoryPath,
     getPublicDirectoryPath,
     getTempDirectoryPath,
@@ -192,6 +376,7 @@ module.exports = {
     getMoarTubeNodeWebsocketProtocol,
     getMoarTubeNodeUrl,
     getMoarTubeNodeWebsocketUrl,
+    getClientSettings,
     setPublicDirectoryPath,
     setUserDirectoryPath,
     setTempDirectoryPath,
@@ -201,5 +386,6 @@ module.exports = {
     setMoarTubeNodeIp,
     setMoarTubeNodePort,
     setMoarTubeNodeHttpProtocol,
-    setMoarTubeNodeWebsocketProtocol
+    setMoarTubeNodeWebsocketProtocol,
+    setClientSettings
 };

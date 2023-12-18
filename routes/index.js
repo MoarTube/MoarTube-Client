@@ -1,15 +1,16 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 
-const { logDebugMessageToConsole } = require('../utils/helpers');
 const { 
-    node_isAuthenticated, node_getReportCount
+    logDebugMessageToConsole
+} = require('../utils/helpers');
+const { 
+    node_isAuthenticated, node_getIndexerCaptcha
 } = require('../utils/node-communications');
 
 const router = express.Router();
 
-router.get('/count', (req, res) => {
+// Retrieve and serve a captcha
+router.get('/captcha', (req, res) => {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
@@ -21,19 +22,33 @@ router.get('/count', (req, res) => {
         }
         else {
             if(nodeResponseData.isAuthenticated) {
-                node_getReportCount(jwtToken)
+                node_getIndexerCaptcha(jwtToken)
                 .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                    /*
+                    the node's response will be either JSON or a PNG image
+                    JSON if there's an error to report (namely an unconfigured node)
+                    PNG image is captcha if node has been configured
+                    */
+                    if(nodeResponseData.headers['content-type'].includes('application/json')) {
+                        let data = '';
                         
-                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                        nodeResponseData.on('data', function(chunk) {
+                            data += chunk;
+                        });
+                        
+                        nodeResponseData.on('end', function() {
+                            try {
+                                const jsonData = JSON.parse(data);
+                                res.send(jsonData);
+                            }
+                            catch (error) {
+                                res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                            }
+                        });
                     }
                     else {
-                        const videoReportCount = nodeResponseData.videoReportCount;
-                        const commentReportCount = nodeResponseData.commentReportCount;
-                        const totalReportCount = nodeResponseData.totalReportCount;
-                        
-                        res.send({isError: false, videoReportCount: videoReportCount, commentReportCount: commentReportCount, totalReportCount: totalReportCount});
+                        res.setHeader('Content-Type', 'image/png');
+                        nodeResponseData.pipe(res);
                     }
                 })
                 .catch(error => {

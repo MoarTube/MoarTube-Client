@@ -1,6 +1,6 @@
 const express = require('express');
 
-const { logDebugMessageToConsole, getMoarTubeNodeHttpProtocol, getMoarTubeNodeIp, getMoarTubeNodePort,  } = require('../utils/helpers');
+const { logDebugMessageToConsole, getMoarTubeNodeHttpProtocol, getMoarTubeNodeIp, getMoarTubeNodePort, getNetworkAddresses } = require('../utils/helpers');
 const { node_isAuthenticated, node_getSettings } = require('../utils/node-communications');
 
 
@@ -58,6 +58,16 @@ router.get('/node', (req, res) => {
     };
     
     res.send({isError: false, nodeInformation: nodeInformation});
+});
+
+app.get('/network', (req, res) => {
+    const networkAddresses = getNetworkAddresses();
+    
+    res.send({isError: false, networkAddresses: networkAddresses});
+});
+
+app.get('/heartbeat', (req, res) => {
+    res.end();
 });
 
 module.exports = router;

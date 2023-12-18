@@ -492,7 +492,7 @@
 				const row = button.closest('tr');
 				const archiveId = row.cells[1].data;
 				
-				$.ajax({type: 'POST', url: '/reports/archive/video/delete', data: {archiveId: archiveId}})
+				$.ajax({type: 'POST', url: '/reports/videos/archive/delete', data: {archiveId: archiveId}})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
 						

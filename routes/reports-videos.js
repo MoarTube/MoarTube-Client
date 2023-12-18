@@ -4,8 +4,8 @@ const fs = require('fs');
 
 const { logDebugMessageToConsole, getPublicDirectoryPath } = require('../utils/helpers');
 const { 
-    node_isAuthenticated, node_getSettings, node_doSignout, node_getReportCount, node_getVideoReportsArchive, node_archiveVideoReport, node_removeVideoReport,
-    node_removeVideoReportArchive
+    node_isAuthenticated, node_getSettings, node_doSignout, node_getVideoReportsArchive, node_archiveVideoReport, node_removeVideoReport,
+    node_removeVideoReportArchive, node_getVideoReports
 } = require('../utils/node-communications');
 
 const router = express.Router();
@@ -196,7 +196,7 @@ router.post('/archive', (req, res) => {
     });
 });
 
-router.post('/archive/video/delete', (req, res) => {
+router.post('/archive/delete', (req, res) => {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
