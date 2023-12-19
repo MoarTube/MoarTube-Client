@@ -27,19 +27,19 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
         
         const ffmpegArguments = generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely);
         
-        var process = spawn(getFfmpegPath(), ffmpegArguments);
+        let process = spawn(getFfmpegPath(), ffmpegArguments);
 
         addProcessToLiveStreamTracker(videoId, process);
         
-        var lengthSeconds = 0;
-        var lengthTimestamp = '';
+        let lengthSeconds = 0;
+        let lengthTimestamp = '';
         process.stderr.on('data', function (data) {
             if(!isLiveStreamStopping(videoId)) {
                 const stderrTemp = Buffer.from(data).toString();
                 logDebugMessageToConsole(stderrTemp, null, null, true);
                 
                 if(stderrTemp.indexOf('time=') != -1) {
-                    var index = stderrTemp.indexOf('time=');
+                    let index = stderrTemp.indexOf('time=');
                     lengthTimestamp = stderrTemp.substr(index + 5, 11);
                     lengthSeconds = timestampToSeconds(lengthTimestamp);
                     
@@ -59,7 +59,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
             }
         });
         
-        var segmentInterval;
+        let segmentInterval;
 
         process.on('spawn', function (code) {
             logDebugMessageToConsole('performStreamingJob ffmpeg process spawned with arguments: ' + ffmpegArguments, null, null, true);
@@ -107,7 +107,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                     
                                     const thumbnailImagePath = path.join(imagesDirectoryPath, 'thumbnail.jpg');
                                     
-                                    var process1 = spawn(getFfmpegPath(), [
+                                    let process1 = spawn(getFfmpegPath(), [
                                         '-i', expectedSegmentFilePath, 
                                         '-vf', 'select=\'gte(t,3*25/100)\',crop=min(iw\\,ih):min(iw\\,ih),scale=100:100,setsar=1',
                                         '-vframes', '1',
@@ -159,7 +159,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
 
                                     const previewImagePath = path.join(imagesDirectoryPath, 'preview.jpg');
                                     
-                                    var process2 = spawn(getFfmpegPath(), [
+                                    let process2 = spawn(getFfmpegPath(), [
                                         '-i', expectedSegmentFilePath, 
                                         '-vf', 'select=\'gte(t,3*25/100)\',scale=512:288:force_original_aspect_ratio=decrease,pad=512:288:(ow-iw)/2:(oh-ih)/2,setsar=1',
                                         '-vframes', '1',
@@ -211,7 +211,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
 
                                     const posterImagePath = path.join(imagesDirectoryPath, 'poster.jpg');
                                     
-                                    var process3 = spawn(getFfmpegPath(), [
+                                    let process3 = spawn(getFfmpegPath(), [
                                         '-i', expectedSegmentFilePath, 
                                         '-vf', 'select=\'gte(t,3*25/100)\',scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1',
                                         '-vframes', '1',
@@ -393,10 +393,10 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
 }
 
 function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely) {
-    var scale = '';
-    var width = '';
-    var height = '';
-    var bitrate = '';
+    let scale = '';
+    let width = '';
+    let height = '';
+    let bitrate = '';
     
     if(resolution === '2160p') {
         width = '3840';
@@ -448,7 +448,7 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
         }
     }
     
-    var filterComplex = scale + "='if(gt(ih,iw),-1," + width + ")':'if(gt(ih,iw)," + height + ",-1)',";
+    let filterComplex = scale + "='if(gt(ih,iw),-1," + width + ")':'if(gt(ih,iw)," + height + ",-1)',";
     
     if(clientSettings.processingAgent.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
         filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
@@ -466,7 +466,7 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
     const hlsSegmentOutputPath = path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
     const manifestFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
     
-    var ffmpegArguments = [];
+    let ffmpegArguments = [];
     
     if(clientSettings.processingAgent.processingAgentType === 'cpu') {
         if(format === 'm3u8') {

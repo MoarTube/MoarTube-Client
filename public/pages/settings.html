@@ -396,11 +396,11 @@
 		<script src="/javascript/soft-ui-dashboard-1.1.0.min.js"></script>
 
 		<script>
-			var NODE_PROTOCOL;
-			var NODE_ADDRESS;
-			var NODE_PORT;
+			let NODE_PROTOCOL;
+			let NODE_ADDRESS;
+			let NODE_PORT;
 			
-			var NODE_BASE_URL;
+			let NODE_BASE_URL;
 			
 			$(document).ready(async function() {
 				getNodeInformation();
@@ -542,7 +542,7 @@
 			$(document).on('change', '#avatar_file_input', function(event) {
 				const file = this.files[0];
 				
-				var formData = new FormData();
+				let formData = new FormData();
 				
 				formData.append('avatar_file', file);
 
@@ -583,7 +583,7 @@
 			$(document).on('change', '#banner_file_input', function(event) {
 				const file = this.files[0];
 				
-				var formData = new FormData();
+				let formData = new FormData();
 				
 				formData.append('banner_file', file);
 
@@ -624,12 +624,12 @@
 			$("#personalize_settings_node_name_form").submit(function(event) {
 				event.preventDefault();
 
-				var form = $(this);
+				let form = $(this);
 
-				var url = form.attr('action');
-				var nodeName = form.find('input[name="nodeNameJustCuz"]').val();
-				var nodeAbout = form.find('textarea[name="nodeAbout"]').val();
-				var nodeId = form.find('input[name="nodeId"]').val();
+				let url = form.attr('action');
+				let nodeName = form.find('input[name="nodeNameJustCuz"]').val();
+				let nodeAbout = form.find('textarea[name="nodeAbout"]').val();
+				let nodeId = form.find('input[name="nodeId"]').val();
 
 				$.post(url, {nodeName: nodeName, nodeAbout: nodeAbout, nodeId: nodeId})
 				.done(function(data) {
@@ -648,10 +648,10 @@
 			$("#internal_network_settings_form").submit(function(event) {
 				event.preventDefault();
 
-				var form = $(this);
+				let form = $(this);
 
-				var url = form.attr('action');
-				var nodeListeningPort = form.find('input[name="nodeListeningPort"]').val();
+				let url = form.attr('action');
+				let nodeListeningPort = form.find('input[name="nodeListeningPort"]').val();
 				
 				Swal.fire({
 					title: 'please wait',
@@ -685,13 +685,13 @@
 			$("#external_network_settings_form").submit(function(event) {
 				event.preventDefault();
 
-				var form = $(this);
+				let form = $(this);
 
-				var url = form.attr('action');
+				let url = form.attr('action');
 				
-				var publicNodeProtocol = form.find('select[name="publicNodeProtocol"]').val();
-				var publicNodeAddress = form.find('input[name="publicNodeAddress"]').val();
-				var publicNodePort = form.find('input[name="publicNodePort"]').val();
+				let publicNodeProtocol = form.find('select[name="publicNodeProtocol"]').val();
+				let publicNodeAddress = form.find('input[name="publicNodeAddress"]').val();
+				let publicNodePort = form.find('input[name="publicNodePort"]').val();
 				
 				if(publicNodeProtocol != null && publicNodeAddress !== '' && publicNodePort !== '') {
 					$.post(url, {publicNodeProtocol: publicNodeProtocol, publicNodeAddress: publicNodeAddress, publicNodePort: publicNodePort})
@@ -712,11 +712,11 @@
 			$("#account_credentials_settings_form").submit(function(event) {
 				event.preventDefault();
 
-				var form = $(this);
+				let form = $(this);
 
-				var url = form.attr('action');
-				var username = form.find('input[name="username"]').val();
-				var password = form.find('input[name="password"]').val();
+				let url = form.attr('action');
+				let username = form.find('input[name="username"]').val();
+				let password = form.find('input[name="password"]').val();
 				
 				if(username !== '' && password !== '') {
 					$.post(url, {username: username, password: password})
@@ -741,11 +741,11 @@
 			$("#cloudflare_credentials_settings_form").submit(function(event) {
 				event.preventDefault();
 				
-				var form = $(this);
+				let form = $(this);
 
-				var url = form.attr('action');
-				var cloudflareAccountId = form.find('input[name="cloudflareAccountId"]').val();
-				var cloudflareApiKey = form.find('input[name="cloudflareApiKey"]').val();
+				let url = form.attr('action');
+				let cloudflareAccountId = form.find('input[name="cloudflareAccountId"]').val();
+				let cloudflareApiKey = form.find('input[name="cloudflareApiKey"]').val();
 				
 				$.post(url, {cloudflareAccountId: cloudflareAccountId, cloudflareApiKey: cloudflareApiKey})
 				.done(function(data) {
@@ -830,7 +830,7 @@
 				const isCheckboxChecked = $(checkbox).prop('checked');
 				
 				if(isCheckboxChecked) {
-					var revertAction = true;
+					let revertAction = true;
 					
 					const html = '\
 					<div id="secure-connection-modal" class="container-fluid py-4">\
@@ -856,12 +856,12 @@
 							const certFile = $('#cert-file-input').get(0).files[0];
 							const caFiles = $('#ca-files-input').get(0).files;
 							
-							var formData = new FormData();
+							let formData = new FormData();
 							
 							formData.append('keyFile', keyFile);
 							formData.append('certFile', certFile);
 							
-							for (var i = 0; i < caFiles.length; i++) {
+							for (let i = 0; i < caFiles.length; i++) {
 								formData.append('caFiles', caFiles[i]);
 							}
 
@@ -912,7 +912,7 @@
 						didOpen: () => {
 							Swal.showLoading();
 
-							var formData = new FormData();
+							let formData = new FormData();
 							
 							$.ajax({type: 'POST', url: '/settings/node/secure?isSecure=' + isCheckboxChecked, data: formData, processData: false, contentType: false})
 							.done(function (data, textStatus, xhr) {

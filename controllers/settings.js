@@ -288,7 +288,7 @@ function nodeAvatar_POST(req, res) {
                             });
                         },
                         filename: function (req, file, cb) {
-                            var extension;
+                            let extension;
                             
                             if(file.mimetype === 'image/png') {
                                 extension = '.png';
@@ -433,7 +433,7 @@ function nodeBanner_POST(req, res) {
                             });
                         },
                         filename: function (req, file, cb) {
-                            var extension;
+                            let extension;
                             
                             if(file.mimetype === 'image/png') {
                                 extension = '.png';
@@ -518,9 +518,9 @@ function nodePersonalize_POST(req, res) {
         }
         else {
             if(nodeResponseData.isAuthenticated) {
-                var nodeName = req.body.nodeName;
-                var nodeAbout = req.body.nodeAbout;
-                var nodeId = req.body.nodeId;
+                let nodeName = req.body.nodeName;
+                let nodeAbout = req.body.nodeAbout;
+                let nodeId = req.body.nodeId;
                 
                 node_setNodeName(jwtToken, nodeName, nodeAbout, nodeId)
                 .then(nodeResponseData => {
@@ -560,7 +560,7 @@ function node_Secure_POST(req, res) {
         }
         else {
             if(nodeResponseData.isAuthenticated) {
-                var isSecure = req.query.isSecure;
+                let isSecure = req.query.isSecure;
                 
                 isSecure = (isSecure === 'true');
                 
@@ -603,8 +603,8 @@ function node_Secure_POST(req, res) {
                             res.send({isError: true, message: 'error communicating with the MoarTube node'});
                         }
                         else {
-                            var keyFile = req.files['keyFile'];
-                            var certFile = req.files['certFile'];
+                            let keyFile = req.files['keyFile'];
+                            let certFile = req.files['certFile'];
                             const caFiles = req.files['caFiles'];
                             
                             if(keyFile == null || keyFile.length !== 1) {

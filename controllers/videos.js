@@ -156,8 +156,8 @@ function import_POST(req, res) {
 
                             addVideoToImportVideoTracker(videoId, req);
                             
-                            var lastImportingTime = 0;
-                            var receivedFileSize = 0;
+                            let lastImportingTime = 0;
+                            let receivedFileSize = 0;
 
                             req.on('data', function(chunk) {
                                 if(!isVideoImportStopping(videoId)) {
@@ -192,7 +192,7 @@ function import_POST(req, res) {
                                         });
                                     },
                                     filename: function (req, file, cb) {
-                                        var extension;
+                                        let extension;
                                         
                                         if(file.mimetype === 'video/mp4') {
                                             extension = '.mp4';
@@ -234,7 +234,7 @@ function import_POST(req, res) {
                                     const videoFile = req.files['video_file'][0];
                                     const videoFilePath = videoFile.path;
                                     
-                                    var sourceFileExtension = '';
+                                    let sourceFileExtension = '';
                                     if(videoFile.mimetype === 'video/mp4') {
                                         sourceFileExtension = '.mp4';
                                     }
@@ -1361,7 +1361,7 @@ function videoIdThumbnail_POST(req, res) {
                             });
                         },
                         filename: function (req, file, cb) {
-                            var extension;
+                            let extension;
                             
                             if(file.mimetype === 'image/jpeg') {
                                 extension = '.jpg';
@@ -1461,7 +1461,7 @@ function videoIdPreview_POST(req, res) {
                             });
                         },
                         filename: function (req, file, cb) {
-                            var extension;
+                            let extension;
                             
                             if(file.mimetype === 'image/jpeg') {
                                 extension = '.jpg';
@@ -1561,7 +1561,7 @@ function videoIdPoster_POST(req, res) {
                             });
                         },
                         filename: function (req, file, cb) {
-                            var extension;
+                            let extension;
                             
                             if(file.mimetype === 'image/jpeg') {
                                 extension = '.jpg';

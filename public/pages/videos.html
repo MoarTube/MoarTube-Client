@@ -326,17 +326,17 @@
 		<script src="/javascript/circle-progress-1.2.2.min.js"></script>
 		<script src="/javascript/pickr-nano-theme-1.9.0.min.js"></script>
 		<script>
-			var NODE_PROTOCOL;
-			var NODE_ADDRESS;
-			var NODE_PORT;
+			let NODE_PROTOCOL;
+			let NODE_ADDRESS;
+			let NODE_PORT;
 			
-			var NODE_BASE_URL;
+			let NODE_BASE_URL;
 			
-			var lastUsedTag = '';
+			let lastUsedTag = '';
 			
-			var OLDEST_VISIBLE_TIMESTAMP;
+			let OLDEST_VISIBLE_TIMESTAMP;
 			
-			var VIDEOS_LOADER_INTERVAL;
+			let VIDEOS_LOADER_INTERVAL;
 			
 			$(document).ready(async function() {
 				const params = new URL(window.location.href).searchParams;
@@ -439,7 +439,7 @@
 					
 					lastUsedTag = tagTerm;
 					
-					var stateString = '?';
+					let stateString = '?';
 					
 					if(searchTerm !== '') {
 						stateString += 's=' + searchTerm;
@@ -484,7 +484,7 @@
 									const isIndexed = row.is_indexed;
 									OLDEST_VISIBLE_TIMESTAMP = row.creation_timestamp;
 									
-									var status = '';
+									let status = '';
 									
 									if(row.is_finalized) {
 										status = 'finalized';
@@ -547,7 +547,7 @@
 					
 					await getVideos(searchTerm, sortTerm, tagTerm, tagLimit, OLDEST_VISIBLE_TIMESTAMP);
 					
-					var blocked = false;
+					let blocked = false;
 					
 					VIDEOS_LOADER_INTERVAL = setInterval(async function() {
 						const videosTableLoadingSpinnerRect = $(videosTableLoadingSpinner)[0].getBoundingClientRect();
@@ -567,7 +567,7 @@
 			}
 			
 			function connectWebsocket() {
-				var connectWebsocketClient = function() {
+				let connectWebsocketClient = function() {
 					try {
 						const ws = new WebSocket('ws://localhost:8080');
 						
@@ -670,7 +670,7 @@
 											
 											setTimeout(function() {
 												
-												var recommendedSetting = '';
+												let recommendedSetting = '';
 												
 												if(format === 'm3u8' || format === 'mp4'){
 													if(resolution === '1080p' || resolution === '720p' || resolution === '480p') {
@@ -771,7 +771,7 @@
 								const bandwidth = data.payload.bandwidth;
 								const isIndexed = data.payload.isIndexed;
 								
-								var status = '';
+								let status = '';
 								
 								if(data.payload.isFinalized) {
 									status = 'finalized';
@@ -830,7 +830,7 @@
 			}
 			
 			function showImportModal() {
-				var choices;
+				let choices;
 				
 				const i = Swal.mixin({
 					customClass: {
@@ -889,7 +889,7 @@
 						const tags = result.value.tags.join(',');
 						const videoFile = result.value.videoFile;
 						
-						var formData = new FormData();
+						let formData = new FormData();
 						
 						formData.append('video_file', videoFile);
 
@@ -936,9 +936,9 @@
 					maxItemCount: 5,
 					maxItemText: 'only 5 tags can be added',
 					addItemFilter: (value) => {
-						var result = false;
+						let result = false;
 						
-						var regex = /^[a-zA-Z0-9\s]*$/;
+						let regex = /^[a-zA-Z0-9\s]*$/;
 						
 						if(value.length <= 30 && regex.test(value)) {
 							result = true;
@@ -962,7 +962,7 @@
 			}
 			
 			function showLiveModal() {
-				var choices;
+				let choices;
 				
 				const i = Swal.mixin({
 					customClass: {
@@ -1052,9 +1052,9 @@
 							maxItemCount: 5,
 							maxItemText: 'only 5 tags can be added',
 							addItemFilter: (value) => {
-								var result = false;
+								let result = false;
 								
-								var regex = /^[a-zA-Z0-9\s]*$/;
+								let regex = /^[a-zA-Z0-9\s]*$/;
 								
 								if(value.length <= 30 && regex.test(value)) {
 									result = true;
@@ -1107,7 +1107,7 @@
 						const isRecordingStreamLocally = Swal.getPopup().querySelector('#recordStreamLocallyCheckbox').checked;
 						const networkAddress = Swal.getPopup().querySelector('#liveNetworkAddressSelect').value;
 						
-						var resolution = '';
+						let resolution = '';
 						
 						const radioButtons = Swal.getPopup().querySelectorAll('input[name="streamResolutionRadioButton"]');
 						radioButtons.forEach(streamResolutionRadioButton => {
@@ -1260,7 +1260,7 @@
 						});
 						
 						$('#publish-modal-recommended-settings').click(function() {
-							var isChecked = false;
+							let isChecked = false;
 							
 							$('#publish-modal-table input:checkbox').each(function () {
 								if($(this).prop('checked')) {
@@ -1363,7 +1363,7 @@
 							
 							$.ajax({type: 'GET', url: '/videos/' + videoId + '/alias'})
 							.done(function (data, textStatus, xhr) {
-								var videoAliasUrl = 'MoarTube Aliaser link unavailable';
+								let videoAliasUrl = 'MoarTube Aliaser link unavailable';
 
 								if(data.isError) {
 									showShareLinks(videoId, nodeVideoUrl, data.message);
@@ -1438,9 +1438,9 @@
 									const redditSVG = '<svg viewBox="0 0 60 60" focusable="false" style="pointer-events: none; display: block; width: 100%; height: 100%;"><g fill-rule="nonzero" fill="none"><path d="M28.4863253 59.9692983c-6.6364044-.569063-11.5630204-2.3269561-16.3219736-5.8239327C4.44376366 48.4721168 3e-7 39.6467924 3e-7 29.9869344c0-14.8753747 10.506778-27.18854591 25.2744118-29.61975392 6.0281072-.9924119 12.7038532.04926445 18.2879399 2.85362966C57.1386273 10.0389054 63.3436516 25.7618627 58.2050229 40.3239688 54.677067 50.3216743 45.4153135 57.9417536 34.81395 59.5689067c-2.0856252.3201125-5.0651487.5086456-6.3276247.4003916z" fill="#FF4500"></path><path d="M34.1335847 43.9991814c1.6336774-.3831682 2.81654-.7939438 3.9781753-1.3815065 3.6153903-1.8286959 5.8788354-4.8645264 5.8788354-7.8849481 0-.9131088.0196207-.9556355.780668-1.6923265.6040409-.5847092.8404012-.962515 1.044679-1.6698428.2433185-.8425206.2441028-.9826228.0100139-1.7878614-.6566532-2.2588075-3.0054252-3.2764371-5.1075029-2.212882l-.8124519.4110627-.837264-.5151716c-1.6101652-.9907471-4.473974-1.96108051-6.3205111-2.14155924-.5059537-.04945042-1.143803-.1235464-1.4174535-.16465815l-.4975382-.07474783.2136595-1.06953332c.1175125-.5882423.3623778-1.7491883.5441475-2.57987956.181767-.83069153.4095191-1.95749071.5061138-2.50399817.1396137-.78991765.2348596-.99365031.4645331-.99365031.1589005 0 1.2955101.21462853 2.5257988.4769522 1.2302915.26232367 2.2622022.47695193 2.293134.47695193.0309345 0 .1003234.23497925.154203.52217616.1363137.72661143.4902897 1.17780487 1.2134714 1.54674469 1.7356128.8854428 3.6891485-.29431302 3.6891485-2.22790474 0-2.3956262-2.9538443-3.44186625-4.4550019-1.57794377-.2901205.36022881-.4356746.42625561-.7154284.32453216-.1931649-.07023833-1.5202546-.3669593-2.9490951-.65938053-1.8923676-.38728585-2.6686067-.48706487-2.8582979-.36740978-.2896185.1826864-.2522224.047706-1.0501419 3.79055007-.9490696 4.45187338-1.0064011 4.70400786-1.0882029 4.78580828-.0432388.04324046-.729551.14596475-1.5251367.22827402-2.413687.24971784-5.06621906 1.10194849-6.8544721 2.20227189l-.8268564.5087695-.81204644-.4046587c-2.11972653-1.0563058-4.47243958-.0382468-5.1287215 2.2192841-.23408885.8052386-.23330375.9453408.0100166 1.7878614.20427624.7073278.44063816 1.0851336 1.04467744 1.6698428.76105187.736691.78066878.7792177.78066878 1.6923265 0 4.172347 4.28816886 8.1540991 10.01599352 9.3002929 1.8975637.3797217 2.0263168.3894072 4.4515526.3349143 1.5849893-.0356103 2.7274992-.1508298 3.6566327-.3687526zm-6.6864685-3.0300366c-1.3154638-.2961613-2.8032079-.9569232-3.2391341-1.4386156-.34760429-.384099-.198986-.9659493.246724-.9659493.1736296 0 .5801788.1805458.9034441.4012095 2.1828306 1.4900284 7.1085991 1.484628 9.2987021-.0101767.7054363-.4814861 1.2827246-.468194 1.3538857.0311679.0334854.234998-.1164569.4687666-.4771278.7438635-1.7511846 1.3356924-5.2646974 1.8738181-8.086494 1.2385197v-.000019zm-4.01196195-5.9075609c-.81902983-.4443886-1.22403999-1.1532958-1.22477787-2.143771-.000787-1.135302.52653614-1.8699603 1.59778946-2.2257735.76240766-.253232.85344696-.2532238 1.51689516.0001492 1.785415.6818561 2.1507834 2.909296.6724678 4.0996229-.7705198.6204159-1.7299516.7214286-2.56237455.2697724zm11.09588945.0732995c-.7590038-.3947507-1.1832989-.8746601-1.3628596-1.5414995-.3321829-1.2336253.2931784-2.4377233 1.5067529-2.9011953.6634485-.253373.754488-.2533812 1.5168976-.0001492 1.0712525.3558132 1.5986343 1.0904715 1.5977903 2.2257735-.0008141 1.0085002-.4138259 1.7116813-1.2587076 2.1427072-.7599699.3877084-1.3548626.4098285-1.9998736.0743633z" fill="#FDFDFD"></path></g></svg>';
 									const facebookSVG = '<svg viewBox="0 0 60 60" focusable="false" style="pointer-events: none; display: block; width: 100%; height: 100%;"><g fill="none" fill-rule="evenodd"><path d="M28.4863253 59.9692983c-6.6364044-.569063-11.5630204-2.3269561-16.3219736-5.8239327C4.44376366 48.4721168 3e-7 39.6467924 3e-7 29.9869344c0-14.8753747 10.506778-27.18854591 25.2744118-29.61975392 6.0281072-.9924119 12.7038532.04926445 18.2879399 2.85362966C57.1386273 10.0389054 63.3436516 25.7618627 58.2050229 40.3239688 54.677067 50.3216743 45.4153135 57.9417536 34.81395 59.5689067c-2.0856252.3201125-5.0651487.5086456-6.3276247.4003916z" fill="#3B5998" fill-rule="nonzero"></path><path d="M25.7305108 45h5.4583577V30.0073333h4.0947673l.8098295-4.6846666h-4.9045968V21.928c0-1.0943333.7076019-2.2433333 1.7188899-2.2433333h2.7874519V15h-3.4161354v.021c-5.3451414.194-6.4433395 3.2896667-6.5385744 6.5413333h-.0099897v3.7603334H23v4.6846666h2.7305108V45z" fill="#FFF"></path></g></svg>';
 
-									var twitterLink;
-									var redditLink;
-									var facebookLink;
+									let twitterLink;
+									let redditLink;
+									let facebookLink;
 									
 									if(videoAliasUrl === 'MoarTube Aliaser link unavailable') {
 										twitterLink = 'https://twitter.com/intent/tweet?url=' + nodeVideoUrl + '&text=' + title + '&via=MoarTubes&related=MoarTubes';
@@ -1518,7 +1518,7 @@
 			}
 			
 			function showManageImportModal(videoId) {
-				var choices;
+				let choices;
 			
 				const i = Swal.mixin({
 					customClass: {
@@ -1784,9 +1784,9 @@
 										maxItemCount: 5,
 										maxItemText: 'only 5 tags can be added',
 										addItemFilter: (value) => {
-											var result = false;
+											let result = false;
 											
-											var regex = /^[a-zA-Z0-9\s]*$/;
+											let regex = /^[a-zA-Z0-9\s]*$/;
 											
 											if(value.length <= 30 && regex.test(value)) {
 												result = true;
@@ -1907,12 +1907,12 @@
 					showConfirmButton: false,
 					didOpen: () => {
 						$('#upload-thumbnail-input').change(function() {
-							var file = this.files[0];
+							let file = this.files[0];
 							
 							if (file.size > 0 && (file.type.match("image/jpeg"))) {
 								$('#videos_table_row_' + videoId).find('td').eq(0).find('img').eq(0).replaceWith('<div class="spinner spinner-border text-primary avatar-sm me-3" role="status"><span class="sr-only">Loading...</span></div>');
 								
-								var formData = new FormData();
+								let formData = new FormData();
 								
 								formData.append('thumbnail_file', file);
 
@@ -1940,10 +1940,10 @@
 						});
 						
 						$('#upload-preview-input').change(function() {
-							var file = this.files[0];
+							let file = this.files[0];
 							
 							if (file.size > 0 && (file.type.match("image/jpeg"))) {
-								var formData = new FormData();
+								let formData = new FormData();
 								
 								formData.append('preview_file', file);
 
@@ -1967,10 +1967,10 @@
 						});
 						
 						$('#upload-poster-input').change(function() {
-							var file = this.files[0];
+							let file = this.files[0];
 							
 							if (file.size > 0 && (file.type.match("image/jpeg"))) {
-								var formData = new FormData();
+								let formData = new FormData();
 								
 								formData.append('poster_file', file);
 
@@ -2047,7 +2047,7 @@
 			
 			
 			
-			var searchInputTimer;
+			let searchInputTimer;
 			function searchInputEntered(input) {
 				const value = input.value;
 				
@@ -2105,7 +2105,7 @@
 			}
 			
 			function updateSelectedVideosButtons() {
-				var showVideosButtons = false;
+				let showVideosButtons = false;
 				
 				$('.videos-table-select-video').each(function() {
 					if($(this).prop('checked')) {
@@ -2331,7 +2331,7 @@
 				const isIndexing = $(checkbox).prop('checked');
 				
 				if(isIndexing) {
-					var revertAction = true;
+					let revertAction = true;
 					
 					Swal.fire({
 						title: '...preparing to index...',
@@ -2535,9 +2535,9 @@
 					showConfirmButton: false,
 					html: html,
 					didOpen: () => {
-						var sci = false;
-						var bgc = '000000';
-						var ctc = 'F9F9F9';
+						let sci = false;
+						let bgc = '000000';
+						let ctc = 'F9F9F9';
 						
 						Pickr.create({
 							el: '#background-color-pickr',
@@ -2824,7 +2824,7 @@
 		
 		
 			function generateVideoTableRow(videoId, thumbnail, title, tags, lengthTimestamp, views, comments, likes, dislikes, bandwidth, status, isIndexed) {
-				var html = generate_Avatar_Title_Description_TableCell(videoId, thumbnail, title, tags, status);
+				let html = generate_Avatar_Title_Description_TableCell(videoId, thumbnail, title, tags, status);
 				
 				html += '<td class="align-middle text-center text-sm"> \
 						<p class="text-secondary mb-0 text-sm">' + lengthTimestamp + '</p> \
@@ -2854,7 +2854,7 @@
 					html += '<a class="text-danger cursor-pointer" onclick="doStopJob(this)" data-jobtype="streaming" data-videoid="' + videoId + '"><i class="fas fa-stop"></i></a>';
 				}
 				
-				var checked = '';
+				let checked = '';
 				if(isIndexed) {
 					checked = 'checked'
 				}
@@ -2875,14 +2875,14 @@
 			}
 			
 			function generate_Avatar_Title_Description_TableCell(videoId, thumbnail, title, tags, status) {
-				var html = '<tr id="videos_table_row_' + videoId + '"><td><div class="d-flex px-2 py-1"> \
+				let html = '<tr id="videos_table_row_' + videoId + '"><td><div class="d-flex px-2 py-1"> \
 				<div class="form-check"><input class="form-check-input videos-table-select-video" type="checkbox" onclick="doSelectedVideo(this)" data-videoid="' + videoId + '"></div>';
 				
 				if(thumbnail === '') {
 					html += '<div id="video-thumbnail-loading-spinner-' + videoId + '" class="spinner-border text-primary avatar-sm me-3" role="status"><span class="sr-only">Loading...</span></div>';
 				}
 				else {
-					var showThumbnailModalHtml = '';
+					let showThumbnailModalHtml = '';
 					
 					if(status !== 'importing' && status !== 'live') {
 						showThumbnailModalHtml = 'onclick="showThumbnailModal(\''+videoId+'\')" data-bs-toggle="tooltip" data-bs-placement="top" title="upload images" data-container="body" data-animation="true" role="button"';
@@ -2918,7 +2918,7 @@
 				function() {
 					// text copied to clipboard fail, so using native DOM API fallback
 					
-					var tempInput = document.createElement("input");
+					let tempInput = document.createElement("input");
 					tempInput.style = "position: absolute; left: -1000px; top: -1000px";
 					tempInput.value = value;
 					document.body.appendChild(tempInput);

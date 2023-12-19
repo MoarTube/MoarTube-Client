@@ -8,8 +8,8 @@ const { node_setVideoPublishing, node_setVideoLengths, node_setVideoPublished, n
 const { getPendingPublishVideoTracker, getPendingPublishVideoTrackerQueueSize, enqueuePendingPublishVideo, dequeuePendingPublishVideo } = require('../trackers/pending-publish-video-tracker');
 const { addToPublishVideoEncodingTracker, isPublishVideoEncodingStopping, addProcessToPublishVideoEncodingTracker } = require('../trackers/publish-video-encoding-tracker');
 
-var inProgressPublishingJobCount = 0;
-var maximumInProgressPublishingJobCount = 5;
+let inProgressPublishingJobCount = 0;
+let maximumInProgressPublishingJobCount = 5;
 
 const inProgressPublishingJobs = [];
 
@@ -134,7 +134,7 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
             const sourceFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
             
             const destinationFileExtension = '.' + format;
-            var destinationFilePath = '';
+            let destinationFilePath = '';
             
             if(format === 'm3u8') {
                 fs.mkdirSync(path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution), { recursive: true });
@@ -168,11 +168,11 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
                 logDebugMessageToConsole(output, null, null, true);
             });
             
-            var lengthTimestamp = '00:00:00.00';
-            var lengthSeconds = 0;
-            var currentTimeSeconds = 0;
+            let lengthTimestamp = '00:00:00.00';
+            let lengthSeconds = 0;
+            let currentTimeSeconds = 0;
             
-            var stderrOutput = '';
+            let stderrOutput = '';
             process.stderr.on('data', function (data) {
                 if(!isPublishVideoEncodingStopping(videoId)) {
                     const stderrTemp = Buffer.from(data).toString();
@@ -183,13 +183,13 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
                         logDebugMessageToConsole(stderrTemp, null, null, true);
                         
                         if(lengthSeconds === 0) {
-                            var index = stderrOutput.indexOf('Duration: ');
+                            let index = stderrOutput.indexOf('Duration: ');
                             lengthTimestamp = stderrOutput.substr(index + 10, 11);
                             lengthSeconds = timestampToSeconds(lengthTimestamp);
                         }
                         
-                        var index = stderrTemp.indexOf('time=');
-                        var currentTimestamp = stderrTemp.substr(index + 5, 11);
+                        let index = stderrTemp.indexOf('time=');
+                        let currentTimestamp = stderrTemp.substr(index + 5, 11);
                         
                         currentTimeSeconds = timestampToSeconds(currentTimestamp);
                     }
@@ -350,10 +350,10 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
     TODO: the user will want to tune their own encoding settings; hardcoded defaults below are assumed for typical use cases
     */
 
-    var scale = '';
-    var width = '';
-    var height = '';
-    var bitrate = '';
+    let scale = '';
+    let width = '';
+    let height = '';
+    let bitrate = '';
     
     if(resolution === '2160p') {
         width = '3840';
@@ -405,7 +405,7 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
         }
     }
     
-    var filterComplex = scale + "='if(gt(ih,iw),-1," + width + ")':'if(gt(ih,iw)," + height + ",-1)',";
+    let filterComplex = scale + "='if(gt(ih,iw),-1," + width + ")':'if(gt(ih,iw)," + height + ",-1)',";
     
     if(clientSettings.processingAgent.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
         filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
@@ -421,7 +421,7 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
 
     const hlsSegmentOutputPath = path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
     
-    var ffmpegArguments = [];
+    let ffmpegArguments = [];
     
     if(clientSettings.processingAgent.processingAgentType === 'cpu') {
         if(format === 'm3u8') {

@@ -184,10 +184,10 @@
 		<script src="/javascript/choices-9.0.1.min.js"></script>
 		<script src="/javascript/soft-ui-dashboard-1.1.0.min.js"></script>
 		<script>
-            var DATA_TABLE_COMMENTS;
+            let DATA_TABLE_COMMENTS;
 
-            var COMMENT_ID_VIDEO_ID_ASSOCIATIONS = {};
-            var COMMENT_ID_COMMENT_TIMESTAMP_ASSOCIATIONS = {};
+            let COMMENT_ID_VIDEO_ID_ASSOCIATIONS = {};
+            let COMMENT_ID_COMMENT_TIMESTAMP_ASSOCIATIONS = {};
 
 			$(document).ready(async function() {
                 getNodeInformation();
@@ -263,7 +263,7 @@
 						
 					}
 					else {
-						var comments = data.comments;
+						let comments = data.comments;
 						
 						const parsedComments = parseComments(comments);
 						
@@ -289,9 +289,9 @@
 					for ( let i = 0; i < comments.length; i++ ) {
 						data[i] = [];
 
-                        var commentTimestamp;
-                        var videoId;
-						var commentId;
+                        let commentTimestamp;
+                        let videoId;
+						let commentId;
 						
 						for (let p in comments[i]) {
 							if(comments[i].hasOwnProperty(p) ) {
@@ -405,8 +405,8 @@
 			}
 
             function createDateTimestamp(timestamp)	{
-				var date = new Date(timestamp);
-				var weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+				let date = new Date(timestamp);
+				let weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 				
 				return ('0' + (date.getMonth() + 1).toString()).substr(-2) + '/' + ('0' + date.getDate().toString()).substr(-2)  + '/' + (date.getFullYear().toString()).substr(2) + '(' + weekday[date.getDay()] + ')' + date.toTimeString().split(' ')[0];
 			}

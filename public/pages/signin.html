@@ -78,19 +78,19 @@
 				$("#sign-in-form").submit(function(event) {
 					event.preventDefault();
 
-					var form = $(this);
+					let form = $(this);
 
-					var url = form.attr('action');
+					let url = form.attr('action');
 
-					var username = form.find('input[name="username"]').val();
-					var password = form.find('input[name="password"]').val();
-					var moarTubeNodeIp = form.find('input[name="moarTubeNodeIp"]').val();
-					var moarTubeNodePort = form.find('input[name="moarTubeNodePort"]').val();
-					var rememberMe = form.find('input[name="rememberMe"]').prop('checked');
+					let username = form.find('input[name="username"]').val();
+					let password = form.find('input[name="password"]').val();
+					let moarTubeNodeIp = form.find('input[name="moarTubeNodeIp"]').val();
+					let moarTubeNodePort = form.find('input[name="moarTubeNodePort"]').val();
+					let rememberMe = form.find('input[name="rememberMe"]').prop('checked');
 					
 					performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe)
 					.then(response => {
-						var loginOutcome = handleloginResponse(response);
+						let loginOutcome = handleloginResponse(response);
 						
 						if(loginOutcome.isLoggedIn) {
 							window.location.href = loginOutcome.redirectUrl;
@@ -133,7 +133,7 @@
 				}
 				
 				function handleloginResponse(response) {
-					var result = {};
+					let result = {};
 					
 					if(response.isError) {
 						result.isLoggedIn = false;

@@ -32,7 +32,7 @@ function logDebugMessageToConsole(message, error, stackTrace, isLoggingToFile) {
         message = 'none';
     }
     
-    var errorMessage = '<message: ' + message + ', date: ' + humanReadableTimestamp + '>';
+    let errorMessage = '<message: ' + message + ', date: ' + humanReadableTimestamp + '>';
 
     if(error != null) {
         if(error.message != null) {
@@ -107,8 +107,8 @@ function detectSystemGpu() {
         
         systemInformation.graphics()
         .then(function(data) {
-            var processingAgentName = '';
-            var processingAgentModel = '';
+            let processingAgentName = '';
+            let processingAgentModel = '';
             
             data.controllers.forEach(function(controller) {
                 if(controller.vendor.toLowerCase().includes('nvidia')) {
