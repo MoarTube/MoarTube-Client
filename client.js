@@ -4,32 +4,18 @@ const expressSession = require('express-session');
 const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
-const execSync = require('child_process').execSync;
 const ffmpegPath = require('ffmpeg-static').replace('app.asar', 'app.asar.unpacked');
 const webSocket = require('ws');
 const crypto = require('crypto');
 
 const { 
-	logDebugMessageToConsole, 
-	performEncodingDecodingAssessment,
-	createRequiredAssets,
-	cleanVideosDirectory,
-    getPublicDirectoryPath,
-    getTempDirectoryPath,
-    getMoarTubeClientPort,
-	getFfmpegPath,
-    setPublicDirectoryPath,
-    setUserDirectoryPath,
-    setTempDirectoryPath,
-    setTempCertificatesDirectoryPath,
-    setTempVideosDirectoryPath,
-	setFfmpegPath,
-    setMoarTubeClientPort,
-	setWebsocketServer
+	logDebugMessageToConsole, performEncodingDecodingAssessment, createRequiredAssets, cleanVideosDirectory, getPublicDirectoryPath, getTempDirectoryPath,
+    getMoarTubeClientPort, getFfmpegPath, setPublicDirectoryPath, setUserDirectoryPath, setTempDirectoryPath, setTempCertificatesDirectoryPath,
+    setTempVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer
 } = require('./utils/helpers');
 
 const { 
-	startPublishInterval 
+	startVideoPublishInterval 
 } = require('./utils/handlers/video-publish-handler');
 
 const {
@@ -50,7 +36,6 @@ const channelRoutes = require('./routes/channel');
 const indexRoutes = require('./routes/index');
 const aliasRoutes = require('./routes/alias');
 
-loadConfig();
 startClient();
 
 async function startClient() {
@@ -62,11 +47,9 @@ async function startClient() {
 		logDebugMessageToConsole(null, reason, reason.stack, true);
 	});
 
+	loadConfig();
+
 	setFfmpegPath(ffmpegPath);
-
-	logDebugMessageToConsole(execSync(getFfmpegPath() + ' -version').toString(), null, null, true);
-
-	logDebugMessageToConsole('creating required directories', null, null, true);
 	
 	createRequiredAssets();
 
@@ -74,7 +57,7 @@ async function startClient() {
 	
 	await performEncodingDecodingAssessment();
 
-	startPublishInterval();
+	startVideoPublishInterval();
 	
 	const app = express();
 	

@@ -210,6 +210,8 @@ function performEncodingDecodingAssessment() {
 }
 
 function createRequiredAssets() {
+    logDebugMessageToConsole('creating required directories and files', null, null, true);
+
     if (!fs.existsSync(getUserDirectoryPath())) {
 		fs.mkdirSync(getUserDirectoryPath(), { recursive: true });
 	}
@@ -288,7 +290,11 @@ function setFfmpegPath(value) {
     if(fs.existsSync(value)) {
         ffmpegPath = value;
 
+        const execSync = require('child_process').execSync;
+        
         logDebugMessageToConsole('using ffmpeg at path: ' + ffmpegPath, null, null, true);
+
+        logDebugMessageToConsole(execSync(getFfmpegPath() + ' -version').toString(), null, null, true);
     }
     else {
         throw new Error('ffmpeg does not exist at path: ' + value);

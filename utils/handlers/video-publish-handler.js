@@ -13,7 +13,7 @@ let maximumInProgressPublishingJobCount = 5;
 
 const inProgressPublishingJobs = [];
 
-function startPublishInterval() {
+function startVideoPublishInterval() {
     setInterval(function() {
         while(getPendingPublishVideoTrackerQueueSize() > 0 && inProgressPublishingJobCount < maximumInProgressPublishingJobCount) {
             inProgressPublishingJobCount++;
@@ -600,5 +600,5 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
 }
 
 module.exports = {
-    startPublishInterval
+    startVideoPublishInterval
 };
