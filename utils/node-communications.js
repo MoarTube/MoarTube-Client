@@ -67,7 +67,7 @@ function node_doSignin(username, password, rememberMe) {
 
 function node_getSettings(jwtToken) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/settings/node', {
+        axios.get(getMoarTubeNodeUrl() + '/settings', {
           headers: {
             Authorization: jwtToken
           }
@@ -85,7 +85,7 @@ function node_getSettings(jwtToken) {
 
 function node_getAvatar(jwtToken) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/settings/node/avatar', {
+        axios.get(getMoarTubeNodeUrl() + '/settings/avatar', {
           headers: {
             Authorization: jwtToken
           },
@@ -104,7 +104,7 @@ function node_getAvatar(jwtToken) {
 
 function node_setPrivate(jwtToken, isNodePrivate) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/settings/node/private', {
+        axios.post(getMoarTubeNodeUrl() + '/settings/private', {
             isNodePrivate: isNodePrivate
         }, {
           headers: {
@@ -124,7 +124,7 @@ function node_setPrivate(jwtToken, isNodePrivate) {
 
 function node_setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/settings/node/network/external', {
+        axios.post(getMoarTubeNodeUrl() + '/settings/network/external', {
             publicNodeProtocol: publicNodeProtocol,
             publicNodeAddress: publicNodeAddress,
             publicNodePort: publicNodePort
@@ -146,7 +146,7 @@ function node_setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeAddress
 
 function node_getReportCount(jwtToken) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/node/reports/count', {
+        axios.get(getMoarTubeNodeUrl() + '/reports/count', {
           headers: {
             Authorization: jwtToken
           }
@@ -578,7 +578,7 @@ function node_setVideoPublished(jwtToken, videoId) {
 
 function node_getAllComments(jwtToken) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/node/videos/comments/all', {
+        axios.get(getMoarTubeNodeUrl() + '/videos/comments/all', {
           headers: {
             Authorization: jwtToken
           }
@@ -614,7 +614,7 @@ function node_getVideosTags(jwtToken) {
 
 function node_getVideoReports(jwtToken) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/node/reports/videos', {
+        axios.get(getMoarTubeNodeUrl() + '/reports/videos', {
           headers: {
             Authorization: jwtToken
           }
@@ -632,7 +632,7 @@ function node_getVideoReports(jwtToken) {
 
 function node_getVideoReportsArchive(jwtToken) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/node/reports/archive/videos', {
+        axios.get(getMoarTubeNodeUrl() + '/reports/archive/videos', {
           headers: {
             Authorization: jwtToken
           }
@@ -794,7 +794,7 @@ function node_removeVideoReportArchive(jwtToken, archiveId) {
 
 function node_getCommentReports(jwtToken) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/node/reports/comments', {
+        axios.get(getMoarTubeNodeUrl() + '/reports/comments', {
           headers: {
             Authorization: jwtToken
           }
@@ -812,7 +812,7 @@ function node_getCommentReports(jwtToken) {
 
 function node_getCommentReportsArchive(jwtToken) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/node/reports/archive/comments', {
+        axios.get(getMoarTubeNodeUrl() + '/reports/archive/comments', {
           headers: {
             Authorization: jwtToken
           }
@@ -1076,7 +1076,7 @@ function node_setAvatar(jwtToken, iconPath, avatarPath) {
         const headers = formData.getHeaders();
         headers.Authorization = jwtToken;
         
-        axios.post(getMoarTubeNodeUrl() + '/settings/node/avatar', formData, {
+        axios.post(getMoarTubeNodeUrl() + '/settings/avatar', formData, {
           headers: headers
         })
         .then(response => {
@@ -1135,7 +1135,7 @@ function node_setBanner(jwtToken, bannerPath) {
 
 function node_setNodeName(jwtToken, nodeName, nodeAbout, nodeId) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/settings/node/personalize', {
+        axios.post(getMoarTubeNodeUrl() + '/settings/personalize', {
             nodeName: nodeName,
             nodeAbout: nodeAbout,
             nodeId: nodeId
@@ -1180,7 +1180,7 @@ function node_setSecureConnection(jwtToken, isSecure, keyFile, certFile, caFiles
         const headers = formData.getHeaders();
         headers.Authorization = jwtToken;
         
-        axios.post(getMoarTubeNodeUrl() + '/settings/node/secure?isSecure=' + isSecure, formData, {
+        axios.post(getMoarTubeNodeUrl() + '/settings/secure?isSecure=' + isSecure, formData, {
           headers: headers
         })
         .then(response => {
@@ -1196,7 +1196,7 @@ function node_setSecureConnection(jwtToken, isSecure, keyFile, certFile, caFiles
 
 function node_setNetworkInternal(jwtToken, listeningNodePort) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/settings/node/network/internal', {
+        axios.post(getMoarTubeNodeUrl() + '/settings/network/internal', {
             listeningNodePort: listeningNodePort
         }, {
           headers: {
@@ -1216,7 +1216,7 @@ function node_setNetworkInternal(jwtToken, listeningNodePort) {
 
 function node_setAccountCredentials(jwtToken, username, password) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/settings/node/account', {
+        axios.post(getMoarTubeNodeUrl() + '/settings/account', {
             username: username,
             password: password
         }, {
