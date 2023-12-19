@@ -11,7 +11,7 @@ const crypto = require('crypto');
 const { 
 	logDebugMessageToConsole, performEncodingDecodingAssessment, createRequiredAssets, cleanVideosDirectory, getPublicDirectoryPath, getTempDirectoryPath,
     getMoarTubeClientPort, getFfmpegPath, setPublicDirectoryPath, setUserDirectoryPath, setTempDirectoryPath, setTempCertificatesDirectoryPath,
-    setTempVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer
+    setTempVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getClientSettings
 } = require('./utils/helpers');
 
 const { 
@@ -165,4 +165,6 @@ function loadConfig() {
 	
 	setTempCertificatesDirectoryPath(path.join(getTempDirectoryPath(), 'certificates'));
 	setTempVideosDirectoryPath(path.join(getTempDirectoryPath(), 'media/videos'));
+
+	logDebugMessageToConsole('configured MoarTube Client to use client settings: ' + JSON.stringify(getClientSettings()), null, null, true);
 }

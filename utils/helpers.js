@@ -391,54 +391,82 @@ function getWebsocketClient() {
 /* setters */
 
 function setPublicDirectoryPath(path) {
+    logDebugMessageToConsole('configured MoarTube Client to use public directory path: ' + path, null, null, true);
+
     publicDirectory = path;
 }
 
 function setUserDirectoryPath(path) {
+    logDebugMessageToConsole('configured MoarTube Client to use user directory path: ' + path, null, null, true);
+
     userDirectory = path;
 }
 
 function setTempDirectoryPath(path) {
+    logDebugMessageToConsole('configured MoarTube Client to use temp directory path: ' + path, null, null, true);
+
     tempDirectory = path;
 }
 
 function setTempCertificatesDirectoryPath(path) {
+    logDebugMessageToConsole('configured MoarTube Client to use temp certificates directory path: ' + path, null, null, true);
+
     tempCertificatesDirectory = path;
 }
 
 function setTempVideosDirectoryPath(path) {
+    logDebugMessageToConsole('configured MoarTube Client to use temp videos directory path: ' + path, null, null, true);
+
     tempVideosDirectory = path;
 }
 
 function setMoarTubeClientPort(port) {
+    logDebugMessageToConsole('configured MoarTube Client to use port: ' + port, null, null, true);
+    
     moartubeClientPort = port;
 }
 
 function setMoarTubeNodeIp(ip) {
+    logDebugMessageToConsole('configured MoarTube Client to use MoarTube Node ip: ' + ip, null, null, true);
+
     moartubeNodeIp = ip;
 }
 
 function setMoarTubeNodePort(port) {
+    logDebugMessageToConsole('configured MoarTube Client to use MoarTube Node port: ' + port, null, null, true);
+
     moartubeNodePort = port;
 }
 
 function setMoarTubeNodeHttpProtocol(httpProtocol) {
+    logDebugMessageToConsole('configured MoarTube Client to use MoarTube Node http protocol: ' + httpProtocol, null, null, true);
+
     moartubeNodeHttpProtocol = httpProtocol;
 }
 
 function setMoarTubeNodeWebsocketProtocol(websocketprotocol) {
+    logDebugMessageToConsole('configured MoarTube Client to use MoarTube Node websocket protocol: ' + websocketprotocol, null, null, true);
+
     moartubeNodeWebsocketProtocol = websocketprotocol;
 }
 
 function setClientSettings(clientSettings) {
-	fs.writeFileSync(path.join(getUserDirectoryPath(), '_client_settings.json'), JSON.stringify(clientSettings));
+    const clientSettingsString = JSON.stringify(clientSettings);
+
+    logDebugMessageToConsole('configured MoarTube Client to use client settings: ' + clientSettingsString, null, null, true);
+
+	fs.writeFileSync(path.join(getUserDirectoryPath(), '_client_settings.json'), clientSettingsString);
 }
 
 function setWebsocketServer(wss) {
+    logDebugMessageToConsole('configured MoarTube Client with websocket server', null, null, true);
+
     websocketServer = wss;
 }
 
 function setWebsocketClient(wsc) {
+    logDebugMessageToConsole('configured MoarTube Client with websocket client', null, null, true);
+
     websocketClient = wsc;
 }
 
