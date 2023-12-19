@@ -15,7 +15,7 @@ const {
     node_removeVideoFromIndex, node_aliasVideo, node_getVideoAlias
 } = require('../utils/node-communications');
 const { addVideoToImportVideoTracker, isVideoImportStopping } = require('../utils/trackers/import-video-tracker');
-const { queuePendingPublishVideo } = require('../utils/trackers/pending-publish-video-tracker');
+const { enqueuePendingPublishVideo } = require('../utils/trackers/pending-publish-video-tracker');
 
 function root_GET(req, res) {
     const jwtToken = req.session.jwtToken;
@@ -597,7 +597,7 @@ function videoIdPublish_POST(req, res) {
                                             const format = publishing.format;
                                             const resolution = publishing.resolution;
 
-                                            queuePendingPublishVideo({
+                                            enqueuePendingPublishVideo({
                                                 jwtToken: jwtToken,
                                                 videoId: videoId,
                                                 format: format,

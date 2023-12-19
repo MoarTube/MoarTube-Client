@@ -4,7 +4,7 @@ function getPendingPublishVideoTracker() {
     return PENDING_PUBLISH_VIDEO_TRACKER;
 }
 
-function queuePendingPublishVideo(item) {
+function enqueuePendingPublishVideo(item) {
     PENDING_PUBLISH_VIDEO_TRACKER.push(item);
 }
 
@@ -18,7 +18,7 @@ function getPendingPublishVideoTrackerQueueSize() {
 
 module.exports = {
     getPendingPublishVideoTracker,
-    queuePendingPublishVideo,
+    enqueuePendingPublishVideo,
     dequeuePendingPublishVideo,
     getPendingPublishVideoTrackerQueueSize
 };

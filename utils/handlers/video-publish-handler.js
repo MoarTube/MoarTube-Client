@@ -5,7 +5,7 @@ const spawnSync = require('child_process').spawnSync;
 
 const { logDebugMessageToConsole, deleteDirectoryRecursive, timestampToSeconds, websocketClientBroadcast, getTempVideosDirectoryPath, getFfmpegPath, getClientSettings } = require('../helpers');
 const { node_setVideoPublishing, node_setVideoLengths, node_setVideoPublished, node_uploadVideo } = require('../node-communications');
-const { getPendingPublishVideoTracker, getPendingPublishVideoTrackerQueueSize, dequeuePendingPublishVideo } = require('../trackers/pending-publish-video-tracker');
+const { getPendingPublishVideoTracker, getPendingPublishVideoTrackerQueueSize, enqueuePendingPublishVideo, dequeuePendingPublishVideo } = require('../trackers/pending-publish-video-tracker');
 const { addToPublishVideoEncodingTracker, isPublishVideoEncodingStopping, addProcessToPublishVideoEncodingTracker } = require('../trackers/publish-video-encoding-tracker');
 
 var inProgressPublishingJobCount = 0;
@@ -24,12 +24,10 @@ function startPublishInterval() {
             .then((completedPublishingJob) => {
                 logDebugMessageToConsole('completed publishing job: ' + completedPublishingJob, null, null, true);
 
-                const index = inProgressPublishingJobs.findIndex(function(inProgressPublishingJob) {
-                    return inProgressPublishingJob.videoId === completedPublishingJob.videoId && inProgressPublishingJob.format === completedPublishingJob.format && inProgressPublishingJob.resolution === completedPublishingJob.resolution;
-                });
+                const index = findInProgressPublishJobIndex(completedPublishingJob);
                 
                 inProgressPublishingJobs.splice(index, 1);
-                
+
                 const videoIdHasPendingPublishingJobExists = getPendingPublishVideoTracker().some((pendingPublishingJob) => pendingPublishingJob.hasOwnProperty('videoId') && pendingPublishingJob.videoId === completedPublishingJob.videoId);
                 const videoIdHasInProgressPublishingJobExists = inProgressPublishingJobs.some((inProgressPublishingJob) => inProgressPublishingJob.hasOwnProperty('videoId') && inProgressPublishingJob.videoId === completedPublishingJob.videoId);
                 
@@ -38,9 +36,56 @@ function startPublishInterval() {
                 }
                 
                 inProgressPublishingJobCount--;
+
+                /*
+                If resource constraints was encountered, it was likely transient.
+                Reset the maximum concurrent jobs allowed when no jobs remain.
+                */
+                if(inProgressPublishingJobCount === 0 && getPendingPublishVideoTrackerQueueSize() === 0) {
+                    maximumInProgressPublishingJobCount = 5;
+                }
+            })
+            .catch(failedPublishingJob => {
+                /*
+                Failure is likely due to resource constraints leading to ffmpeg process termination by the operating system.
+                The assumption is likely correct, so we'll assume it 100% of the time to no ill effect.
+                Lower the maximum concurrent jobs allowed and append the job to the end of the queue.
+                The publish attempt will continue until the job is either successful or the user intervenes.
+                */
+
+                logDebugMessageToConsole('failed publishing job: ' + failedPublishingJob, null, null, true);
+
+                const index = findInProgressPublishJobIndex(failedPublishingJob);
+
+                inProgressPublishingJobs.splice(index, 1);
+
+                const jwtToken = failedPublishingJob.jwtToken;
+                const videoId = failedPublishingJob.videoId;
+                const format = failedPublishingJob.format;
+                const resolution = failedPublishingJob.resolution;
+
+                failedPublishingJob.idleInterval = setInterval(function() {
+                    websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing', videoId: videoId, format: format, resolution: resolution, progress: 0 }}});
+                }, 1000);
+
+                enqueuePendingPublishVideo(failedPublishingJob);
+
+                if(maximumInProgressPublishingJobCount > 1) {
+                    maximumInProgressPublishingJobCount--;
+                }
+
+                inProgressPublishingJobCount--;
             });
         }
     }, 3000);
+}
+
+function findInProgressPublishJobIndex(completedPublishingJob) {
+    const index = inProgressPublishingJobs.findIndex(function(inProgressPublishingJob) {
+        return inProgressPublishingJob.videoId === completedPublishingJob.videoId && inProgressPublishingJob.format === completedPublishingJob.format && inProgressPublishingJob.resolution === completedPublishingJob.resolution;
+    });
+
+    return index;
 }
 
 function startPublishingJob(publishingJob) {
@@ -57,7 +102,7 @@ function startPublishingJob(publishingJob) {
         node_setVideoPublishing(jwtToken, videoId)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                resolve(publishingJob);
+                reject(publishingJob);
             }
             else {
                 addToPublishVideoEncodingTracker(videoId);
@@ -69,13 +114,16 @@ function startPublishingJob(publishingJob) {
                         resolve(publishingJob);
                     })
                     .catch(error => {
-                        resolve(publishingJob);
+                        reject(publishingJob);
                     });
                 })
                 .catch(error => {
-                    resolve(publishingJob);
+                    reject(publishingJob);
                 });
             }
+        })
+        .catch(error => {
+            reject(publishingJob);
         });
     });
 }
@@ -166,7 +214,7 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
                 logDebugMessageToConsole('performEncodingJob ffmpeg process exited with exit code: ' + code, null, null, true);
                 
                 if(code === 0) {
-                    resolve({jwtToken: jwtToken, videoId: videoId, format: format, resolution: resolution});
+                    resolve();
                 }
                 else {
                     reject({isError: true, message: 'encoding process ended with an error code: ' + code});
