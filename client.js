@@ -10,7 +10,7 @@ const crypto = require('crypto');
 
 const { 
 	logDebugMessageToConsole, performEncodingDecodingAssessment, createRequiredAssets, cleanVideosDirectory, getPublicDirectoryPath, getTempDirectoryPath,
-    getMoarTubeClientPort, getFfmpegPath, setPublicDirectoryPath, setUserDirectoryPath, setTempDirectoryPath, setTempCertificatesDirectoryPath,
+    getMoarTubeClientPort, setPublicDirectoryPath, setUserDirectoryPath, setTempDirectoryPath, setTempCertificatesDirectoryPath,
     setTempVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getClientSettings
 } = require('./utils/helpers');
 

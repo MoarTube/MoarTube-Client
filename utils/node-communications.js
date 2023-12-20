@@ -435,7 +435,7 @@ function node_stopVideoStreaming(jwtToken, videoId) {
 
 function node_importVideo(jwtToken, title, description, tags) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/video/import', {
+        axios.post(getMoarTubeNodeUrl() + '/videos/import', {
             title: title,
             description: description,
             tags: tags
@@ -457,7 +457,7 @@ function node_importVideo(jwtToken, title, description, tags) {
 
 function node_setVideoError(jwtToken, videoId) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/video/error', {
+        axios.post(getMoarTubeNodeUrl() + '/videos/error', {
             videoId: videoId
         }, {
           headers: {
@@ -518,7 +518,7 @@ function node_setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp)
 
 function node_setVideoImported(jwtToken, videoId) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/video/imported', {
+        axios.post(getMoarTubeNodeUrl() + '/videos/imported', {
             videoId: videoId
         }, {
           headers: {
@@ -538,7 +538,7 @@ function node_setVideoImported(jwtToken, videoId) {
 
 function node_setVideoPublishing(jwtToken, videoId) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/video/publishing', {
+        axios.post(getMoarTubeNodeUrl() + '/videos/publishing', {
             videoId: videoId
         }, {
           headers: {
@@ -558,7 +558,7 @@ function node_setVideoPublishing(jwtToken, videoId) {
 
 function node_setVideoPublished(jwtToken, videoId) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/video/published', {
+        axios.post(getMoarTubeNodeUrl() + '/videos/published', {
             videoId: videoId
         }, {
           headers: {
@@ -1237,7 +1237,7 @@ function node_setAccountCredentials(jwtToken, username, password) {
 
 function node_getIndexerCaptcha(jwtToken) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/index/captcha', {
+        axios.get(getMoarTubeNodeUrl() + '/captcha/index', {
           headers: {
             Authorization: jwtToken
           },
@@ -1256,7 +1256,7 @@ function node_getIndexerCaptcha(jwtToken) {
 
 function node_getAliaserCaptcha(jwtToken) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/alias/captcha', {
+        axios.get(getMoarTubeNodeUrl() + '/captcha/alias', {
           headers: {
             Authorization: jwtToken
           },
