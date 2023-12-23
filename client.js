@@ -55,9 +55,9 @@ async function startClient() {
 	
 	createRequiredAssets();
 
-	await cleanVideosDirectory();
+	cleanVideosDirectory();
 	
-	await performEncodingDecodingAssessment();
+	performEncodingDecodingAssessment();
 
 	startVideoPublishInterval();
 	
