@@ -3,7 +3,7 @@ module.exports = {
     asar: {
       unpack: [ "**/node_modules/sharp/**/*", "**/node_modules/@img/**/*", "**/node_modules/ffmpeg-static/**/*" ]
     },
-    extraResource: ["./public"]
+    extraResource: ["./public", "./controllers", "./routes", "./utils"]
   },
   rebuildConfig: {},
   makers: [
