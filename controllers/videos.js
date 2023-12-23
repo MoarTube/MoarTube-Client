@@ -182,9 +182,9 @@ function import_POST(req, res) {
                                         
                                         fs.mkdirSync(sourceDirectoryPath, { recursive: true });
                                         
-                                        fs.access(sourceDirectoryPath, fs.F_OK, function(error) {
+                                        fs.access(sourceDirectoryPath, fs.constants.F_OK, function(error) {
                                             if(error) {
-                                                cb(new Error('file upload error'));
+                                                cb(new Error('file upload error'), null);
                                             }
                                             else {
                                                 cb(null, sourceDirectoryPath);
@@ -208,7 +208,7 @@ function import_POST(req, res) {
                                         cb(null, fileName);
                                     }
                                 })
-                            }).fields([{ name: 'video_file', minCount: 1, maxCount: 1 }])
+                            }).fields([{ name: 'video_file', maxCount: 1 }])
                             (req, res, function(error) {
                                 if(error) {
                                     logDebugMessageToConsole(nodeResponseData.message, error, new Error().stack, true);
@@ -1351,9 +1351,9 @@ function videoIdThumbnail_POST(req, res) {
                             
                             fs.mkdirSync(filePath, { recursive: true });
                             
-                            fs.access(filePath, fs.F_OK, function(error) {
+                            fs.access(filePath, fs.constants.F_OK, function(error) {
                                 if(error) {
-                                    cb(new Error('file upload error'));
+                                    cb(new Error('file upload error'), null);
                                 }
                                 else {
                                     cb(null, filePath);
@@ -1372,7 +1372,7 @@ function videoIdThumbnail_POST(req, res) {
                             cb(null, fileName);
                         }
                     })
-                }).fields([{ name: 'thumbnail_file', minCount: 1, maxCount: 1 }])
+                }).fields([{ name: 'thumbnail_file', maxCount: 1 }])
                 (req, res, function(error) {
                     if(error) {
                         logDebugMessageToConsole(null, error, new Error().stack, true);
@@ -1451,9 +1451,9 @@ function videoIdPreview_POST(req, res) {
                             
                             fs.mkdirSync(filePath, { recursive: true });
                             
-                            fs.access(filePath, fs.F_OK, function(error) {
+                            fs.access(filePath, fs.constants.F_OK, function(error) {
                                 if(error) {
-                                    cb(new Error('file upload error'));
+                                    cb(new Error('file upload error'), null);
                                 }
                                 else {
                                     cb(null, filePath);
@@ -1472,7 +1472,7 @@ function videoIdPreview_POST(req, res) {
                             cb(null, fileName);
                         }
                     })
-                }).fields([{ name: 'preview_file', minCount: 1, maxCount: 1 }])
+                }).fields([{ name: 'preview_file', maxCount: 1 }])
                 (req, res, function(error) {
                     if(error) {
                         logDebugMessageToConsole(null, error, new Error().stack, true);
@@ -1551,9 +1551,9 @@ function videoIdPoster_POST(req, res) {
                             
                             fs.mkdirSync(filePath, { recursive: true });
                             
-                            fs.access(filePath, fs.F_OK, function(error) {
+                            fs.access(filePath, fs.constants.F_OK, function(error) {
                                 if(error) {
-                                    cb(new Error('file upload error'));
+                                    cb(new Error('file upload error'), null);
                                 }
                                 else {
                                     cb(null, filePath);
@@ -1572,7 +1572,7 @@ function videoIdPoster_POST(req, res) {
                             cb(null, fileName);
                         }
                     })
-                }).fields([{ name: 'poster_file', minCount: 1, maxCount: 1 }])
+                }).fields([{ name: 'poster_file', maxCount: 1 }])
                 (req, res, function(error) {
                     if(error) {
                         logDebugMessageToConsole(null, error, new Error().stack, true);

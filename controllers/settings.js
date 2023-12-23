@@ -278,9 +278,9 @@ function nodeAvatar_POST(req, res) {
                         destination: function (req, file, cb) {
                             const filePath = path.join(getPublicDirectoryPath(), 'images');
                             
-                            fs.access(filePath, fs.F_OK, function(error) {
+                            fs.access(filePath, fs.constants.F_OK, function(error) {
                                 if(error) {
-                                    cb(new Error('file upload error'));
+                                    cb(new Error('file upload error'), null);
                                 }
                                 else {
                                     cb(null, filePath);
@@ -302,7 +302,7 @@ function nodeAvatar_POST(req, res) {
                             cb(null, fileName);
                         }
                     })
-                }).fields([{ name: 'avatar_file', minCount: 1, maxCount: 1 }])
+                }).fields([{ name: 'avatar_file', maxCount: 1 }])
                 (req, res, function(error) {
                     if(error) {
                         logDebugMessageToConsole(null, error, new Error().stack, true);
@@ -423,9 +423,9 @@ function nodeBanner_POST(req, res) {
                         destination: function (req, file, cb) {
                             const filePath = path.join(getPublicDirectoryPath(), 'images');
                             
-                            fs.access(filePath, fs.F_OK, function(error) {
+                            fs.access(filePath, fs.constants.F_OK, function(error) {
                                 if(error) {
-                                    cb(new Error('file upload error'));
+                                    cb(new Error('file upload error'), null);
                                 }
                                 else {
                                     cb(null, filePath);
@@ -447,7 +447,7 @@ function nodeBanner_POST(req, res) {
                             cb(null, fileName);
                         }
                     })
-                }).fields([{ name: 'banner_file', minCount: 1, maxCount: 1 }])
+                }).fields([{ name: 'banner_file', maxCount: 1 }])
                 (req, res, function(error) {
                     if(error) {
                         logDebugMessageToConsole(null, error, new Error().stack, true);
@@ -571,9 +571,9 @@ function node_Secure_POST(req, res) {
                         },
                         storage: multer.diskStorage({
                             destination: function (req, file, cb) {
-                                fs.access(getTempCertificatesDirectoryPath(), fs.F_OK, function(error) {
+                                fs.access(getTempCertificatesDirectoryPath(), fs.constants.F_OK, function(error) {
                                     if(error) {
-                                        cb(new Error('file upload error'));
+                                        cb(new Error('file upload error'), null);
                                     }
                                     else {
                                         cb(null, getTempCertificatesDirectoryPath());
@@ -591,11 +591,11 @@ function node_Secure_POST(req, res) {
                                     cb(null, file.originalname);
                                 }
                                 else {
-                                    cb(new Error('invalid field name in POST /settings/node/secure:' + file.fieldname));
+                                    cb(new Error('invalid field name in POST /settings/node/secure:' + file.fieldname), null);
                                 }
                             }
                         })
-                    }).fields([{ name: 'keyFile', minCount: 1, maxCount: 1 }, { name: 'certFile', minCount: 1, maxCount: 1 }, { name: 'caFiles', minCount: 0 }])
+                    }).fields([{ name: 'keyFile', maxCount: 1 }, { name: 'certFile', maxCount: 1 }, { name: 'caFiles', maxCount: 10 }])
                     (req, res, function(error) {
                         if(error) {
                             logDebugMessageToConsole(null, error, new Error().stack, true);
