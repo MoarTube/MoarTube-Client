@@ -47,7 +47,7 @@ function root_GET(req, res) {
                 });
             }
             else {
-                res.redirect('/signin');
+                res.redirect('/account/signin');
             }
         }
     })

@@ -1307,7 +1307,7 @@ function node_uploadVideo(jwtToken, videoId, format, resolution, directoryPaths)
 
 function node_setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled, chatHistoryLimit) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/stream/' + videoId + '/chat/settings', {
+        axios.post(getMoarTubeNodeUrl() + '/streams/' + videoId + '/chat/settings', {
             isChatHistoryEnabled: isChatHistoryEnabled,
             chatHistoryLimit: chatHistoryLimit
         }, {

@@ -202,8 +202,6 @@ function signIn_POST(req, res) {
                                     clearInterval(pingIntervalTimer);
                                     clearInterval(pingTimeoutTimer);
 
-                                    setWebsocketClient(null);
-
                                     setTimeout(connectWebsocketClient, 1000);
                                 });
                             }

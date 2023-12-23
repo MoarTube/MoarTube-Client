@@ -212,7 +212,7 @@
 				$.ajax({type: 'GET', url: '/node'})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
-						
+						showAlert(true, data.message);
 					}
 					else {
 						const nodeInformation = data.nodeInformation;
@@ -273,7 +273,7 @@
 				$.ajax({type: 'GET', url: '/reports/videos/all'})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
-						
+						showAlert(true, data.message);
 					}
 					else {
 						const reports = data.reports;
@@ -449,10 +449,9 @@
 				const reportId = row.cells[1].data;
 				
 				$.ajax({type: 'POST', url: '/reports/videos/archive', data: {reportId: reportId}})
-				.done(function (data, textStatus, xhr)
-				{
+				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
-						
+						showAlert(true, data.message);
 					}
 					else {
 						const row = button.closest('tr');
@@ -472,10 +471,9 @@
 				const reportId = row.cells[1].data;
 				
 				$.ajax({type: 'POST', url: '/reports/videos/delete', data: {reportId: reportId}})
-				.done(function (data, textStatus, xhr)
-				{
+				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
-						
+						showAlert(true, data.message);
 					}
 					else {
 						const row = button.closest('tr');
@@ -495,7 +493,7 @@
 				$.ajax({type: 'POST', url: '/reports/videos/archive/delete', data: {archiveId: archiveId}})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
-						
+						showAlert(true, data.message);
 					}
 					else {
 						DATA_TABLE_VIDEO_REPORTS_ARCHIVE.rows().remove(parseInt(row.dataIndex));
@@ -513,10 +511,9 @@
 				const videoIdsJson = JSON.stringify([videoId]);
 				
 				$.ajax({type: 'POST', url: '/videos/delete', data: {videoIdsJson: videoIdsJson}})
-				.done(function (data, textStatus, xhr)
-				{
+				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
-						
+						showAlert(true, data.message);
 					}
 					else {
 						showAlert(false, 'video deleted');
@@ -538,7 +535,7 @@
 				.done(function (data, textStatus, xhr)
 				{
 					if(data.isError) {
-						
+						showAlert(true, data.message);
 					}
 					else {
 						showAlert(false, 'video deleted');

@@ -195,13 +195,38 @@
 				getComments();
 			});
 
+			function getNodeInformation() {
+				return new Promise(function(resolve, reject) {
+					$.ajax({type: 'GET', url: '/node'})
+					.done(function (data, textStatus, xhr) {
+						if(data.isError) {
+							showAlert(true, data.message);
+						}
+						else {
+							const nodeInformation = data.nodeInformation;
+						
+							NODE_PROTOCOL = nodeInformation.publicNodeProtocol;
+							NODE_ADDRESS = nodeInformation.publicNodeAddress;
+							NODE_PORT = nodeInformation.publicNodePort;
+							
+							NODE_BASE_URL = NODE_PROTOCOL + '://' + NODE_ADDRESS + ':' + NODE_PORT;
+							
+							$('#node-link').attr('href', NODE_BASE_URL);
+						}
+					})
+					.fail(function()
+					{
+						console.log('unable to communicate with node');
+					});
+				});
+			}
+
             function getReportCounts() {
 				return new Promise(function(resolve, reject) {
 					$.ajax({type: 'GET', url: '/reports/count'})
-					.done(function (data, textStatus, xhr)
-					{
+					.done(function (data, textStatus, xhr) {
 						if(data.isError) {
-							reject();
+							showAlert(true, data.message);
 						}
 						else {
 							const videoReportCount = data.videoReportCount;
@@ -232,53 +257,31 @@
 				});
 			}
 
-            function getNodeInformation() {
-				$.ajax({type: 'GET', url: '/node'})
-				.done(function (data, textStatus, xhr) {
-					if(data.isError) {
-						
-					}
-					else {
-						const nodeInformation = data.nodeInformation;
-					
-						NODE_PROTOCOL = nodeInformation.publicNodeProtocol;
-						NODE_ADDRESS = nodeInformation.publicNodeAddress;
-						NODE_PORT = nodeInformation.publicNodePort;
-						
-						NODE_BASE_URL = NODE_PROTOCOL + '://' + NODE_ADDRESS + ':' + NODE_PORT;
-						
-						$('#node-link').attr('href', NODE_BASE_URL);
-					}
-				})
-				.fail(function()
-				{
-					console.log('unable to communicate with node');
-				});
-			}
-
             function getComments() {
+				return new Promise(function(resolve, reject) {
                 $.ajax({type: 'GET', url: '/comments/all'})
-				.done(function (data, textStatus, xhr) {
-					if(data.isError) {
-						
-					}
-					else {
-						let comments = data.comments;
-						
-						const parsedComments = parseComments(comments);
-						
-						let tableData = {
-							headings: [ "actions", 'comment date', "video id", "comment id", "message" ],
-							data: parsedComments
-						};
-						
-						populateCommentsTable(tableData);
+					.done(function (data, textStatus, xhr) {
+						if(data.isError) {
+							showAlert(true, data.message);
+						}
+						else {
+							let comments = data.comments;
+							
+							const parsedComments = parseComments(comments);
+							
+							let tableData = {
+								headings: [ "actions", 'comment date', "video id", "comment id", "message" ],
+								data: parsedComments
+							};
+							
+							populateCommentsTable(tableData);
 
-                        refreshHoverTooltips()
-					}
-				})
-				.fail(function() {
-					console.log('unable to communicate with node');
+							refreshHoverTooltips()
+						}
+					})
+					.fail(function() {
+						console.log('unable to communicate with node');
+					});
 				});
             }
 
@@ -380,7 +383,7 @@
 				$.ajax({type: 'POST', url: '/comments/delete', data: {videoId: videoId, commentId: commentId, timestamp: timestamp}})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
-						
+						showAlert(true, data.message);
 					}
 					else {
                         const row = button.closest('tr');
@@ -404,14 +407,31 @@
 				});
 			}
 
+			function showAlert(isError, message) {
+				if(isError) {
+					Swal.fire({
+						icon: 'warning',
+						text: message,
+						confirmButtonColor: '#3085d6',
+						confirmButtonText: 'Ok'
+					});
+				}
+				else {
+					Swal.fire({
+						icon: 'success',
+						text: message,
+						showConfirmButton: false,
+						timer: 1500
+					})
+				}
+			}
+
             function createDateTimestamp(timestamp)	{
 				let date = new Date(timestamp);
 				let weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 				
 				return ('0' + (date.getMonth() + 1).toString()).substr(-2) + '/' + ('0' + date.getDate().toString()).substr(-2)  + '/' + (date.getFullYear().toString()).substr(2) + '(' + weekday[date.getDay()] + ')' + date.toTimeString().split(' ')[0];
 			}
-			
-
 		</script>
 	</body>
 </html>

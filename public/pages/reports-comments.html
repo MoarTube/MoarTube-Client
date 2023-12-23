@@ -273,7 +273,7 @@
 				$.ajax({type: 'GET', url: '/reports/comments/all'})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
-						
+						showAlert(true, data.message);
 					}
 					else {
 						let reports = data.reports;
@@ -299,7 +299,7 @@
 				$.ajax({type: 'GET', url: '/reports/comments/archive/all'})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
-						
+						showAlert(true, data.message);
 					}
 					else {
 						let reports = data.reports;
@@ -489,7 +489,7 @@
 				$.ajax({type: 'POST', url: '/reports/comments/archive', data: {reportId: reportId}})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
-						
+						showAlert(true, data.message);
 					}
 					else {
 						DATA_TABLE_COMMENT_REPORTS.rows().remove(parseInt(row.dataIndex));
@@ -510,7 +510,7 @@
 				$.ajax({type: 'POST', url: '/reports/comments/delete', data: {reportId: reportId}})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
-						
+						showAlert(true, data.message);
 					}
 					else {
 						DATA_TABLE_COMMENT_REPORTS.rows().remove(parseInt(row.dataIndex));
@@ -528,7 +528,7 @@
 				$.ajax({type: 'POST', url: '/reports/comments/archive/delete', data: {archiveId: archiveId}})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
-						
+						showAlert(true, data.message);
 					}
 					else {
 						DATA_TABLE_COMMENT_REPORTS_ARCHIVE.rows().remove(parseInt(row.dataIndex));
@@ -549,7 +549,7 @@
 				$.ajax({type: 'POST', url: '/comments/delete', data: {videoId: videoId, commentId: commentId, timestamp: timestamp}})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
-						
+						showAlert(true, data.message);
 					}
 					else {
 						showAlert(false, 'comment deleted');
@@ -569,7 +569,7 @@
 				$.ajax({type: 'POST', url: '/comments/delete', data: {videoId: videoId, commentId: commentId, timestamp: timestamp}})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
-						
+						showAlert(true, data.message);
 					}
 					else {
 						showAlert(false, 'comment deleted');

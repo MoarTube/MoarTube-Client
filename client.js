@@ -47,6 +47,8 @@ async function startClient() {
 		logDebugMessageToConsole(null, reason, reason.stack, true);
 	});
 
+	logDebugMessageToConsole('starting MoarTube Client', null, null, true);
+
 	loadConfig();
 
 	setFfmpegPath(ffmpegPath);
