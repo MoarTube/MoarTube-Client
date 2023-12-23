@@ -167,6 +167,4 @@ function loadConfig() {
 	
 	setTempCertificatesDirectoryPath(path.join(getTempDirectoryPath(), 'certificates'));
 	setTempVideosDirectoryPath(path.join(getTempDirectoryPath(), 'media/videos'));
-
-	logDebugMessageToConsole('configured MoarTube Client to use client settings: ' + JSON.stringify(getClientSettings()), null, null, true);
 }

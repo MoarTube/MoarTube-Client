@@ -259,7 +259,7 @@ function cleanVideosDirectory() {
                                             reject(error);
                                         }
                                         else {
-                                            for(directory of directories) {
+                                            for(const directory of directories) {
                                                 if(directory !== 'source') {
                                                     const directoryPath = path.join(videoDirectoryPath, directory);
                                                     
