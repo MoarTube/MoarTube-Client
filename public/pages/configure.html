@@ -70,10 +70,10 @@
 														<input id="node-address-input" class="multisteps-form__input form-control mb-3" type="text" name="publicNodeAddress" placeholder="example.com / xxx.xxx.xxx.xxx">
 														<label>public node port</label>
 														<input id="node-port-input" class="multisteps-form__input form-control mb-3" type="text" name="publicNodePort" placeholder="">
-														<label>run this node privately</label>
+														<label>join the MoarTube network</label>
 														<p class="form-text text-muted text-xs ms-1">You can join and leave the <a href='http://www.moartube.com' target='_blank'>MoarTube network</a> at any time.</p>
 														<div class="form-check form-switch ms-2">
-															<input id="run-node-privately" class="form-check-input" type="checkbox" name="runNodePrivately" onclick="toggleNodeSettingPrivateNodeCheckbox(this)">
+															<input id="join-moartube-network" class="form-check-input" type="checkbox" name="runNodePrivately" checked="" onclick="toggleNodeSettingPrivateNodeCheckbox(this)">
 														</div>
 													</div>
 												</div>
@@ -125,7 +125,7 @@
 			}
 
 			function toggleNodeSettingPrivateNodeCheckbox(checkbox) {
-				const isNodePrivate = $(checkbox).is(':checked');
+				const isNodePrivate = !$(checkbox).is(':checked');
 				
 				$(checkbox).prop('disabled', true);
 				
@@ -159,7 +159,7 @@
 
 				const publicNodeAddress = $('#node-address-input').val();
 				const publicNodePort = $('#node-port-input').val();
-				const runNodePrivately = $('#run-node-privately').is(':checked');
+				const runNodePrivately = !$('#join-moartube-network').is(':checked');
 				
 				$.ajax({type: 'POST', url: url, data: { publicNodeProtocol: publicNodeProtocol, publicNodeAddress: publicNodeAddress, publicNodePort: publicNodePort }})
 				.done(function (data, textStatus, xhr) {
