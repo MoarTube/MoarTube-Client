@@ -223,16 +223,6 @@ function createRequiredAssets() {
 	if (!fs.existsSync(getTempVideosDirectoryPath())) {
 		fs.mkdirSync(getTempVideosDirectoryPath(), { recursive: true });
 	}
-
-	if (!fs.existsSync(path.join(getUserDirectoryPath(), '_client_settings.json'))) {
-		fs.writeFileSync(path.join(getUserDirectoryPath(), '_client_settings.json'), JSON.stringify({
-			"processingAgent":{
-				"processingAgentType":"cpu",
-				"processingAgentName":"",
-				"processingAgentModel":""
-			}
-		}));
-	}
 }
 
 function cleanVideosDirectory() {

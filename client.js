@@ -11,7 +11,7 @@ const crypto = require('crypto');
 const { 
 	logDebugMessageToConsole, performEncodingDecodingAssessment, createRequiredAssets, cleanVideosDirectory, getPublicDirectoryPath, getTempDirectoryPath,
     getMoarTubeClientPort, setPublicDirectoryPath, setUserDirectoryPath, setTempDirectoryPath, setTempCertificatesDirectoryPath,
-    setTempVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getClientSettings
+    setTempVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getUserDirectoryPath, getClientSettings
 } = require('./utils/helpers');
 
 const { 
@@ -151,9 +151,6 @@ async function startClient() {
 function loadConfig() {
 	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-	const config = JSON.parse(fs.readFileSync(path.join(__dirname, '/config.json'), 'utf8'));
-
-	setMoarTubeClientPort(config.clientConfig.port);
 	setPublicDirectoryPath(path.join(__dirname, 'public'));
 
 	if(global != null && global.electronPaths != null) {
@@ -167,4 +164,19 @@ function loadConfig() {
 	
 	setTempCertificatesDirectoryPath(path.join(getTempDirectoryPath(), 'certificates'));
 	setTempVideosDirectoryPath(path.join(getTempDirectoryPath(), 'media/videos'));
+
+	if (!fs.existsSync(path.join(getUserDirectoryPath(), '_client_settings.json'))) {
+		fs.writeFileSync(path.join(getUserDirectoryPath(), '_client_settings.json'), JSON.stringify({
+            "clientListeningPort":8080,
+			"processingAgent":{
+				"processingAgentType":"cpu",
+				"processingAgentName":"",
+				"processingAgentModel":""
+			}
+		}));
+	}
+
+	const clientSettings = getClientSettings();
+
+	setMoarTubeClientPort(clientSettings.clientListeningPort);
 }
