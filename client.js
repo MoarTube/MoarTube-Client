@@ -9,9 +9,10 @@ const webSocket = require('ws');
 const crypto = require('crypto');
 
 const { 
-	logDebugMessageToConsole, performEncodingDecodingAssessment, createRequiredAssets, cleanVideosDirectory, getPublicDirectoryPath, getTempDirectoryPath,
+	logDebugMessageToConsole, performEncodingDecodingAssessment, cleanVideosDirectory, getPublicDirectoryPath, getTempDirectoryPath,
     getMoarTubeClientPort, setPublicDirectoryPath, setUserDirectoryPath, setTempDirectoryPath, setTempCertificatesDirectoryPath,
-    setTempVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getUserDirectoryPath, getClientSettings
+    setTempVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getUserDirectoryPath, getClientSettings,
+	getTempCertificatesDirectoryPath, getTempVideosDirectoryPath
 } = require('./utils/helpers');
 
 const { 
@@ -52,8 +53,6 @@ async function startClient() {
 	loadConfig();
 
 	setFfmpegPath(ffmpegPath);
-	
-	createRequiredAssets();
 
 	cleanVideosDirectory();
 	
@@ -165,7 +164,21 @@ function loadConfig() {
 	setTempCertificatesDirectoryPath(path.join(getTempDirectoryPath(), 'certificates'));
 	setTempVideosDirectoryPath(path.join(getTempDirectoryPath(), 'media/videos'));
 
-	if (!fs.existsSync(path.join(getUserDirectoryPath(), '_client_settings.json'))) {
+	logDebugMessageToConsole('creating required directories and files', null, null, true);
+
+    if (!fs.existsSync(getUserDirectoryPath())) {
+		fs.mkdirSync(getUserDirectoryPath(), { recursive: true });
+	}
+
+	if (!fs.existsSync(getTempCertificatesDirectoryPath())) {
+		fs.mkdirSync(getTempCertificatesDirectoryPath(), { recursive: true });
+	}
+
+	if (!fs.existsSync(getTempVideosDirectoryPath())) {
+		fs.mkdirSync(getTempVideosDirectoryPath(), { recursive: true });
+	}
+
+    if (!fs.existsSync(path.join(getUserDirectoryPath(), '_client_settings.json'))) {
 		fs.writeFileSync(path.join(getUserDirectoryPath(), '_client_settings.json'), JSON.stringify({
             "clientListeningPort":8080,
 			"processingAgent":{

@@ -209,22 +209,6 @@ function performEncodingDecodingAssessment() {
     });
 }
 
-function createRequiredAssets() {
-    logDebugMessageToConsole('creating required directories and files', null, null, true);
-
-    if (!fs.existsSync(getUserDirectoryPath())) {
-		fs.mkdirSync(getUserDirectoryPath(), { recursive: true });
-	}
-
-	if (!fs.existsSync(getTempCertificatesDirectoryPath())) {
-		fs.mkdirSync(getTempCertificatesDirectoryPath(), { recursive: true });
-	}
-
-	if (!fs.existsSync(getTempVideosDirectoryPath())) {
-		fs.mkdirSync(getTempVideosDirectoryPath(), { recursive: true });
-	}
-}
-
 function cleanVideosDirectory() {
     return new Promise(function(resolve, reject) {
         logDebugMessageToConsole('cleaning imported video directories', null, null, true);
@@ -469,7 +453,6 @@ module.exports = {
     detectSystemCpu,
     getNetworkAddresses,
     performEncodingDecodingAssessment,
-    createRequiredAssets,
     cleanVideosDirectory,
     websocketClientBroadcast,
     websocketServerBroadcast,
