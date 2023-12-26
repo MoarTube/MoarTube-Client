@@ -2,7 +2,7 @@ const express = require('express');
 
 const { 
     root_GET, client_GET, node_GET, clientGpuAcceleration_POST, nodeAvatar_GET, nodeAvatar_POST, nodeBanner_GET, nodeBanner_POST,
-    nodePersonalize_POST, node_Secure_POST, nodePrivate_POST, nodeNetworkInternal_POST, nodeNetworkExternal_POST, nodeAccount_POST
+    nodePersonalize_POST, node_Secure_POST, nodeNetworkInternal_POST, nodeNetworkExternal_POST, nodeAccount_POST
  } = require('../controllers/settings');
 
 const router = express.Router();
@@ -45,10 +45,6 @@ router.post('/node/personalize', (req, res) => {
 
 router.post('/node/secure', (req, res) => {
     node_Secure_POST(req, res);
-});
-
-router.post('/node/private', (req, res) => {
-    nodePrivate_POST(req, res);
 });
 
 router.post('/node/network/internal', (req, res) => {

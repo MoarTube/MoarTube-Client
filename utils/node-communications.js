@@ -1,5 +1,5 @@
 const fs = require('fs');
-const axios = require('axios');
+const axios = require('axios').default;
 const FormData = require('form-data');
 
 const { getMoarTubeNodeUrl } = require('./helpers');
@@ -102,10 +102,12 @@ function node_getAvatar(jwtToken) {
     });
 }
 
-function node_setPrivate(jwtToken, isNodePrivate) {
+function node_setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/settings/private', {
-            isNodePrivate: isNodePrivate
+        axios.post(getMoarTubeNodeUrl() + '/settings/network/external', {
+            publicNodeProtocol: publicNodeProtocol,
+            publicNodeAddress: publicNodeAddress,
+            publicNodePort: publicNodePort
         }, {
           headers: {
             Authorization: jwtToken
@@ -122,9 +124,9 @@ function node_setPrivate(jwtToken, isNodePrivate) {
     });
 }
 
-function node_setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort) {
+function node_configure(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/settings/network/external', {
+        axios.post(getMoarTubeNodeUrl() + '/configure', {
             publicNodeProtocol: publicNodeProtocol,
             publicNodeAddress: publicNodeAddress,
             publicNodePort: publicNodePort
@@ -1419,8 +1421,8 @@ module.exports = {
     node_doSignin,
     node_doSignout,
     node_getSettings,
-    node_setPrivate,
     node_setExternalNetwork,
+    node_configure,
     node_getReportCount,
     node_stopVideoImporting,
     node_getVideoInformation,

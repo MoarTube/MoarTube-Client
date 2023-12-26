@@ -52,7 +52,7 @@
 						<div class="multisteps-form mb-5">
 							<div class="row">
 								<div class="col-12 col-lg-8 m-auto">
-									<form id="configure-form" class="multisteps-form__form" method="POST" action="/settings/node/network/external" style="height: 463px;">
+									<form id="configure-form" class="multisteps-form__form" method="POST" action="/configure" style="height: 463px;">
 										<div class="card multisteps-form__panel p-3 border-radius-xl bg-white js-active" data-animation="FadeIn">
 											<div class="multisteps-form__content">
 												<div class="row mt-3">
@@ -70,11 +70,6 @@
 														<input id="node-address-input" class="multisteps-form__input form-control mb-3" type="text" name="publicNodeAddress" placeholder="example.com / xxx.xxx.xxx.xxx">
 														<label>public node port</label>
 														<input id="node-port-input" class="multisteps-form__input form-control mb-3" type="text" name="publicNodePort" placeholder="">
-														<label>join the MoarTube network</label>
-														<p class="form-text text-muted text-xs ms-1">You can join and leave the <a href='http://www.moartube.com' target='_blank'>MoarTube network</a> at any time.</p>
-														<div class="form-check form-switch ms-2">
-															<input id="join-moartube-network" class="form-check-input" type="checkbox" name="runNodePrivately" checked="" onclick="toggleNodeSettingPrivateNodeCheckbox(this)">
-														</div>
 													</div>
 												</div>
 												<div class="button-row d-flex mt-4">
@@ -123,30 +118,6 @@
 					});
 				});
 			}
-
-			function toggleNodeSettingPrivateNodeCheckbox(checkbox) {
-				const isNodePrivate = !$(checkbox).is(':checked');
-				
-				$(checkbox).prop('disabled', true);
-				
-				$.ajax({type: 'POST', url: '/settings/node/private', data: JSON.stringify({isNodePrivate: isNodePrivate}), contentType: 'application/json; charset=utf-8'})
-				.always(function() {
-					$(checkbox).prop('disabled', false);
-				})
-				.done(function (data, textStatus, xhr) {
-					if(data.isError) {
-						$(checkbox).prop('checked', !isNodePrivate);
-						
-						showAlert(true, data.message);
-					}
-					else {
-						// do nothing
-					}
-				})
-				.fail(function() {
-					$(checkbox).prop('checked', !isNodePrivate);
-				});
-			}
 		
 			$("#configure-form").submit(function(event) {
 				event.preventDefault();
@@ -159,8 +130,9 @@
 
 				const publicNodeAddress = $('#node-address-input').val();
 				const publicNodePort = $('#node-port-input').val();
-				const runNodePrivately = !$('#join-moartube-network').is(':checked');
 				
+				// do configure endpoint instead
+
 				$.ajax({type: 'POST', url: url, data: { publicNodeProtocol: publicNodeProtocol, publicNodeAddress: publicNodeAddress, publicNodePort: publicNodePort }})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
@@ -171,21 +143,7 @@
 						});
 					}
 					else {
-						if(runNodePrivately) {
-							window.location.href = '/videos';
-						}
-						else {
-							Swal.fire({
-								title: 'Welcome!',
-								html: '<h6>Your node has successfuly joined the MoarTube network</h6>',
-								icon: 'success'
-							})
-							.then((result) => {
-								if (result.isConfirmed) {
-									window.location.href = '/videos';
-								}
-							});
-						}
+						window.location.href = '/videos';
 					}
 				})
 				.fail(function() {

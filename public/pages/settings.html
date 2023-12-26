@@ -251,27 +251,13 @@
 								</form>
 								<div class="card-body pt-0 pb-0">
 									<div class="">
-										<p class="mb-0">Run this Node Privately</p>
+										<p class="mb-0">Secure Mode (HTTPS)</p>
 									</div>
 									<div class="card-body pt-0">
 										<div class="row">
 											<div class="col-6">
 												<div class="form-check form-switch my-auto">
-													<input id="node-setting-private-node-checkbox" class="form-check-input" type="checkbox" onclick="toggleNodeSettingPrivateNodeCheckbox(this)"/>
-												</div>
-											</div>
-										</div>
-									</div>
-								</div>
-								<div class="card-body pt-0 pb-0">
-									<div class="">
-										<p class="mb-0">Secure Connection (HTTPS)</p>
-									</div>
-									<div class="card-body pt-0">
-										<div class="row">
-											<div class="col-6">
-												<div class="form-check form-switch my-auto">
-													<input id="node-setting-secure-connection-checkbox" class="form-check-input" type="checkbox" onclick="toggleNodeSettingSecureConnectionCheckbox(this)"/>
+													<input id="node-setting-secure-mode-checkbox" class="form-check-input" type="checkbox" onclick="toggleNodeSettingSecureModeCheckbox(this)"/>
 												</div>
 											</div>
 										</div>
@@ -280,7 +266,7 @@
 								<form id="internal_network_settings_form" role="form" method="POST" action="/settings/node/network/internal">
 									<div class="card-body pt-0 pb-0">
 										<div class="">
-											<p class="mb-0">Internal Network</p>
+											<p class="mb-0">What port is your node listening on?</p>
 										</div>
 										<div class="card-body pt-0">
 											<div class="row">
@@ -298,7 +284,7 @@
 								<form id="external_network_settings_form" role="form" method="POST" action="/settings/node/network/external">
 									<div class="card-body pt-0 pb-0">
 										<div class="">
-											<p class="mb-0">External Network</p>
+											<p class="mb-0">How Can MoarTube Find Your Node?</p>
 										</div>
 										<div class="card-body pt-0">
 											<div class="row">
@@ -519,10 +505,8 @@
 						$('#node-name-input').val(nodeSettings.nodeName);
 						$('#node-about-textarea').val(nodeSettings.nodeAbout);
 						$('#node-id-input').val(nodeSettings.nodeId);
-						
-						$('#node-setting-private-node-checkbox').prop('checked', nodeSettings.isNodePrivate);
 
-						$('#node-setting-secure-connection-checkbox').prop('checked', nodeSettings.isSecure);
+						$('#node-setting-secure-mode-checkbox').prop('checked', nodeSettings.isSecure);
 						
 						$('#node-listening-port-input').val(nodeSettings.nodeListeningPort);
 						
@@ -801,32 +785,8 @@
 					$(checkbox).prop('checked', !isGpuAccelerationEnabled);
 				});
 			}
-
-			function toggleNodeSettingPrivateNodeCheckbox(checkbox) {
-				const isNodePrivate = $(checkbox).is(':checked');
-				
-				$(checkbox).prop('disabled', true);
-				
-				$.ajax({type: 'POST', url: '/settings/node/private', data: JSON.stringify({isNodePrivate: isNodePrivate}), contentType: 'application/json; charset=utf-8'})
-				.always(function() {
-					$(checkbox).prop('disabled', false);
-				})
-				.done(function (data, textStatus, xhr) {
-					if(data.isError) {
-						$(checkbox).prop('checked', !isNodePrivate);
-						
-						showAlert(true, data.message);
-					}
-					else {
-						// do nothing
-					}
-				})
-				.fail(function() {
-					$(checkbox).prop('checked', !isNodePrivate);
-				});
-			}
 			
-			function toggleNodeSettingSecureConnectionCheckbox(checkbox) {
+			function toggleNodeSettingSecureModeCheckbox(checkbox) {
 				const isCheckboxChecked = $(checkbox).prop('checked');
 				
 				if(isCheckboxChecked) {
