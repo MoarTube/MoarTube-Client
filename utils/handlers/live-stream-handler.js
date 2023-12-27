@@ -82,7 +82,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                     const segmentIndexToDeleteFileName = 'segment-' + resolution + '-' + segmentIndexToDelete + '.ts';
                                     const segmentIndexToDeleteFilePath = path.join(segmentsDirectoryPath, '/' + segmentIndexToDeleteFileName);
                                     
-                                    fs.access(segmentIndexToDeleteFilePath, fs.F_OK, function(error) {
+                                    fs.access(segmentIndexToDeleteFilePath, fs.constants.F_OK, function(error) {
                                         if(error) {
                                             
                                         }
@@ -500,8 +500,6 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                     '-f', 'flv',
                     '-i', rtmpUrl, 
                     '-c:v', 'h264_nvenc',
-                    '-profile:v', 'high',
-                    '-preset', 'p6',
                     '-sc_threshold', '0',
                     '-g', '90',  // GOP size = (frame rate) * (segment length)
                     '-c:a', 'aac',
