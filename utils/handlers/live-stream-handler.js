@@ -482,7 +482,7 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                 '-f', 'hls', 
                 '-hls_time', '3', '-hls_init_time', '3', '-hls_list_size', '20',
                 '-hls_segment_filename', hlsSegmentOutputPath,
-                '-hls_base_url', `/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+                '-hls_base_url', `/assets/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
                 '-hls_playlist_type', 'event', 
                 '-hls_flags', 'append_list',
                 manifestFilePath
@@ -506,7 +506,7 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                     '-f', 'hls', 
                     '-hls_time', '3', '-hls_init_time', '3', '-hls_list_size', '20',
                     '-hls_segment_filename', hlsSegmentOutputPath,
-                    '-hls_base_url', `/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+                    '-hls_base_url', `/assets/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
                     '-hls_playlist_type', 'event', 
                     '-hls_flags', 'append_list',
                     manifestFilePath
@@ -529,7 +529,7 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                     '-f', 'hls', 
                     '-hls_time', '3', '-hls_init_time', '3', '-hls_list_size', '20',
                     '-hls_segment_filename', hlsSegmentOutputPath,
-                    '-hls_base_url', `/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+                    '-hls_base_url', `/assets/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
                     '-hls_playlist_type', 'event', 
                     '-hls_flags', 'append_list',
                     manifestFilePath

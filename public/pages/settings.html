@@ -336,6 +336,36 @@
 										<div class="card-body d-sm-flex pt-0"><div class="d-flex align-items-center mb-sm-0 mb-4 ms-auto"><button class="btn btn-primary mb-0" type="submit" name="button">Save</button></div></div>
 									</div>
 								</form>
+								<form id="cloudflare_credentials_settings_form" role="form" method="POST" action="/settings/node/cloudflare">
+									<div class="card-body pt-0 pb-0">
+										<div class="">
+											<p class="mb-0">Cloudflare Credentials</p>
+										</div>
+										<div class="card-body pt-0">
+											<div class="row">
+												<div class="col-4">
+													<label class="form-label">Email Address</label>
+													<div class="input-group">
+														<input id="cloudflare-email-address" class="form-control" name="cloudflareEmailAddress" type="text" placeholder="email address" onfocus="focused(this)" onfocusout="defocused(this)">
+													</div>
+												</div>
+												<div class="col-4">
+													<label class="form-label">Zone ID</label>
+													<div class="input-group">
+														<input id="cloudflare-zone-id" class="form-control" name="cloudflareZoneId" type="text" placeholder="zone id" onfocus="focused(this)" onfocusout="defocused(this)">
+													</div>
+												</div>
+												<div class="col-4">
+													<label class="form-label">Global API Key</label>
+													<div class="input-group">
+														<input id="cloudflare-api-token" class="form-control" name="cloudflareApiToken" type="text" placeholder="api token" onfocus="focused(this)" onfocusout="defocused(this)">
+													</div>
+												</div>
+											</div>
+										</div>
+										<div class="card-body d-sm-flex pt-0"><div class="d-flex align-items-center mb-sm-0 mb-4 ms-auto"><button class="btn btn-primary mb-0" type="submit" name="button">Save</button></div></div>
+									</div>
+								</form>
 								<form id="account_credentials_settings_form" role="form" method="POST" action="/settings/node/account">
 									<div class="card-body pt-0 pb-0">
 										<div class="">
@@ -360,32 +390,6 @@
 										<div class="card-body d-sm-flex pt-0"><div class="d-flex align-items-center mb-sm-0 mb-4 ms-auto"><button class="btn btn-primary mb-0" type="submit" name="button">Save</button></div></div>
 									</div>
 								</form>
-								<!--
-								<form id="cloudflare_credentials_settings_form" role="form" method="POST" action="/settings/cloudflare/update">
-									<div class="card-body pt-0 pb-0">
-										<div class="">
-											<p class="mb-0">Cloudflare Stream</p>
-										</div>
-										<div class="card-body pt-0">
-											<div class="row">
-												<div class="col-6">
-													<label class="form-label">Account ID</label>
-													<div class="input-group">
-														<input id="cloudflare-account-id" class="form-control" name="cloudflareAccountId" type="text" placeholder="account id" onfocus="focused(this)" onfocusout="defocused(this)">
-													</div>
-												</div>
-												<div class="col-6">
-													<label class="form-label">API Key</label>
-													<div class="input-group">
-														<input id="cloudflare-api-key" class="form-control" name="cloudflareApiKey" type="text" placeholder="api key" onfocus="focused(this)" onfocusout="defocused(this)">
-													</div>
-												</div>
-											</div>
-										</div>
-										<div class="card-body d-sm-flex pt-0"><div class="d-flex align-items-center mb-sm-0 mb-4 ms-auto"><button class="btn btn-primary mb-0" type="submit" name="button">Save</button></div></div>
-									</div>
-								</form>
-								-->
 							</div>
 						</div>
 					</div>
@@ -713,6 +717,35 @@
 					});
 				}
 			});
+
+			$("#cloudflare_credentials_settings_form").submit(function(event) {
+				event.preventDefault();
+				
+				let form = $(this);
+
+				let url = form.attr('action');
+
+				let cloudflareEmailAddress = form.find('input[name="cloudflareEmailAddress"]').val();
+				let cloudflareZoneId = form.find('input[name="cloudflareZoneId"]').val();
+				let cloudflareApiToken = form.find('input[name="cloudflareApiToken"]').val();
+				
+				$.post(url, {cloudflareEmailAddress: cloudflareEmailAddress, cloudflareZoneId: cloudflareZoneId, cloudflareApiToken: cloudflareApiToken})
+				.done(function(data) {
+					if(data.isError) {
+						showAlert(true, data.message);
+					}
+					else {
+						form.find('input[name="cloudflareEmailAddress"]').val('');
+						form.find('input[name="cloudflareZoneId"]').val('');
+						form.find('input[name="cloudflareApiToken"]').val('');
+
+						showAlert(false);
+					}
+				})
+				.fail(function() {
+					showAlert(true, 'an error occurred, please try again');
+				});
+			});
 			
 			$("#account_credentials_settings_form").submit(function(event) {
 				event.preventDefault();
@@ -741,34 +774,6 @@
 					});
 				}
 			});
-			
-			/*
-			$("#cloudflare_credentials_settings_form").submit(function(event) {
-				event.preventDefault();
-				
-				let form = $(this);
-
-				let url = form.attr('action');
-				let cloudflareAccountId = form.find('input[name="cloudflareAccountId"]').val();
-				let cloudflareApiKey = form.find('input[name="cloudflareApiKey"]').val();
-				
-				$.post(url, {cloudflareAccountId: cloudflareAccountId, cloudflareApiKey: cloudflareApiKey})
-				.done(function(data) {
-					if(data.isError) {
-						showAlert(true, data.message);
-					}
-					else {
-						form.find('input[name="cloudflareAccountId"]').val(data.cloudflareAccountId);
-						form.find('input[name="cloudflareApiKey"]').val(data.cloudflareApiKey);
-						
-						showAlert(false);
-					}
-				})
-				.fail(function() {
-					showAlert(true, 'an error occurred, please try again');
-				});
-			});
-			*/
 			
 			function toggleClientSettingGpuAccelerationCheckbox(checkbox) {
 				const isGpuAccelerationEnabled = $(checkbox).is(':checked');

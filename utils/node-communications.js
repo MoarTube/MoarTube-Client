@@ -247,7 +247,7 @@ function node_getVideoData(jwtToken, videoId) {
 
 function node_getThumbnail(jwtToken, videoId) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/thumbnail', {
+        axios.get(getMoarTubeNodeUrl() + '/assets/videos/' + videoId + '/thumbnail', {
           headers: {
             Authorization: jwtToken
           },
@@ -290,7 +290,7 @@ function node_setThumbnail(jwtToken, videoId, thumbnailPath) {
 
 function node_getPreview(jwtToken, videoId) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/preview', {
+        axios.get(getMoarTubeNodeUrl() + '/assets/videos/' + videoId + '/preview', {
           headers: {
             Authorization: jwtToken
           },
@@ -333,7 +333,7 @@ function node_setPreview(jwtToken, videoId, previewPath) {
 
 function node_getPoster(jwtToken, videoId) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/poster', {
+        axios.get(getMoarTubeNodeUrl() + '/assets/videos/' + videoId + '/poster', {
           headers: {
             Authorization: jwtToken
           },
@@ -1216,6 +1216,28 @@ function node_setNetworkInternal(jwtToken, listeningNodePort) {
     });
 }
 
+function node_setCloudflareCredentials(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareApiToken) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare', {
+            cloudflareEmailAddress: cloudflareEmailAddress,
+            cloudflareZoneId: cloudflareZoneId,
+            cloudflareApiToken: cloudflareApiToken
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 function node_setAccountCredentials(jwtToken, username, password) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/settings/account', {
@@ -1279,7 +1301,7 @@ function node_uploadVideo(jwtToken, videoId, format, resolution, directoryPaths)
     return new Promise(function(resolve, reject) {
         const formData = new FormData();
         
-        for (directoryPath of directoryPaths) {
+        for (const directoryPath of directoryPaths) {
             const fileName = directoryPath.fileName;
             const filePath = directoryPath.filePath;
             const fileStream = fs.createReadStream(filePath);
@@ -1367,7 +1389,7 @@ function node_getVideoBandwidth(jwtToken, videoId) {
 function node_uploadStream(jwtToken, videoId, format, resolution, directoryPaths) {
     return new Promise(function(resolve, reject) {
         const formData = new FormData();
-        for (directoryPath of directoryPaths) {
+        for (const directoryPath of directoryPaths) {
             const fileName = directoryPath.fileName;
             const filePath = directoryPath.filePath;
             const fileStream = fs.createReadStream(filePath);
@@ -1476,6 +1498,7 @@ module.exports = {
     node_setNodeName,
     node_setSecureConnection,
     node_setNetworkInternal,
+    node_setCloudflareCredentials,
     node_setAccountCredentials,
     node_getIndexerCaptcha,
     node_getAliaserCaptcha,

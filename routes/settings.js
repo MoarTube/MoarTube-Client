@@ -2,7 +2,7 @@ const express = require('express');
 
 const { 
     root_GET, client_GET, node_GET, clientGpuAcceleration_POST, nodeAvatar_GET, nodeAvatar_POST, nodeBanner_GET, nodeBanner_POST,
-    nodePersonalize_POST, node_Secure_POST, nodeNetworkInternal_POST, nodeNetworkExternal_POST, nodeAccount_POST
+    nodePersonalize_POST, node_Secure_POST, nodeNetworkInternal_POST, nodeNetworkExternal_POST, nodeCloudflare_POST, nodeAccount_POST
  } = require('../controllers/settings');
 
 const router = express.Router();
@@ -53,6 +53,10 @@ router.post('/node/network/internal', (req, res) => {
 
 router.post('/node/network/external', (req, res) => {
     nodeNetworkExternal_POST(req, res);
+});
+
+router.post('/node/cloudflare', (req, res) => {
+    nodeCloudflare_POST(req, res);
 });
 
 router.post('/node/account', (req, res) => {

@@ -11,7 +11,8 @@ const {
 } = require('../utils/helpers');
 const { 
     node_isAuthenticated, node_setExternalNetwork, node_getSettings, node_doSignout, node_getAvatar, node_setAvatar, 
-    node_getBanner, node_setBanner, node_setNodeName, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials
+    node_getBanner, node_setBanner, node_setNodeName, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials,
+    node_setCloudflareCredentials
 } = require('../utils/node-communications');
 
 function root_GET(req, res) {
@@ -765,6 +766,53 @@ function nodeNetworkExternal_POST(req, res) {
     });
 }
 
+function nodeCloudflare_POST(req, res) {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const cloudflareEmailAddress = req.body.cloudflareEmailAddress;
+                const cloudflareZoneId = req.body.cloudflareZoneId;
+                const cloudflareApiToken = req.body.cloudflareApiToken;
+                
+                node_setCloudflareCredentials(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareApiToken)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        
+                        res.send({isError: true, message: nodeResponseData.message});
+                    }
+                    else {
+                        res.send({isError: false});
+                    }
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+                
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+}
+
 function nodeAccount_POST(req, res) {
     const jwtToken = req.session.jwtToken;
     
@@ -824,5 +872,6 @@ module.exports = {
     node_Secure_POST,
     nodeNetworkInternal_POST,
     nodeNetworkExternal_POST,
+    nodeCloudflare_POST,
     nodeAccount_POST
 };

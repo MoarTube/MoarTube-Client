@@ -1451,7 +1451,7 @@
 								}
 								
 								function showShareLinks(videoId, nodeVideoUrl, videoAliasUrl) {
-									const embedUrl = NODE_BASE_URL + '/embed/video/' + videoId + '?autostart=1';
+									const embedUrl = NODE_BASE_URL + '/watch/embed/video/' + videoId + '?autostart=1';
 									const embedHtml = '<iframe width="560" height="315" src="' + embedUrl + '" title="MoarTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>';
 									
 									const embedSVG = '<svg viewBox="0 0 36 36" focusable="false" style="pointer-events: none; display: block; width: 100%; height: 100%;"><circle cx="18" cy="18" r="17.5" stroke="#E7E7E7" fill="#F4F4F4" stroke-width=".5"></circle><path d="m21.41,23.29l-0.71,-0.71l4.59,-4.58l-4.59,-4.59l0.71,-0.71l5.3,5.3l-5.3,5.29zm-6.12,-0.7l-4.58,-4.59l4.59,-4.59l-0.71,-0.7l-5.3,5.29l5.29,5.29l0.71,-0.7z" fill="#606060"></path></svg>';
@@ -2653,7 +2653,7 @@
 						});
 						
 						function updateChatEmbedInput() {
-							const url = NODE_BASE_URL + '/embed/chat/' + videoId + '?sci=' + sci + '&' + 'bgc=' + bgc + '&' + 'ctc=' + ctc;
+							const url = NODE_BASE_URL + '/watch/embed/chat/' + videoId + '?sci=' + sci + '&' + 'bgc=' + bgc + '&' + 'ctc=' + ctc;
 							const code = '<iframe width="560" height="315" src="' + url + '" title="MoarTube video chat" frameborder="0"></iframe>';
 							
 							$('#embed-chat-input').val(url);
