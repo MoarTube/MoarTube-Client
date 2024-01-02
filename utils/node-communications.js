@@ -35,7 +35,7 @@ function node_isAuthenticated(jwtToken) {
 
 function node_doHeartBeat(moarTubeNodeHttpProtocol, moarTubeNodeIp, moarTubeNodePort) {
     return new Promise(function(resolve, reject) {
-        axios.get(moarTubeNodeHttpProtocol + '://' + moarTubeNodeIp + ':' + moarTubeNodePort + '/heartbeat')
+        axios.get(moarTubeNodeHttpProtocol + '://' + moarTubeNodeIp + ':' + moarTubeNodePort + '/node/heartbeat')
         .then(response => {
             const data = response.data;
             
@@ -715,7 +715,7 @@ function node_getVideosTagsAll(jwtToken) {
 
 function node_doVideosSearchAll(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/channel/search', {
+        axios.get(getMoarTubeNodeUrl() + '/node/search', {
           params: {
               searchTerm: searchTerm,
               sortTerm: sortTerm,

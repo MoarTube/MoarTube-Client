@@ -12,7 +12,6 @@ const { stoppingVideoImport, stoppedVideoImport } = require('../utils/trackers/i
 const { stoppingLiveStream, stoppedLiveStream } = require('../utils/trackers/live-stream-tracker');
 const { stoppingPublishVideoEncoding, stoppedPublishVideoEncoding } = require('../utils/trackers/publish-video-encoding-tracker');
 
-
 function signIn_GET(req, res) {
     const jwtToken = req.session.jwtToken;
     
