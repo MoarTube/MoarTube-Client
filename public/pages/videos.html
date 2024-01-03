@@ -2827,23 +2827,6 @@
 				});
 			}
 			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-		
-		
 			function generateVideoTableRow(videoId, thumbnail, title, tags, lengthTimestamp, views, comments, likes, dislikes, bandwidth, status, isIndexed) {
 				let html = generate_Avatar_Title_Description_TableCell(videoId, thumbnail, title, tags, status);
 				
@@ -2854,7 +2837,7 @@
 						<p class="text-secondary mb-0 text-sm">' + views + '</p> \
 					</td> \
 					<td class="align-middle text-center text-sm"> \
-						<p class="text-secondary mb-0 text-sm">' + comments + '</p> \
+						<a href="/comments?v=' + videoId + '"><p class="text-secondary mb-0 text-sm">' + comments + '</p></a> \
 					</td> \
 					<td class="align-middle text-center text-sm"> \
 						<p class="text-secondary mb-0 text-sm">' + likes + ' / ' + dislikes + '</p> \

@@ -339,7 +339,7 @@
 								<form id="cloudflare_credentials_settings_form" role="form" method="POST" action="/settings/node/cloudflare">
 									<div class="card-body pt-0 pb-0">
 										<div class="">
-											<p class="mb-0">Cloudflare Credentials</p>
+											<p class="mb-0">Cloudflare Integration</p>
 										</div>
 										<div class="card-body pt-0">
 											<div class="row">
@@ -358,7 +358,7 @@
 												<div class="col-4">
 													<label class="form-label">Global API Key</label>
 													<div class="input-group">
-														<input id="cloudflare-api-token" class="form-control" name="cloudflareApiToken" type="text" placeholder="api token" onfocus="focused(this)" onfocusout="defocused(this)">
+														<input id="cloudflare-api-token" class="form-control" name="cloudflareGlobalApiKey" type="text" placeholder="api token" onfocus="focused(this)" onfocusout="defocused(this)">
 													</div>
 												</div>
 											</div>
@@ -723,27 +723,89 @@
 				
 				let form = $(this);
 
-				let url = form.attr('action');
+				Swal.fire({
+					title: 'please wait',
+					text: '...validating Cloudflare credentials...',
+					showConfirmButton: false,
+					willOpen: () => {
+						Swal.showLoading();
+					},
+					didOpen: () => {
+						let url = form.attr('action');
 
-				let cloudflareEmailAddress = form.find('input[name="cloudflareEmailAddress"]').val();
-				let cloudflareZoneId = form.find('input[name="cloudflareZoneId"]').val();
-				let cloudflareApiToken = form.find('input[name="cloudflareApiToken"]').val();
-				
-				$.post(url, {cloudflareEmailAddress: cloudflareEmailAddress, cloudflareZoneId: cloudflareZoneId, cloudflareApiToken: cloudflareApiToken})
-				.done(function(data) {
-					if(data.isError) {
-						showAlert(true, data.message);
-					}
-					else {
-						form.find('input[name="cloudflareEmailAddress"]').val('');
-						form.find('input[name="cloudflareZoneId"]').val('');
-						form.find('input[name="cloudflareApiToken"]').val('');
+						let cloudflareEmailAddress = form.find('input[name="cloudflareEmailAddress"]').val();
+						let cloudflareZoneId = form.find('input[name="cloudflareZoneId"]').val();
+						let cloudflareGlobalApiKey = form.find('input[name="cloudflareGlobalApiKey"]').val();
 
-						showAlert(false);
+						$.post(url, {cloudflareEmailAddress: cloudflareEmailAddress, cloudflareZoneId: cloudflareZoneId, cloudflareGlobalApiKey: cloudflareGlobalApiKey})
+						.done(function(data) {
+							if(data.isError) {
+								showAlert(true, data.message);
+							}
+							else {
+								form.find('input[name="cloudflareEmailAddress"]').val('');
+								form.find('input[name="cloudflareZoneId"]').val('');
+								form.find('input[name="cloudflareGlobalApiKey"]').val('');
+
+								const html = "\
+								Your MoarTube Node is ready to be integrated with Cloudflare.<br>\
+								This will make Cloudflare the distributor of the majority of your node's data,<br>\
+								giving it the capability to accommodate a global audience. Your node will now apply<br>\
+								the following page rules to the provided Cloudflare account:<br><br>\
+								<b>cache_level: cache_everything<br>\
+								edge_cache_ttl: 1 month<br>\
+								" + NODE_PROTOCOL + "://*" + NODE_ADDRESS + "/assets/*<br>\
+								" + NODE_PROTOCOL + "://*" + NODE_ADDRESS + "/watch*<br>\
+								" + NODE_PROTOCOL + "://*" + NODE_ADDRESS + "/node<br></b>";
+
+								Swal.fire({
+									title: 'Configure Cloudflare',
+									icon: 'success',
+									html: html,
+									showConfirmButton: true,
+									showCancelButton: true,
+									confirmButtonText: 'Apply',
+									cancelButtonText: 'Deny'
+								}).then((result) => {
+									if (result.isConfirmed) {
+										Swal.fire({
+											title: 'please wait',
+											text: '...configuring Cloudflare...',
+											showConfirmButton: false,
+											willOpen: () => {
+												Swal.showLoading();
+											},
+											didOpen: () => {
+												$.ajax({type: 'POST', url: '/settings/node/cloudflare/default'})
+												.done(function (data, textStatus, xhr) {
+													if(data.isError) {
+														alert();
+													}
+													else {
+														showAlert(false);
+													}
+												})
+												.fail(function() {
+													
+												});
+											}
+										}).then((result) => {
+											if (result.dismiss === Swal.DismissReason.timer) {
+												
+											}
+										});
+									}
+								});
+							}
+						})
+						.fail(function() {
+							showAlert(true, 'an error occurred, please try again');
+						});
 					}
-				})
-				.fail(function() {
-					showAlert(true, 'an error occurred, please try again');
+				}).then((result) => {
+					if (result.dismiss === Swal.DismissReason.timer) {
+						
+					}
 				});
 			});
 			

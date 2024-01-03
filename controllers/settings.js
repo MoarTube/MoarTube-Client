@@ -12,7 +12,7 @@ const {
 const { 
     node_isAuthenticated, node_setExternalNetwork, node_getSettings, node_doSignout, node_getAvatar, node_setAvatar, 
     node_getBanner, node_setBanner, node_setNodeName, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials,
-    node_setCloudflareCredentials
+    node_setCloudflareCredentials, node_setCloudflareDefaults
 } = require('../utils/node-communications');
 
 function root_GET(req, res) {
@@ -515,7 +515,7 @@ function nodePersonalize_POST(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -528,7 +528,7 @@ function nodePersonalize_POST(req, res) {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
-                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                        res.send({isError: true, message: nodeResponseData.message});
                     }
                     else {
                         res.send({isError: false});
@@ -780,9 +780,52 @@ function nodeCloudflare_POST(req, res) {
             if(nodeResponseData.isAuthenticated) {
                 const cloudflareEmailAddress = req.body.cloudflareEmailAddress;
                 const cloudflareZoneId = req.body.cloudflareZoneId;
-                const cloudflareApiToken = req.body.cloudflareApiToken;
+                const cloudflareGlobalApiKey = req.body.cloudflareGlobalApiKey;
                 
-                node_setCloudflareCredentials(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareApiToken)
+                node_setCloudflareCredentials(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        
+                        res.send({isError: true, message: nodeResponseData.message});
+                    }
+                    else {
+                        res.send({isError: false});
+                    }
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+                
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+}
+
+function nodeCloudflareDefault_POST(req, res) {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                node_setCloudflareDefaults(jwtToken)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -873,5 +916,6 @@ module.exports = {
     nodeNetworkInternal_POST,
     nodeNetworkExternal_POST,
     nodeCloudflare_POST,
+    nodeCloudflareDefault_POST,
     nodeAccount_POST
 };

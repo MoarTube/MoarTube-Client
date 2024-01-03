@@ -578,6 +578,28 @@ function node_setVideoPublished(jwtToken, videoId) {
     });
 }
 
+function node_getVideoComments(jwtToken, videoId, timestamp, type) {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/comments', {
+            params: {
+                timestamp: timestamp,
+                type: type
+            },
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 function node_getAllComments(jwtToken) {
     return new Promise(function(resolve, reject) {
         axios.get(getMoarTubeNodeUrl() + '/videos/comments/all', {
@@ -1216,13 +1238,31 @@ function node_setNetworkInternal(jwtToken, listeningNodePort) {
     });
 }
 
-function node_setCloudflareCredentials(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareApiToken) {
+function node_setCloudflareCredentials(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare', {
             cloudflareEmailAddress: cloudflareEmailAddress,
             cloudflareZoneId: cloudflareZoneId,
-            cloudflareApiToken: cloudflareApiToken
+            cloudflareGlobalApiKey: cloudflareGlobalApiKey
         }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_setCloudflareDefaults(jwtToken) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare/defaults', {
           headers: {
             Authorization: jwtToken
           }
@@ -1466,6 +1506,7 @@ module.exports = {
     node_setVideoImported,
     node_setVideoPublishing,
     node_setVideoPublished,
+    node_getVideoComments,
     node_getAllComments,
     node_getVideosTags,
     node_getVideoReports,
@@ -1499,6 +1540,7 @@ module.exports = {
     node_setSecureConnection,
     node_setNetworkInternal,
     node_setCloudflareCredentials,
+    node_setCloudflareDefaults,
     node_setAccountCredentials,
     node_getIndexerCaptcha,
     node_getAliaserCaptcha,

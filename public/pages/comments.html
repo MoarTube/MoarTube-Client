@@ -211,9 +211,13 @@
             let COMMENT_ID_COMMENT_TIMESTAMP_ASSOCIATIONS = {};
 
 			$(document).ready(async function() {
+				const params = new URL(window.location.href).searchParams;
+				
+				const videoId = params.get('v');
+
                 getNodeInformation();
                 getReportCounts();
-				getComments();
+				getComments(videoId);
 			});
 
 			function getNodeInformation() {
@@ -278,31 +282,58 @@
 				});
 			}
 
-            function getComments() {
+            function getComments(videoId) {
 				return new Promise(function(resolve, reject) {
-                $.ajax({type: 'GET', url: '/comments/all'})
-					.done(function (data, textStatus, xhr) {
-						if(data.isError) {
-							showAlert(true, data.message);
-						}
-						else {
-							let comments = data.comments;
-							
-							const parsedComments = parseComments(comments);
-							
-							let tableData = {
-								headings: [ "actions", 'comment date', "video id", "comment id", "message" ],
-								data: parsedComments
-							};
-							
-							populateCommentsTable(tableData);
+					if(videoId != null) {
+						$.ajax({type: 'GET', url: '/comments/' + videoId})
+						.done(function (data, textStatus, xhr) {
+							if(data.isError) {
+								showAlert(true, data.message);
+							}
+							else {
+								let comments = data.comments;
+								
+								const parsedComments = parseComments(comments);
+								
+								let tableData = {
+									headings: [ "actions", 'comment date', "video id", "comment id", "message" ],
+									data: parsedComments
+								};
+								
+								populateCommentsTable(tableData);
 
-							refreshHoverTooltips()
-						}
-					})
-					.fail(function() {
-						console.log('unable to communicate with node');
-					});
+								refreshHoverTooltips()
+							}
+						})
+						.fail(function() {
+							console.log('unable to communicate with node');
+						});
+					}
+					else {
+						$.ajax({type: 'GET', url: '/comments/all'})
+						.done(function (data, textStatus, xhr) {
+							if(data.isError) {
+								showAlert(true, data.message);
+							}
+							else {
+								let comments = data.comments;
+								
+								const parsedComments = parseComments(comments);
+								
+								let tableData = {
+									headings: [ "actions", 'comment date', "video id", "comment id", "message" ],
+									data: parsedComments
+								};
+								
+								populateCommentsTable(tableData);
+
+								refreshHoverTooltips()
+							}
+						})
+						.fail(function() {
+							console.log('unable to communicate with node');
+						});
+					}
 				});
             }
 
@@ -311,16 +342,13 @@
 				
 				if(comments.length > 0) {
 					for ( let i = 0; i < comments.length; i++ ) {
-						data[i] = [];
-
                         let commentTimestamp;
                         let videoId;
 						let commentId;
+						let message;
 						
 						for (let p in comments[i]) {
 							if(comments[i].hasOwnProperty(p) ) {
-								data[i].push(comments[i][p]);
-
                                 if(p === 'timestamp') {
 									commentTimestamp = comments[i][p];
 								}
@@ -330,13 +358,16 @@
 								else if(p === 'id') {
 									commentId = comments[i][p];
 								}
+								else if(p === 'comment_plain_text_sanitized') {
+									message = comments[i][p];
+								}
 							}
 						}
 
+						data[i] = ['', commentTimestamp, videoId, commentId, message];
+
                         COMMENT_ID_COMMENT_TIMESTAMP_ASSOCIATIONS[commentId] = commentTimestamp;
                         COMMENT_ID_VIDEO_ID_ASSOCIATIONS[commentId] = videoId;
-						
-						data[i].unshift('');
 					}
 				}
 				
