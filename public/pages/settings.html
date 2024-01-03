@@ -748,20 +748,22 @@
 								form.find('input[name="cloudflareGlobalApiKey"]').val('');
 
 								const html = "\
-								Your MoarTube Node is ready to be integrated with Cloudflare.<br>\
-								This will make Cloudflare the distributor of the majority of your node's data,<br>\
-								giving it the capability to accommodate a global audience. Your node will now apply<br>\
+								Your MoarTube Node is ready to be integrated with Cloudflare.\
+								This will make Cloudflare the distributor of the majority of your node's data,\
+								giving it the capability to accommodate a global audience. Your node will now apply\
 								the following page rules to the provided Cloudflare account:<br><br>\
 								<b>cache_level: cache_everything<br>\
 								edge_cache_ttl: 1 month<br>\
 								" + NODE_PROTOCOL + "://*" + NODE_ADDRESS + "/assets/*<br>\
 								" + NODE_PROTOCOL + "://*" + NODE_ADDRESS + "/watch*<br>\
-								" + NODE_PROTOCOL + "://*" + NODE_ADDRESS + "/node<br></b>";
+								" + NODE_PROTOCOL + "://*" + NODE_ADDRESS + "/node</b></br><br>\
+								If these rules are incorrect, then please update the <i>How Can MoarTube Find Your Node</i> settings.";
 
 								Swal.fire({
 									title: 'Configure Cloudflare',
 									icon: 'success',
 									html: html,
+									width: "12rem",
 									showConfirmButton: true,
 									showCancelButton: true,
 									confirmButtonText: 'Apply',
