@@ -748,16 +748,11 @@
 								form.find('input[name="cloudflareGlobalApiKey"]').val('');
 
 								const html = "\
-								Your MoarTube Node is ready to be integrated with Cloudflare.\
-								This will make Cloudflare the distributor of the majority of your node's data,\
-								giving it the capability to accommodate a global audience. Your node will now apply\
-								the following page rules to the provided Cloudflare account:<br><br>\
-								<b>cache_level: cache_everything<br>\
-								edge_cache_ttl: 1 month<br>\
-								" + NODE_PROTOCOL + "://*" + NODE_ADDRESS + "/assets/*<br>\
-								" + NODE_PROTOCOL + "://*" + NODE_ADDRESS + "/watch*<br>\
-								" + NODE_PROTOCOL + "://*" + NODE_ADDRESS + "/node</b></br><br>\
-								If these rules are incorrect, then please update the <i>How Can MoarTube Find Your Node</i> settings.";
+								Your MoarTube Node is ready to be integrated with <a href='https://www.cloudflare.com/network/' target='_blank'>Cloudflare</a>.\
+								This will appoint Cloudflare as the main distributor of the majority of your node's data,\
+								giving it the ability to meet global demand. Would you like to proceed with applying the following settings to your node's Cloudflare account?<br><br>\
+								Configure <a href='https://developers.cloudflare.com/rules/page-rules/' target='_blank'><i>Page Rules</i></a><br>\
+								Enable <a href='https://developers.cloudflare.com/cache/how-to/tiered-cache/' target='_blank'><i>Smart Tiered Caching Topology</i></a>";
 
 								Swal.fire({
 									title: 'Configure Cloudflare',
