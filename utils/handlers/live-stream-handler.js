@@ -261,16 +261,6 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                         logDebugMessageToConsole('live poster generating errorred with error code: ' + code, null, null, true);
                                     });
 
-                                    // experimental
-                                    // truncate the manifest file by two segments if it has more than 2 segments
-                                    if(nextExpectedSegmentIndex > 2) {
-                                        const data = fs.readFileSync(manifestFilePath, 'utf-8');
-                                        const lines = data.split(/\r?\n/);
-                                        lines.splice(lines.length - 5, 5);
-                                        const newContent = lines.join('\n');
-                                        fs.writeFileSync(manifestFilePath, newContent, 'utf-8');
-                                    }
-
                                     const directoryPaths = [
                                         {fileName : manifestFileName, filePath: manifestFilePath}, 
                                         {fileName : expectedSegmentFileName, filePath: expectedSegmentFilePath}
