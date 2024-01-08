@@ -123,14 +123,14 @@ function signIn_POST(req, res) {
                     if(nodeResponseData.isAuthenticated) {
                         req.session.jwtToken = nodeResponseData.token;
 
+                        let pingIntervalTimer;
+                        let pingTimeoutTimer;
+
                         let connectWebsocketClient = function() {
                             try {
                                 const websocketClient = new webSocket(getMoarTubeNodeWebsocketUrl());
 
                                 setWebsocketClient(websocketClient);
-                                
-                                let pingIntervalTimer;
-                                let pingTimeoutTimer;
 
                                 websocketClient.on('open', () => {
                                     logDebugMessageToConsole('MoarTube Client websocket connected to node: ' + getMoarTubeNodeWebsocketUrl(), null, null, true);
