@@ -1238,9 +1238,9 @@ function node_setNetworkInternal(jwtToken, listeningNodePort) {
     });
 }
 
-function node_setCloudflareCredentials(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey) {
+function node_setCloudflareConfiguration(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare', {
+        axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare/configure', {
             cloudflareEmailAddress: cloudflareEmailAddress,
             cloudflareZoneId: cloudflareZoneId,
             cloudflareGlobalApiKey: cloudflareGlobalApiKey
@@ -1260,9 +1260,9 @@ function node_setCloudflareCredentials(jwtToken, cloudflareEmailAddress, cloudfl
     });
 }
 
-function node_setCloudflareDefaults(jwtToken) {
+function node_clearCloudflareConfiguration(jwtToken) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare/defaults', {
+        axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare/clear', {}, {
           headers: {
             Authorization: jwtToken
           }
@@ -1539,8 +1539,8 @@ module.exports = {
     node_setNodeName,
     node_setSecureConnection,
     node_setNetworkInternal,
-    node_setCloudflareCredentials,
-    node_setCloudflareDefaults,
+    node_setCloudflareConfiguration,
+    node_clearCloudflareConfiguration,
     node_setAccountCredentials,
     node_getIndexerCaptcha,
     node_getAliaserCaptcha,

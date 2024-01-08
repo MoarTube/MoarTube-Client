@@ -12,7 +12,7 @@ const {
 const { 
     node_isAuthenticated, node_setExternalNetwork, node_getSettings, node_doSignout, node_getAvatar, node_setAvatar, 
     node_getBanner, node_setBanner, node_setNodeName, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials,
-    node_setCloudflareCredentials, node_setCloudflareDefaults
+    node_setCloudflareConfiguration, node_clearCloudflareConfiguration
 } = require('../utils/node-communications');
 
 function root_GET(req, res) {
@@ -766,7 +766,7 @@ function nodeNetworkExternal_POST(req, res) {
     });
 }
 
-function nodeCloudflare_POST(req, res) {
+function nodeCloudflareConfigure_POST(req, res) {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
@@ -781,8 +781,8 @@ function nodeCloudflare_POST(req, res) {
                 const cloudflareEmailAddress = req.body.cloudflareEmailAddress;
                 const cloudflareZoneId = req.body.cloudflareZoneId;
                 const cloudflareGlobalApiKey = req.body.cloudflareGlobalApiKey;
-                
-                node_setCloudflareCredentials(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey)
+
+                node_setCloudflareConfiguration(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -813,21 +813,21 @@ function nodeCloudflare_POST(req, res) {
     });
 }
 
-function nodeCloudflareDefault_POST(req, res) {
+function nodeCloudflareClear_POST(req, res) {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
     .then(nodeResponseData => {
-        if(nodeResponseData.isError) {
+        if(nodeResponseData.isError) { 
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
-                node_setCloudflareDefaults(jwtToken)
+                node_clearCloudflareConfiguration(jwtToken)
                 .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
+                    if(nodeResponseData.isError) { 
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
                         res.send({isError: true, message: nodeResponseData.message});
@@ -844,15 +844,10 @@ function nodeCloudflareDefault_POST(req, res) {
             }
             else {
                 logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
-                
+
                 res.send({isError: true, message: 'you are not logged in'});
             }
         }
-    })
-    .catch(error => {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
-        
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
     });
 }
 
@@ -915,7 +910,7 @@ module.exports = {
     node_Secure_POST,
     nodeNetworkInternal_POST,
     nodeNetworkExternal_POST,
-    nodeCloudflare_POST,
-    nodeCloudflareDefault_POST,
+    nodeCloudflareConfigure_POST,
+    nodeCloudflareClear_POST,
     nodeAccount_POST
 };

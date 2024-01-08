@@ -2,8 +2,8 @@ const express = require('express');
 
 const { 
     root_GET, client_GET, node_GET, clientGpuAcceleration_POST, nodeAvatar_GET, nodeAvatar_POST, nodeBanner_GET, nodeBanner_POST,
-    nodePersonalize_POST, node_Secure_POST, nodeNetworkInternal_POST, nodeNetworkExternal_POST, nodeCloudflare_POST, nodeAccount_POST,
-    nodeCloudflareDefault_POST
+    nodePersonalize_POST, node_Secure_POST, nodeNetworkInternal_POST, nodeNetworkExternal_POST, nodeAccount_POST,
+    nodeCloudflareConfigure_POST, nodeCloudflareClear_POST
  } = require('../controllers/settings');
 
 const router = express.Router();
@@ -56,12 +56,12 @@ router.post('/node/network/external', (req, res) => {
     nodeNetworkExternal_POST(req, res);
 });
 
-router.post('/node/cloudflare', (req, res) => {
-    nodeCloudflare_POST(req, res);
+router.post('/node/cloudflare/configure', (req, res) => {
+    nodeCloudflareConfigure_POST(req, res);
 });
 
-router.post('/node/cloudflare/default', (req, res) => {
-    nodeCloudflareDefault_POST(req, res);
+router.post('/node/cloudflare/clear', (req, res) => {
+    nodeCloudflareClear_POST(req, res);
 });
 
 router.post('/node/account', (req, res) => {
