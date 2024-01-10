@@ -35,7 +35,7 @@ function node_isAuthenticated(jwtToken) {
 
 function node_doHeartBeat(moarTubeNodeHttpProtocol, moarTubeNodeIp, moarTubeNodePort) {
     return new Promise(function(resolve, reject) {
-        axios.get(moarTubeNodeHttpProtocol + '://' + moarTubeNodeIp + ':' + moarTubeNodePort + '/node/heartbeat')
+        axios.get(moarTubeNodeHttpProtocol + '://' + moarTubeNodeIp + ':' + moarTubeNodePort + '/status/heartbeat')
         .then(response => {
             const data = response.data;
             

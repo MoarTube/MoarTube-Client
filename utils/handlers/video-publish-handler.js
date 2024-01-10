@@ -358,37 +358,37 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
     if(resolution === '2160p') {
         width = '3840';
         height = '2160';
-        bitrate = '10000k';
+        bitrate = '12000k';
     }
     else if(resolution === '1440p') {
         width = '2560';
         height = '1440';
-        bitrate = '8000k';
+        bitrate = '10000k';
     }
     else if(resolution === '1080p') {
         width = '1920';
         height = '1080';
-        bitrate = '6000k';
+        bitrate = '8000k';
     }
     else if(resolution === '720p') {
         width = '1280';
         height = '720';
-        bitrate = '4000k';
+        bitrate = '6000k';
     }
     else if(resolution === '480p') {
         width = '854';
         height = '480';
-        bitrate = '2000k';
+        bitrate = '3000k';
     }
     else if(resolution === '360p') {
         width = '640';
         height = '360';
-        bitrate = '1500k';
+        bitrate = '2000k';
     }
     else if(resolution === '240p') {
         width = '426';
         height = '240';
-        bitrate = '700k';
+        bitrate = '1000k';
     }
     
     const clientSettings = getClientSettings();

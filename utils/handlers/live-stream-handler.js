@@ -401,37 +401,37 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
     if(resolution === '2160p') {
         width = '3840';
         height = '2160';
-        bitrate = '10000k';
+        bitrate = '12000k';
     }
     else if(resolution === '1440p') {
         width = '2560';
         height = '1440';
-        bitrate = '8000k';
+        bitrate = '10000k';
     }
     else if(resolution === '1080p') {
         width = '1920';
         height = '1080';
-        bitrate = '6000k';
+        bitrate = '8000k';
     }
     else if(resolution === '720p') {
         width = '1280';
         height = '720';
-        bitrate = '4000k';
+        bitrate = '6000k';
     }
     else if(resolution === '480p') {
         width = '854';
         height = '480';
-        bitrate = '2000k';
+        bitrate = '3000k';
     }
     else if(resolution === '360p') {
         width = '640';
         height = '360';
-        bitrate = '1500k';
+        bitrate = '2000k';
     }
     else if(resolution === '240p') {
         width = '426';
         height = '240';
-        bitrate = '700k';
+        bitrate = '1000k';
     }
     
     const clientSettings = getClientSettings();
@@ -475,7 +475,7 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                 '-timeout', '10000',
                 '-f', 'flv',
                 '-i', rtmpUrl,
-                '-c:v', 'libx264',
+                '-c:v', 'libx264', '-b:v', bitrate,
                 '-sc_threshold', '0',
                 '-g', '90',  // GOP size = (frame rate) * (segment length)
                 '-c:a', 'aac',
@@ -499,7 +499,7 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                     '-hwaccel_output_format', 'cuda',
                     '-f', 'flv',
                     '-i', rtmpUrl, 
-                    '-c:v', 'h264_nvenc',
+                    '-c:v', 'h264_nvenc', '-b:v', bitrate,
                     '-sc_threshold', '0',
                     '-g', '90',  // GOP size = (frame rate) * (segment length)
                     '-c:a', 'aac',
@@ -522,7 +522,7 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                     '-hwaccel_device', '0',
                     '-f', 'flv',
                     '-i', rtmpUrl, 
-                    '-c:v', 'h264_amf',
+                    '-c:v', 'h264_amf', '-b:v', bitrate,
                     '-sc_threshold', '0',
                     '-g', '90',  // GOP size = (frame rate) * (segment length)
                     '-c:a', 'aac',

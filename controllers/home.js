@@ -1,6 +1,3 @@
-const path = require('path');
-const fs = require('fs');
-
 const { logDebugMessageToConsole, getMoarTubeNodeHttpProtocol, getMoarTubeNodeIp, getMoarTubeNodePort, getNetworkAddresses } = require('../utils/helpers');
 const { node_isAuthenticated, node_getSettings } = require('../utils/node-communications');
 
@@ -63,13 +60,8 @@ function network_GET(req, res) {
     res.send({isError: false, networkAddresses: networkAddresses});
 }
 
-function heartbeat_GET(req, res) {
-    res.end();
-}
-
 module.exports = {
     root_GET,
     node_GET,
-    network_GET,
-    heartbeat_GET
+    network_GET
 }
