@@ -637,7 +637,7 @@
 				
 				Swal.fire({
 					title: 'please wait',
-					text: '...changing node listening port...',
+					html: '...changing node listening port...',
 					timer: 5000,
 					timerProgressBar: true,
 					allowOutsideClick: false,
@@ -795,7 +795,7 @@
 
 							Swal.fire({
 								title: 'please wait',
-								text: '...enabling secure HTTPS mode...',
+								html: '...enabling secure HTTPS mode...',
 								timer: 5000,
 								timerProgressBar: true,
 								allowOutsideClick: false,
@@ -832,7 +832,7 @@
 				else {
 					Swal.fire({
 						title: 'please wait',
-						text: '...enabling non-secure HTTP mode...',
+						html: '...enabling non-secure HTTP mode...',
 						timer: 5000,
 						timerProgressBar: true,
 						allowOutsideClick: false,
@@ -911,7 +911,7 @@
 
 									Swal.fire({
 										title: 'please wait',
-										text: '...enabling Cloudflare integration...',
+										html: '...enabling Cloudflare integration...',
 										showConfirmButton: false,
 										willOpen: () => {
 											Swal.showLoading();
@@ -949,7 +949,7 @@
 				else {
 					Swal.fire({
 						title: 'please wait',
-						text: '...disabling Cloudflare integration...',
+						html: '...disabling Cloudflare integration...',
 						showConfirmButton: false,
 						didOpen: () => {
 							Swal.showLoading();
@@ -976,7 +976,7 @@
 			function showAlert(isError, text) {
 				if(isError) {
 					Swal.fire({
-						text: text,
+						html: text,
 						icon: 'warning',
 						confirmButtonColor: '#3085d6',
 						confirmButtonText: 'Ok'

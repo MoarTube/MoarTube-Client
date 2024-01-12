@@ -100,13 +100,13 @@
 								Swal.fire({
 									icon: 'error',
 									title: 'hmmm',
-									text: response.message
+									html: response.message
 								});
 							}
 							else if(loginOutcome.reason === 'password') {
 								Swal.fire({
 									icon: 'error',
-									text: 'username/password not correct'
+									html: 'username/password not correct'
 								});
 							}
 						}
@@ -115,7 +115,7 @@
 						Swal.fire({
 							icon: 'error',
 							title: 'hmmm',
-							text: '...something went wrong...'
+							html: '...something went wrong...'
 						});
 					});
 				});

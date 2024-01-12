@@ -924,7 +924,7 @@
 								Swal.fire({
 									icon: 'error',
 									title: 'hmmm',
-									text: data.message
+									html: data.message
 								});
 							}
 							else {
@@ -936,7 +936,7 @@
 							Swal.fire({
 								icon: 'error',
 								title: 'hmmm',
-								text: '...something went wrong...'
+								html: '...something went wrong...'
 							});
 						});
 					}
@@ -1337,7 +1337,7 @@
 								Swal.fire({
 									icon: 'info',
 									title: 'hmmm',
-									text: data.message
+									html: data.message
 								});
 							}
 							else {
@@ -2482,7 +2482,7 @@
 									Swal.fire({
 										icon: 'error',
 										title: 'hmmm',
-										text: '...something went wrong...'
+										html: '...something went wrong...'
 									});
 									
 									$(checkbox).prop('checked', !isIndexing);
@@ -2524,7 +2524,7 @@
 						Swal.fire({
 							icon: 'error',
 							title: 'hmmm',
-							text: '...something went wrong...'
+							html: '...something went wrong...'
 						});
 						
 						$(checkbox).prop('checked', !isIndexing);
@@ -2705,7 +2705,7 @@
 								Swal.fire({
 									icon: 'error',
 									title: 'hmmm',
-									text: data.message
+									html: data.message
 								});
 							}
 							else {
@@ -2742,7 +2742,7 @@
 							Swal.fire({
 								icon: 'error',
 								title: 'hmmm',
-								text: '...something went wrong...'
+								html: '...something went wrong...'
 							});
 						});
 					}
@@ -2776,7 +2776,7 @@
 								Swal.fire({
 									icon: 'error',
 									title: 'hmmm',
-									text: data.message
+									html: data.message
 								});
 							}
 							else {
@@ -2828,7 +2828,7 @@
 							Swal.fire({
 								icon: 'error',
 								title: 'hmmm',
-								text: '...something went wrong...'
+								html: '...something went wrong...'
 							});
 						});
 					}
@@ -3002,7 +3002,7 @@
 			function showAlert(isError, message) {
 				if(isError) {
 					Swal.fire({
-						text: message,
+						html: message,
 						icon: 'warning',
 						confirmButtonColor: '#3085d6',
 						confirmButtonText: 'Ok'

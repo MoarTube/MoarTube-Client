@@ -613,7 +613,7 @@ function videoIdPublish_POST(req, res) {
                                     }
                                     else {
                                         if(isLive) {
-                                            res.send({isError: true, message: 'a recording of this stream does not exist'});
+                                            res.send({isError: true, message: 'a recording of this stream does not exist<br>record your streams locally for later publishing'});
                                         }
                                         else {
                                             res.send({isError: true, message: 'a source for this video does not exist'});
