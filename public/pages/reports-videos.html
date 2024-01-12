@@ -320,7 +320,7 @@
 				$.ajax({type: 'GET', url: '/reports/videos/archive/all'})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
-						alert();
+						showAlert(true, data.message);
 					}
 					else {
 						const reports = data.reports;
