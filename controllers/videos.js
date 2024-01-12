@@ -76,7 +76,7 @@ function search_GET(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -91,7 +91,7 @@ function search_GET(req, res) {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
-                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                        res.send({isError: true, message: nodeResponseData.message});
                     }
                     else {
                         res.send({isError: false, searchResults: nodeResponseData.searchResults});
@@ -125,7 +125,7 @@ function import_POST(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -147,7 +147,7 @@ function import_POST(req, res) {
                         if(nodeResponseData.isError) {
                             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                             
-                            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                            res.send({isError: true, message: nodeResponseData.message});
                         }
                         else {
                             const videoId = nodeResponseData.videoId;
@@ -218,7 +218,7 @@ function import_POST(req, res) {
                                         if(nodeResponseData.isError) {
                                             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                                             
-                                            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                                            res.send({isError: true, message: nodeResponseData.message});
                                         }
                                         else {
                                             res.send({isError: true, message: 'error communicating with the MoarTube node'});
@@ -247,7 +247,7 @@ function import_POST(req, res) {
                                         if(nodeResponseData.isError) {
                                             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                                             
-                                            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                                            res.send({isError: true, message: nodeResponseData.message});
                                         }
                                         else {
                                             const result = spawnSync(getFfmpegPath(), [
@@ -305,7 +305,7 @@ function import_POST(req, res) {
                                                                 if(nodeResponseData.isError) {
                                                                     logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                                                                     
-                                                                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                                                                    res.send({isError: true, message: nodeResponseData.message});
                                                                 }
                                                                 else {
                                                                     logDebugMessageToConsole('uploaded thumbnail to node for video: ' + videoId, null, null, true);
@@ -315,7 +315,7 @@ function import_POST(req, res) {
                                                                         if(nodeResponseData.isError) {
                                                                             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                                                                             
-                                                                            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                                                                            res.send({isError: true, message: nodeResponseData.message});
                                                                         }
                                                                         else {
                                                                             logDebugMessageToConsole('uploaded preview to node for video: ' + videoId, null, null, true);
@@ -325,7 +325,7 @@ function import_POST(req, res) {
                                                                                 if(nodeResponseData.isError) {
                                                                                     logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                                                                                     
-                                                                                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                                                                                    res.send({isError: true, message: nodeResponseData.message});
                                                                                 }
                                                                                 else {
                                                                                     logDebugMessageToConsole('uploaded poster to node for video: ' + videoId, null, null, true);
@@ -339,7 +339,7 @@ function import_POST(req, res) {
                                                                                         if(nodeResponseData.isError) {
                                                                                             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                                                                                             
-                                                                                            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                                                                                            res.send({isError: true, message: nodeResponseData.message});
                                                                                         }
                                                                                         else {
                                                                                             logDebugMessageToConsole('uploaded video length to node for video: ' + videoId, null, null, true);
@@ -349,7 +349,7 @@ function import_POST(req, res) {
                                                                                                 if(nodeResponseData.isError) {
                                                                                                     logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                                                                                                     
-                                                                                                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                                                                                                    res.send({isError: true, message: nodeResponseData.message});
                                                                                                 }
                                                                                                 else {
                                                                                                     logDebugMessageToConsole('flagging video as imported to node for video: ' + videoId, null, null, true);
@@ -456,7 +456,7 @@ function videoIdImportingStop_POST(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -469,7 +469,7 @@ function videoIdImportingStop_POST(req, res) {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
-                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                        res.send({isError: true, message: nodeResponseData.message});
                     }
                     else {
                         websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing_stopped', videoId: videoId }}});
@@ -505,7 +505,7 @@ function videoIdPublishingStop_POST(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -518,7 +518,7 @@ function videoIdPublishingStop_POST(req, res) {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
-                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                        res.send({isError: true, message: nodeResponseData.message});
                     }
                     else {
                         websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing_stopped', videoId: videoId }}});
@@ -554,7 +554,7 @@ function videoIdPublish_POST(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -566,7 +566,7 @@ function videoIdPublish_POST(req, res) {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
-                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                        res.send({isError: true, message: nodeResponseData.message});
                     }
                     else {
                         const isLive = nodeResponseData.information.isLive;
@@ -652,7 +652,7 @@ function videoIdUnpublish_POST(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -665,7 +665,7 @@ function videoIdUnpublish_POST(req, res) {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
-                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                        res.send({isError: true, message: nodeResponseData.message});
                     }
                     else {
                         node_unpublishVideo(jwtToken, videoId, format, resolution)
@@ -673,7 +673,7 @@ function videoIdUnpublish_POST(req, res) {
                             if(nodeResponseData.isError) {
                                 logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                                 
-                                res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                                res.send({isError: true, message: nodeResponseData.message});
                             }
                             else {
                                 res.send({isError: false});
@@ -709,7 +709,7 @@ function tags_GET(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -718,7 +718,7 @@ function tags_GET(req, res) {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
-                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                        res.send({isError: true, message: nodeResponseData.message});
                     }
                     else {
                         res.send({isError: false, tags: nodeResponseData.tags});
@@ -752,7 +752,7 @@ function tagsAll_GET(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -761,7 +761,7 @@ function tagsAll_GET(req, res) {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
-                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                        res.send({isError: true, message: nodeResponseData.message});
                     }
                     else {
                         res.send({isError: false, tags: nodeResponseData.tags});
@@ -795,7 +795,7 @@ function videoIdPublishes_GET(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -840,7 +840,7 @@ function videoIdInformation_GET(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -885,7 +885,7 @@ function videoIdInformation_POST(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -899,7 +899,7 @@ function videoIdInformation_POST(req, res) {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
-                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                        res.send({isError: true, message: nodeResponseData.message});
                     }
                     else {
                         res.send({isError: false, information: nodeResponseData.information});
@@ -933,7 +933,7 @@ function delete_POST(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -944,7 +944,7 @@ function delete_POST(req, res) {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
-                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                        res.send({isError: true, message: nodeResponseData.message});
                     }
                     else {
                         const deletedVideoIds = nodeResponseData.deletedVideoIds;
@@ -987,7 +987,7 @@ function finalize_POST(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -998,7 +998,7 @@ function finalize_POST(req, res) {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
-                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                        res.send({isError: true, message: nodeResponseData.message});
                     }
                     else {
                         const finalizedVideoIds = nodeResponseData.finalizedVideoIds;
@@ -1043,7 +1043,7 @@ function videoIdIndexAdd_POST(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -1091,7 +1091,7 @@ function videoIdIndexRemove_POST(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -1136,7 +1136,7 @@ function videoIdAlias_POST(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -1182,7 +1182,7 @@ function videoIdAlias_GET(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -1338,7 +1338,7 @@ function videoIdThumbnail_POST(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -1392,7 +1392,7 @@ function videoIdThumbnail_POST(req, res) {
                                 if(nodeResponseData.isError) {
                                     logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                                     
-                                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                                    res.send({isError: true, message: nodeResponseData.message});
                                 }
                                 else {
                                     logDebugMessageToConsole('uploaded live preview to node for video: ' + videoId, null, null, true);
@@ -1438,7 +1438,7 @@ function videoIdPreview_POST(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -1492,7 +1492,7 @@ function videoIdPreview_POST(req, res) {
                                 if(nodeResponseData.isError) {
                                     logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                                     
-                                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                                    res.send({isError: true, message: nodeResponseData.message});
                                 }
                                 else {
                                     logDebugMessageToConsole('uploaded live preview to node for video: ' + videoId, null, null, true);
@@ -1538,7 +1538,7 @@ function videoIdPoster_POST(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -1592,7 +1592,7 @@ function videoIdPoster_POST(req, res) {
                                 if(nodeResponseData.isError) {
                                     logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                                     
-                                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                                    res.send({isError: true, message: nodeResponseData.message});
                                 }
                                 else {
                                     logDebugMessageToConsole('uploaded live poster to node for video: ' + videoId, null, null, true);

@@ -20,7 +20,7 @@ function signIn_GET(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send('error communicating with the MoarTube node');
+            res.send(nodeResponseData.message);
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -29,7 +29,7 @@ function signIn_GET(req, res) {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
-                        res.send('error communicating with the MoarTube node');
+                        res.send(nodeResponseData.message);
                     }
                     else {
                         const nodeSettings = nodeResponseData.nodeSettings;
@@ -117,7 +117,7 @@ function signIn_POST(req, res) {
                 if(nodeResponseData.isError) {
                     logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                     
-                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                    res.send({isError: true, message: nodeResponseData.message});
                 }
                 else {
                     if(nodeResponseData.isAuthenticated) {
@@ -216,7 +216,7 @@ function signIn_POST(req, res) {
                             if(nodeResponseData.isError) {
                                 logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                                 
-                                res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                                res.send({isError: true, message: nodeResponseData.message});
                             }
                             else {
                                 const nodeSettings = nodeResponseData.nodeSettings;

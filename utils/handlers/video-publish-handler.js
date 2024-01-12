@@ -273,7 +273,7 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
                 if(nodeResponseData.isError) {
                     logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                     
-                    reject({isError: true, message: 'error communicating with the MoarTube node'});
+                    reject({isError: true, message: nodeResponseData.message});
                 }
                 else {
                     resolve({isError: false});

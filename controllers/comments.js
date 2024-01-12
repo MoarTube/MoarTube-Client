@@ -63,7 +63,7 @@ function all_GET(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -72,7 +72,7 @@ function all_GET(req, res) {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
-                        res.send('error communicating with the MoarTube node');
+                        res.send(nodeResponseData.message);
                     }
                     else {
                         const comments = nodeResponseData.comments;
@@ -108,7 +108,7 @@ function videoId_GET(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -121,7 +121,7 @@ function videoId_GET(req, res) {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
-                        res.send('error communicating with the MoarTube node');
+                        res.send(nodeResponseData.message);
                     }
                     else {
                         const comments = nodeResponseData.comments;
@@ -157,7 +157,7 @@ function delete_POST(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {

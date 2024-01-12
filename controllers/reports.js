@@ -11,7 +11,7 @@ function count_GET(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            res.send({isError: true, message: nodeResponseData.message});
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -20,7 +20,7 @@ function count_GET(req, res) {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
-                        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                        res.send({isError: true, message: nodeResponseData.message});
                     }
                     else {
                         const videoReportCount = nodeResponseData.videoReportCount;

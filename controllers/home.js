@@ -9,7 +9,7 @@ function root_GET(req, res) {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
             
-            res.send('error communicating with the MoarTube node');
+            res.send(nodeResponseData.message);
         }
         else {
             if(nodeResponseData.isAuthenticated) {
@@ -18,7 +18,7 @@ function root_GET(req, res) {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
-                        res.send('error communicating with the MoarTube node');
+                        res.send(nodeResponseData.message);
                     }
                     else {
                         const nodeSettings = nodeResponseData.nodeSettings;
