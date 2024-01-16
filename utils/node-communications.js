@@ -1050,26 +1050,6 @@ function node_removeVideoFromIndex(jwtToken, videoId) {
     });
 }
 
-function node_aliasVideo(jwtToken, videoId, captchaResponse) {
-    return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/alias', {
-            captchaResponse: captchaResponse
-        }, {
-          headers: {
-            Authorization: jwtToken
-          }
-        })
-        .then(response => {
-            const data = response.data;
-            
-            resolve(data);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
 function node_getVideoAlias(jwtToken, videoId) {
     return new Promise(function(resolve, reject) {
         axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/alias', {
@@ -1299,44 +1279,6 @@ function node_setAccountCredentials(jwtToken, username, password) {
     });
 }
 
-function node_getIndexerCaptcha(jwtToken) {
-    return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/captcha/index', {
-          headers: {
-            Authorization: jwtToken
-          },
-          responseType: 'stream'
-        })
-        .then(response => {
-            const data = response.data;
-            
-            resolve(data);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function node_getAliaserCaptcha(jwtToken) {
-    return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/captcha/alias', {
-          headers: {
-            Authorization: jwtToken
-          },
-          responseType: 'stream'
-        })
-        .then(response => {
-            const data = response.data;
-            
-            resolve(data);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
 function node_uploadVideo(jwtToken, videoId, format, resolution, directoryPaths) {
     return new Promise(function(resolve, reject) {
         const formData = new FormData();
@@ -1530,7 +1472,6 @@ module.exports = {
     node_finalizeVideos,
     node_addVideoToIndex,
     node_removeVideoFromIndex,
-    node_aliasVideo,
     node_getVideoAlias,
     node_getAvatar,
     node_setAvatar,
@@ -1542,8 +1483,6 @@ module.exports = {
     node_setCloudflareConfiguration,
     node_clearCloudflareConfiguration,
     node_setAccountCredentials,
-    node_getIndexerCaptcha,
-    node_getAliaserCaptcha,
     node_uploadVideo,
     node_setVideoChatSettings,
     node_getNextExpectedSegmentIndex,

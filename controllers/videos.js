@@ -9,10 +9,10 @@ sharp.cache(false);
 const { logDebugMessageToConsole, deleteDirectoryRecursive, getPublicDirectoryPath, getTempVideosDirectoryPath, timestampToSeconds, websocketClientBroadcast, getFfmpegPath } = require('../utils/helpers');
 const { 
     node_isAuthenticated, node_doSignout, node_getSettings, node_stopVideoImporting, node_getVideoInformation, node_doVideosSearch, 
-    node_getThumbnail, node_getPreview, node_getPoster, node_getVideoData, node_unpublishVideo, node_stopVideoPublishing, node_stopVideoStreaming, node_importVideo,
+    node_getThumbnail, node_getPreview, node_getPoster, node_getVideoData, node_unpublishVideo, node_stopVideoPublishing, node_importVideo,
     node_setVideoError, node_setSourceFileExtension, node_setThumbnail, node_setPreview, node_setPoster, node_setVideoLengths, node_setVideoImported, node_getVideosTags,
     node_getSourceFileExtension, node_getVideosTagsAll, node_getVideoPublishes, node_setVideoInformation, node_deleteVideos, node_finalizeVideos, node_addVideoToIndex,
-    node_removeVideoFromIndex, node_aliasVideo, node_getVideoAlias
+    node_removeVideoFromIndex
 } = require('../utils/node-communications');
 const { addVideoToImportVideoTracker, isVideoImportStopping } = require('../utils/trackers/import-video-tracker');
 const { enqueuePendingPublishVideo } = require('../utils/trackers/pending-publish-video-tracker');
@@ -1128,97 +1128,6 @@ function videoIdIndexRemove_POST(req, res) {
     });
 }
 
-function videoIdAlias_POST(req, res) {
-    const jwtToken = req.session.jwtToken;
-    
-    node_isAuthenticated(jwtToken)
-    .then(nodeResponseData => {
-        if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-            
-            res.send({isError: true, message: nodeResponseData.message});
-        }
-        else {
-            if(nodeResponseData.isAuthenticated) {
-                const videoId = req.params.videoId;
-                const captchaResponse = req.body.captchaResponse;
-                
-                node_aliasVideo(jwtToken, videoId, captchaResponse)
-                .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-                        
-                        res.send({isError: true, message: nodeResponseData.message});
-                    }
-                    else {
-                        res.send({isError: false, videoAliasUrl: nodeResponseData.videoAliasUrl});
-                    }
-                })
-                .catch(error => {
-                    logDebugMessageToConsole(null, error, new Error().stack, true);
-                    
-                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
-                });
-            }
-            else {
-                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
-                
-                res.send({isError: true, message: 'you are not logged in'});
-            }
-        }
-    })
-    .catch(error => {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
-        
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
-    });
-}
-
-function videoIdAlias_GET(req, res) {
-    const jwtToken = req.session.jwtToken;
-    
-    node_isAuthenticated(jwtToken)
-    .then(nodeResponseData => {
-        if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-            
-            res.send({isError: true, message: nodeResponseData.message});
-        }
-        else {
-            if(nodeResponseData.isAuthenticated) {
-                const videoId = req.params.videoId;
-                
-                node_getVideoAlias(jwtToken, videoId)
-                .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-                        
-                        res.send({isError: true, message: nodeResponseData.message});
-                    }
-                    else {
-                        res.send({isError: false, videoAliasUrl: nodeResponseData.videoAliasUrl});
-                    }
-                })
-                .catch(error => {
-                    logDebugMessageToConsole(null, error, new Error().stack, true);
-                    
-                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
-                });
-            }
-            else {
-                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
-                
-                res.send({isError: true, message: 'you are not logged in'});
-            }
-        }
-    })
-    .catch(error => {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
-        
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
-    });
-}
-
 function videoIdThumbnail_GET(req, res) {
     const jwtToken = req.session.jwtToken;
     
@@ -1647,8 +1556,6 @@ module.exports = {
     finalize_POST,
     videoIdIndexAdd_POST,
     videoIdIndexRemove_POST,
-    videoIdAlias_POST,
-    videoIdAlias_GET,
     videoIdThumbnail_GET,
     videoIdPreview_GET,
     videoIdPoster_GET,

@@ -51,10 +51,6 @@
 				color: #aaa;
 				margin-top: 12px;
 			}
-
-			.captcha-container {
-				height: 50px;
-			}
 			
 			.share-icon-container {
 				display: inline-block;
@@ -2837,39 +2833,6 @@
 						setTimeout(() => {
 							$(this).tooltip('hide');
 						}, 500);
-					});
-				});
-			}
-			
-			function getCaptcha(captchaUrl) {
-				return new Promise(function(resolve, reject) {
-					fetch(captchaUrl)
-					.then(async response => {
-						const headers = response.headers;
-						if (response.ok) {
-							if(headers.get('content-type').includes('application/json')) {
-								const data = await response.json();
-								
-								if(data.isError) {
-									throw new Error(data.message);
-								}
-								else {
-									throw new Error('...something went wrong...');
-								}
-							}
-							else {
-								return response.blob();
-							}
-						}
-						throw new Error('...something went wrong...');
-					})
-					.then(blob => {
-						const objectURL = URL.createObjectURL(blob);
-						
-						resolve(objectURL);
-					})
-					.catch(error => {
-						reject(error.message);
 					});
 				});
 			}

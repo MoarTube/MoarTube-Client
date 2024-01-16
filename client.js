@@ -34,8 +34,6 @@ const reportsVideosRoutes = require('./routes/reports-videos');
 const reportsCommentsRoutes = require('./routes/reports-comments');
 const commentsRoutes = require('./routes/comments');
 const nodeRoutes = require('./routes/node');
-const indexRoutes = require('./routes/index');
-const aliasRoutes = require('./routes/alias');
 
 startClient();
 
@@ -96,8 +94,6 @@ async function startClient() {
 	app.use('/reports/comments', reportsCommentsRoutes);
 	app.use('/comments', commentsRoutes);
 	app.use('/node', nodeRoutes);
-	app.use('/index', indexRoutes);
-	app.use('/alias', aliasRoutes);
 
 	const httpServer = http.createServer(app);
 
