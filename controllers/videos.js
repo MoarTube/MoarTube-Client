@@ -1048,11 +1048,11 @@ function videoIdIndexAdd_POST(req, res) {
         else {
             if(nodeResponseData.isAuthenticated) {
                 const videoId = req.params.videoId;
-                const captchaResponse = req.body.captchaResponse;
                 const containsAdultContent = req.body.containsAdultContent;
                 const termsOfServiceAgreed = req.body.termsOfServiceAgreed;
+                const cloudflareTurnstileToken = req.body.cloudflareTurnstileToken;
 
-                node_addVideoToIndex(jwtToken, videoId, captchaResponse, containsAdultContent, termsOfServiceAgreed)
+                node_addVideoToIndex(jwtToken, videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);

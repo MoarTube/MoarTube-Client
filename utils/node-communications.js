@@ -1009,12 +1009,12 @@ function node_finalizeVideos(jwtToken, videoIdsJson) {
     });
 }
 
-function node_addVideoToIndex(jwtToken, videoId, captchaResponse, containsAdultContent, termsOfServiceAgreed) {
+function node_addVideoToIndex(jwtToken, videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/index/add', {
-            captchaResponse: captchaResponse,
             containsAdultContent: containsAdultContent,
-            termsOfServiceAgreed: termsOfServiceAgreed
+            termsOfServiceAgreed: termsOfServiceAgreed,
+            cloudflareTurnstileToken: cloudflareTurnstileToken
         }, {
           headers: {
             Authorization: jwtToken
