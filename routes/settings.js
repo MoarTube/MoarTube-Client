@@ -3,7 +3,7 @@ const express = require('express');
 const { 
     root_GET, client_GET, node_GET, clientGpuAcceleration_POST, nodeAvatar_GET, nodeAvatar_POST, nodeBanner_GET, nodeBanner_POST,
     nodePersonalize_POST, node_Secure_POST, nodeNetworkInternal_POST, nodeNetworkExternal_POST, nodeAccount_POST,
-    nodeCloudflareConfigure_POST, nodeCloudflareClear_POST
+    nodeCloudflareConfigure_POST, nodeCloudflareClear_POST, nodeCloudflareTurnstile_POST
  } = require('../controllers/settings');
 
 const router = express.Router();
@@ -58,6 +58,10 @@ router.post('/node/network/external', (req, res) => {
 
 router.post('/node/cloudflare/configure', (req, res) => {
     nodeCloudflareConfigure_POST(req, res);
+});
+
+router.post('/node/cloudflare/turnstile', (req, res) => {
+    nodeCloudflareTurnstile_POST(req, res);
 });
 
 router.post('/node/cloudflare/clear', (req, res) => {
