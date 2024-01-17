@@ -902,7 +902,7 @@
 				.then((result) => {
 					if (result.isConfirmed) {
 						const title = result.value.title;
-						const description = result.value.description;
+						const description = encodeURIComponent(result.value.description);
 						const tags = result.value.tags.join(',');
 						const videoFile = result.value.videoFile;
 						
