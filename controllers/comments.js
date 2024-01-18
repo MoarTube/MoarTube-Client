@@ -114,9 +114,10 @@ function videoId_GET(req, res) {
             if(nodeResponseData.isAuthenticated) {
                 const videoId = req.params.videoId;
                 const timestamp = Date.now();
-                const type = 'after';
+                const type = 'before';
+                const sort = 'descending';
 
-                node_getVideoComments(jwtToken, videoId, timestamp, type)
+                node_getVideoComments(jwtToken, videoId, timestamp, type, sort)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);

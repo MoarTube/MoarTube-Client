@@ -578,12 +578,13 @@ function node_setVideoPublished(jwtToken, videoId) {
     });
 }
 
-function node_getVideoComments(jwtToken, videoId, timestamp, type) {
+function node_getVideoComments(jwtToken, videoId, timestamp, type, sort) {
     return new Promise(function(resolve, reject) {
         axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/comments', {
             params: {
                 timestamp: timestamp,
-                type: type
+                type: type,
+                sort: sort
             },
           headers: {
             Authorization: jwtToken
