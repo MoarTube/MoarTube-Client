@@ -1377,10 +1377,10 @@
 				<div class="share-icon-container"><a id="share-reddit-link" target="_blank"><button class="share-icon-button"><div class="share-icon-svg">' + redditSVG + '</div><div class="share-icon-title">Reddit</div></button></a></div>\
 				<div class="share-icon-container"><a id="share-facebook-link" target="_blank"><button class="share-icon-button"><div class="share-icon-svg">' + facebookSVG + '</div><div class="share-icon-title">Facebook</div></button></a></div>\
 				<div>' + embedHtml + '</div>\
-				<div class="input-group"><input id="node-video-url-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="node-video-url-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-container="body" data-bs-animation="false">copy</button></span></div>\
-				<div class="input-group mt-1"><input id="moartube-video-alias-url-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="moartube-video-alias-url-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-container="body" data-bs-animation="false">copy</button></span></div>\
-				<div class="input-group mt-1"><input id="video-alias-embed-url-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="video-alias-embed-url-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-container="body" data-bs-animation="false">copy</button></span></div>\
-				<div class="input-group mt-1"><input id="video-alias-embed-code-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="video-alias-embed-code-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-container="body" data-bs-animation="false">copy</button></span></div>');
+				<div class="input-group"><input id="node-video-url-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="node-video-url-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>\
+				<div class="input-group mt-1"><input id="moartube-video-alias-url-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="moartube-video-alias-url-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>\
+				<div class="input-group mt-1"><input id="video-alias-embed-url-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="video-alias-embed-url-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>\
+				<div class="input-group mt-1"><input id="video-alias-embed-code-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="video-alias-embed-code-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>');
 
 				Swal.fire({
 					title: 'share',
@@ -2821,7 +2821,8 @@
 			function refreshClickTooltips() {
 				$(function () {
 					$('.click-tooltip[data-bs-toggle="tooltip"]').tooltip({
-						trigger: 'click'
+						trigger: 'click',
+						container: '.swal2-html-container'
 					});
 					
 					$('.click-tooltip[data-bs-toggle="tooltip"]').on('click', function () {
