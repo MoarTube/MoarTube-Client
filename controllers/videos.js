@@ -1275,6 +1275,9 @@ function videoIdThumbnail_POST(req, res) {
                             if(file.mimetype === 'image/jpeg') {
                                 extension = '.jpg';
                             }
+                            else if(file.mimetype === 'image/png') {
+                                extension = '.png';
+                            }
                             
                             const fileName = Date.now() + extension;
                             
@@ -1375,6 +1378,9 @@ function videoIdPreview_POST(req, res) {
                             if(file.mimetype === 'image/jpeg') {
                                 extension = '.jpg';
                             }
+                            else if(file.mimetype === 'image/png') {
+                                extension = '.png';
+                            }
                             
                             const fileName = Date.now() + extension;
                             
@@ -1474,6 +1480,9 @@ function videoIdPoster_POST(req, res) {
                             
                             if(file.mimetype === 'image/jpeg') {
                                 extension = '.jpg';
+                            }
+                            else if(file.mimetype === 'image/png') {
+                                extension = '.png';
                             }
                             
                             const fileName = Date.now() + extension;

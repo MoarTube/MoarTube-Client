@@ -1825,7 +1825,7 @@
 							<img id="thumbnail-image-button" src="/videos/' + videoId + '/thumbnail" class="card-img-top rounded-top" alt="thumbnail" role="button" style="width: 100px; height: 100px;">\
 							<span>thumb</span>\
 							<span>100 x 100</span>\
-							<input id="upload-thumbnail-input" type="file" accept=".jpg" hidden />\
+							<input id="upload-thumbnail-input" type="file" accept=".jpg,.png" hidden />\
 						</div>\
 					</div>\
 					<div class="col-auto d-flex align-items-center justify-content-center">\
@@ -1833,7 +1833,7 @@
 							<img id="preview-image-button" src="/videos/' + videoId + '/preview" class="card-img-top rounded-top" alt="preview" role="button" style="width: 256px; height: 144px;">\
 							<span>preview</span>\
 							<span>512 x 288</span>\
-							<input id="upload-preview-input" type="file" accept=".jpg" hidden />\
+							<input id="upload-preview-input" type="file" accept=".jpg,.png" hidden />\
 						</div>\
 					</div>\
 					<div class="col-auto d-flex align-items-center justify-content-center">\
@@ -1841,7 +1841,7 @@
 							<img id="poster-image-button" src="/videos/' + videoId + '/poster" class="card-img-top rounded-top" alt="poster" role="button" style="width: 512px; height: 288px;">\
 							<span>poster</span>\
 							<span>1280 x 720</span>\
-							<input id="upload-poster-input" type="file" accept=".jpg" hidden />\
+							<input id="upload-poster-input" type="file" accept=".jpg,.png" hidden />\
 						</div>\
 					</div>\
 				</div>\
@@ -1857,7 +1857,7 @@
 						$('#upload-thumbnail-input').change(function() {
 							let file = this.files[0];
 							
-							if (file.size > 0 && (file.type.match("image/jpeg"))) {
+							if (file.size > 0 && (file.type.match("image/jpeg") || file.type.match("image/png"))) {
 								$('#videos_table_row_' + videoId).find('td').eq(0).find('img').eq(0).replaceWith('<div class="spinner spinner-border text-primary avatar-sm me-3" role="status"><span class="sr-only">Loading...</span></div>');
 								
 								let formData = new FormData();
@@ -1890,7 +1890,7 @@
 						$('#upload-preview-input').change(function() {
 							let file = this.files[0];
 							
-							if (file.size > 0 && (file.type.match("image/jpeg"))) {
+							if (file.size > 0 && (file.type.match("image/jpeg") || file.type.match("image/png"))) {
 								let formData = new FormData();
 								
 								formData.append('preview_file', file);
@@ -1917,7 +1917,7 @@
 						$('#upload-poster-input').change(function() {
 							let file = this.files[0];
 							
-							if (file.size > 0 && (file.type.match("image/jpeg"))) {
+							if (file.size > 0 && (file.type.match("image/jpeg") || file.type.match("image/png"))) {
 								let formData = new FormData();
 								
 								formData.append('poster_file', file);

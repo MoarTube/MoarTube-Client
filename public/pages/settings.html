@@ -570,39 +570,41 @@
 			
 			$(document).on('change', '#avatar_file_input', function(event) {
 				const file = this.files[0];
-				
-				let formData = new FormData();
-				
-				formData.append('avatar_file', file);
 
-				this.value = null;
-				
-				$.ajax({type: 'POST', url: '/settings/node/avatar', data: formData, processData: false, contentType: false})
-				.done(function (data, textStatus, xhr) {
-					if(data.isError) {
-						showAlert(true, data.message);
-					}
-					else {
-						fetch('/settings/node/avatar')
-						.then(response => {
-							if (response.ok) {
-								return response.blob();
-							}
-							throw new Error('...something went wrong...');
-						})
-						.then(blob => {
-							const objectURL = URL.createObjectURL(blob);
-							
-							$('.node-avatar').attr('src', objectURL);
-						})
-						.catch(error => {
-							showAlert(true, 'an error occurred, please try again');
-						});
-					}
-				})
-				.fail(function() {
-					showAlert(true, 'an error occurred, please try again');
-				});
+				if (file.size > 0 && (file.type.match("image/jpeg") || file.type.match("image/png"))) {
+					let formData = new FormData();
+					
+					formData.append('avatar_file', file);
+
+					this.value = null;
+					
+					$.ajax({type: 'POST', url: '/settings/node/avatar', data: formData, processData: false, contentType: false})
+					.done(function (data, textStatus, xhr) {
+						if(data.isError) {
+							showAlert(true, data.message);
+						}
+						else {
+							fetch('/settings/node/avatar')
+							.then(response => {
+								if (response.ok) {
+									return response.blob();
+								}
+								throw new Error('...something went wrong...');
+							})
+							.then(blob => {
+								const objectURL = URL.createObjectURL(blob);
+								
+								$('.node-avatar').attr('src', objectURL);
+							})
+							.catch(error => {
+								showAlert(true, 'an error occurred, please try again');
+							});
+						}
+					})
+					.fail(function() {
+						showAlert(true, 'an error occurred, please try again');
+					});
+				}
 			});
 			
 			$(document).on('change', '#banner_file_input', function(event) {
