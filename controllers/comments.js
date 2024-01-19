@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 
 const { logDebugMessageToConsole, getPublicDirectoryPath } = require('../utils/helpers');
-const { node_isAuthenticated, node_doSignout, node_getSettings, node_getVideoComments, node_getAllComments, node_removeComment } = require('../utils/node-communications');
+const { node_isAuthenticated, node_doSignout, node_getSettings, node_getVideoComments, node_getAllComments, node_removeComment, node_searchComments } = require('../utils/node-communications');
 
 function root_GET(req, res) {
     const jwtToken = req.session.jwtToken;
@@ -197,9 +197,58 @@ function delete_POST(req, res) {
     });
 }
 
+function search_GET(req, res) {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: nodeResponseData.message});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const videoId = req.query.videoId;
+                const searchTerm = req.query.searchTerm;
+                const limit = req.query.limit;
+                const timestamp = req.query.timestamp;
+                
+                node_searchComments(jwtToken, videoId, searchTerm, limit, timestamp)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        
+                        res.send({isError: true, message: nodeResponseData.message});
+                    }
+                    else {
+                        res.send({isError: false, comments: nodeResponseData.comments});
+                    }
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+}
+
 module.exports = {
     root_GET,
     videoId_GET,
     all_GET,
-    delete_POST
+    delete_POST,
+    search_GET
 }

@@ -126,13 +126,14 @@
 									<a class="nav-link " href="/comments">
 										<span class="sidenav-mini-icon"> C </span>
 										<span class="sidenav-normal"> Comments </span>
+										<span id="new-comments-count" class="badge badge-primary ms-1"></span>
 									</a>
 								</li>
 								<li class="nav-item ">
 									<a class="nav-link collapsed" data-bs-toggle="collapse" aria-expanded="false" href="#reports">
 										<span class="sidenav-mini-icon"> R </span>
 										<span class="sidenav-normal"> Reports <b class="caret"></b></span>
-										<span id="total-report-count" class="badge badge-primary ms-1"></span>
+										<span id="new-reports-count" class="badge badge-primary ms-1"></span>
 									</a>
 									<div class="collapse" id="reports">
 										<ul class="nav nav-sm flex-column">
@@ -140,14 +141,14 @@
 												<a class="nav-link " href="/reports/videos">
 													<span class="sidenav-mini-icon text-xs"> V </span>
 													<span class="sidenav-normal"> Videos </span>
-													<span id="video-report-count" class="badge badge-primary ms-1"></span>
+													<span id="new-video-reports-count" class="badge badge-primary ms-1"></span>
 												</a>
 											</li>
 											<li class="nav-item">
 												<a class="nav-link " href="/reports/comments">
 													<span class="sidenav-mini-icon text-xs"> C </span>
 													<span class="sidenav-normal"> Comments </span>
-													<span id="comment-report-count" class="badge badge-primary ms-1"></span>
+													<span id="new-comment-reports-count" class="badge badge-primary ms-1"></span>
 												</a>
 											</li>
 										</ul>
@@ -369,7 +370,7 @@
 				}
 				
 				await getNodeInformation();
-				await getReportCounts();
+				await getNewContentCounts();
 				
 				startVideosLoaderInterval(searchTerm, 'latest', tagTerm, 10, Date.now());
 				
@@ -407,29 +408,37 @@
 				});
 			}
 			
-			function getReportCounts() {
+			function getNewContentCounts() {
 				return new Promise(function(resolve, reject) {
-					$.ajax({type: 'GET', url: '/reports/count'})
+					$.ajax({type: 'GET', url: '/node/newContentCounts'})
 					.done(function (data, textStatus, xhr)
 					{
 						if(data.isError) {
 							reject();
 						}
 						else {
-							const videoReportCount = data.videoReportCount;
-							const commentReportCount = data.commentReportCount;
-							const totalReportCount = data.totalReportCount;
-							
-							if(videoReportCount > 0) {
-								$('#video-report-count').text(videoReportCount);
+							const newContentCounts = data.newContentCounts;
+
+							const newCommentsCount = newContentCounts.newCommentsCount;
+							const newVideoReportsCount = newContentCounts.newVideoReportsCount;
+							const newCommentReportsCount = newContentCounts.newCommentReportsCount;
+
+							const newReportsCount = newVideoReportsCount + newCommentReportsCount;
+
+							if(newCommentsCount > 0) {
+								$('#new-comments-count').text(newCommentsCount);
+							}
+
+							if(newReportsCount > 0) {
+								$('#new-reports-count').text(newReportsCount);
 							}
 							
-							if(commentReportCount > 0) {
-								$('#comment-report-count').text(commentReportCount);
+							if(newVideoReportsCount > 0) {
+								$('#new-video-reports-count').text(newVideoReportsCount);
 							}
 							
-							if(totalReportCount > 0) {
-								$('#total-report-count').text(totalReportCount);
+							if(newCommentReportsCount > 0) {
+								$('#new-comment-reports-count').text(newCommentReportsCount);
 							}
 							
 							resolve();

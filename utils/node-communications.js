@@ -601,6 +601,30 @@ function node_getVideoComments(jwtToken, videoId, timestamp, type, sort) {
     });
 }
 
+function node_searchComments(jwtToken, videoId, searchTerm, limit, timestamp) {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/comments/search', {
+            params: {
+                videoId: videoId,
+                searchTerm: searchTerm,
+                limit: limit,
+                timestamp: timestamp
+            },
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 function node_getAllComments(jwtToken) {
     return new Promise(function(resolve, reject) {
         axios.get(getMoarTubeNodeUrl() + '/videos/comments/all', {
@@ -746,6 +770,44 @@ function node_doVideosSearchAll(jwtToken, searchTerm, sortTerm, tagTerm, tagLimi
               tagLimit: tagLimit,
               timestamp: timestamp
           },
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_getNewContentCounts(jwtToken) {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/node/newContentCounts', {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_setContentChecked(jwtToken, contentType) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/node/contentChecked', {
+            contentType: contentType
+        }, {
           headers: {
             Authorization: jwtToken
           }
@@ -1510,5 +1572,8 @@ module.exports = {
     node_getVideoBandwidth,
     node_uploadStream,
     node_removeAdaptiveStreamSegment,
-    node_setCloudflareTurnstile
+    node_setCloudflareTurnstile,
+    node_searchComments,
+    node_getNewContentCounts,
+    node_setContentChecked
 };

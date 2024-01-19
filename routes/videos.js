@@ -73,14 +73,6 @@ router.post('/:videoId/index/remove', (req, res) => {
     videoIdIndexRemove_POST(req, res);
 });
 
-router.post('/:videoId/alias', (req, res) => {
-    videoIdAlias_POST(req, res);
-});
-
-router.get('/:videoId/alias', (req, res) => {
-    videoIdAlias_GET(req, res);
-});
-
 router.get('/:videoId/thumbnail', (req, res) => {
     videoIdThumbnail_GET(req, res);
 });
