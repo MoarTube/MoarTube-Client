@@ -501,7 +501,7 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                     '-i', rtmpUrl, 
                     '-c:v', 'h264_nvenc', '-b:v', bitrate,
                     '-sc_threshold', '0',
-                    '-g', '180',  // GOP size = (frame rate) * (segment length)
+                    '-g', '90',  // GOP size = (frame rate) * (segment length)
                     '-c:a', 'aac',
                     '-f', 'hls', 
                     '-hls_time', '3', '-hls_init_time', '3', '-hls_list_size', '20',
