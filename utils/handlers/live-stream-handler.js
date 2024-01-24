@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const spawn = require('child_process').spawn;
+const sharp = require('sharp');
 
 const { logDebugMessageToConsole, getTempVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds } = require('../helpers');
 const { node_setVideoLengths, node_getNextExpectedSegmentIndex, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, 
@@ -65,6 +66,10 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
             logDebugMessageToConsole('performStreamingJob ffmpeg process spawned with arguments: ' + ffmpegArguments, null, null, true);
             
             const segmentHistoryLength = 20;
+
+            let uploadingThumbnail = false;
+            let uploadingPreview = false;
+            let uploadingPoster = false;
             
             segmentInterval = setInterval(function() {
                 if(!isLiveStreamStopping(videoId)) {
@@ -102,164 +107,6 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                 
                                 if(fs.existsSync(manifestFilePath) && fs.existsSync(expectedSegmentFilePath)) {
                                     logDebugMessageToConsole('generating live images for video: ' + videoId, null, null, true);
-                                    
-                                    const imagesDirectoryPath = path.join(getTempVideosDirectoryPath(), videoId + '/images');
-                                    
-                                    const thumbnailImagePath = path.join(imagesDirectoryPath, 'thumbnail.jpg');
-                                    
-                                    let process1 = spawn(getFfmpegPath(), [
-                                        '-i', expectedSegmentFilePath, 
-                                        '-vf', 'select=\'gte(t,3*25/100)\',crop=min(iw\\,ih):min(iw\\,ih),scale=100:100,setsar=1',
-                                        '-vframes', '1',
-                                        '-y',
-                                        thumbnailImagePath
-                                    ]);
-                                    
-                                    process1.on('spawn', function (code) {
-                                        logDebugMessageToConsole('live thumbnail generating ffmpeg process spawned', null, null, true);
-                                    });
-                                    
-                                    process1.on('exit', function (code) {
-                                        logDebugMessageToConsole('live thumbnail generating ffmpeg process exited with exit code: ' + code, null, null, true);
-                                        
-                                        if(code === 0) {
-                                            const thumbnailPath = path.join(getTempVideosDirectoryPath(), videoId + '/images/thumbnail.jpg');
-                                            
-                                            if(fs.existsSync(thumbnailPath)) {
-                                                logDebugMessageToConsole('generated live thumbnail for video: ' + videoId, null, null, true);
-                                                
-                                                logDebugMessageToConsole('uploading live thumbnail to node for video: ' + videoId, null, null, true);
-                                                
-                                                node_setThumbnail(jwtToken, videoId, thumbnailPath)
-                                                .then(nodeResponseData => {
-                                                    if(nodeResponseData.isError) {
-                                                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-                                                    }
-                                                    else {
-                                                        logDebugMessageToConsole('uploaded live thumbnail to node for video: ' + videoId, null, null, true);
-                                                        
-                                                        //fs.unlinkSync(thumbnailPath);
-                                                    }
-                                                })
-                                                .catch(error => {
-                                                    logDebugMessageToConsole(null, error, new Error().stack, true);
-                                                });
-                                            } else {
-                                                logDebugMessageToConsole('expected a live thumbnail to be generated in <' + thumbnailPath + '> but found none', null, null, true);
-                                            }
-                                        }
-                                        else {
-                                            logDebugMessageToConsole('live thumbnail generating exited with code: ' + code, null, null, true);
-                                        }
-                                    });
-                                    
-                                    process1.on('error', function (code) {
-                                        logDebugMessageToConsole('live thumbnail generating errorred with error code: ' + code, null, null, true);
-                                    });
-
-                                    const previewImagePath = path.join(imagesDirectoryPath, 'preview.jpg');
-                                    
-                                    let process2 = spawn(getFfmpegPath(), [
-                                        '-i', expectedSegmentFilePath, 
-                                        '-vf', 'select=\'gte(t,3*25/100)\',scale=512:288:force_original_aspect_ratio=decrease,pad=512:288:(ow-iw)/2:(oh-ih)/2,setsar=1',
-                                        '-vframes', '1',
-                                        '-y',
-                                        previewImagePath
-                                    ]);
-                                    
-                                    process2.on('spawn', function (code) {
-                                        logDebugMessageToConsole('live preview generating ffmpeg process spawned', null, null, true);
-                                    });
-                                    
-                                    process2.on('exit', function (code) {
-                                        logDebugMessageToConsole('live preview generating ffmpeg process exited with exit code: ' + code, null, null, true);
-                                        
-                                        if(code === 0) {
-                                            const previewPath = path.join(getTempVideosDirectoryPath(), videoId + '/images/preview.jpg');
-                                            
-                                            if(fs.existsSync(previewPath)) {
-                                                logDebugMessageToConsole('generated live preview for video: ' + videoId, null, null, true);
-                                                
-                                                logDebugMessageToConsole('uploading live preview to node for video: ' + videoId, null, null, true);
-                                                
-                                                node_setPreview(jwtToken, videoId, previewPath)
-                                                .then(nodeResponseData => {
-                                                    if(nodeResponseData.isError) {
-                                                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-                                                    }
-                                                    else {
-                                                        logDebugMessageToConsole('uploaded live preview to node for video: ' + videoId, null, null, true);
-                                                        
-                                                        //fs.unlinkSync(previewPath);
-                                                    }
-                                                })
-                                                .catch(error => {
-                                                    logDebugMessageToConsole(null, error, new Error().stack, true);
-                                                });
-                                            } else {
-                                                logDebugMessageToConsole('expected a live preview to be generated in <' + previewPath + '> but found none', null, null, true);
-                                            }
-                                        }
-                                        else {
-                                            logDebugMessageToConsole('live preview generating exited with code: ' + code, null, null, true);
-                                        }
-                                    });
-                                    
-                                    process2.on('error', function (code) {
-                                        logDebugMessageToConsole('live preview generating errorred with error code: ' + code, null, null, true);
-                                    });
-
-                                    const posterImagePath = path.join(imagesDirectoryPath, 'poster.jpg');
-                                    
-                                    let process3 = spawn(getFfmpegPath(), [
-                                        '-i', expectedSegmentFilePath, 
-                                        '-vf', 'select=\'gte(t,3*25/100)\',scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1',
-                                        '-vframes', '1',
-                                        '-y',
-                                        posterImagePath
-                                    ]);
-                                
-                                    process3.on('spawn', function (code) {
-                                        logDebugMessageToConsole('live poster generating ffmpeg process spawned', null, null, true);
-                                    });
-                                    
-                                    process3.on('exit', function (code) {
-                                        logDebugMessageToConsole('live poster generating ffmpeg process exited with exit code: ' + code, null, null, true);
-                                        
-                                        if(code === 0) {
-                                            const posterPath = path.join(getTempVideosDirectoryPath(), videoId + '/images/poster.jpg');
-                                            
-                                            if(fs.existsSync(posterPath)) {
-                                                logDebugMessageToConsole('generated live poster for video: ' + videoId, null, null, true);
-                                                
-                                                logDebugMessageToConsole('uploading live poster to node for video: ' + videoId, null, null, true);
-                                                
-                                                node_setPoster(jwtToken, videoId, posterPath)
-                                                .then(nodeResponseData => {
-                                                    if(nodeResponseData.isError) {
-                                                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-                                                    }
-                                                    else {
-                                                        logDebugMessageToConsole('uploaded live poster to node for video: ' + videoId, null, null, true);
-                                                        
-                                                        //fs.unlinkSync(posterPath);
-                                                    }
-                                                })
-                                                .catch(error => {
-                                                    logDebugMessageToConsole(null, error, new Error().stack, true);
-                                                });
-                                            } else {
-                                                logDebugMessageToConsole('expected a live poster to be generated in <' + posterPath + '> but found none', null, null, true);
-                                            }
-                                        }
-                                        else {
-                                            logDebugMessageToConsole('live poster generating exited with code: ' + code, null, null, true);
-                                        }
-                                    });
-                                    
-                                    process3.on('error', function (code) {
-                                        logDebugMessageToConsole('live poster generating errorred with error code: ' + code, null, null, true);
-                                    });
 
                                     const directoryPaths = [
                                         {fileName : manifestFileName, filePath: manifestFilePath}, 
@@ -330,6 +177,114 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                             });
                                         }
                                     }
+
+                                    if(!uploadingThumbnail && !uploadingPreview && !uploadingPoster) {
+                                        const imagesDirectoryPath = path.join(getTempVideosDirectoryPath(), videoId + '/images');
+                                        const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
+                                        
+                                        let process = spawn(getFfmpegPath(), [
+                                            '-i', expectedSegmentFilePath,
+                                            '-ss', '1',
+                                            '-q', '18',
+                                            '-frames:v', '1', 
+                                            '-y',
+                                            sourceImagePath,
+                                        ]);
+                                        
+                                        process.on('spawn', function (code) {
+                                            logDebugMessageToConsole('live source image generating ffmpeg process spawned', null, null, true);
+                                        });
+                                        
+                                        process.on('exit', function (code) {
+                                            logDebugMessageToConsole('live source image generating ffmpeg process exited with exit code: ' + code, null, null, true);
+    
+                                            if(code === 0) {
+                                                if(fs.existsSync(sourceImagePath)) {
+                                                    logDebugMessageToConsole('generated live source image for video: ' + videoId, null, null, true);
+    
+                                                    uploadingThumbnail = true;
+                                                    uploadingPreview = true;
+                                                    uploadingPoster = true;
+    
+                                                    const thumbnailImagePath = path.join(imagesDirectoryPath, 'thumbnail.jpg');
+                                                    const previewImagePath = path.join(imagesDirectoryPath, 'preview.jpg');
+                                                    const posterImagePath = path.join(imagesDirectoryPath, 'poster.jpg');
+    
+                                                    sharp(sourceImagePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toFile(thumbnailImagePath)
+                                                    .then(() => {
+                                                        node_setThumbnail(jwtToken, videoId, thumbnailImagePath)
+                                                        .then(nodeResponseData => {
+                                                            if(nodeResponseData.isError) {
+                                                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                                            }
+                                                        })
+                                                        .catch(error => {
+                                                            logDebugMessageToConsole(null, error, new Error().stack, true);
+                                                        })
+                                                        .finally(() => {
+                                                            uploadingThumbnail = false;
+                                                        });
+                                                    })
+                                                    .catch(error => {
+                                                        logDebugMessageToConsole(null, error, new Error().stack, true);
+    
+                                                        uploadingThumbnail = false;
+                                                    });
+    
+                                                    sharp(sourceImagePath).resize({width: 512}).resize(512, 288).jpeg({quality : 90}).toFile(previewImagePath)
+                                                    .then(() => {
+                                                        node_setPreview(jwtToken, videoId, previewImagePath)
+                                                        .then(nodeResponseData => {
+                                                            if(nodeResponseData.isError) {
+                                                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                                            }
+                                                        })
+                                                        .catch(error => {
+                                                            logDebugMessageToConsole(null, error, new Error().stack, true);
+                                                        })
+                                                        .finally(() => {
+                                                            uploadingPreview = false;
+                                                        });
+                                                    })
+                                                    .catch(error => {
+                                                        logDebugMessageToConsole(null, error, new Error().stack, true);
+    
+                                                        uploadingPreview = false;
+                                                    });
+    
+                                                    sharp(sourceImagePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toFile(posterImagePath)
+                                                    .then(() => {
+                                                        node_setPoster(jwtToken, videoId, posterImagePath)
+                                                        .then(nodeResponseData => {
+                                                            if(nodeResponseData.isError) {
+                                                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                                            }
+                                                        })
+                                                        .catch(error => {
+                                                            logDebugMessageToConsole(null, error, new Error().stack, true);
+                                                        })
+                                                        .finally(() => {
+                                                            uploadingPoster = false;
+                                                        });
+                                                    })
+                                                    .catch(error => {
+                                                        logDebugMessageToConsole(null, error, new Error().stack, true);
+    
+                                                        uploadingPoster = false;
+                                                    });
+                                                } else {
+                                                    logDebugMessageToConsole('expected a live source image to be generated in <' + sourceImagePath + '> but found none', null, null, true);
+                                                }
+                                            }
+                                            else {
+                                                logDebugMessageToConsole('live source image generating exited with code: ' + code, null, null, true);
+                                            }
+                                        });
+                                        
+                                        process.on('error', function (code) {
+                                            logDebugMessageToConsole('live source image generating errorred with error code: ' + code, null, null, true);
+                                        });
+                                    }
                                 }
                             }
                         })
@@ -393,53 +348,54 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
 }
 
 function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely) {
-    let scale = '';
-    let width = '';
-    let height = '';
-    let bitrate = '';
+    let width;
+    let height;
+    let bitrate;
+
+    const clientSettings = getClientSettings();
     
     if(resolution === '2160p') {
         width = '3840';
         height = '2160';
-        bitrate = '12000k';
     }
     else if(resolution === '1440p') {
         width = '2560';
         height = '1440';
-        bitrate = '10000k';
     }
     else if(resolution === '1080p') {
         width = '1920';
         height = '1080';
-        bitrate = '8000k';
     }
     else if(resolution === '720p') {
         width = '1280';
         height = '720';
-        bitrate = '6000k';
     }
     else if(resolution === '480p') {
         width = '854';
         height = '480';
-        bitrate = '3000k';
     }
     else if(resolution === '360p') {
         width = '640';
         height = '360';
-        bitrate = '2000k';
     }
     else if(resolution === '240p') {
         width = '426';
         height = '240';
-        bitrate = '1000k';
     }
-    
-    const clientSettings = getClientSettings();
 
-    if(clientSettings.processingAgent.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
+    if(format === 'm3u8') {
+        bitrate = clientSettings.liveEncoderSettings.hls[resolution + '-bitrate'] + 'k';
+    }
+
+    /*
+    // NOTE: best not to assume the streamer's preferences and just let them decide picture formatting
+
+    let scale = '';
+
+    if(clientSettings.processingAgent.processingAgentType === 'cpu') {
         scale = 'scale';
     }
-    else if(clientSettings.processingAgent.processingAgentType === 'gpu' && (format === 'm3u8' || format === 'mp4')) {
+    else if(clientSettings.processingAgent.processingAgentType === 'gpu' && (format === 'm3u8')) {
         if(clientSettings.processingAgent.processingAgentName === 'NVIDIA') {
             scale = 'scale_cuda';
         }
@@ -447,13 +403,13 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
             scale = 'scale';
         }
     }
-    
+
     let filterComplex = scale + "='if(gt(ih,iw),-1," + width + ")':'if(gt(ih,iw)," + height + ",-1)',";
     
-    if(clientSettings.processingAgent.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
+    if(clientSettings.processingAgent.processingAgentType === 'cpu') {
         filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
     }
-    else if(clientSettings.processingAgent.processingAgentType === 'gpu' && (format === 'm3u8' || format === 'mp4')) {
+    else if(clientSettings.processingAgent.processingAgentType === 'gpu' && (format === 'm3u8')) {
         if(clientSettings.processingAgent.processingAgentName === 'NVIDIA') {
             filterComplex += 'hwdownload,format=nv12,crop=trunc(iw/2)*2:trunc(ih/2)*2,hwupload_cuda';
         }
@@ -461,7 +417,7 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
             filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
         }
     }
-
+    */
     
     const hlsSegmentOutputPath = path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
     const manifestFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
@@ -521,8 +477,8 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                     '-hwaccel', 'dxva2',
                     '-hwaccel_device', '0',
                     '-f', 'flv',
-                    '-i', rtmpUrl, 
-                    '-c:v', 'h264_amf', '-b:v', bitrate,
+                    '-i', rtmpUrl, '-b:v', bitrate,
+                    '-c:v', 'h264_amf',
                     '-sc_threshold', '0',
                     '-g', '90',  // GOP size = (frame rate) * (segment length)
                     '-c:a', 'aac',

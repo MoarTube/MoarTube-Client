@@ -87,6 +87,9 @@ function client_GET(req, res) {
                     settings.gpuVendor = clientSettings.processingAgent.processingAgentName;
                     settings.gpuModel = clientSettings.processingAgent.processingAgentModel;
                 }
+
+                settings.videoEncoderSettings = clientSettings.videoEncoderSettings;
+                settings.liveEncoderSettings = clientSettings.liveEncoderSettings;
                 
                 res.send({isError: false, clientSettings: settings});
             }
@@ -210,6 +213,42 @@ function clientGpuAcceleration_POST(req, res) {
                 else {
                     res.send({isError: true, message: 'this version of MoarTube Client only supports GPU acceleration on Windows platforms'});
                 }
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+                
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+}
+
+function clientEncoding_POST(req, res) {
+    node_isAuthenticated(req.session.jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: nodeResponseData.message});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const videoEncoderSettings = req.body.videoEncoderSettings;
+                const liveEncoderSettings = req.body.liveEncoderSettings;
+
+                const clientSettings = getClientSettings();
+
+                clientSettings.videoEncoderSettings = videoEncoderSettings;
+                clientSettings.liveEncoderSettings = liveEncoderSettings;
+
+                setClientSettings(clientSettings);
+
+                res.send({isError: false});
             }
             else {
                 logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
@@ -947,6 +986,7 @@ module.exports = {
     client_GET,
     node_GET,
     clientGpuAcceleration_POST,
+    clientEncoding_POST,
     nodeAvatar_GET,
     nodeAvatar_POST,
     nodeBanner_GET,

@@ -346,52 +346,56 @@ function finishVideoPublish(jwtToken, videoId, sourceFileExtension) {
 }
 
 function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePath, destinationFilePath) {
-    /*
-    TODO: the user will want to tune their own encoding settings; hardcoded defaults below are assumed for typical use cases
-    */
+    let width;
+    let height;
 
-    let scale = '';
-    let width = '';
-    let height = '';
-    let bitrate = '';
+    const clientSettings = getClientSettings();
     
     if(resolution === '2160p') {
         width = '3840';
         height = '2160';
-        bitrate = '12000k';
     }
     else if(resolution === '1440p') {
         width = '2560';
         height = '1440';
-        bitrate = '10000k';
     }
     else if(resolution === '1080p') {
         width = '1920';
         height = '1080';
-        bitrate = '8000k';
     }
     else if(resolution === '720p') {
         width = '1280';
         height = '720';
-        bitrate = '6000k';
     }
     else if(resolution === '480p') {
         width = '854';
         height = '480';
-        bitrate = '3000k';
     }
     else if(resolution === '360p') {
         width = '640';
         height = '360';
-        bitrate = '2000k';
     }
     else if(resolution === '240p') {
         width = '426';
         height = '240';
-        bitrate = '1000k';
     }
-    
-    const clientSettings = getClientSettings();
+
+    let bitrate;
+
+    if(format === 'm3u8') {
+        bitrate = clientSettings.videoEncoderSettings.hls[resolution + '-bitrate'] + 'k';
+    }
+    else if(format === 'mp4') {
+        bitrate = clientSettings.videoEncoderSettings.mp4[resolution + '-bitrate'] + 'k';
+    }
+    else if(format === 'webm') {
+        bitrate = clientSettings.videoEncoderSettings.webm[resolution + '-bitrate'] + 'k';
+    }
+    else if(format === 'ogv') {
+        bitrate = clientSettings.videoEncoderSettings.ogv[resolution + '-bitrate'] + 'k';
+    }
+
+    let scale;
     
     if(clientSettings.processingAgent.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
         scale = 'scale';
@@ -427,11 +431,9 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
         if(format === 'm3u8') {
             ffmpegArguments = [
                 '-i', sourceFilePath,
-                '-r', '30',
                 '-c:a', 'aac',
                 '-c:v', 'libx264', '-b:v', bitrate,
                 '-sc_threshold', '0',
-                '-g', '180',
                 '-vf', filterComplex,
                 '-f', 'hls', 
                 '-hls_time', '6', '-hls_init_time', '2',
@@ -444,7 +446,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
         else if(format === 'mp4') {
             ffmpegArguments = [
                 '-i', sourceFilePath,
-                '-r', '30',
                 '-c:a', 'aac',
                 '-c:v', 'libx264', '-b:v', bitrate,
                 '-vf', filterComplex,
@@ -456,7 +457,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
         else if(format === 'webm') {
             ffmpegArguments = [
                 '-i', sourceFilePath,
-                '-r', '30',
                 '-c:a', 'libopus',
                 '-c:v', 'libvpx-vp9', '-b:v', bitrate,
                 '-vf', filterComplex,
@@ -467,7 +467,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
         else if(format === 'ogv') {
             ffmpegArguments = [
                 '-i', sourceFilePath,
-                '-r', '30',
                 '-c:a', 'libopus',
                 '-c:v', 'libvpx', '-b:v', bitrate,
                 '-vf', filterComplex,
@@ -483,7 +482,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-hwaccel', 'cuvid',
                     '-hwaccel_output_format', 'cuda',
                     '-i', sourceFilePath,
-                    '-r', '30',
                     '-c:a', 'aac',
                     '-c:v', 'h264_nvenc', '-b:v', bitrate,
                     '-sc_threshold', '0',
@@ -502,7 +500,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-hwaccel', 'cuvid',
                     '-hwaccel_output_format', 'cuda',
                     '-i', sourceFilePath,
-                    '-r', '30',
                     '-c:a', 'aac',
                     '-c:v', 'h264_nvenc', '-b:v', bitrate,
                     '-vf', filterComplex,
@@ -514,7 +511,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
             else if(format === 'webm') {
                 ffmpegArguments = [
                     '-i', sourceFilePath,
-                    '-r', '30',
                     '-c:a', 'libopus',
                     '-c:v', 'libvpx-vp9', '-b:v', bitrate,
                     '-vf', filterComplex,
@@ -525,7 +521,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
             else if(format === 'ogv') {
                 ffmpegArguments = [
                     '-i', sourceFilePath,
-                    '-r', '30',
                     '-c:a', 'libopus',
                     '-c:v', 'libvpx', '-b:v', bitrate,
                     '-vf', filterComplex,
@@ -540,7 +535,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-hwaccel', 'dxva2',
                     '-hwaccel_device', '0',
                     '-i', sourceFilePath,
-                    '-r', '30',
                     '-c:a', 'aac',
                     '-c:v', 'h264_amf', '-b:v', bitrate,
                     '-sc_threshold', '0',
@@ -559,7 +553,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-hwaccel', 'dxva2',
                     '-hwaccel_device', '0',
                     '-i', sourceFilePath,
-                    '-r', '30',
                     '-c:a', 'aac',
                     '-c:v', 'h264_amf', '-b:v', bitrate,
                     '-vf', filterComplex,
@@ -571,7 +564,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
             else if(format === 'webm') {
                 ffmpegArguments = [
                     '-i', sourceFilePath,
-                    '-r', '30',
                     '-c:a', 'libopus',
                     '-c:v', 'libvpx-vp9', '-b:v', bitrate,
                     '-vf', filterComplex,
@@ -582,7 +574,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
             else if(format === 'ogv') {
                 ffmpegArguments = [
                     '-i', sourceFilePath,
-                    '-r', '30',
                     '-c:a', 'libopus',
                     '-c:v', 'libvpx', '-b:v', bitrate,
                     '-vf', filterComplex,

@@ -212,6 +212,32 @@
 										<input id="client-setting-gpu-acceleration-checkbox" class="form-check-input" type="checkbox" onclick="toggleClientSettingGpuAccelerationCheckbox(this)">
 									</div>
 								</div>
+								<div class="card-body pt-0 d-flex">
+									<div class="my-auto ">
+										<div class="h-100">
+											<a href="https://www.moartube.com/guides/how-to-configure-video-encoding" target="_blank"><p class="mb-0 d-flex">Video Encoding<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
+												<path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"></path>
+												<path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"></path>
+											  </svg></p></a>
+										</div>
+									</div>
+									<div class="ms-auto">
+										<button class="btn btn-primary" type="button" onclick="showEncodingSettings('Video');">Settings</button>
+									</div>
+								</div>
+								<div class="card-body pt-0 d-flex">
+									<div class="my-auto ">
+										<div class="h-100">
+											<a href="https://www.moartube.com/guides/how-to-configure-live-encoding" target="_blank"><p class="mb-0 d-flex">Live Encoding<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
+												<path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"></path>
+												<path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"></path>
+											  </svg></p></a>
+										</div>
+									</div>
+									<div class="ms-auto">
+										<button class="btn btn-primary" type="button" onclick="showEncodingSettings('Live');">Settings</button>
+									</div>
+								</div>
 							</div>
 						</div>
 						<div id="node-settings-container" class="card mt-4">
@@ -435,6 +461,8 @@
 			let NODE_PORT;
 			
 			let NODE_BASE_URL;
+
+			let CLIENT_SETTINGS;
 			
 			$(document).ready(async function() {
 				await getNodeInformation();
@@ -528,10 +556,10 @@
 						showAlert(true, data.message);
 					}
 					else {
-						const clientSettings = data.clientSettings;
+						CLIENT_SETTINGS = data.clientSettings;
 						
-						if(clientSettings.isGpuAccelerationEnabled) {
-							const gpuVendorAndModel = clientSettings.gpuVendor + ' ' + clientSettings.gpuModel;
+						if(CLIENT_SETTINGS.isGpuAccelerationEnabled) {
+							const gpuVendorAndModel = CLIENT_SETTINGS.gpuVendor + ' ' + CLIENT_SETTINGS.gpuModel;
 						
 							$('#client-setting-gpu-acceleration-checkbox').prop('checked', true);
 							$('#client-setting-gpu-acceleration-label').text(gpuVendorAndModel);
@@ -804,6 +832,142 @@
 				})
 				.fail(function() {
 					$(checkbox).prop('checked', !isGpuAccelerationEnabled);
+				});
+			}
+
+			function showEncodingSettings(encodingType) {
+				var html = '';
+
+				if(encodingType === 'Video') {
+					html = html = '\
+					<div>\
+						<button class="btn btn-primary encoding-settings" type="button" data-format="hls">HLS</button>\
+						<button class="btn btn-primary encoding-settings" type="button" data-format="mp4">MP4</button>\
+						<button class="btn btn-primary encoding-settings" type="button" data-format="webm">WEBM</button>\
+						<button class="btn btn-primary encoding-settings" type="button" data-format="ogv">OGV</button>\
+					</div>';
+				}
+				else if(encodingType === 'Live') {
+					html = html = '\
+					<div>\
+						<button class="btn btn-primary encoding-settings" type="button" data-format="hls">HLS</button>\
+					</div>';
+				}
+
+				Swal.fire({
+					title: `${encodingType} Encoding Settings`,
+					html: html,
+					showCloseButton: true,
+					showConfirmButton: false,
+					didOpen: () => {
+						$('.encoding-settings').click(function() {
+							const format = $(this).data('format');
+
+							const html = '\
+							<div class="">\
+								<input id="2160p-bitrate-range-' + format + '" class="bitrate-slider w-100" data-resolution="2160p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
+								<p>2160p bitrate: <span id="2160p-bitrate-span-' + format + '"></span></p>\
+							</div>\
+							<div class="">\
+								<input id="1440p-bitrate-range-' + format + '" class="bitrate-slider w-100" data-resolution="1440p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
+								<p>1440p bitrate: <span id="1440p-bitrate-span-' + format + '"></span></p>\
+							</div>\
+							<div class="">\
+								<input id="1080p-bitrate-range-' + format + '" class="bitrate-slider w-100" data-resolution="1080p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
+								<p>1080p bitrate: <span id="1080p-bitrate-span-' + format + '"></span></p>\
+							</div>\
+							<div class="">\
+								<input id="720p-bitrate-range-' + format + '" class="bitrate-slider w-100" data-resolution="720p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
+								<p>720p bitrate: <span id="720p-bitrate-span-' + format + '"></span></p>\
+							</div>\
+							<div class="">\
+								<input id="480p-bitrate-range-' + format + '" class="bitrate-slider w-100" data-resolution="480p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
+								<p>480p bitrate: <span id="480p-bitrate-span-' + format + '"></span></p>\
+							</div>\
+							<div class="">\
+								<input id="360p-bitrate-range-' + format + '" class="bitrate-slider w-100" data-resolution="360p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
+								<p>360p bitrate: <span id="360p-bitrate-span-' + format + '"></span></p>\
+							</div>\
+							<div class="">\
+								<input id="240p-bitrate-range-' + format + '" class="bitrate-slider w-100" data-resolution="240p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
+								<p>240p bitrate: <span id="240p-bitrate-span-' + format + '"></span></p>\
+							</div>\
+							';
+							
+							Swal.fire({
+								title: `${encodingType} Encoding Settings<br>(${format.toUpperCase()})`,
+								html: html,
+								showCloseButton: true,
+								showConfirmButton: true,
+								confirmButtonText: 'Save',
+								didOpen: () => {
+									let encoderSettings;
+
+									if(encodingType === 'Video') {
+										encoderSettings = CLIENT_SETTINGS.videoEncoderSettings;
+									}
+									else if(encodingType === 'Live') {
+										encoderSettings = CLIENT_SETTINGS.liveEncoderSettings;
+									}
+
+									$('.bitrate-slider').on('input', function () {
+										const resolution = $(this).data('resolution');
+
+										$('#' + resolution + '-bitrate-span-' + format).text($(this).val() + 'K');
+
+										encoderSettings[format][resolution + '-bitrate'] = $(this).val();
+
+										if(encodingType === 'Video') {
+											CLIENT_SETTINGS.videoEncoderSettings = encoderSettings;
+										}
+										else if(encodingType === 'Live') {
+											CLIENT_SETTINGS.liveEncoderSettings = encoderSettings;
+										}
+									});
+
+									$('#2160p-bitrate-range-' + format).val(encoderSettings[format]['2160p-bitrate']);
+									$('#2160p-bitrate-span-' + format).text(encoderSettings[format]['2160p-bitrate'] + 'K');
+
+									$('#1440p-bitrate-range-' + format).val(encoderSettings[format]['1440p-bitrate']);
+									$('#1440p-bitrate-span-' + format).text(encoderSettings[format]['1440p-bitrate'] + 'K');
+
+									$('#1080p-bitrate-range-' + format).val(encoderSettings[format]['1080p-bitrate']);
+									$('#1080p-bitrate-span-' + format).text(encoderSettings[format]['1080p-bitrate'] + 'K');
+
+									$('#720p-bitrate-range-' + format).val(encoderSettings[format]['720p-bitrate']);
+									$('#720p-bitrate-span-' + format).text(encoderSettings[format]['720p-bitrate'] + 'K');
+
+									$('#480p-bitrate-range-' + format).val(encoderSettings[format]['480p-bitrate']);
+									$('#480p-bitrate-span-' + format).text(encoderSettings[format]['480p-bitrate'] + 'K');
+
+									$('#360p-bitrate-range-' + format).val(encoderSettings[format]['360p-bitrate']);
+									$('#360p-bitrate-span-' + format).text(encoderSettings[format]['360p-bitrate'] + 'K');
+
+									$('#240p-bitrate-range-' + format).val(encoderSettings[format]['240p-bitrate']);
+									$('#240p-bitrate-span-' + format).text(encoderSettings[format]['240p-bitrate'] + 'K');
+
+									$('.bitrate-slider').prop('disabled', false);
+								}
+							}).then((result) => {
+								if (result.isConfirmed) {
+									const data = {
+										videoEncoderSettings: CLIENT_SETTINGS.videoEncoderSettings,
+										liveEncoderSettings: CLIENT_SETTINGS.liveEncoderSettings
+									};
+
+									$.ajax({type: 'POST', url: '/settings/client/encoding', data: JSON.stringify(data), contentType: 'application/json; charset=utf-8'})
+									.done(function (data, textStatus, xhr) {
+										if(data.isError) {
+											showAlert(false, data.message);
+										}
+									})
+									.fail(function() {
+										alert('an error occurred, please try again');
+									});
+								}
+							});
+						});
+					}
 				});
 			}
 			

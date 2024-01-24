@@ -1,7 +1,7 @@
 const express = require('express');
 
 const { 
-    root_GET, client_GET, node_GET, clientGpuAcceleration_POST, nodeAvatar_GET, nodeAvatar_POST, nodeBanner_GET, nodeBanner_POST,
+    root_GET, client_GET, node_GET, clientGpuAcceleration_POST, clientEncoding_POST, nodeAvatar_GET, nodeAvatar_POST, nodeBanner_GET, nodeBanner_POST,
     nodePersonalize_POST, node_Secure_POST, nodeNetworkInternal_POST, nodeNetworkExternal_POST, nodeAccount_POST,
     nodeCloudflareConfigure_POST, nodeCloudflareClear_POST, nodeCloudflareTurnstile_POST
  } = require('../controllers/settings');
@@ -22,6 +22,10 @@ router.get('/node', (req, res) => {
 
 router.post('/client/gpuAcceleration', (req, res) => {
     clientGpuAcceleration_POST(req, res);
+});
+
+router.post('/client/encoding', (req, res) => {
+    clientEncoding_POST(req, res);
 });
 
 router.get('/node/avatar', (req, res) => {

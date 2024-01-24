@@ -181,6 +181,19 @@ function loadConfig() {
 				"processingAgentType":"cpu",
 				"processingAgentName":"",
 				"processingAgentModel":""
+			},
+			// units are in kilobytes per second
+			"videoEncoderSettings": {
+				"hls": { "2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000" },
+				"mp4": { "2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000" },
+				"webm": { "2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000" },
+				"ogv": { "2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000" }
+			},
+			"liveEncoderSettings": {
+				"hls": { "2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000" },
+				"mp4": { "2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000" },
+				"webm": { "2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000" },
+				"ogv": { "2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000" }
 			}
 		}));
 	}
