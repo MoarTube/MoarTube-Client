@@ -2,11 +2,11 @@ const path = require('path');
 const fs = require('fs');
 const webSocket = require('ws');
 
-let userDirectory;
 let publicDirectory;
 let tempDirectory;
 let tempCertificatesDirectory;
 let tempVideosDirectory;
+let tempImagesDirectory;
 let moartubeClientPort;
 let moartubeNodeIp;
 let moartubeNodePort;
@@ -288,10 +288,6 @@ function websocketServerBroadcast(message) {
 
 /* getters */
 
-function getUserDirectoryPath() {
-    return userDirectory;
-}
-
 function getPublicDirectoryPath() {
     return publicDirectory;
 }
@@ -306,6 +302,10 @@ function getTempCertificatesDirectoryPath() {
 
 function getTempVideosDirectoryPath() {
     return tempVideosDirectory;
+}
+
+function getTempImagesDirectoryPath() {
+    return tempImagesDirectory;
 }
 
 function getMoarTubeClientPort() {
@@ -337,7 +337,7 @@ function getMoarTubeNodeWebsocketUrl() {
 }
 
 function getClientSettings() {
-	const clientSettings = JSON.parse(fs.readFileSync(path.join(getUserDirectoryPath(), '_client_settings.json'), 'utf8'));
+	const clientSettings = JSON.parse(fs.readFileSync(path.join(getTempDirectoryPath(), '_client_settings.json'), 'utf8'));
 
 	return clientSettings;
 }
@@ -359,12 +359,6 @@ function setPublicDirectoryPath(path) {
     publicDirectory = path;
 }
 
-function setUserDirectoryPath(path) {
-    logDebugMessageToConsole('configured MoarTube Client to use user directory path: ' + path, null, null, true);
-
-    userDirectory = path;
-}
-
 function setTempDirectoryPath(path) {
     logDebugMessageToConsole('configured MoarTube Client to use temp directory path: ' + path, null, null, true);
 
@@ -381,6 +375,12 @@ function setTempVideosDirectoryPath(path) {
     logDebugMessageToConsole('configured MoarTube Client to use temp videos directory path: ' + path, null, null, true);
 
     tempVideosDirectory = path;
+}
+
+function setTempImagesDirectoryPath(path) {
+    logDebugMessageToConsole('configured MoarTube Client to use temp images directory path: ' + path, null, null, true);
+
+    tempImagesDirectory = path;
 }
 
 function setMoarTubeClientPort(port) {
@@ -418,7 +418,7 @@ function setClientSettings(clientSettings) {
 
     logDebugMessageToConsole('configured MoarTube Client to use client settings: ' + clientSettingsString, null, null, true);
 
-	fs.writeFileSync(path.join(getUserDirectoryPath(), '_client_settings.json'), clientSettingsString);
+	fs.writeFileSync(path.join(getTempDirectoryPath(), '_client_settings.json'), clientSettingsString);
 }
 
 function setWebsocketServer(wss) {
@@ -445,11 +445,11 @@ module.exports = {
     cleanVideosDirectory,
     websocketClientBroadcast,
     websocketServerBroadcast,
-    getUserDirectoryPath,
     getPublicDirectoryPath,
     getTempDirectoryPath,
     getTempCertificatesDirectoryPath,
     getTempVideosDirectoryPath,
+    getTempImagesDirectoryPath,
     getMoarTubeClientPort,
     getMoarTubeNodeIp,
     getMoarTubeNodePort,
@@ -462,10 +462,10 @@ module.exports = {
     getWebsocketServer,
     getWebsocketClient,
     setPublicDirectoryPath,
-    setUserDirectoryPath,
     setTempDirectoryPath,
     setTempCertificatesDirectoryPath,
     setTempVideosDirectoryPath,
+    setTempImagesDirectoryPath,
     setMoarTubeClientPort,
     setMoarTubeNodeIp,
     setMoarTubeNodePort,

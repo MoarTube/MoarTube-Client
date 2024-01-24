@@ -7,7 +7,7 @@ sharp.cache(false);
 
 const { 
     logDebugMessageToConsole, getPublicDirectoryPath, getTempCertificatesDirectoryPath, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol,
-    setMoarTubeNodePort, detectOperatingSystem, detectSystemGpu, detectSystemCpu, getClientSettings, setClientSettings
+    setMoarTubeNodePort, detectOperatingSystem, detectSystemGpu, detectSystemCpu, getClientSettings, setClientSettings, getTempImagesDirectoryPath
 } = require('../utils/helpers');
 const { 
     node_isAuthenticated, node_setExternalNetwork, node_getSettings, node_doSignout, node_getAvatar, node_setAvatar, 
@@ -316,7 +316,7 @@ function nodeAvatar_POST(req, res) {
                 multer({
                     storage: multer.diskStorage({
                         destination: function (req, file, cb) {
-                            const filePath = path.join(getPublicDirectoryPath(), 'images');
+                            const filePath = getTempImagesDirectoryPath();
                             
                             fs.access(filePath, fs.constants.F_OK, function(error) {
                                 if(error) {
@@ -352,7 +352,7 @@ function nodeAvatar_POST(req, res) {
                     else {
                         const avatarFile = req.files['avatar_file'][0];
                         
-                        const imagesDirectory = path.join(getPublicDirectoryPath(), 'images');
+                        const imagesDirectory = getTempImagesDirectoryPath();
                     
                         const sourceFilePath = path.join(imagesDirectory, avatarFile.filename);
                         
@@ -461,7 +461,7 @@ function nodeBanner_POST(req, res) {
                 multer({
                     storage: multer.diskStorage({
                         destination: function (req, file, cb) {
-                            const filePath = path.join(getPublicDirectoryPath(), 'images');
+                            const filePath = getTempImagesDirectoryPath();
                             
                             fs.access(filePath, fs.constants.F_OK, function(error) {
                                 if(error) {
@@ -497,7 +497,7 @@ function nodeBanner_POST(req, res) {
                     else {
                         const bannerFile = req.files['banner_file'][0];
                         
-                        const imagesDirectory = path.join(getPublicDirectoryPath(), 'images');
+                        const imagesDirectory = getTempImagesDirectoryPath();
                     
                         const sourceFilePath = path.join(imagesDirectory, bannerFile.filename);
                         

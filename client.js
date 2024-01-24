@@ -10,9 +10,9 @@ const crypto = require('crypto');
 
 const { 
 	logDebugMessageToConsole, performEncodingDecodingAssessment, cleanVideosDirectory, getPublicDirectoryPath, getTempDirectoryPath,
-    getMoarTubeClientPort, setPublicDirectoryPath, setUserDirectoryPath, setTempDirectoryPath, setTempCertificatesDirectoryPath,
-    setTempVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getUserDirectoryPath, getClientSettings,
-	getTempCertificatesDirectoryPath, getTempVideosDirectoryPath
+    getMoarTubeClientPort, setPublicDirectoryPath, setTempDirectoryPath, setTempCertificatesDirectoryPath,
+    setTempVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getClientSettings,
+	getTempCertificatesDirectoryPath, getTempVideosDirectoryPath, setTempImagesDirectoryPath, getTempImagesDirectoryPath
 } = require('./utils/helpers');
 
 const { 
@@ -149,21 +149,20 @@ function loadConfig() {
 	setPublicDirectoryPath(path.join(__dirname, 'public'));
 
 	if(global != null && global.electronPaths != null) {
-		setUserDirectoryPath(path.join(global.electronPaths.userData, 'user'));
 		setTempDirectoryPath(path.join(global.electronPaths.temp, 'moartube-client/temp'));
 	}
 	else {
-		setUserDirectoryPath(path.join(__dirname, 'user'));
 		setTempDirectoryPath(path.join(__dirname, 'temp'));
 	}
 	
 	setTempCertificatesDirectoryPath(path.join(getTempDirectoryPath(), 'certificates'));
 	setTempVideosDirectoryPath(path.join(getTempDirectoryPath(), 'media/videos'));
+	setTempImagesDirectoryPath(path.join(getTempDirectoryPath(), 'images'));
 
 	logDebugMessageToConsole('creating required directories and files', null, null, true);
 
-    if (!fs.existsSync(getUserDirectoryPath())) {
-		fs.mkdirSync(getUserDirectoryPath(), { recursive: true });
+    if (!fs.existsSync(getTempDirectoryPath())) {
+		fs.mkdirSync(getTempDirectoryPath(), { recursive: true });
 	}
 
 	if (!fs.existsSync(getTempCertificatesDirectoryPath())) {
@@ -174,8 +173,12 @@ function loadConfig() {
 		fs.mkdirSync(getTempVideosDirectoryPath(), { recursive: true });
 	}
 
-    if (!fs.existsSync(path.join(getUserDirectoryPath(), '_client_settings.json'))) {
-		fs.writeFileSync(path.join(getUserDirectoryPath(), '_client_settings.json'), JSON.stringify({
+	if (!fs.existsSync(getTempImagesDirectoryPath())) {
+		fs.mkdirSync(getTempImagesDirectoryPath(), { recursive: true });
+	}
+
+    if (!fs.existsSync(path.join(getTempDirectoryPath(), '_client_settings.json'))) {
+		fs.writeFileSync(path.join(getTempDirectoryPath(), '_client_settings.json'), JSON.stringify({
             "clientListeningPort":8080,
 			"processingAgent":{
 				"processingAgentType":"cpu",
