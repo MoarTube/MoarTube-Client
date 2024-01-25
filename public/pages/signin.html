@@ -115,20 +115,25 @@
 						Swal.fire({
 							icon: 'error',
 							title: 'hmmm',
-							html: '...something went wrong...'
+							html: error
 						});
 					});
 				});
 				
 				function performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe) {
 					return new Promise(function(resolve, reject) {
-						$.post({url: url, data: JSON.stringify({username: username, password: password, moarTubeNodeIp: moarTubeNodeIp, moarTubeNodePort: moarTubeNodePort, rememberMe: rememberMe}), contentType: 'application/json; charset=utf-8'})
-						.done(function(response) {
-							resolve(response);
-						})
-						.fail(function() {
-							reject();
-						});
+						if(username != '' && password != '' && moarTubeNodeIp != '' && moarTubeNodePort != '') {
+							$.post({url: url, data: JSON.stringify({username: username, password: password, moarTubeNodeIp: moarTubeNodeIp, moarTubeNodePort: moarTubeNodePort, rememberMe: rememberMe}), contentType: 'application/json; charset=utf-8'})
+							.done(function(response) {
+								resolve(response);
+							})
+							.fail(function() {
+								reject('...something went wrong...');
+							});
+						}
+						else {
+							reject('please fill out all input fields');
+						}
 					});
 				}
 				

@@ -78,6 +78,10 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                         .then(nodeResponseData => {
                             if(nodeResponseData.isError) {
                                 logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+
+                                clearInterval(segmentInterval);
+
+                                process.kill();
                             }
                             else {
                                 const nextExpectedSegmentIndex = nodeResponseData.nextExpectedSegmentIndex;
@@ -309,10 +313,10 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
             }
             
             if(liveStreamExists(videoId)) {
-                logDebugMessageToConsole('performStreamingJob checking if live stream process was interrupted by user...', null, null, true);
+                logDebugMessageToConsole('performStreamingJob checking if live stream process was interrupted by MoarTube Client...', null, null, true);
                 
                 if(!isLiveStreamStopping(videoId)) {
-                    logDebugMessageToConsole('performStreamingJob determined live stream process was interrupted by user', null, null, true);
+                    logDebugMessageToConsole('performStreamingJob determined live stream process was not interrupted by MoarTube Client', null, null, true);
                     
                     websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
                     
@@ -330,7 +334,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                     });
                 }
                 else {
-                    logDebugMessageToConsole('performStreamingJob determined live stream process was interrupted by user', null, null, true);
+                    logDebugMessageToConsole('performStreamingJob determined live stream process was interrupted by MoarTube Client', null, null, true);
                 }
             }
         });
