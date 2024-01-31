@@ -70,6 +70,8 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
             let uploadingThumbnail = false;
             let uploadingPreview = false;
             let uploadingPoster = false;
+
+            let lastVideoImagesUpdateTimestamp = 0;
             
             segmentInterval = setInterval(function() {
                 if(!isLiveStreamStopping(videoId)) {
@@ -182,13 +184,16 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                         }
                                     }
 
-                                    if(!uploadingThumbnail && !uploadingPreview && !uploadingPoster) {
+                                    // update thumbnail, preview, and poster every 10 seconds
+                                    if(!uploadingThumbnail && !uploadingPreview && !uploadingPoster && (Date.now() - lastVideoImagesUpdateTimestamp > 10000)) {
+                                        lastVideoImagesUpdateTimestamp = Date.now();
+
                                         const imagesDirectoryPath = path.join(getTempVideosDirectoryPath(), videoId + '/images');
                                         const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
                                         
                                         let process = spawn(getFfmpegPath(), [
                                             '-i', expectedSegmentFilePath,
-                                            '-ss', '1',
+                                            '-ss', '0.5',
                                             '-q', '18',
                                             '-frames:v', '1', 
                                             '-y',
@@ -302,7 +307,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                         clearInterval(segmentInterval);
                     }
                 }
-            }, 500);
+            }, 250);
         });
         
         process.on('exit', function (code) {
@@ -427,7 +432,15 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
     const manifestFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
     
     let ffmpegArguments = [];
-    
+
+    /*
+    -g
+    GOP size = (frame rate) * (segment length)
+    60fps video will contain 2 key frames per 1-second segment,
+    file size and encoding performance appears not too affected by this.
+    Source RTMP frame rate must be a multiple of 30.
+    */
+
     if(clientSettings.processingAgent.processingAgentType === 'cpu') {
         if(format === 'm3u8') {
             ffmpegArguments = [
@@ -436,11 +449,12 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                 '-f', 'flv',
                 '-i', rtmpUrl,
                 '-c:v', 'libx264', '-b:v', bitrate,
+                '-preset', 'ultrafast', '-tune', 'zerolatency',
                 '-sc_threshold', '0',
-                '-g', '90',  // GOP size = (frame rate) * (segment length)
+                '-g', '30',
                 '-c:a', 'aac',
                 '-f', 'hls', 
-                '-hls_time', '3', '-hls_init_time', '3', '-hls_list_size', '20',
+                '-hls_time', '1', '-hls_list_size', '20',
                 '-hls_segment_filename', hlsSegmentOutputPath,
                 '-hls_base_url', `/assets/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
                 '-hls_playlist_type', 'event', 
@@ -460,11 +474,12 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                     '-f', 'flv',
                     '-i', rtmpUrl, 
                     '-c:v', 'h264_nvenc', '-b:v', bitrate,
+                    '-preset', 'llhp', '-tune', 'ull',
                     '-sc_threshold', '0',
-                    '-g', '90',  // GOP size = (frame rate) * (segment length)
+                    '-g', '30',
                     '-c:a', 'aac',
                     '-f', 'hls', 
-                    '-hls_time', '3', '-hls_init_time', '3', '-hls_list_size', '20',
+                    '-hls_time', '1', '-hls_list_size', '20',
                     '-hls_segment_filename', hlsSegmentOutputPath,
                     '-hls_base_url', `/assets/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
                     '-hls_playlist_type', 'event', 
@@ -482,12 +497,13 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                     '-hwaccel_device', '0',
                     '-f', 'flv',
                     '-i', rtmpUrl, '-b:v', bitrate,
+                    '-usage', 'ultralowlatency', '-quality', 'speed',
                     '-c:v', 'h264_amf',
                     '-sc_threshold', '0',
-                    '-g', '90',  // GOP size = (frame rate) * (segment length)
+                    '-g', '30',
                     '-c:a', 'aac',
                     '-f', 'hls', 
-                    '-hls_time', '3', '-hls_init_time', '3', '-hls_list_size', '20',
+                    '-hls_time', '1', '-hls_list_size', '20',
                     '-hls_segment_filename', hlsSegmentOutputPath,
                     '-hls_base_url', `/assets/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
                     '-hls_playlist_type', 'event', 
