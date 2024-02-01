@@ -3,7 +3,7 @@ const path = require('path');
 const spawn = require('child_process').spawn;
 const sharp = require('sharp');
 
-const { logDebugMessageToConsole, getTempVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds } = require('../helpers');
+const { logDebugMessageToConsole, getAppDataVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds } = require('../helpers');
 const { node_setVideoLengths, node_getNextExpectedSegmentIndex, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, 
     node_removeAdaptiveStreamSegment, node_stopVideoStreaming } = require('../node-communications');
 const { addProcessToLiveStreamTracker, isLiveStreamStopping, liveStreamExists } = require('../trackers/live-stream-tracker');
@@ -12,14 +12,14 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
     return new Promise(function(resolve, reject) {
         logDebugMessageToConsole('starting live stream for id: ' + videoId, null, null, true);
         
-        fs.mkdirSync(path.join(getTempVideosDirectoryPath(), videoId + '/source'), { recursive: true });
-        fs.mkdirSync(path.join(getTempVideosDirectoryPath(), videoId + '/images'), { recursive: true });
-        fs.mkdirSync(path.join(getTempVideosDirectoryPath(), videoId + '/adaptive'), { recursive: true });
-        fs.mkdirSync(path.join(getTempVideosDirectoryPath(), videoId + '/progressive'), { recursive: true });
+        fs.mkdirSync(path.join(getAppDataVideosDirectoryPath(), videoId + '/source'), { recursive: true });
+        fs.mkdirSync(path.join(getAppDataVideosDirectoryPath(), videoId + '/images'), { recursive: true });
+        fs.mkdirSync(path.join(getAppDataVideosDirectoryPath(), videoId + '/adaptive'), { recursive: true });
+        fs.mkdirSync(path.join(getAppDataVideosDirectoryPath(), videoId + '/progressive'), { recursive: true });
         
-        const sourceDirectoryPath = path.join(getTempVideosDirectoryPath(), videoId + '/source');
+        const sourceDirectoryPath = path.join(getAppDataVideosDirectoryPath(), videoId + '/source');
         const sourceFilePath = path.join(sourceDirectoryPath, '/' + videoId + '.ts');
-        const videoDirectory = path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8');
+        const videoDirectory = path.join(getAppDataVideosDirectoryPath(), videoId + '/adaptive/m3u8');
         const manifestFileName = 'manifest-' + resolution + '.m3u8';
         const manifestFilePath = path.join(videoDirectory, '/' + manifestFileName);
         const segmentsDirectoryPath = path.join(videoDirectory, '/' + resolution);
@@ -188,7 +188,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                     if(!uploadingThumbnail && !uploadingPreview && !uploadingPoster && (Date.now() - lastVideoImagesUpdateTimestamp > 10000)) {
                                         lastVideoImagesUpdateTimestamp = Date.now();
 
-                                        const imagesDirectoryPath = path.join(getTempVideosDirectoryPath(), videoId + '/images');
+                                        const imagesDirectoryPath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images');
                                         const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
                                         
                                         let process = spawn(getFfmpegPath(), [
@@ -360,6 +360,9 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
     let width;
     let height;
     let bitrate;
+    let gop;
+    let framerate;
+    let segmentLength;
 
     const clientSettings = getClientSettings();
     
@@ -394,10 +397,14 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
 
     if(format === 'm3u8') {
         bitrate = clientSettings.liveEncoderSettings.hls[resolution + '-bitrate'] + 'k';
+        gop = clientSettings.liveEncoderSettings.hls.gop;
+        framerate = clientSettings.liveEncoderSettings.hls.framerate;
+        segmentLength = clientSettings.liveEncoderSettings.hls.segmentLength;
     }
 
     /*
-    // NOTE: best not to assume the streamer's preferences and just let them decide picture formatting
+    // NOTE: best not to assume the streamer's preferences and just let them decide 
+    // picture formatting from their broadcasting software
 
     let scale = '';
 
@@ -428,8 +435,8 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
     }
     */
     
-    const hlsSegmentOutputPath = path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
-    const manifestFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
+    const hlsSegmentOutputPath = path.join(getAppDataVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
+    const manifestFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
     
     let ffmpegArguments = [];
 
@@ -451,10 +458,11 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                 '-c:v', 'libx264', '-b:v', bitrate,
                 '-preset', 'ultrafast', '-tune', 'zerolatency',
                 '-sc_threshold', '0',
-                '-g', '30',
+                '-g', gop,
+                '-r', framerate,
                 '-c:a', 'aac',
                 '-f', 'hls', 
-                '-hls_time', '1', '-hls_list_size', '20',
+                '-hls_time', segmentLength, '-hls_list_size', '20',
                 '-hls_segment_filename', hlsSegmentOutputPath,
                 '-hls_base_url', `/assets/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
                 '-hls_playlist_type', 'event', 
@@ -476,10 +484,11 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                     '-c:v', 'h264_nvenc', '-b:v', bitrate,
                     '-preset', 'llhp', '-tune', 'ull',
                     '-sc_threshold', '0',
-                    '-g', '30',
+                    '-g', gop,
+                    '-r', framerate,
                     '-c:a', 'aac',
                     '-f', 'hls', 
-                    '-hls_time', '1', '-hls_list_size', '20',
+                    '-hls_time', segmentLength, '-hls_list_size', '20',
                     '-hls_segment_filename', hlsSegmentOutputPath,
                     '-hls_base_url', `/assets/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
                     '-hls_playlist_type', 'event', 
@@ -500,10 +509,11 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                     '-usage', 'ultralowlatency', '-quality', 'speed',
                     '-c:v', 'h264_amf',
                     '-sc_threshold', '0',
-                    '-g', '30',
+                    '-g', gop,
+                    '-r', framerate,
                     '-c:a', 'aac',
                     '-f', 'hls', 
-                    '-hls_time', '1', '-hls_list_size', '20',
+                    '-hls_time', segmentLength, '-hls_list_size', '20',
                     '-hls_segment_filename', hlsSegmentOutputPath,
                     '-hls_base_url', `/assets/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
                     '-hls_playlist_type', 'event', 

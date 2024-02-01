@@ -3,10 +3,10 @@ const fs = require('fs');
 const webSocket = require('ws');
 
 let publicDirectory;
-let tempDirectory;
-let tempCertificatesDirectory;
-let tempVideosDirectory;
-let tempImagesDirectory;
+let appDataDirectory;
+let appDataCertificatesDirectory;
+let appDataVideosDirectory;
+let appDataImagesDirectory;
 let moartubeClientPort;
 let moartubeNodeIp;
 let moartubeNodePort;
@@ -202,8 +202,8 @@ function cleanVideosDirectory() {
     return new Promise(function(resolve, reject) {
         logDebugMessageToConsole('cleaning imported video directories', null, null, true);
         
-        if(fs.existsSync(getTempVideosDirectoryPath())) {
-            fs.readdir(getTempVideosDirectoryPath(), function(error, videoDirectories) {
+        if(fs.existsSync(getAppDataVideosDirectoryPath())) {
+            fs.readdir(getAppDataVideosDirectoryPath(), function(error, videoDirectories) {
                 if (error) {
                     reject(error);
                 }
@@ -213,7 +213,7 @@ function cleanVideosDirectory() {
                     }
                     else {
                         for(const videoDirectory of videoDirectories) {
-                            const videoDirectoryPath = path.join(getTempVideosDirectoryPath(), videoDirectory);
+                            const videoDirectoryPath = path.join(getAppDataVideosDirectoryPath(), videoDirectory);
                             
                             if(fs.existsSync(videoDirectoryPath)) {
                                 if (fs.statSync(videoDirectoryPath).isDirectory()) {
@@ -244,7 +244,7 @@ function cleanVideosDirectory() {
             });
         }
         else {
-            reject('expected path does not exist: ' + getTempVideosDirectoryPath());
+            reject('expected path does not exist: ' + getAppDataVideosDirectoryPath());
         }
     });
 }
@@ -292,20 +292,20 @@ function getPublicDirectoryPath() {
     return publicDirectory;
 }
 
-function getTempDirectoryPath() {
-    return tempDirectory;
+function getAppDataDirectoryPath() {
+    return appDataDirectory;
 }
 
-function getTempCertificatesDirectoryPath() {
-    return tempCertificatesDirectory;
+function getAppDataCertificatesDirectoryPath() {
+    return appDataCertificatesDirectory;
 }
 
-function getTempVideosDirectoryPath() {
-    return tempVideosDirectory;
+function getAppDataVideosDirectoryPath() {
+    return appDataVideosDirectory;
 }
 
-function getTempImagesDirectoryPath() {
-    return tempImagesDirectory;
+function getAppDataImagesDirectoryPath() {
+    return appDataImagesDirectory;
 }
 
 function getMoarTubeClientPort() {
@@ -337,9 +337,15 @@ function getMoarTubeNodeWebsocketUrl() {
 }
 
 function getClientSettings() {
-	const clientSettings = JSON.parse(fs.readFileSync(path.join(getTempDirectoryPath(), '_client_settings.json'), 'utf8'));
+	const clientSettings = JSON.parse(fs.readFileSync(path.join(getAppDataDirectoryPath(), '_client_settings.json'), 'utf8'));
 
 	return clientSettings;
+}
+
+function getClientSettingsDefault() {
+	const clientSettingsDefault = JSON.parse(fs.readFileSync(path.join(getAppDataDirectoryPath(), '_client_settings_default.json'), 'utf8'));
+
+	return clientSettingsDefault;
 }
 
 function getWebsocketServer() {
@@ -359,28 +365,28 @@ function setPublicDirectoryPath(path) {
     publicDirectory = path;
 }
 
-function setTempDirectoryPath(path) {
-    logDebugMessageToConsole('configured MoarTube Client to use temp directory path: ' + path, null, null, true);
+function setAppDataDirectoryPath(path) {
+    logDebugMessageToConsole('configured MoarTube Client to use AppData directory path: ' + path, null, null, true);
 
-    tempDirectory = path;
+    appDataDirectory = path;
 }
 
-function setTempCertificatesDirectoryPath(path) {
-    logDebugMessageToConsole('configured MoarTube Client to use temp certificates directory path: ' + path, null, null, true);
+function setAppDataCertificatesDirectoryPath(path) {
+    logDebugMessageToConsole('configured MoarTube Client to use AppData certificates directory path: ' + path, null, null, true);
 
-    tempCertificatesDirectory = path;
+    appDataCertificatesDirectory = path;
 }
 
-function setTempVideosDirectoryPath(path) {
-    logDebugMessageToConsole('configured MoarTube Client to use temp videos directory path: ' + path, null, null, true);
+function setAppDataVideosDirectoryPath(path) {
+    logDebugMessageToConsole('configured MoarTube Client to use AppData videos directory path: ' + path, null, null, true);
 
-    tempVideosDirectory = path;
+    appDataVideosDirectory = path;
 }
 
-function setTempImagesDirectoryPath(path) {
-    logDebugMessageToConsole('configured MoarTube Client to use temp images directory path: ' + path, null, null, true);
+function setAppDataImagesDirectoryPath(path) {
+    logDebugMessageToConsole('configured MoarTube Client to use AppData images directory path: ' + path, null, null, true);
 
-    tempImagesDirectory = path;
+    appDataImagesDirectory = path;
 }
 
 function setMoarTubeClientPort(port) {
@@ -418,7 +424,7 @@ function setClientSettings(clientSettings) {
 
     logDebugMessageToConsole('configured MoarTube Client to use client settings: ' + clientSettingsString, null, null, true);
 
-	fs.writeFileSync(path.join(getTempDirectoryPath(), '_client_settings.json'), clientSettingsString);
+	fs.writeFileSync(path.join(getAppDataDirectoryPath(), '_client_settings.json'), clientSettingsString);
 }
 
 function setWebsocketServer(wss) {
@@ -446,10 +452,10 @@ module.exports = {
     websocketClientBroadcast,
     websocketServerBroadcast,
     getPublicDirectoryPath,
-    getTempDirectoryPath,
-    getTempCertificatesDirectoryPath,
-    getTempVideosDirectoryPath,
-    getTempImagesDirectoryPath,
+    getAppDataDirectoryPath,
+    getAppDataCertificatesDirectoryPath,
+    getAppDataVideosDirectoryPath,
+    getAppDataImagesDirectoryPath,
     getMoarTubeClientPort,
     getMoarTubeNodeIp,
     getMoarTubeNodePort,
@@ -458,14 +464,15 @@ module.exports = {
     getMoarTubeNodeUrl,
     getMoarTubeNodeWebsocketUrl,
     getClientSettings,
+    getClientSettingsDefault,
     getFfmpegPath,
     getWebsocketServer,
     getWebsocketClient,
     setPublicDirectoryPath,
-    setTempDirectoryPath,
-    setTempCertificatesDirectoryPath,
-    setTempVideosDirectoryPath,
-    setTempImagesDirectoryPath,
+    setAppDataDirectoryPath,
+    setAppDataCertificatesDirectoryPath,
+    setAppDataVideosDirectoryPath,
+    setAppDataImagesDirectoryPath,
     setMoarTubeClientPort,
     setMoarTubeNodeIp,
     setMoarTubeNodePort,

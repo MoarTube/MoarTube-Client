@@ -6,8 +6,9 @@ const multer = require('multer');
 sharp.cache(false);
 
 const { 
-    logDebugMessageToConsole, getPublicDirectoryPath, getTempCertificatesDirectoryPath, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol,
-    setMoarTubeNodePort, detectOperatingSystem, detectSystemGpu, detectSystemCpu, getClientSettings, setClientSettings, getTempImagesDirectoryPath
+    logDebugMessageToConsole, getPublicDirectoryPath, getAppDataCertificatesDirectoryPath, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol,
+    setMoarTubeNodePort, detectOperatingSystem, detectSystemGpu, detectSystemCpu, getClientSettings, setClientSettings, getAppDataImagesDirectoryPath,
+    getClientSettingsDefault
 } = require('../utils/helpers');
 const { 
     node_isAuthenticated, node_setExternalNetwork, node_getSettings, node_doSignout, node_getAvatar, node_setAvatar, 
@@ -228,6 +229,37 @@ function clientGpuAcceleration_POST(req, res) {
     });
 }
 
+function clientEncodingDefault_GET(req, res) {
+    node_isAuthenticated(req.session.jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: nodeResponseData.message});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
+                const clientSettingsDefault = getClientSettingsDefault();
+
+                const videoEncoderSettings = clientSettingsDefault.videoEncoderSettings;
+                const liveEncoderSettings = clientSettingsDefault.liveEncoderSettings;
+
+                res.send({isError: false, videoEncoderSettings: videoEncoderSettings, liveEncoderSettings: liveEncoderSettings});
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+                
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    })
+    .catch(error => {
+        logDebugMessageToConsole(null, error, new Error().stack, true);
+        
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    });
+}
+
 function clientEncoding_POST(req, res) {
     node_isAuthenticated(req.session.jwtToken)
     .then(nodeResponseData => {
@@ -316,7 +348,7 @@ function nodeAvatar_POST(req, res) {
                 multer({
                     storage: multer.diskStorage({
                         destination: function (req, file, cb) {
-                            const filePath = getTempImagesDirectoryPath();
+                            const filePath = getAppDataImagesDirectoryPath();
                             
                             fs.access(filePath, fs.constants.F_OK, function(error) {
                                 if(error) {
@@ -352,7 +384,7 @@ function nodeAvatar_POST(req, res) {
                     else {
                         const avatarFile = req.files['avatar_file'][0];
                         
-                        const imagesDirectory = getTempImagesDirectoryPath();
+                        const imagesDirectory = getAppDataImagesDirectoryPath();
                     
                         const sourceFilePath = path.join(imagesDirectory, avatarFile.filename);
                         
@@ -461,7 +493,7 @@ function nodeBanner_POST(req, res) {
                 multer({
                     storage: multer.diskStorage({
                         destination: function (req, file, cb) {
-                            const filePath = getTempImagesDirectoryPath();
+                            const filePath = getAppDataImagesDirectoryPath();
                             
                             fs.access(filePath, fs.constants.F_OK, function(error) {
                                 if(error) {
@@ -497,7 +529,7 @@ function nodeBanner_POST(req, res) {
                     else {
                         const bannerFile = req.files['banner_file'][0];
                         
-                        const imagesDirectory = getTempImagesDirectoryPath();
+                        const imagesDirectory = getAppDataImagesDirectoryPath();
                     
                         const sourceFilePath = path.join(imagesDirectory, bannerFile.filename);
                         
@@ -611,12 +643,12 @@ function node_Secure_POST(req, res) {
                         },
                         storage: multer.diskStorage({
                             destination: function (req, file, cb) {
-                                fs.access(getTempCertificatesDirectoryPath(), fs.constants.F_OK, function(error) {
+                                fs.access(getAppDataCertificatesDirectoryPath(), fs.constants.F_OK, function(error) {
                                     if(error) {
                                         cb(new Error('file upload error'), null);
                                     }
                                     else {
-                                        cb(null, getTempCertificatesDirectoryPath());
+                                        cb(null, getAppDataCertificatesDirectoryPath());
                                     }
                                 });
                             },
@@ -986,6 +1018,7 @@ module.exports = {
     client_GET,
     node_GET,
     clientGpuAcceleration_POST,
+    clientEncodingDefault_GET,
     clientEncoding_POST,
     nodeAvatar_GET,
     nodeAvatar_POST,

@@ -896,7 +896,7 @@ input[type="range"]:focus::-moz-range-thumb{
 			}
 
 			function showEncodingSettings(encodingType) {
-				var html = '';
+				let html = '';
 
 				if(encodingType === 'Video') {
 					html = html = '\
@@ -923,34 +923,57 @@ input[type="range"]:focus::-moz-range-thumb{
 						$('.encoding-settings').click(function() {
 							const format = $(this).data('format');
 
-							const html = '\
+							let html = '\
 							<div class="">\
-								<input id="2160p-bitrate-range-' + format + '" class="bitrate-slider w-100" data-resolution="2160p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
+								<input id="2160p-bitrate-range-' + format + '" class="encoding-setting-slider bitrate-slider w-100" data-resolution="2160p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
 								<p>2160p bitrate: <span id="2160p-bitrate-span-' + format + '"></span></p>\
 							</div>\
 							<div class="">\
-								<input id="1440p-bitrate-range-' + format + '" class="bitrate-slider w-100" data-resolution="1440p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
+								<input id="1440p-bitrate-range-' + format + '" class="encoding-setting-slider bitrate-slider w-100" data-resolution="1440p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
 								<p>1440p bitrate: <span id="1440p-bitrate-span-' + format + '"></span></p>\
 							</div>\
 							<div class="">\
-								<input id="1080p-bitrate-range-' + format + '" class="bitrate-slider w-100" data-resolution="1080p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
+								<input id="1080p-bitrate-range-' + format + '" class="encoding-setting-slider bitrate-slider w-100" data-resolution="1080p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
 								<p>1080p bitrate: <span id="1080p-bitrate-span-' + format + '"></span></p>\
 							</div>\
 							<div class="">\
-								<input id="720p-bitrate-range-' + format + '" class="bitrate-slider w-100" data-resolution="720p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
+								<input id="720p-bitrate-range-' + format + '" class="encoding-setting-slider bitrate-slider w-100" data-resolution="720p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
 								<p>720p bitrate: <span id="720p-bitrate-span-' + format + '"></span></p>\
 							</div>\
 							<div class="">\
-								<input id="480p-bitrate-range-' + format + '" class="bitrate-slider w-100" data-resolution="480p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
+								<input id="480p-bitrate-range-' + format + '" class="encoding-setting-slider bitrate-slider w-100" data-resolution="480p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
 								<p>480p bitrate: <span id="480p-bitrate-span-' + format + '"></span></p>\
 							</div>\
 							<div class="">\
-								<input id="360p-bitrate-range-' + format + '" class="bitrate-slider w-100" data-resolution="360p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
+								<input id="360p-bitrate-range-' + format + '" class="encoding-setting-slider bitrate-slider w-100" data-resolution="360p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
 								<p>360p bitrate: <span id="360p-bitrate-span-' + format + '"></span></p>\
 							</div>\
 							<div class="">\
-								<input id="240p-bitrate-range-' + format + '" class="bitrate-slider w-100" data-resolution="240p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
+								<input id="240p-bitrate-range-' + format + '" class="encoding-setting-slider bitrate-slider w-100" data-resolution="240p" type="range" min="0" max="100000" value="0" step="1000" disabled>\
 								<p>240p bitrate: <span id="240p-bitrate-span-' + format + '"></span></p>\
+							</div>\
+							<div class="">\
+								<input id="gop-range-' + format + '" class="encoding-setting-slider gop-slider w-100" type="range" min="1" max="3000" value="1" step="1" disabled>\
+								<p>GoP (group of pictures): <span id="gop-span-' + format + '"></span></p>\
+							</div>\
+							<div class="">\
+								<input id="framerate-range-' + format + '" class="encoding-setting-slider framerate-slider w-100" type="range" min="1" max="300" value="1" step="1" disabled>\
+								<p>framerate: <span id="framerate-span-' + format + '"></span></p>\
+							</div>\
+							';
+
+							if(format === 'hls') {
+								html += '\
+								<div class="">\
+									<input id="segment-length-range-' + format + '" class="encoding-setting-slider segment-length-slider w-100" type="range" min="1" max="10" value="1" step="1" disabled>\
+									<p>segment length: <span id="segment-length-span-' + format + '"></span></p>\
+								</div>\
+								';
+							}
+
+							html += '\
+							<div class="">\
+								<button type="button" class="swal2-cancel swal2-styled encoding-default-button" aria-label="" style="display: inline-block;">Default</button>\
 							</div>\
 							';
 							
@@ -985,28 +1008,115 @@ input[type="range"]:focus::-moz-range-thumb{
 										}
 									});
 
-									$('#2160p-bitrate-range-' + format).val(encoderSettings[format]['2160p-bitrate']);
-									$('#2160p-bitrate-span-' + format).text(encoderSettings[format]['2160p-bitrate'] + 'K');
+									$('.gop-slider').on('input', function () {
+										const gop = $(this).val();
 
-									$('#1440p-bitrate-range-' + format).val(encoderSettings[format]['1440p-bitrate']);
-									$('#1440p-bitrate-span-' + format).text(encoderSettings[format]['1440p-bitrate'] + 'K');
+										$('#gop-span-' + format).text(gop);
 
-									$('#1080p-bitrate-range-' + format).val(encoderSettings[format]['1080p-bitrate']);
-									$('#1080p-bitrate-span-' + format).text(encoderSettings[format]['1080p-bitrate'] + 'K');
+										encoderSettings[format]['gop'] = gop;
 
-									$('#720p-bitrate-range-' + format).val(encoderSettings[format]['720p-bitrate']);
-									$('#720p-bitrate-span-' + format).text(encoderSettings[format]['720p-bitrate'] + 'K');
+										if(encodingType === 'Video') {
+											CLIENT_SETTINGS.videoEncoderSettings = encoderSettings;
+										}
+										else if(encodingType === 'Live') {
+											CLIENT_SETTINGS.liveEncoderSettings = encoderSettings;
+										}
+									});
 
-									$('#480p-bitrate-range-' + format).val(encoderSettings[format]['480p-bitrate']);
-									$('#480p-bitrate-span-' + format).text(encoderSettings[format]['480p-bitrate'] + 'K');
+									$('.framerate-slider').on('input', function () {
+										const framerate = $(this).val();
 
-									$('#360p-bitrate-range-' + format).val(encoderSettings[format]['360p-bitrate']);
-									$('#360p-bitrate-span-' + format).text(encoderSettings[format]['360p-bitrate'] + 'K');
+										$('#framerate-span-' + format).text(framerate);
 
-									$('#240p-bitrate-range-' + format).val(encoderSettings[format]['240p-bitrate']);
-									$('#240p-bitrate-span-' + format).text(encoderSettings[format]['240p-bitrate'] + 'K');
+										encoderSettings[format]['framerate'] = framerate;
 
-									$('.bitrate-slider').prop('disabled', false);
+										if(encodingType === 'Video') {
+											CLIENT_SETTINGS.videoEncoderSettings = encoderSettings;
+										}
+										else if(encodingType === 'Live') {
+											CLIENT_SETTINGS.liveEncoderSettings = encoderSettings;
+										}
+									});
+
+									$('.segment-length-slider').on('input', function () {
+										const segmentLength = $(this).val();
+
+										$('#segment-length-span-' + format).text(segmentLength);
+
+										encoderSettings[format]['segmentLength'] = segmentLength;
+
+										if(encodingType === 'Video') {
+											CLIENT_SETTINGS.videoEncoderSettings = encoderSettings;
+										}
+										else if(encodingType === 'Live') {
+											CLIENT_SETTINGS.liveEncoderSettings = encoderSettings;
+										}
+									});
+
+									$('.encoding-default-button').on('click', function () {
+										$.ajax({type: 'GET', url: '/settings/client/encoding/default'})
+										.done(function (data, textStatus, xhr) {
+											if(data.isError) {
+												showAlert(true, data.message);
+											}
+											else {
+												const videoEncoderSettings = data.videoEncoderSettings;
+												const liveEncoderSettings = data.liveEncoderSettings;
+												
+												CLIENT_SETTINGS.videoEncoderSettings = videoEncoderSettings;
+												CLIENT_SETTINGS.liveEncoderSettings = liveEncoderSettings;
+
+												if(encodingType === 'Video') {
+													encoderSettings = videoEncoderSettings;
+												}
+												else if(encodingType === 'Live') {
+													encoderSettings = liveEncoderSettings;
+												}
+												
+												loadEncoderSettings();
+											}
+										})
+										.fail(function()
+										{
+											showAlert(true, 'unable to communicate with node');
+										});
+									});
+
+									function loadEncoderSettings() {
+										$('#2160p-bitrate-range-' + format).val(encoderSettings[format]['2160p-bitrate']);
+										$('#2160p-bitrate-span-' + format).text(encoderSettings[format]['2160p-bitrate'] + 'K');
+
+										$('#1440p-bitrate-range-' + format).val(encoderSettings[format]['1440p-bitrate']);
+										$('#1440p-bitrate-span-' + format).text(encoderSettings[format]['1440p-bitrate'] + 'K');
+
+										$('#1080p-bitrate-range-' + format).val(encoderSettings[format]['1080p-bitrate']);
+										$('#1080p-bitrate-span-' + format).text(encoderSettings[format]['1080p-bitrate'] + 'K');
+
+										$('#720p-bitrate-range-' + format).val(encoderSettings[format]['720p-bitrate']);
+										$('#720p-bitrate-span-' + format).text(encoderSettings[format]['720p-bitrate'] + 'K');
+
+										$('#480p-bitrate-range-' + format).val(encoderSettings[format]['480p-bitrate']);
+										$('#480p-bitrate-span-' + format).text(encoderSettings[format]['480p-bitrate'] + 'K');
+
+										$('#360p-bitrate-range-' + format).val(encoderSettings[format]['360p-bitrate']);
+										$('#360p-bitrate-span-' + format).text(encoderSettings[format]['360p-bitrate'] + 'K');
+
+										$('#240p-bitrate-range-' + format).val(encoderSettings[format]['240p-bitrate']);
+										$('#240p-bitrate-span-' + format).text(encoderSettings[format]['240p-bitrate'] + 'K');
+
+										$('#gop-range-' + format).val(encoderSettings[format]['gop']);
+										$('#gop-span-' + format).text(encoderSettings[format]['gop']);
+
+										$('#framerate-range-' + format).val(encoderSettings[format]['framerate']);
+										$('#framerate-span-' + format).text(encoderSettings[format]['framerate']);
+
+										$('#segment-length-range-' + format).val(encoderSettings[format]['segmentLength']);
+										$('#segment-length-span-' + format).text(encoderSettings[format]['segmentLength']);
+									}
+
+									loadEncoderSettings();
+
+									$('.encoding-setting-slider').prop('disabled', false);
 								}
 							}).then((result) => {
 								if (result.isConfirmed) {

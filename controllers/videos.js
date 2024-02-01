@@ -6,7 +6,7 @@ const multer = require('multer');
 
 sharp.cache(false);
 
-const { logDebugMessageToConsole, deleteDirectoryRecursive, getPublicDirectoryPath, getTempVideosDirectoryPath, timestampToSeconds, websocketClientBroadcast, getFfmpegPath } = require('../utils/helpers');
+const { logDebugMessageToConsole, deleteDirectoryRecursive, getPublicDirectoryPath, getAppDataVideosDirectoryPath, timestampToSeconds, websocketClientBroadcast, getFfmpegPath } = require('../utils/helpers');
 const { 
     node_isAuthenticated, node_doSignout, node_getSettings, node_stopVideoImporting, node_getVideoInformation, node_doVideosSearch, 
     node_getThumbnail, node_getPreview, node_getPoster, node_getVideoData, node_unpublishVideo, node_stopVideoPublishing, node_importVideo,
@@ -178,7 +178,7 @@ function import_POST(req, res) {
                             multer({
                                 storage: multer.diskStorage({
                                     destination: function (req, file, cb) {
-                                        const sourceDirectoryPath =  path.join(getTempVideosDirectoryPath(), videoId + '/source');
+                                        const sourceDirectoryPath =  path.join(getAppDataVideosDirectoryPath(), videoId + '/source');
                                         
                                         fs.mkdirSync(sourceDirectoryPath, { recursive: true });
                                         
@@ -262,7 +262,7 @@ function import_POST(req, res) {
                                             
                                             logDebugMessageToConsole('generating images for video: ' + videoId, null, null, true);
                                             
-                                            const imagesDirectoryPath = path.join(getTempVideosDirectoryPath(), videoId + '/images');
+                                            const imagesDirectoryPath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images');
                                             const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
                                             const thumbnailImagePath = path.join(imagesDirectoryPath, 'thumbnail.jpg');
                                             const previewImagePath = path.join(imagesDirectoryPath, 'preview.jpg');
@@ -590,7 +590,7 @@ function videoIdPublish_POST(req, res) {
                                 else {
                                     const sourceFileExtension = nodeResponseData.sourceFileExtension;
                                     
-                                    const sourceFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
+                                    const sourceFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
 
                                     if(fs.existsSync(sourceFilePath)) {
                                         for(const publishing of publishings) {
@@ -951,7 +951,7 @@ function delete_POST(req, res) {
                         const nonDeletedVideoIds = nodeResponseData.nonDeletedVideoIds;
 
                         for(const deletedVideoId of deletedVideoIds) {
-                            const deletedVideoIdPath = path.join(getTempVideosDirectoryPath(), deletedVideoId);
+                            const deletedVideoIdPath = path.join(getAppDataVideosDirectoryPath(), deletedVideoId);
                             
                             deleteDirectoryRecursive(deletedVideoIdPath);
                         }
@@ -1005,7 +1005,7 @@ function finalize_POST(req, res) {
                         const nonFinalizedVideoIds = nodeResponseData.nonFinalizedVideoIds;
                         
                         for(const finalizedVideoId of finalizedVideoIds) {
-                            const videoDirectory = path.join(getTempVideosDirectoryPath(), finalizedVideoId);
+                            const videoDirectory = path.join(getAppDataVideosDirectoryPath(), finalizedVideoId);
                             
                             deleteDirectoryRecursive(videoDirectory);
                             
@@ -1256,7 +1256,7 @@ function videoIdThumbnail_POST(req, res) {
                 multer({
                     storage: multer.diskStorage({
                         destination: function (req, file, cb) {
-                            const filePath = path.join(getTempVideosDirectoryPath(), videoId + '/images');
+                            const filePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images');
                             
                             fs.mkdirSync(filePath, { recursive: true });
                             
@@ -1294,8 +1294,8 @@ function videoIdThumbnail_POST(req, res) {
                     else {
                         const thumbnailFile = req.files['thumbnail_file'][0];
                     
-                        const sourceFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/images/' + thumbnailFile.filename);
-                        const destinationFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/images/thumbnail.jpg');
+                        const sourceFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images/' + thumbnailFile.filename);
+                        const destinationFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images/thumbnail.jpg');
                         
                         sharp(sourceFilePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toFile(destinationFilePath)
                         .then(() => {
@@ -1359,7 +1359,7 @@ function videoIdPreview_POST(req, res) {
                 multer({
                     storage: multer.diskStorage({
                         destination: function (req, file, cb) {
-                            const filePath = path.join(getTempVideosDirectoryPath(), videoId + '/images');
+                            const filePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images');
                             
                             fs.mkdirSync(filePath, { recursive: true });
                             
@@ -1397,8 +1397,8 @@ function videoIdPreview_POST(req, res) {
                     else {
                         const previewFile = req.files['preview_file'][0];
                     
-                        const sourceFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/images/' + previewFile.filename);
-                        const destinationFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/images/preview.jpg');
+                        const sourceFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images/' + previewFile.filename);
+                        const destinationFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images/preview.jpg');
                         
                         sharp(sourceFilePath).resize({width: 512}).resize(512, 288).jpeg({quality : 90}).toFile(destinationFilePath)
                         .then(() => {
@@ -1462,7 +1462,7 @@ function videoIdPoster_POST(req, res) {
                 multer({
                     storage: multer.diskStorage({
                         destination: function (req, file, cb) {
-                            const filePath = path.join(getTempVideosDirectoryPath(), videoId + '/images');
+                            const filePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images');
                             
                             fs.mkdirSync(filePath, { recursive: true });
                             
@@ -1500,8 +1500,8 @@ function videoIdPoster_POST(req, res) {
                     else {
                         const posterFile = req.files['poster_file'][0];
                     
-                        const sourceFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/images/' + posterFile.filename);
-                        const destinationFilePath = path.join(getTempVideosDirectoryPath(), videoId + '/images/poster.jpg');
+                        const sourceFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images/' + posterFile.filename);
+                        const destinationFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images/poster.jpg');
                         
                         sharp(sourceFilePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toFile(destinationFilePath)
                         .then(() => {

@@ -9,10 +9,10 @@ const webSocket = require('ws');
 const crypto = require('crypto');
 
 const { 
-	logDebugMessageToConsole, performEncodingDecodingAssessment, cleanVideosDirectory, getPublicDirectoryPath, getTempDirectoryPath,
-    getMoarTubeClientPort, setPublicDirectoryPath, setTempDirectoryPath, setTempCertificatesDirectoryPath,
-    setTempVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getClientSettings,
-	getTempCertificatesDirectoryPath, getTempVideosDirectoryPath, setTempImagesDirectoryPath, getTempImagesDirectoryPath
+	logDebugMessageToConsole, performEncodingDecodingAssessment, cleanVideosDirectory, getPublicDirectoryPath, getAppDataDirectoryPath,
+    getMoarTubeClientPort, setPublicDirectoryPath, setAppDataDirectoryPath, setAppDataCertificatesDirectoryPath,
+    setAppDataVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getClientSettings,
+	getAppDataCertificatesDirectoryPath, getAppDataVideosDirectoryPath, setAppDataImagesDirectoryPath, getAppDataImagesDirectoryPath
 } = require('./utils/helpers');
 
 const { 
@@ -149,56 +149,72 @@ function loadConfig() {
 	setPublicDirectoryPath(path.join(__dirname, 'public'));
 
 	if(global != null && global.electronPaths != null) {
-		setTempDirectoryPath(path.join(global.electronPaths.temp, 'moartube-client/temp'));
+		// C:/Users/<user>/AppData/Roaming/moartube-client
+		setAppDataDirectoryPath(path.join(global.electronPaths.appData, 'moartube-client'));
 	}
 	else {
-		setTempDirectoryPath(path.join(__dirname, 'temp'));
+		setAppDataDirectoryPath(path.join(__dirname, 'temp'));
 	}
 	
-	setTempCertificatesDirectoryPath(path.join(getTempDirectoryPath(), 'certificates'));
-	setTempVideosDirectoryPath(path.join(getTempDirectoryPath(), 'media/videos'));
-	setTempImagesDirectoryPath(path.join(getTempDirectoryPath(), 'images'));
+	setAppDataCertificatesDirectoryPath(path.join(getAppDataDirectoryPath(), 'certificates'));
+	setAppDataVideosDirectoryPath(path.join(getAppDataDirectoryPath(), 'media/videos'));
+	setAppDataImagesDirectoryPath(path.join(getAppDataDirectoryPath(), 'images'));
 
 	logDebugMessageToConsole('creating required directories and files', null, null, true);
 
-    if (!fs.existsSync(getTempDirectoryPath())) {
-		fs.mkdirSync(getTempDirectoryPath(), { recursive: true });
+    if (!fs.existsSync(getAppDataDirectoryPath())) {
+		fs.mkdirSync(getAppDataDirectoryPath(), { recursive: true });
 	}
 
-	if (!fs.existsSync(getTempCertificatesDirectoryPath())) {
-		fs.mkdirSync(getTempCertificatesDirectoryPath(), { recursive: true });
+	if (!fs.existsSync(getAppDataCertificatesDirectoryPath())) {
+		fs.mkdirSync(getAppDataCertificatesDirectoryPath(), { recursive: true });
 	}
 
-	if (!fs.existsSync(getTempVideosDirectoryPath())) {
-		fs.mkdirSync(getTempVideosDirectoryPath(), { recursive: true });
+	if (!fs.existsSync(getAppDataVideosDirectoryPath())) {
+		fs.mkdirSync(getAppDataVideosDirectoryPath(), { recursive: true });
 	}
 
-	if (!fs.existsSync(getTempImagesDirectoryPath())) {
-		fs.mkdirSync(getTempImagesDirectoryPath(), { recursive: true });
+	if (!fs.existsSync(getAppDataImagesDirectoryPath())) {
+		fs.mkdirSync(getAppDataImagesDirectoryPath(), { recursive: true });
 	}
 
-    if (!fs.existsSync(path.join(getTempDirectoryPath(), '_client_settings.json'))) {
-		fs.writeFileSync(path.join(getTempDirectoryPath(), '_client_settings.json'), JSON.stringify({
+    if (!fs.existsSync(path.join(getAppDataDirectoryPath(), '_client_settings.json'))) {
+		const clientSettings = {
             "clientListeningPort":8080,
 			"processingAgent":{
 				"processingAgentType":"cpu",
 				"processingAgentName":"",
 				"processingAgentModel":""
 			},
-			// units are in kilobytes per second
+			// bitrate units are in kilobytes per second
 			"videoEncoderSettings": {
-				"hls": { "2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000" },
-				"mp4": { "2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000" },
-				"webm": { "2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000" },
-				"ogv": { "2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000" }
+				"hls": { 
+					"2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000",
+					"gop": 180, "framerate": 30, "segmentLength": 6
+				},
+				"mp4": { 
+					"2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000",
+					"gop": 60, "framerate": 30
+				},
+				"webm": { 
+					"2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000",
+					"gop": 60, "framerate": 30
+				},
+				"ogv": { 
+					"2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000",
+					"gop": 60, "framerate": 30
+				}
 			},
 			"liveEncoderSettings": {
-				"hls": { "2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000" },
-				"mp4": { "2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000" },
-				"webm": { "2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000" },
-				"ogv": { "2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000" }
+				"hls": { 
+					"2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000",
+					"gop": 30, "framerate": 30, "segmentLength": 1
+				}
 			}
-		}));
+		};
+
+		fs.writeFileSync(path.join(getAppDataDirectoryPath(), '_client_settings_default.json'), JSON.stringify(clientSettings));
+		fs.writeFileSync(path.join(getAppDataDirectoryPath(), '_client_settings.json'), JSON.stringify(clientSettings));
 	}
 
 	const clientSettings = getClientSettings();
