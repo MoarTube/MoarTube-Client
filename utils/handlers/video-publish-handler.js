@@ -6,7 +6,7 @@ const spawnSync = require('child_process').spawnSync;
 const { logDebugMessageToConsole, deleteDirectoryRecursive, timestampToSeconds, websocketClientBroadcast, getAppDataVideosDirectoryPath, getFfmpegPath, getClientSettings } = require('../helpers');
 const { node_setVideoPublishing, node_setVideoLengths, node_setVideoPublished, node_uploadVideo } = require('../node-communications');
 const { getPendingPublishVideoTracker, getPendingPublishVideoTrackerQueueSize, enqueuePendingPublishVideo, dequeuePendingPublishVideo } = require('../trackers/pending-publish-video-tracker');
-const { addToPublishVideoEncodingTracker, isPublishVideoEncodingStopping, addProcessToPublishVideoEncodingTracker } = require('../trackers/publish-video-encoding-tracker');
+const { addToPublishVideoEncodingTracker, isPublishVideoEncodingStopping } = require('../trackers/publish-video-encoding-tracker');
 
 let inProgressPublishingJobCount = 0;
 let maximumInProgressPublishingJobCount = 5;
@@ -53,25 +53,28 @@ function startVideoPublishInterval() {
                 The publish attempt will continue until the job is either successful or the user intervenes.
                 */
 
-                logDebugMessageToConsole('failed publishing job: ' + failedPublishingJob, null, null, true);
-
-                const index = findInProgressPublishJobIndex(failedPublishingJob);
-
-                inProgressPublishingJobs.splice(index, 1);
-
-                const jwtToken = failedPublishingJob.jwtToken;
                 const videoId = failedPublishingJob.videoId;
-                const format = failedPublishingJob.format;
-                const resolution = failedPublishingJob.resolution;
+                
+                if(!isPublishVideoEncodingStopping(videoId)) {
+                    logDebugMessageToConsole('failed publishing job: ' + failedPublishingJob, null, null, true);
 
-                failedPublishingJob.idleInterval = setInterval(function() {
-                    websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing', videoId: videoId, format: format, resolution: resolution, progress: 0 }}});
-                }, 1000);
+                    const index = findInProgressPublishJobIndex(failedPublishingJob);
 
-                enqueuePendingPublishVideo(failedPublishingJob);
+                    inProgressPublishingJobs.splice(index, 1);
 
-                if(maximumInProgressPublishingJobCount > 1) {
-                    maximumInProgressPublishingJobCount--;
+                    const jwtToken = failedPublishingJob.jwtToken;
+                    const format = failedPublishingJob.format;
+                    const resolution = failedPublishingJob.resolution;
+
+                    failedPublishingJob.idleInterval = setInterval(function() {
+                        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing', videoId: videoId, format: format, resolution: resolution, progress: 0 }}});
+                    }, 1000);
+
+                    enqueuePendingPublishVideo(failedPublishingJob);
+
+                    if(maximumInProgressPublishingJobCount > 1) {
+                        maximumInProgressPublishingJobCount--;
+                    }
                 }
 
                 inProgressPublishingJobCount--;
@@ -160,8 +163,6 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
             const ffmpegArguments = generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePath, destinationFilePath);
             
             const process = spawn(getFfmpegPath(), ffmpegArguments);
-
-            addProcessToPublishVideoEncodingTracker(videoId, process);
             
             process.stdout.on('data', function (data) {
                 const output = Buffer.from(data).toString();
@@ -203,6 +204,9 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
                         
                         websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing', videoId: videoId, format: format, resolution: resolution, progress: encodingProgress }}});
                     }
+                }
+                else {
+                    process.kill();
                 }
             });
             

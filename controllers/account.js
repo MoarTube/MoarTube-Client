@@ -11,6 +11,7 @@ const { node_isAuthenticated, node_doHeartBeat, node_doSignin, node_doSignout, n
 const { stoppingVideoImport, stoppedVideoImport } = require('../utils/trackers/import-video-tracker');
 const { stoppingLiveStream, stoppedLiveStream } = require('../utils/trackers/live-stream-tracker');
 const { stoppingPublishVideoEncoding, stoppedPublishVideoEncoding } = require('../utils/trackers/publish-video-encoding-tracker');
+const { stopPendingPublishVideo } = require('../utils/trackers/pending-publish-video-tracker');
 
 function signIn_GET(req, res) {
     const jwtToken = req.session.jwtToken;
@@ -177,6 +178,7 @@ function signIn_POST(req, res) {
                                                 stoppingPublishVideoEncoding(parsedMessage.data.payload.videoId);
                                             }
                                             else if(parsedMessage.data.payload.type === 'publishing_stopped') {
+                                                stopPendingPublishVideo(parsedMessage.data.payload.videoId);
                                                 stoppedPublishVideoEncoding(parsedMessage.data.payload.videoId, parsedMessage.data);
                                             }
                                             else if(parsedMessage.data.payload.type === 'streaming_stopping') {

@@ -16,9 +16,20 @@ function getPendingPublishVideoTrackerQueueSize() {
     return PENDING_PUBLISH_VIDEO_TRACKER.length;
 }
 
+function stopPendingPublishVideo(videoId) {
+    PENDING_PUBLISH_VIDEO_TRACKER.forEach((pendingVideo, index) => {
+        if (videoId === pendingVideo.videoId) {
+            clearInterval(pendingVideo.idleInterval);
+
+            PENDING_PUBLISH_VIDEO_TRACKER.splice(index, 1);
+        }
+    });
+}
+
 module.exports = {
     getPendingPublishVideoTracker,
     enqueuePendingPublishVideo,
     dequeuePendingPublishVideo,
-    getPendingPublishVideoTrackerQueueSize
+    getPendingPublishVideoTrackerQueueSize,
+    stopPendingPublishVideo
 };
