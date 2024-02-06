@@ -55,7 +55,7 @@
 												<label class="form-check-label" for="rememberMe">Remember me</label>
 											</div>
 											<div class="text-center">
-												<button type="submit" class="btn btn-lg bg-gradient-primary btn-lg w-100 mt-4 mb-0">Sign in</button>
+												<button id="sign-in-button" type="submit" class="btn btn-lg bg-gradient-primary btn-lg w-100 mt-4 mb-0">Sign in</button>
 											</div>
 										</form>
 									</div>
@@ -93,6 +93,9 @@
 					let moarTubeNodeIp = form.find('input[name="moarTubeNodeIp"]').val();
 					let moarTubeNodePort = form.find('input[name="moarTubeNodePort"]').val();
 					let rememberMe = form.find('input[name="rememberMe"]').prop('checked');
+
+					$('#sign-in-button').prop('disabled', true);
+					$('#sign-in-button').text('...signing in...');
 					
 					performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe)
 					.then(response => {
@@ -123,6 +126,10 @@
 							title: 'hmmm',
 							html: error
 						});
+					})
+					.finally(() => {
+						$('#sign-in-button').prop('disabled', false);
+						$('#sign-in-button').text('Sign in');
 					});
 				});
 				
