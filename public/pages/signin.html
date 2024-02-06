@@ -94,14 +94,15 @@
 					let moarTubeNodePort = form.find('input[name="moarTubeNodePort"]').val();
 					let rememberMe = form.find('input[name="rememberMe"]').prop('checked');
 
-					$('#sign-in-button').prop('disabled', true);
-					$('#sign-in-button').text('...signing in...');
+					disableInputs();
 					
 					performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe)
 					.then(response => {
 						let loginOutcome = handleloginResponse(response);
 						
 						if(loginOutcome.isLoggedIn) {
+							$('#sign-in-button').text('...redirecting...');
+
 							window.location.href = loginOutcome.redirectUrl;
 						}
 						else {
@@ -118,6 +119,8 @@
 									html: 'username/password not correct'
 								});
 							}
+
+							enableInputs();
 						}
 					})
 					.catch(error => {
@@ -126,12 +129,24 @@
 							title: 'hmmm',
 							html: error
 						});
-					})
-					.finally(() => {
-						$('#sign-in-button').prop('disabled', false);
-						$('#sign-in-button').text('Sign in');
+
+						enableInputs();
 					});
 				});
+
+				function disableInputs() {
+					$('#sign-in-button').text('...signing in...');
+
+					$('input').prop('disabled', true);
+					$('button').prop('disabled', true);
+				}
+
+				function enableInputs() {
+					$('#sign-in-button').text('sign in');
+
+					$('input').prop('disabled', false);
+					$('button').prop('disabled', false);
+				}
 				
 				function performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe) {
 					return new Promise(function(resolve, reject) {
