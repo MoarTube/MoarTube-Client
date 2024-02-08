@@ -357,8 +357,8 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
 }
 
 function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely) {
-    let width;
-    let height;
+    //let width;
+    //let height;
     let bitrate;
     let gop;
     let framerate;
@@ -366,6 +366,7 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
 
     const clientSettings = getClientSettings();
     
+    /*
     if(resolution === '2160p') {
         width = '3840';
         height = '2160';
@@ -394,7 +395,8 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
         width = '426';
         height = '240';
     }
-
+    */
+   
     if(format === 'm3u8') {
         bitrate = clientSettings.liveEncoderSettings.hls[resolution + '-bitrate'] + 'k';
         gop = clientSettings.liveEncoderSettings.hls.gop;

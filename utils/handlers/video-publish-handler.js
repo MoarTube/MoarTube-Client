@@ -410,6 +410,7 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
         framerate = clientSettings.videoEncoderSettings.ogv.framerate;
     }
 
+    /*
     let scale;
     
     if(clientSettings.processingAgent.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
@@ -437,6 +438,7 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
             filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
         }
     }
+    */
 
     const hlsSegmentOutputPath = path.join(getAppDataVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
     
@@ -449,7 +451,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                 '-c:a', 'aac',
                 '-c:v', 'libx264', '-b:v', bitrate,
                 '-sc_threshold', '0',
-                '-vf', filterComplex,
                 '-g', gop,
                 '-r', framerate,
                 '-f', 'hls', 
@@ -465,7 +466,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                 '-i', sourceFilePath,
                 '-c:a', 'aac',
                 '-c:v', 'libx264', '-b:v', bitrate,
-                '-vf', filterComplex,
                 '-g', gop,
                 '-r', framerate,
                 '-movflags', 'faststart',
@@ -478,7 +478,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                 '-i', sourceFilePath,
                 '-c:a', 'libopus',
                 '-c:v', 'libvpx-vp9', '-b:v', bitrate,
-                '-vf', filterComplex,
                 '-g', gop,
                 '-r', framerate,
                 '-y',
@@ -490,7 +489,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                 '-i', sourceFilePath,
                 '-c:a', 'libopus',
                 '-c:v', 'libvpx', '-b:v', bitrate,
-                '-vf', filterComplex,
                 '-g', gop,
                 '-r', framerate,
                 '-y',
@@ -510,7 +508,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-sc_threshold', '0',
                     '-g', gop,
                     '-r', framerate,
-                    '-vf', filterComplex,
                     '-f', 'hls',
                     '-hls_time', segmentLength,
                     '-hls_segment_filename', hlsSegmentOutputPath,
@@ -526,7 +523,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-i', sourceFilePath,
                     '-c:a', 'aac',
                     '-c:v', 'h264_nvenc', '-b:v', bitrate,
-                    '-vf', filterComplex,
                     '-g', gop,
                     '-r', framerate,
                     '-movflags', 'faststart',
@@ -539,7 +535,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-i', sourceFilePath,
                     '-c:a', 'libopus',
                     '-c:v', 'libvpx-vp9', '-b:v', bitrate,
-                    '-vf', filterComplex,
                     '-g', gop,
                     '-r', framerate,
                     '-y',
@@ -551,7 +546,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-i', sourceFilePath,
                     '-c:a', 'libopus',
                     '-c:v', 'libvpx', '-b:v', bitrate,
-                    '-vf', filterComplex,
                     '-g', gop,
                     '-r', framerate,
                     '-y',
@@ -570,7 +564,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-sc_threshold', '0',
                     '-g', gop,
                     '-r', framerate,
-                    '-vf', filterComplex,
                     '-f', 'hls',
                     '-hls_time', segmentLength,
                     '-hls_segment_filename', hlsSegmentOutputPath,
@@ -586,7 +579,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-i', sourceFilePath,
                     '-c:a', 'aac',
                     '-c:v', 'h264_amf', '-b:v', bitrate,
-                    '-vf', filterComplex,
                     '-g', gop,
                     '-r', framerate,
                     '-movflags', 'faststart',
@@ -599,7 +591,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-i', sourceFilePath,
                     '-c:a', 'libopus',
                     '-c:v', 'libvpx-vp9', '-b:v', bitrate,
-                    '-vf', filterComplex,
                     '-g', gop,
                     '-r', framerate,
                     '-y',
@@ -611,7 +602,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-i', sourceFilePath,
                     '-c:a', 'libopus',
                     '-c:v', 'libvpx', '-b:v', bitrate,
-                    '-vf', filterComplex,
                     '-g', gop,
                     '-r', framerate,
                     '-y',

@@ -207,7 +207,7 @@ function loadConfig() {
 			},
 			"liveEncoderSettings": {
 				"hls": { 
-					"2160p-bitrate": "15000", "1440p-bitrate": "12000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000",
+					"2160p-bitrate": "10000", "1440p-bitrate": "10000", "1080p-bitrate": "10000", "720p-bitrate": "8000", "480p-bitrate": "5000", "360p-bitrate": "4000", "240p-bitrate": "3000",
 					"gop": 30, "framerate": 30, "segmentLength": 1
 				}
 			}
