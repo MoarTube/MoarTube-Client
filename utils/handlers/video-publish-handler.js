@@ -53,15 +53,15 @@ function startVideoPublishInterval() {
                 The publish attempt will continue until the job is either successful or the user intervenes.
                 */
 
+                logDebugMessageToConsole('failed publishing job: ' + failedPublishingJob, null, null, true);
+
+                const index = findInProgressPublishJobIndex(failedPublishingJob);
+
+                inProgressPublishingJobs.splice(index, 1);
+
                 const videoId = failedPublishingJob.videoId;
                 
                 if(!isPublishVideoEncodingStopping(videoId)) {
-                    logDebugMessageToConsole('failed publishing job: ' + failedPublishingJob, null, null, true);
-
-                    const index = findInProgressPublishJobIndex(failedPublishingJob);
-
-                    inProgressPublishingJobs.splice(index, 1);
-
                     const jwtToken = failedPublishingJob.jwtToken;
                     const format = failedPublishingJob.format;
                     const resolution = failedPublishingJob.resolution;
@@ -160,7 +160,7 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
                 destinationFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution + '/' + resolution + destinationFileExtension);
             }
             
-            const ffmpegArguments = generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePath, destinationFilePath);
+            const ffmpegArguments = generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePath, destinationFilePath, sourceFileExtension);
             
             const process = spawn(getFfmpegPath(), ffmpegArguments);
             
@@ -349,7 +349,7 @@ function finishVideoPublish(jwtToken, videoId, sourceFileExtension) {
     }
 }
 
-function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePath, destinationFilePath) {
+function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePath, destinationFilePath, sourceFileExtension) {
     let width;
     let height;
     let bitrate;
@@ -410,7 +410,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
         framerate = clientSettings.videoEncoderSettings.ogv.framerate;
     }
 
-    /*
     let scale;
     
     if(clientSettings.processingAgent.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
@@ -438,7 +437,6 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
             filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
         }
     }
-    */
 
     const hlsSegmentOutputPath = path.join(getAppDataVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
     
@@ -451,6 +449,7 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                 '-c:a', 'aac',
                 '-c:v', 'libx264', '-b:v', bitrate,
                 '-sc_threshold', '0',
+                '-vf', filterComplex,
                 '-g', gop,
                 '-r', framerate,
                 '-f', 'hls', 
@@ -466,6 +465,7 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                 '-i', sourceFilePath,
                 '-c:a', 'aac',
                 '-c:v', 'libx264', '-b:v', bitrate,
+                '-vf', filterComplex,
                 '-g', gop,
                 '-r', framerate,
                 '-movflags', 'faststart',
@@ -478,6 +478,7 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                 '-i', sourceFilePath,
                 '-c:a', 'libopus',
                 '-c:v', 'libvpx-vp9', '-b:v', bitrate,
+                '-vf', filterComplex,
                 '-g', gop,
                 '-r', framerate,
                 '-y',
@@ -489,6 +490,7 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                 '-i', sourceFilePath,
                 '-c:a', 'libopus',
                 '-c:v', 'libvpx', '-b:v', bitrate,
+                '-vf', filterComplex,
                 '-g', gop,
                 '-r', framerate,
                 '-y',
@@ -499,15 +501,28 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
     else if(clientSettings.processingAgent.processingAgentType === 'gpu') {
         if(clientSettings.processingAgent.processingAgentName === 'NVIDIA') {
             if(format === 'm3u8') {
+                let decoderParam1;
+                let decoderParam2;
+
+                if(sourceFileExtension === '.ts') {
+                    decoderParam1 = '-c:v';
+                    decoderParam2 = 'h264_cuvid';
+                }
+                else {
+                    decoderParam1 = '-hwaccel_output_format';
+                    decoderParam2 = 'cuda';
+                }
+
                 ffmpegArguments = [
                     '-hwaccel', 'cuvid',
-                    '-hwaccel_output_format', 'cuda',
+                    decoderParam1, decoderParam2,
                     '-i', sourceFilePath,
                     '-c:a', 'aac',
                     '-c:v', 'h264_nvenc', '-b:v', bitrate,
                     '-sc_threshold', '0',
                     '-g', gop,
                     '-r', framerate,
+                    '-vf', filterComplex,
                     '-f', 'hls',
                     '-hls_time', segmentLength,
                     '-hls_segment_filename', hlsSegmentOutputPath,
@@ -517,12 +532,25 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                 ];
             }
             else if(format === 'mp4') {
+                let decoderParam1;
+                let decoderParam2;
+
+                if(sourceFileExtension === '.ts') {
+                    decoderParam1 = '-c:v';
+                    decoderParam2 = 'h264_cuvid';
+                }
+                else {
+                    decoderParam1 = '-hwaccel_output_format';
+                    decoderParam2 = 'cuda';
+                }
+
                 ffmpegArguments = [
                     '-hwaccel', 'cuvid',
-                    '-hwaccel_output_format', 'cuda',
+                    decoderParam1, decoderParam2,
                     '-i', sourceFilePath,
                     '-c:a', 'aac',
                     '-c:v', 'h264_nvenc', '-b:v', bitrate,
+                    '-vf', filterComplex,
                     '-g', gop,
                     '-r', framerate,
                     '-movflags', 'faststart',
@@ -535,6 +563,7 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-i', sourceFilePath,
                     '-c:a', 'libopus',
                     '-c:v', 'libvpx-vp9', '-b:v', bitrate,
+                    '-vf', filterComplex,
                     '-g', gop,
                     '-r', framerate,
                     '-y',
@@ -546,6 +575,7 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-i', sourceFilePath,
                     '-c:a', 'libopus',
                     '-c:v', 'libvpx', '-b:v', bitrate,
+                    '-vf', filterComplex,
                     '-g', gop,
                     '-r', framerate,
                     '-y',
@@ -564,6 +594,7 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-sc_threshold', '0',
                     '-g', gop,
                     '-r', framerate,
+                    '-vf', filterComplex,
                     '-f', 'hls',
                     '-hls_time', segmentLength,
                     '-hls_segment_filename', hlsSegmentOutputPath,
@@ -579,6 +610,7 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-i', sourceFilePath,
                     '-c:a', 'aac',
                     '-c:v', 'h264_amf', '-b:v', bitrate,
+                    '-vf', filterComplex,
                     '-g', gop,
                     '-r', framerate,
                     '-movflags', 'faststart',
@@ -591,6 +623,7 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-i', sourceFilePath,
                     '-c:a', 'libopus',
                     '-c:v', 'libvpx-vp9', '-b:v', bitrate,
+                    '-vf', filterComplex,
                     '-g', gop,
                     '-r', framerate,
                     '-y',
@@ -602,6 +635,7 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
                     '-i', sourceFilePath,
                     '-c:a', 'libopus',
                     '-c:v', 'libvpx', '-b:v', bitrate,
+                    '-vf', filterComplex,
                     '-g', gop,
                     '-r', framerate,
                     '-y',
