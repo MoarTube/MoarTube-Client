@@ -445,14 +445,6 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
     
     let ffmpegArguments = [];
 
-    /*
-    -g
-    GOP size = (frame rate) * (segment length)
-    60fps video will contain 2 key frames per 1-second segment,
-    file size and encoding performance appears not too affected by this.
-    Source RTMP frame rate must be a multiple of 30.
-    */
-
     if(clientSettings.processingAgent.processingAgentType === 'cpu') {
         if(format === 'm3u8') {
             ffmpegArguments = [
