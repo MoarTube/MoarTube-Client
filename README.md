@@ -1,7 +1,7 @@
 <img src="https://github.com/cconley717/MoarTube-Client/assets/26640616/539be602-3608-428d-b6d6-34aec9b4a05d" alt="logo" width="200"/>
 
 # MoarTube-Client
-A repository containing the client software for managing your [MoarTube Node](https://github.com/cconley717/MoarTube-Node). The software is a cross-platform Electron (or terminal) application that makes managing your node's videos and live streams as simple as reading this sentence.
+A repository containing the client software for managing your [MoarTube Node](https://github.com/cconley717/MoarTube-Node). The software is a cross-platform terminal application that makes managing your node's videos and live streams as simple as reading this sentence.
 
 # How to Get Started
 Acquire the MoarTube Client by cloning this repo (or just download the zip) and follow the setup guide below. When ready, head over to [MoarTube Node](https://github.com/cconley717/MoarTube-Node) if you haven't yet.
