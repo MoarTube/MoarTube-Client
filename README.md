@@ -1,10 +1,10 @@
 <img src="https://github.com/cconley717/MoarTube-Client/assets/26640616/539be602-3608-428d-b6d6-34aec9b4a05d" alt="logo" width="200"/>
 
 # MoarTube-Client
-A repository containing the client software for managing your [MoarTube Node](https://github.com/cconley717/MoarTube-Node). The software is a cross-platform Electron (or terminal) application that makes managing your node's videos and live streams as simple as reading this sentence.
+A repository containing the client software for managing your [MoarTube Node](https://github.com/cconley717/MoarTube-Node). The software is a cross-platform terminal-based Node.js Express application that makes managing your node's videos and live streams as simple as reading this sentence.
 
 # How to Get Started
-Download the MoarTube Client from the [releases](https://github.com/cconley717/MoarTube-Client/releases) page for your operating system and run it, or follow the manual approach to start your client. When ready, head over to [MoarTube Node](https://github.com/cconley717/MoarTube-Node) if you haven't yet.
+Acquire the MoarTube Client by cloning this repo (or just download the zip) and follow the setup guide below. When ready, head over to [MoarTube Node](https://github.com/cconley717/MoarTube-Node) if you haven't yet.
 
 The default login credentials for your node are below. Be sure to change these upon logging in.
 
@@ -38,9 +38,9 @@ The default login credentials for your node are below. Be sure to change these u
 
 ![image](https://github.com/cconley717/MoarTube-Client/assets/26640616/068ec86b-a3d8-4285-9b64-4b71f64cce41)
 
-# Manual Approach
+# Setup Guide
 
-## Node.js Install Guide
+## Install Node.js
 
 ### Ubuntu Linux
 Run the command **sudo snap install node --classic --channel=21**
@@ -48,7 +48,7 @@ Run the command **sudo snap install node --classic --channel=21**
 ### Windows/macOS
 Download and run the [Node.js](https://nodejs.org/en/download) installer for your system
 
-## Setup Guide
+## Install MoarTube Client
 
 **git clone** the MoarTube-Client repository
 
@@ -59,9 +59,3 @@ Run the command **npm install**
 Run the command **node client.js**
 
 Open a web browser at [localhost:8080](http://localhost:8080) to view the MoarTube Client user interface
-
-# Note
-
-The MoarTube Client executable will likely display a warning when you run it since the software distribution is not code signed. It will remain unsigned for the time being as I can't justify spending a thousand dollars to obtain certification for a project that I just launched.
-
-Always obtain the MoarTube Client from official channels; [releases](https://github.com/cconley717/MoarTube-Client/releases).
