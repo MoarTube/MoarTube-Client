@@ -38,9 +38,9 @@ The default login credentials for your node are below. Be sure to change these u
 
 ![image](https://github.com/cconley717/MoarTube-Client/assets/26640616/068ec86b-a3d8-4285-9b64-4b71f64cce41)
 
-# Manual Approach
+# Setup Guide
 
-## Node.js Install Guide
+## Install Node.js
 
 ### Ubuntu Linux
 Run the command **sudo snap install node --classic --channel=21**
@@ -48,7 +48,7 @@ Run the command **sudo snap install node --classic --channel=21**
 ### Windows/macOS
 Download and run the [Node.js](https://nodejs.org/en/download) installer for your system
 
-## Setup Guide
+## Install MoarTube Client
 
 **git clone** the MoarTube-Client repository
 
@@ -59,9 +59,3 @@ Run the command **npm install**
 Run the command **node client.js**
 
 Open a web browser at [localhost:8080](http://localhost:8080) to view the MoarTube Client user interface
-
-# Note
-
-The MoarTube Client executable will likely display a warning when you run it since the software distribution is not code signed. It will remain unsigned for the time being as I can't justify spending a thousand dollars to obtain certification for a project that I just launched.
-
-Always obtain the MoarTube Client from official channels; [releases](https://github.com/cconley717/MoarTube-Client/releases).
