@@ -363,6 +363,7 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
     let gop;
     let framerate;
     let segmentLength;
+    //let bufsize;
 
     const clientSettings = getClientSettings();
     
@@ -402,6 +403,8 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
         gop = clientSettings.liveEncoderSettings.hls.gop;
         framerate = clientSettings.liveEncoderSettings.hls.framerate;
         segmentLength = clientSettings.liveEncoderSettings.hls.segmentLength;
+
+        //bufsize = (Number(clientSettings.liveEncoderSettings.hls[resolution + '-bitrate']) * (Number(segmentLength) * 2)) + 'k';
     }
 
     /*
@@ -505,8 +508,8 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                     '-hwaccel', 'dxva2',
                     '-hwaccel_device', '0',
                     '-f', 'flv',
-                    '-i', rtmpUrl, '-b:v', bitrate,
-                    '-c:v', 'h264_amf',
+                    '-i', rtmpUrl,
+                    '-c:v', 'h264_amf', '-b:v', bitrate,
                     '-sc_threshold', '0',
                     '-g', gop,
                     '-r', framerate,
