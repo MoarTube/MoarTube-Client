@@ -953,10 +953,6 @@ input[type="range"]:focus::-moz-range-thumb{
 								<p>240p bitrate: <span id="240p-bitrate-span-' + format + '"></span></p>\
 							</div>\
 							<div class="">\
-								<input id="gop-range-' + format + '" class="encoding-setting-slider gop-slider w-100" type="range" min="1" max="3000" value="1" step="1" disabled>\
-								<p>GoP (group of pictures): <span id="gop-span-' + format + '"></span></p>\
-							</div>\
-							<div class="">\
 								<input id="framerate-range-' + format + '" class="encoding-setting-slider framerate-slider w-100" type="range" min="1" max="300" value="1" step="1" disabled>\
 								<p>framerate: <span id="framerate-span-' + format + '"></span></p>\
 							</div>\
@@ -972,6 +968,10 @@ input[type="range"]:focus::-moz-range-thumb{
 							}
 
 							html += '\
+							<div class="">\
+								<input id="gop-range-' + format + '" class="encoding-setting-slider gop-slider w-100" type="range" min="1" max="3000" value="1" step="1" disabled>\
+								<p>GoP (group of pictures): <span id="gop-span-' + format + '"></span></p>\
+							</div>\
 							<div class="">\
 								<button type="button" class="swal2-cancel swal2-styled encoding-default-button" aria-label="" style="display: inline-block;">Default</button>\
 							</div>\
@@ -995,25 +995,11 @@ input[type="range"]:focus::-moz-range-thumb{
 
 									$('.bitrate-slider').on('input', function () {
 										const resolution = $(this).data('resolution');
+										const bitrate = Number($(this).val());
 
-										$('#' + resolution + '-bitrate-span-' + format).text($(this).val() + 'K');
+										$('#' + resolution + '-bitrate-span-' + format).text(bitrate + 'K');
 
-										encoderSettings[format][resolution + '-bitrate'] = $(this).val();
-
-										if(encodingType === 'Video') {
-											CLIENT_SETTINGS.videoEncoderSettings = encoderSettings;
-										}
-										else if(encodingType === 'Live') {
-											CLIENT_SETTINGS.liveEncoderSettings = encoderSettings;
-										}
-									});
-
-									$('.gop-slider').on('input', function () {
-										const gop = $(this).val();
-
-										$('#gop-span-' + format).text(gop);
-
-										encoderSettings[format]['gop'] = gop;
+										encoderSettings[format][resolution + '-bitrate'] = bitrate;
 
 										if(encodingType === 'Video') {
 											CLIENT_SETTINGS.videoEncoderSettings = encoderSettings;
@@ -1024,11 +1010,18 @@ input[type="range"]:focus::-moz-range-thumb{
 									});
 
 									$('.framerate-slider').on('input', function () {
-										const framerate = $(this).val();
+										const framerate = Number($(this).val());
+										const segmentLength = Number($('#segment-length-range-' + format).val());
 
 										$('#framerate-span-' + format).text(framerate);
 
+										let gop = framerate * segmentLength;
+
+										$('#gop-range-' + format).val(gop);
+										$('#gop-span-' + format).text(gop);
+
 										encoderSettings[format]['framerate'] = framerate;
+										encoderSettings[format]['gop'] = gop;
 
 										if(encodingType === 'Video') {
 											CLIENT_SETTINGS.videoEncoderSettings = encoderSettings;
@@ -1039,11 +1032,33 @@ input[type="range"]:focus::-moz-range-thumb{
 									});
 
 									$('.segment-length-slider').on('input', function () {
-										const segmentLength = $(this).val();
+										const segmentLength = Number($(this).val());
+										const framerate = Number($('#framerate-range-' + format).val());
 
 										$('#segment-length-span-' + format).text(segmentLength);
 
+										let gop = framerate * segmentLength;
+
+										$('#gop-range-' + format).val(gop);
+										$('#gop-span-' + format).text(gop);
+
 										encoderSettings[format]['segmentLength'] = segmentLength;
+										encoderSettings[format]['gop'] = gop;
+
+										if(encodingType === 'Video') {
+											CLIENT_SETTINGS.videoEncoderSettings = encoderSettings;
+										}
+										else if(encodingType === 'Live') {
+											CLIENT_SETTINGS.liveEncoderSettings = encoderSettings;
+										}
+									});
+
+									$('.gop-slider').on('input', function () {
+										const gop = Number($(this).val());
+
+										$('#gop-span-' + format).text(gop);
+
+										encoderSettings[format]['gop'] = gop;
 
 										if(encodingType === 'Video') {
 											CLIENT_SETTINGS.videoEncoderSettings = encoderSettings;
@@ -1376,13 +1391,6 @@ input[type="range"]:focus::-moz-range-thumb{
 						}
 						else {
 							enableButton();
-
-							if(isCheckboxChecked) {
-								showAlert(false, 'Cloudflare Turnstile Enabled');
-							}
-							else {
-								showAlert(false, 'Cloudflare Turnstile Disabled');
-							}
 						}
 					})
 					.fail(function() {
