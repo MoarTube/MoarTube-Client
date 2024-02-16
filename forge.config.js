@@ -35,7 +35,7 @@ module.exports = {
       name: "@electron-forge/publisher-github",
       config: {
         repository: {
-          owner: "cconley717",
+          owner: "MoarTube, LLC",
           name: "MoarTube-Client"
         }
       }

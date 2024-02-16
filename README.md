@@ -1,10 +1,10 @@
-<img src="https://github.com/cconley717/MoarTube-Client/assets/26640616/539be602-3608-428d-b6d6-34aec9b4a05d" alt="logo" width="200"/>
+<img src="https://github.com/MoarTube/MoarTube-Client/assets/26640616/539be602-3608-428d-b6d6-34aec9b4a05d" alt="logo" width="200"/>
 
 # MoarTube-Client
-A repository containing the client software for managing your [MoarTube Node](https://github.com/cconley717/MoarTube-Node). The client software is a cross-platform terminal-based Node.js Express application that makes managing your node's videos and live streams as simple as reading this sentence.
+A repository containing the client software for managing your [MoarTube Node](https://github.com/MoarTube/MoarTube-Node). The client software is a cross-platform terminal-based Node.js Express application that makes managing your node's videos and live streams as simple as reading this sentence.
 
 # How to Get Started
-Acquire the MoarTube Client by cloning this repo (or just download the zip) and follow the setup guide below. When ready, head over to [MoarTube Node](https://github.com/cconley717/MoarTube-Node) if you haven't yet.
+Acquire the MoarTube Client by cloning this repo (or just download the zip) and follow the setup guide below. When ready, head over to [MoarTube Node](https://github.com/MoarTube/MoarTube-Node) if you haven't yet.
 
 The default login credentials for your node are below. Be sure to change these upon logging in.
 
@@ -32,11 +32,11 @@ The default login credentials for your node are below. Be sure to change these u
  - [Cloudflare Turnstile](https://moartu.be/nodes/chris_moartube_node/videos/gQcsrSmsmrY); next-generation bot detection and human verification without the annoyance of captcha.
  - [Cloudflare one-click integration](https://moartu.be/nodes/chris_moartube_node/videos/9aP6aY4DYeH); easily integrate your node into the [Cloudflare Network](https://www.cloudflare.com/network/), allowing for global media delivery capabilities of your videos and live streams that rivals major platforms, all from a single node. Features automated caching strategy configuration and automated cache management, and of course the best security from the world's leading CDN.
 
-![image](https://github.com/cconley717/MoarTube-Client/assets/26640616/0d8ac95f-f68b-4e36-849e-28139b45ce50)
+![image](https://github.com/MoarTube/MoarTube-Client/assets/26640616/0d8ac95f-f68b-4e36-849e-28139b45ce50)
 
-![image](https://github.com/cconley717/MoarTube-Client/assets/26640616/918aa074-b6e2-49f1-8d14-5c2ed1bcd582)
+![image](https://github.com/MoarTube/MoarTube-Client/assets/26640616/918aa074-b6e2-49f1-8d14-5c2ed1bcd582)
 
-![image](https://github.com/cconley717/MoarTube-Client/assets/26640616/068ec86b-a3d8-4285-9b64-4b71f64cce41)
+![image](https://github.com/MoarTube/MoarTube-Client/assets/26640616/068ec86b-a3d8-4285-9b64-4b71f64cce41)
 
 # Setup Guide
 
