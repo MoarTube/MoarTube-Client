@@ -50,7 +50,7 @@ Welcome to the MoarTube Client setup guide! This document will guide you through
 Choose any one of the following to set up your client.
 
 ### npm
-If you're using npm to install the software, make sure that [Node.js](https://nodejs.org/en) and npm is installed on your machine.
+If you're using npm to install the software, make sure that [Node.js and npm](https://nodejs.org/en) is installed on your machine.
 
 ### git
 You can clone the repo, but make sure that [Node.js and npm](https://nodejs.org/en) is installed on your machine.
