@@ -4,15 +4,20 @@
 A repository containing the client software for managing your [MoarTube Node](https://github.com/MoarTube/MoarTube-Node). The client software is a cross-platform terminal-based Node.js Express application that makes managing your node's videos and live streams as simple as reading this sentence.
 
 # How to Get Started
-Acquire the MoarTube Client by cloning this repo (or just download the zip) and follow the setup guide below. When ready, head over to [MoarTube Node](https://github.com/MoarTube/MoarTube-Node) if you haven't yet.
+Welcome to the MoarTube Client setup guide! This document will guide you through the different setup methods to get your MoarTube Client up and running. Don't worry; MoarTube is so easy to set up and use, you'll be done in minutes. When ready, head over to [MoarTube Node](https://github.com/MoarTube/MoarTube-Node) if you haven't yet.
 
-It's also on the [NPM registry](https://www.npmjs.com/settings/moartube/packages) and can be installed with <b>npm install @moartube/moartube-client</b>.
+## Table of Contents
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation Methods](#installation-methods)
+  - [npm](#npm)
+  - [git](#git)
+- [Next Steps](#next-steps)
+  - [Open the MoarTube Client](#open-the-moartube-client)
+  - [Default Login Credentials](#default-login-credentials)
+  - [Get MoarTube Node](#get-moartube-node)
 
-The default login credentials for your node are below. Be sure to change these upon logging in.
-
-**username**: admin<br/>**password**: admin
-
-# Features
+## Features
  - Cross platform support for Windows/macOS/Linux
  - Video on demand (VoD) and HLS live streaming
  - Admin panel for managing videos and live streams
@@ -40,24 +45,56 @@ The default login credentials for your node are below. Be sure to change these u
 
 ![image](https://github.com/MoarTube/MoarTube-Client/assets/26640616/068ec86b-a3d8-4285-9b64-4b71f64cce41)
 
-# Setup Guide
+## Prerequisites
 
-## Install Node.js
+### npm
+If you're using npm to install the software, make sure that [Node.js](https://nodejs.org/en) and npm is installed on your machine.
 
-### Ubuntu Linux
-Run the command **sudo snap install node --classic --channel=21**
+### git
+You can clone the repo, but make sure that [Node.js and npm](https://nodejs.org/en) is installed on your machine.
 
-### Windows/macOS
-Download and run the [Node.js](https://nodejs.org/en/download) installer for your system
+## Installation Methods
 
-## Install MoarTube Client
+### [npm](https://www.npmjs.com/settings/moartube/packages)
 
-**git clone** the MoarTube-Client repository (or just download the zip)
+```bash
+npm i @moartube/moartube-client
+```
 
-Open a terminal within the MoarTube-Client directory
+open a terminal in the installed directory and run:
 
-Run the command **npm install**
+```bash
+node moartube-client.js
+```
 
-Run the command **node moartube-client.js**
+### [git](https://github.com/MoarTube/MoarTube-Node)
 
-Open a web browser at [localhost:8080](http://localhost:8080) to view the MoarTube Client user interface
+```bash
+git clone https://github.com/MoarTube/MoarTube-Client
+```
+
+open a terminal in the installed directory and run:
+
+```bash
+npm install
+```
+
+```bash
+node moartube-client.js
+```
+
+## Next Steps
+
+### Open the MoarTube Client
+
+Open a web browser at [localhost:8080](http://localhost:8080) to view the MoarTube Client user interface.
+
+### Default Login Credentials
+
+The default login credentials for your node are below. Be sure to change these upon logging in.
+
+**username**: admin<br/>**password**: admin
+
+### Get MoarTube Node
+
+Once you've got your client up and running, it's time to get the [MoarTube Node](https://github.com/MoarTube/MoarTube-Node).
