@@ -6,7 +6,7 @@ global.electronPaths = {
     appData: app.getPath('appData'),
 };
 
-require("./client.js");
+require("./moartube-client.js");
 
 if (handleSquirrelEvent()) {
     return;

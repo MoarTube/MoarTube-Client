@@ -4,7 +4,7 @@
   "description": "A free, open-source, self-hosted, anonymous, decentralized video/live stream platform. Scalable via Cloudflare, works in the cloud or from home WiFi.",
   "author": "MoarTube, LLC",
   "license": "Custom License - See LICENSE.md file",
-  "main": "main.js",
+  "main": "moartube-client.js",
   "scripts": {
     "start": "electron-forge start",
     "startApp": "electron main.js",

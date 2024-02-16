@@ -56,6 +56,6 @@ Open a terminal within the MoarTube-Client directory
 
 Run the command **npm install**
 
-Run the command **node client.js**
+Run the command **node moartube-client.js**
 
 Open a web browser at [localhost:8080](http://localhost:8080) to view the MoarTube Client user interface
