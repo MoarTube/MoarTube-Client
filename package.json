@@ -13,6 +13,11 @@
     "make": "electron-forge make",
     "publish": "electron-forge publish"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MoarTube/MoarTube-Client.git"
+  },
+  "keywords": ["alternative", "youtube", "twitch", "video", "stream", "live", "moartube"],
   "dependencies": {
     "axios": "^1.4.0",
     "body-parser": "^1.20.2",
