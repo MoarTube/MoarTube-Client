@@ -50,7 +50,7 @@ Download and run the [Node.js](https://nodejs.org/en/download) installer for you
 
 ## Install MoarTube Client
 
-**git clone** the MoarTube-Client repository
+**git clone** the MoarTube-Client repository (or just download the zip)
 
 Open a terminal within the MoarTube-Client directory
 
