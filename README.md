@@ -6,7 +6,7 @@ A repository containing the client software for managing your [MoarTube Node](ht
 # How to Get Started
 Acquire the MoarTube Client by cloning this repo (or just download the zip) and follow the setup guide below. When ready, head over to [MoarTube Node](https://github.com/MoarTube/MoarTube-Node) if you haven't yet.
 
-It's also on the NPM registry and can be installed with <b>npm install @moartube/moartube-client</b>.
+It's also on the [NPM registry](https://www.npmjs.com/settings/moartube/packages) and can be installed with <b>npm install @moartube/moartube-client</b>.
 
 The default login credentials for your node are below. Be sure to change these upon logging in.
 
