@@ -9,6 +9,8 @@ Welcome to the MoarTube Client setup guide! This document will guide you through
 ## Table of Contents
 - [Features](#features)
 - [Prerequisites](#prerequisites)
+  - [npm](#npm)
+  - [git](#git)
 - [Installation Methods](#installation-methods)
   - [npm](#npm)
   - [git](#git)
