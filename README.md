@@ -90,7 +90,7 @@ moartube-client
 git clone https://github.com/MoarTube/MoarTube-Client
 ```
 
-open a terminal in the installed directory and install dependencies:
+open a terminal in the cloned directory and install dependencies:
 
 ```bash
 npm install
