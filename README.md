@@ -101,4 +101,4 @@ The default login credentials for your node are below. Be sure to change these u
 
 ### Get MoarTube Node
 
-Once you've got your client up and running, it's time to get the [MoarTube Node](https://github.com/MoarTube/MoarTube-Node).
+If you haven't already, it's time to get the [MoarTube Node](https://github.com/MoarTube/MoarTube-Node).
