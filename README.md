@@ -66,7 +66,7 @@ Choose any of the following installation methods.
 npm i @moartube/moartube-client
 ```
 
-open a terminal in the installation directory and run the client:
+Open a terminal in the installation directory and run the client:
 
 ```bash
 node node_modules/@moartube/moartube-client/moartube-client.js
@@ -90,7 +90,7 @@ moartube-client
 git clone https://github.com/MoarTube/MoarTube-Client
 ```
 
-open a terminal in the cloned directory and install dependencies:
+Open a terminal in the cloned directory and install dependencies:
 
 ```bash
 npm install
