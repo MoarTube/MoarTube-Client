@@ -91,7 +91,7 @@ node moartube-client.js
 
 ### Open the MoarTube Client
 
-Open a web browser at [localhost:8080](http://localhost:8080) to view the MoarTube Client user interface.
+Open a web browser at [localhost:8080](http://localhost:8080) to view the MoarTube Client user interface and log into your node.
 
 ### Default Login Credentials
 
