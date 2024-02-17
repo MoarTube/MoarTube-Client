@@ -96,7 +96,7 @@ node node_modules/@moartube/moartube-client/moartube-client.js
 git clone https://github.com/MoarTube/MoarTube-Client
 ```
 
-Open a terminal in the cloned directory and run::
+Open a terminal in the cloned directory and run:
 
 ```bash
 npm install
