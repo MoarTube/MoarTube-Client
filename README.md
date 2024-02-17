@@ -62,7 +62,7 @@ You can clone the repo, but make sure that [Node.js and npm](https://nodejs.org/
 
 Choose any of the following installation methods.
 
-### [npm](https://www.npmjs.com/settings/moartube/packages)
+### [npm](https://www.npmjs.com/package/@moartube/moartube-client)
 
 You can install MoarTube Client globally:
 
