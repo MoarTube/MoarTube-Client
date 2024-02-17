@@ -51,10 +51,10 @@ Welcome to the MoarTube Client setup guide! This document will guide you through
 Observe the corresponding prerequisite for your installation method.
 
 ### npm
-If you're using npm to install the software, make sure that [Node.js and npm](https://nodejs.org/en) is installed on your machine.
+If you're using npm to install the software, make sure that [Node.js and npm](https://nodejs.org/en) are installed on your machine.
 
 ### git
-You can clone the repo, but make sure that [Node.js and npm](https://nodejs.org/en) is installed on your machine.
+You can clone the repo, but make sure that [Node.js and npm](https://nodejs.org/en) are installed on your machine.
 
 ## Installation Methods
 
