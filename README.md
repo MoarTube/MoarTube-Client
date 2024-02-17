@@ -62,17 +62,7 @@ Choose any of the following installation methods.
 
 ### [npm](https://www.npmjs.com/settings/moartube/packages)
 
-```bash
-npm i @moartube/moartube-client
-```
-
-Open a terminal in the installation directory and run the client:
-
-```bash
-node node_modules/@moartube/moartube-client/moartube-client.js
-```
-
-You can also install MoarTube Client globally:
+You can install MoarTube Client globally:
 
 ```bash
 npm i @moartube/moartube-client -g
@@ -82,6 +72,20 @@ And run from the command-line globally:
 
 ```bash
 moartube-client
+```
+
+<br>
+
+You can install MoarTube Client locally:
+
+```bash
+npm i @moartube/moartube-client
+```
+
+And run from the command-line locally:
+
+```bash
+node node_modules/@moartube/moartube-client/moartube-client.js
 ```
 
 ### [git](https://github.com/MoarTube/MoarTube-Node)
