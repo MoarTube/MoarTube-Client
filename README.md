@@ -90,7 +90,7 @@ And run from the command-line locally:
 node node_modules/@moartube/moartube-client/moartube-client.js
 ```
 
-### [git](https://github.com/MoarTube/MoarTube-Node)
+### [git](https://github.com/MoarTube/MoarTube-Client)
 
 ```bash
 git clone https://github.com/MoarTube/MoarTube-Client
