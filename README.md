@@ -63,10 +63,10 @@ You can clone the repo, but make sure that [Node.js and npm](https://nodejs.org/
 npm i @moartube/moartube-client
 ```
 
-open a terminal in the installed directory and run the client:
+open a terminal in the installation directory and run the client:
 
 ```bash
-node moartube-client.js
+node node_modules/@moartube/moartube-client/moartube-client.js
 ```
 
 ### [git](https://github.com/MoarTube/MoarTube-Node)
