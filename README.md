@@ -4,13 +4,20 @@
 A repository containing the client software for managing your [MoarTube Node](https://github.com/MoarTube/MoarTube-Node). The client software is a cross-platform terminal-based Node.js Express application that makes managing your node's videos and live streams as simple as reading this sentence.
 
 # How to Get Started
-Acquire the MoarTube Client by cloning this repo (or just download the zip) and follow the setup guide below. When ready, head over to [MoarTube Node](https://github.com/MoarTube/MoarTube-Node) if you haven't yet.
+Welcome to the MoarTube Client setup guide! This document will guide you through the different setup methods to get your MoarTube Client up and running. Don't worry; MoarTube is so easy to set up and use, you'll be done in minutes. When ready, head over to [MoarTube Node](https://github.com/MoarTube/MoarTube-Node) if you haven't yet.
 
-The default login credentials for your node are below. Be sure to change these upon logging in.
+## Table of Contents
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation Methods](#installation-methods)
+  - [npm](#npm)
+  - [git](#git)
+- [Next Steps](#next-steps)
+  - [Open the MoarTube Client](#open-the-moartube-client)
+  - [Default Login Credentials](#default-login-credentials)
+  - [Get MoarTube Node](#get-moartube-node)
 
-**username**: admin<br/>**password**: admin
-
-# Features
+## Features
  - Cross platform support for Windows/macOS/Linux
  - Video on demand (VoD) and HLS live streaming
  - Admin panel for managing videos and live streams
@@ -27,6 +34,7 @@ The default login credentials for your node are below. Be sure to change these u
  - Reports section for comments and videos
  - Comment monitoring overview with moderation functionality
  - Run your node in the cloud or on your home WiFi
+ - Can run on a [Raspberry Pi Zero 2 W](https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/)
  - Publicize your node's content on [MoarTube](http://www.moartube.com) or run your node privately
  - [Dual box compatible](https://moartu.be/nodes/chris_moartube_node/videos/f7w9spnInuN); broadcast an RTMP stream with software such as OBS from a primary system over a network (WAN or LAN) to a secondary system running the MoarTube Client, separating stream broadcasting from stream processing. This is achieved without any special plugins, such as NDI.
  - [Cloudflare Turnstile](https://moartu.be/nodes/chris_moartube_node/videos/gQcsrSmsmrY); next-generation bot detection and human verification without the annoyance of captcha.
@@ -38,24 +46,61 @@ The default login credentials for your node are below. Be sure to change these u
 
 ![image](https://github.com/MoarTube/MoarTube-Client/assets/26640616/068ec86b-a3d8-4285-9b64-4b71f64cce41)
 
-# Setup Guide
+## Prerequisites
 
-## Install Node.js
+Observe the corresponding prerequisite for your installation method.
 
-### Ubuntu Linux
-Run the command **sudo snap install node --classic --channel=21**
+### npm
+If you're using npm to install the software, make sure that [Node.js and npm](https://nodejs.org/en) is installed on your machine.
 
-### Windows/macOS
-Download and run the [Node.js](https://nodejs.org/en/download) installer for your system
+### git
+You can clone the repo, but make sure that [Node.js and npm](https://nodejs.org/en) is installed on your machine.
 
-## Install MoarTube Client
+## Installation Methods
 
-**git clone** the MoarTube-Client repository (or just download the zip)
+Choose any of the following installation methods.
 
-Open a terminal within the MoarTube-Client directory
+### [npm](https://www.npmjs.com/settings/moartube/packages)
 
-Run the command **npm install**
+```bash
+npm i @moartube/moartube-client
+```
 
-Run the command **node moartube-client.js**
+open a terminal in the installation directory and run the client:
 
-Open a web browser at [localhost:8080](http://localhost:8080) to view the MoarTube Client user interface
+```bash
+node node_modules/@moartube/moartube-client/moartube-client.js
+```
+
+### [git](https://github.com/MoarTube/MoarTube-Node)
+
+```bash
+git clone https://github.com/MoarTube/MoarTube-Client
+```
+
+open a terminal in the installed directory and install dependencies:
+
+```bash
+npm install
+```
+Run the client:
+
+```bash
+node moartube-client.js
+```
+
+## Next Steps
+
+### Open the MoarTube Client
+
+Open a web browser at [localhost:8080](http://localhost:8080) to view the MoarTube Client user interface and log into your node.
+
+### Default Login Credentials
+
+The default login credentials for your node are below. Be sure to change these upon logging in.
+
+**username**: admin<br/>**password**: admin
+
+### Get MoarTube Node
+
+If you haven't already, it's time to get the [MoarTube Node](https://github.com/MoarTube/MoarTube-Node).
