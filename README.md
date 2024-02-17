@@ -51,7 +51,7 @@ Welcome to the MoarTube Client setup guide! This document will guide you through
 
 ## System Requirements
 
-MoarTube Client performs the heavy computational processing that comes with video and live stream decoding/encoding. As such, the only limiting factor is the system that it's running on.
+MoarTube Client performs the heavy computational processing that comes with video and live stream decoding/encoding. As such, the only limiting factor is the system that it's running on. [Dual boxing](https://moartu.be/nodes/chris_moartube_node/videos/f7w9spnInuN) is supported if a dedicated system running the client is preferred.
 
 The software supports GPU acceleration (Windows only), but is disabled by default. To enable it, just switch it on in the settings. Nvidia and AMD GPUs currently supported.
 
