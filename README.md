@@ -8,6 +8,7 @@ Welcome to the MoarTube Client setup guide! This document will guide you through
 
 ## Table of Contents
 - [Features](#features)
+- [System Requirements](#system-requirements)
 - [Prerequisites](#prerequisites)
   - [npm](#npm)
   - [git](#git)
@@ -47,6 +48,12 @@ Welcome to the MoarTube Client setup guide! This document will guide you through
 ![image](https://github.com/MoarTube/MoarTube-Client/assets/26640616/918aa074-b6e2-49f1-8d14-5c2ed1bcd582)
 
 ![image](https://github.com/MoarTube/MoarTube-Client/assets/26640616/068ec86b-a3d8-4285-9b64-4b71f64cce41)
+
+## System Requirements
+
+MoarTube Client performs the heavy computational processing that comes with video and live stream decoding/encoding. As such, the only limiting factor is the system that it's running on.
+
+The software supports GPU acceleration (Windows only), but is disabled by default. To enable it, just switch it on in the settings. Nvidia and AMD GPUs currently supported.
 
 ## Prerequisites
 
