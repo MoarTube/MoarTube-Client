@@ -72,6 +72,18 @@ open a terminal in the installation directory and run the client:
 node node_modules/@moartube/moartube-client/moartube-client.js
 ```
 
+You can also install MoarTube Client globally:
+
+```bash
+npm i @moartube/moartube-client -g
+```
+
+And run from the command-line globally:
+
+```bash
+moartube-client
+```
+
 ### [git](https://github.com/MoarTube/MoarTube-Node)
 
 ```bash
