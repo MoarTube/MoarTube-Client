@@ -55,6 +55,8 @@ MoarTube Client performs the heavy computational processing that comes with vide
 
 The software supports GPU acceleration (Windows only), but is disabled by default. To enable it, just switch it on in the settings. Nvidia and AMD GPUs currently supported.
 
+Node.js v20 and later required.
+
 ## Prerequisites
 
 Observe the corresponding prerequisite for your installation method.
