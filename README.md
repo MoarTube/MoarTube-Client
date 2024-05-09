@@ -4,7 +4,7 @@
 A repository containing the client software for managing your [MoarTube Node](https://github.com/MoarTube/MoarTube-Node). The client software is a cross-platform terminal-based Node.js Express application that makes managing your node's videos and live streams as simple as reading this sentence.
 
 # How to Get Started
-Welcome to the MoarTube Client setup guide! This document will guide you through the different setup methods to get your MoarTube Client up and running. Don't worry; MoarTube is so easy to set up and use, you'll be done in minutes. When ready, head over to [MoarTube Node](https://github.com/MoarTube/MoarTube-Node) if you haven't yet.
+Welcome to the MoarTube Client setup guide! This document will guide you through the different setup methods to get your MoarTube Client up and running. Don't worry! MoarTube is so easy to set up and use, you'll be done in minutes. When ready, head over to [MoarTube Node](https://github.com/MoarTube/MoarTube-Node) if you haven't yet.
 
 ## Table of Contents
 - [Features](#features)
@@ -54,6 +54,8 @@ Welcome to the MoarTube Client setup guide! This document will guide you through
 MoarTube Client performs the heavy computational processing that comes with video and live stream decoding/encoding. As such, the only limiting factor is the system that it's running on. [Dual boxing](https://moartu.be/nodes/chris_moartube_node/videos/f7w9spnInuN) is supported if a dedicated system running the client is preferred.
 
 The software supports GPU acceleration (Windows only), but is disabled by default. To enable it, just switch it on in the settings. Nvidia and AMD GPUs currently supported.
+
+Node.js v20 and later required.
 
 ## Prerequisites
 
