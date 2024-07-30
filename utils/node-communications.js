@@ -1451,6 +1451,20 @@ function node_getVideoBandwidth(jwtToken, videoId) {
     });
 }
 
+function node_getVideoSources(videoId) {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/watch')
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 function node_uploadStream(jwtToken, videoId, format, resolution, directoryPaths) {
     return new Promise(function(resolve, reject) {
         const formData = new FormData();
@@ -1575,5 +1589,6 @@ module.exports = {
     node_setCloudflareTurnstile,
     node_searchComments,
     node_getNewContentCounts,
-    node_setContentChecked
+    node_setContentChecked,
+    node_getVideoSources
 };

@@ -4,7 +4,7 @@ const {
     root_GET, search_GET, import_POST, videoIdImportingStop_POST, videoIdPublishingStop_POST, videoIdPublish_POST, videoIdUnpublish_POST,
     tags_GET, tagsAll_GET, videoIdPublishes_GET, videoIdInformation_GET, videoIdInformation_POST, delete_POST, finalize_POST, videoIdIndexAdd_POST,
     videoIdIndexRemove_POST, videoIdThumbnail_GET, videoIdPreview_GET, videoIdPoster_GET, videoIdThumbnail_POST,
-    videoIdPreview_POST, videoIdPoster_POST
+    videoIdPreview_POST, videoIdPoster_POST, videoIdSources_GET
 } = require('../controllers/videos');
 
 const router = express.Router();
@@ -95,6 +95,10 @@ router.post('/:videoId/preview', (req, res) => {
 
 router.post('/:videoId/poster', (req, res) => {
     videoIdPoster_POST(req, res);
+});
+
+router.get('/:videoId/sources', (req, res) => {
+    videoIdSources_GET(req, res);
 });
 
 module.exports = router;

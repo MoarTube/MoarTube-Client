@@ -1376,7 +1376,9 @@
 				<div class="input-group"><input id="node-video-url-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="node-video-url-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>\
 				<div class="input-group mt-1"><input id="moartube-video-alias-url-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="moartube-video-alias-url-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>\
 				<div class="input-group mt-1"><input id="video-alias-embed-url-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="video-alias-embed-url-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>\
-				<div class="input-group mt-1"><input id="video-alias-embed-code-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="video-alias-embed-code-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>');
+				<div class="input-group mt-1"><input id="video-alias-embed-code-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="video-alias-embed-code-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>\
+				<div class="input-group mt-1"><select id="direct-source-links-select" class="form-select dropdown-toggle me-1"></select><span class="input-group-btn"><button id="direct-source-links-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>\
+				');
 
 				Swal.fire({
 					title: 'share',
@@ -1393,62 +1395,105 @@
 								showAlert(true, data.message);
 							}
 							else {
-								Swal.hideLoading();
-
 								const information = data.information;
-								
+										
 								const title = information.title;
 								const videoAliasUrl = information.videoAliasUrl;
 								
-								let twitterLink;
-								let redditLink;
-								let facebookLink;
-								
-								if(videoAliasUrl === 'MoarTube Aliaser link unavailable') {
-									twitterLink = 'https://twitter.com/intent/tweet?url=' + nodeVideoUrl + '&text=' + title + '&via=MoarTubes&related=MoarTubes';
-									redditLink = 'https://www.reddit.com/submit?url=' + nodeVideoUrl + '&title=' + title;
-									facebookLink = 'https://www.facebook.com/dialog/share?app_id=246871938290679&href=' + nodeVideoUrl + '&display=popup';
-								}
-								else {
-									twitterLink = 'https://twitter.com/intent/tweet?url=' + videoAliasUrl + '&text=' + title + '&via=MoarTubes&related=MoarTubes';
-									redditLink = 'https://www.reddit.com/submit?url=' + videoAliasUrl + '&title=' + title;
-									facebookLink = 'https://www.facebook.com/dialog/share?app_id=246871938290679&href=' + videoAliasUrl + '&display=popup';
-								}
+								$.ajax({type: 'GET', url: '/videos/' + videoId + '/sources'})
+								.done(function (data, textStatus, xhr) {
+									if(data.isError) {
+										showAlert(true, data.message);
+									}
+									else {
+										Swal.hideLoading();
 
-								$('#share-twitter-link').attr('href', twitterLink);
-								$('#share-reddit-link').attr('href', redditLink);
-								$('#share-facebook-link').attr('href', facebookLink);
-								
-								$('#node-video-url-input').val(nodeVideoUrl);
-								$('#moartube-video-alias-url-input').val(videoAliasUrl);
-								$('#video-alias-embed-url-input').val(embedUrl);
-								$('#video-alias-embed-code-input').val(embedHtml);
+										const sources = data.sources;
 
-								$('#video-alias-embed-url-copy-button').click(function(event) {
-									const value = $('#video-alias-embed-url-input').val();
-									
-									setClipboard(value);
+										const adaptiveSources = sources.adaptiveSources;
+										const progressiveSources = sources.progressiveSources;
+
+										for(adaptiveSource of adaptiveSources) {
+											const src = adaptiveSource.src;
+
+											const value = NODE_BASE_URL + src;
+
+											const html = '<option value="' + value + '">' + value + '</option>';
+
+											$('#direct-source-links-select').append(html);
+										}
+
+										for(progressiveSource of progressiveSources) {
+											const src = progressiveSource.src;
+
+											const value = NODE_BASE_URL + src;
+											
+											const html = '<option value="' + value + '">' + value + '</option>';
+
+											$('#direct-source-links-select').append(html);
+										}
+
+										let twitterLink;
+										let redditLink;
+										let facebookLink;
+										
+										if(videoAliasUrl === 'MoarTube Aliaser link unavailable') {
+											twitterLink = 'https://twitter.com/intent/tweet?url=' + nodeVideoUrl + '&text=' + title + '&via=MoarTubes&related=MoarTubes';
+											redditLink = 'https://www.reddit.com/submit?url=' + nodeVideoUrl + '&title=' + title;
+											facebookLink = 'https://www.facebook.com/dialog/share?app_id=246871938290679&href=' + nodeVideoUrl + '&display=popup';
+										}
+										else {
+											twitterLink = 'https://twitter.com/intent/tweet?url=' + videoAliasUrl + '&text=' + title + '&via=MoarTubes&related=MoarTubes';
+											redditLink = 'https://www.reddit.com/submit?url=' + videoAliasUrl + '&title=' + title;
+											facebookLink = 'https://www.facebook.com/dialog/share?app_id=246871938290679&href=' + videoAliasUrl + '&display=popup';
+										}
+
+										$('#share-twitter-link').attr('href', twitterLink);
+										$('#share-reddit-link').attr('href', redditLink);
+										$('#share-facebook-link').attr('href', facebookLink);
+										
+										$('#node-video-url-input').val(nodeVideoUrl);
+										$('#moartube-video-alias-url-input').val(videoAliasUrl);
+										$('#video-alias-embed-url-input').val(embedUrl);
+										$('#video-alias-embed-code-input').val(embedHtml);
+
+										$('#video-alias-embed-url-copy-button').click(function(event) {
+											const value = $('#video-alias-embed-url-input').val();
+											
+											setClipboard(value);
+										});
+										
+										$('#video-alias-embed-code-copy-button').click(function(event) {
+											const value = $('#video-alias-embed-code-input').val();
+											
+											setClipboard(value);
+										});
+										
+										$('#moartube-video-alias-url-copy-button').click(function(event) {
+											const value = $('#moartube-video-alias-url-input').val();
+											
+											setClipboard(value);
+										});
+										
+										$('#node-video-url-copy-button').click(function(event) {
+											const value = $('#node-video-url-input').val();
+											
+											setClipboard(value);
+										});
+
+										$('#direct-source-links-copy-button').click(function(event) {
+											const value = $('#direct-source-links-select').val();
+											
+											setClipboard(value);
+										});
+										
+										refreshClickTooltips();
+									}
+								})
+								.fail(function()
+								{
+									console.log('unable to communicate with node');
 								});
-								
-								$('#video-alias-embed-code-copy-button').click(function(event) {
-									const value = $('#video-alias-embed-code-input').val();
-									
-									setClipboard(value);
-								});
-								
-								$('#moartube-video-alias-url-copy-button').click(function(event) {
-									const value = $('#moartube-video-alias-url-input').val();
-									
-									setClipboard(value);
-								});
-								
-								$('#node-video-url-copy-button').click(function(event) {
-									const value = $('#node-video-url-input').val();
-									
-									setClipboard(value);
-								});
-								
-								refreshClickTooltips();
 							}
 						})
 						.fail(function()
