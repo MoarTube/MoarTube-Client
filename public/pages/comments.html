@@ -219,6 +219,7 @@
 		<script src="/javascript/soft-ui-dashboard-1.1.0.min.js"></script>
 		<script>
 			let VIDEO_ID;
+			let NODE_BASE_URL;
 
 			let OLDEST_COMMENT_VISIBLE_TIMESTAMP;
 
@@ -259,7 +260,7 @@
 							const nodeAddress = nodeSettings.publicNodeAddress;
 							const nodePort = nodeSettings.publicNodePort;
 							
-							const nodeBaseUrl = nodeProtocol + '://' + nodeAddress + ':' + nodePort;
+							NODE_BASE_URL = nodeProtocol + '://' + nodeAddress + ':' + nodePort;
 							
 							$('#node-link').attr('href', nodeBaseUrl);
 

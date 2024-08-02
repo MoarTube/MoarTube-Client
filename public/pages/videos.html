@@ -349,10 +349,6 @@
 		<script src="/javascript/circle-progress-1.2.2.min.js"></script>
 		<script src="/javascript/pickr-nano-theme-1.9.0.min.js"></script>
 		<script>
-			let NODE_PROTOCOL;
-			let NODE_ADDRESS;
-			let NODE_PORT;
-			
 			let NODE_BASE_URL;
 			
 			let lastUsedTag = '';
@@ -393,20 +389,20 @@
 						else {
 							const nodeSettings = data.nodeSettings;
 						
-							NODE_PROTOCOL = nodeSettings.publicNodeProtocol;
-							NODE_ADDRESS = nodeSettings.publicNodeAddress;
-							NODE_PORT = nodeSettings.publicNodePort;
+							const nodeProtocol = nodeSettings.publicNodeProtocol;
+							const nodeAddress = nodeSettings.publicNodeAddress;
+							const nodePort = nodeSettings.publicNodePort;
 
 							let port;
 							
-							if(NODE_PROTOCOL === 'http') {
-								port = NODE_PORT == 80 ? '' : ':' + NODE_PORT;
+							if(nodeProtocol === 'http') {
+								port = nodePort == 80 ? '' : ':' + nodePort;
 							} 
-							else if(NODE_PROTOCOL === 'https') {
-								port = NODE_PORT == 443 ? '' : ':' + NODE_PORT;
+							else if(nodeProtocol === 'https') {
+								port = nodePort == 443 ? '' : ':' + nodePort;
 							}
 							
-							NODE_BASE_URL = NODE_PROTOCOL + '://' + NODE_ADDRESS  + port;
+							NODE_BASE_URL = nodeProtocol + '://' + nodeAddress  + port;
 							
 							$('#node-link').attr('href', NODE_BASE_URL);
 							
