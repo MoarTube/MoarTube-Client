@@ -25,7 +25,6 @@ const {
 
 const homeRoutes = require('./routes/home');
 const accountRoutes = require('./routes/account');
-const configureRoutes = require('./routes/configure');
 const settingsRoutes = require('./routes/settings');
 const videosRoutes = require('./routes/videos');
 const streamsRoutes = require('./routes/streams');
@@ -85,7 +84,6 @@ async function startClient() {
 
 	app.use('/', homeRoutes);
 	app.use('/account', accountRoutes);
-	app.use('/configure', configureRoutes);
 	app.use('/settings', settingsRoutes);
 	app.use('/videos', videosRoutes);
 	app.use('/streams', streamsRoutes);

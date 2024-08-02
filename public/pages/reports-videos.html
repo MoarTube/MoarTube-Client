@@ -214,10 +214,6 @@
 		<script src="/javascript/soft-ui-dashboard-1.1.0.min.js"></script>
 		
 		<script>
-			let NODE_PROTOCOL;
-			let NODE_ADDRESS;
-			let NODE_PORT;
-			
 			let NODE_BASE_URL;
 			
 			let DATA_TABLE_VIDEO_REPORTS;
@@ -232,19 +228,19 @@
 			});
 			
 			function getNodeInformation() {
-				$.ajax({type: 'GET', url: '/node'})
+				$.ajax({type: 'GET', url: '/settings/node'})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
 						showAlert(true, data.message);
 					}
 					else {
-						const nodeInformation = data.nodeInformation;
-					
-						NODE_PROTOCOL = nodeInformation.publicNodeProtocol;
-						NODE_ADDRESS = nodeInformation.publicNodeAddress;
-						NODE_PORT = nodeInformation.publicNodePort;
+						const nodeSettings = data.nodeSettings;
+
+						const nodeProtocol = nodeSettings.publicNodeProtocol;
+						const nodeAddress = nodeSettings.publicNodeAddress;
+						const nodePort = nodeSettings.publicNodePort;
 						
-						NODE_BASE_URL = NODE_PROTOCOL + '://' + NODE_ADDRESS + ':' + NODE_PORT;
+						NODE_BASE_URL = nodeProtocol + '://' + nodeAddress + ':' + nodePort;
 						
 						$('#node-link').attr('href', NODE_BASE_URL);
 					}

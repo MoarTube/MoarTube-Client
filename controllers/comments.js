@@ -24,17 +24,10 @@ function root_GET(req, res) {
                         node_doSignout(req, res);
                     }
                     else {
-                        const nodeSettings = nodeResponseData.nodeSettings;
-                        
-                        if(nodeSettings.isNodeConfigured) {
-                            const pagePath = path.join(getPublicDirectoryPath(), 'pages/comments.html');
-                            const fileStream = fs.createReadStream(pagePath);
-                            res.setHeader('Content-Type', 'text/html');
-                            fileStream.pipe(res);
-                        }
-                        else {
-                            res.redirect('/configure');
-                        }
+                        const pagePath = path.join(getPublicDirectoryPath(), 'pages/comments.html');
+                        const fileStream = fs.createReadStream(pagePath);
+                        res.setHeader('Content-Type', 'text/html');
+                        fileStream.pipe(res);
                     }
                 })
                 .catch(error => {

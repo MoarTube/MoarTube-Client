@@ -18,32 +18,10 @@ function root_GET(req, res) {
         }
         else {
             if(nodeResponseData.isAuthenticated) {
-                node_getSettings(jwtToken)
-                .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-                        
-                        node_doSignout(req, res);
-                    }
-                    else {
-                        const nodeSettings = nodeResponseData.nodeSettings;
-                        
-                        if(nodeSettings.isNodeConfigured) {
-                            const pagePath = path.join(getPublicDirectoryPath(), 'pages/reports-comments.html');
-                            const fileStream = fs.createReadStream(pagePath);
-                            res.setHeader('Content-Type', 'text/html');
-                            fileStream.pipe(res);
-                        }
-                        else {
-                            res.redirect('/configure');
-                        }
-                    }
-                })
-                .catch(error => {
-                    logDebugMessageToConsole(null, error, new Error().stack, true);
-                    
-                    node_doSignout(req, res);
-                });
+                const pagePath = path.join(getPublicDirectoryPath(), 'pages/reports-comments.html');
+                const fileStream = fs.createReadStream(pagePath);
+                res.setHeader('Content-Type', 'text/html');
+                fileStream.pipe(res);
             }
             else {
                 res.redirect('/account/signin');

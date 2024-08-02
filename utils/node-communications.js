@@ -47,11 +47,14 @@ function node_doHeartBeat(moarTubeNodeHttpProtocol, moarTubeNodeIp, moarTubeNode
     });
 }
 
-function node_doSignin(username, password, rememberMe) {
+function node_doSignin(username, password, moarTubeNodeHttpProtocol, moarTubeNodeIp, moarTubeNodePort, rememberMe) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/account/signin', {
             username: username,
             password: password,
+            moarTubeNodeHttpProtocol: moarTubeNodeHttpProtocol,
+            moarTubeNodeIp: moarTubeNodeIp,
+            moarTubeNodePort: moarTubeNodePort,
             rememberMe: rememberMe
         })
         .then(response => {
@@ -105,28 +108,6 @@ function node_getAvatar(jwtToken) {
 function node_setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/settings/network/external', {
-            publicNodeProtocol: publicNodeProtocol,
-            publicNodeAddress: publicNodeAddress,
-            publicNodePort: publicNodePort
-        }, {
-          headers: {
-            Authorization: jwtToken
-          }
-        })
-        .then(response => {
-            const data = response.data;
-            
-            resolve(data);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function node_configure(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort) {
-    return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/configure', {
             publicNodeProtocol: publicNodeProtocol,
             publicNodeAddress: publicNodeAddress,
             publicNodePort: publicNodePort
@@ -1523,7 +1504,6 @@ module.exports = {
     node_doSignout,
     node_getSettings,
     node_setExternalNetwork,
-    node_configure,
     node_getReportCount,
     node_stopVideoImporting,
     node_getVideoInformation,

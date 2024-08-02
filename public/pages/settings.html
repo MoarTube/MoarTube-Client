@@ -516,12 +516,6 @@ input[type="range"]:focus::-moz-range-thumb{
 		<script src="/javascript/soft-ui-dashboard-1.1.0.min.js"></script>
 
 		<script>
-			let NODE_PROTOCOL;
-			let NODE_ADDRESS;
-			let NODE_PORT;
-			
-			let NODE_BASE_URL;
-
 			let CLIENT_SETTINGS;
 			
 			$(document).ready(async function() {
@@ -533,21 +527,21 @@ input[type="range"]:focus::-moz-range-thumb{
 			
 			function getNodeInformation() {
 				return new Promise(function(resolve, reject) {
-					$.ajax({type: 'GET', url: '/node'})
+					$.ajax({type: 'GET', url: '/settings/node'})
 					.done(function (data, textStatus, xhr) {
 						if(data.isError) {
 							reject();
 						}
 						else {
-							const nodeInformation = data.nodeInformation;
+							const nodeSettings = data.nodeSettings;
 						
-							NODE_PROTOCOL = nodeInformation.publicNodeProtocol;
-							NODE_ADDRESS = nodeInformation.publicNodeAddress;
-							NODE_PORT = nodeInformation.publicNodePort;
+							const nodeProtocol = nodeSettings.publicNodeProtocol;
+							const nodeAddress = nodeSettings.publicNodeAddress;
+							const nodePort = nodeSettings.publicNodePort;
 							
-							NODE_BASE_URL = NODE_PROTOCOL + '://' + NODE_ADDRESS + ':' + NODE_PORT;
+							const nodeBaseUrl = nodeProtocol + '://' + nodeAddress + ':' + nodePort;
 							
-							$('#node-link').attr('href', NODE_BASE_URL);
+							$('#node-link').attr('href', nodeBaseUrl);
 							
 							resolve();
 						}

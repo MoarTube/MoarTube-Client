@@ -99,6 +99,11 @@
 			.pcr-button {
 				border: 1px solid grey;
 			}
+
+			#direct-source-links-select {
+				direction: rtl;
+    			width: 0;
+			}
 		</style>
 	</head>
 	<body class="g-sidenav-show bg-gray-100">
@@ -379,18 +384,18 @@
 			
 			function getNodeInformation() {
 				return new Promise(function(resolve, reject) {
-					$.ajax({type: 'GET', url: '/node'})
+					$.ajax({type: 'GET', url: '/settings/node'})
 					.done(function (data, textStatus, xhr)
 					{
 						if(data.isError) {
 							reject();
 						}
 						else {
-							const nodeInformation = data.nodeInformation;
+							const nodeSettings = data.nodeSettings;
 						
-							NODE_PROTOCOL = nodeInformation.publicNodeProtocol;
-							NODE_ADDRESS = nodeInformation.publicNodeAddress;
-							NODE_PORT = nodeInformation.publicNodePort;
+							NODE_PROTOCOL = nodeSettings.publicNodeProtocol;
+							NODE_ADDRESS = nodeSettings.publicNodeAddress;
+							NODE_PORT = nodeSettings.publicNodePort;
 
 							let port;
 							

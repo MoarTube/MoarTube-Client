@@ -1,15 +1,11 @@
 const express = require('express');
 
-const { root_GET, node_GET, network_GET } = require('../controllers/home');
+const { root_GET, network_GET } = require('../controllers/home');
 
 const router = express.Router();
 
 router.get('/', (req, res) => {
     root_GET(req, res);
-});
-
-router.get('/node', (req, res) => {
-    node_GET(req, res);
 });
 
 router.get('/network', (req, res) => {
