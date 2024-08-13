@@ -228,7 +228,7 @@ function node_getVideoData(jwtToken, videoId) {
 
 function node_getThumbnail(jwtToken, videoId) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/assets/videos/' + videoId + '/thumbnail', {
+        axios.get(getMoarTubeNodeUrl() + '/external/videos/' + videoId + '/thumbnail', {
           headers: {
             Authorization: jwtToken
           },
@@ -271,7 +271,7 @@ function node_setThumbnail(jwtToken, videoId, thumbnailPath) {
 
 function node_getPreview(jwtToken, videoId) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/assets/videos/' + videoId + '/preview', {
+        axios.get(getMoarTubeNodeUrl() + '/external/videos/' + videoId + '/preview', {
           headers: {
             Authorization: jwtToken
           },
@@ -314,7 +314,7 @@ function node_setPreview(jwtToken, videoId, previewPath) {
 
 function node_getPoster(jwtToken, videoId) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/assets/videos/' + videoId + '/poster', {
+        axios.get(getMoarTubeNodeUrl() + '/external/videos/' + videoId + '/poster', {
           headers: {
             Authorization: jwtToken
           },
