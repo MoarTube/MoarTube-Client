@@ -3,14 +3,16 @@ const path = require('path');
 const spawn = require('child_process').spawn;
 const sharp = require('sharp');
 
-const { logDebugMessageToConsole, getAppDataVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds } = require('../helpers');
+const { logDebugMessageToConsole, getAppDataVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds, deleteDirectoryRecursive } = require('../helpers');
 const { node_setVideoLengths, node_getNextExpectedSegmentIndex, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, 
     node_removeAdaptiveStreamSegment, node_stopVideoStreaming } = require('../node-communications');
 const { addProcessToLiveStreamTracker, isLiveStreamStopping, liveStreamExists } = require('../trackers/live-stream-tracker');
 
 function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUrl, format, resolution, isRecordingStreamRemotely, isRecordingStreamLocally) {
-    return new Promise(function(resolve, reject) {
+    return new Promise(async function(resolve, reject) {
         logDebugMessageToConsole('starting live stream for id: ' + videoId, null, null, true);
+
+        await deleteDirectoryRecursive(path.join(getAppDataVideosDirectoryPath(), videoId));
         
         fs.mkdirSync(path.join(getAppDataVideosDirectoryPath(), videoId + '/source'), { recursive: true });
         fs.mkdirSync(path.join(getAppDataVideosDirectoryPath(), videoId + '/images'), { recursive: true });

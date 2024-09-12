@@ -301,9 +301,9 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
     });
 }
 
-function finishVideoPublish(jwtToken, videoId, sourceFileExtension) {
-    deleteDirectoryRecursive(path.join(getAppDataVideosDirectoryPath(), videoId + '/adaptive'));
-    deleteDirectoryRecursive(path.join(getAppDataVideosDirectoryPath(), videoId + '/progressive'));
+async function finishVideoPublish(jwtToken, videoId, sourceFileExtension) {
+    await deleteDirectoryRecursive(path.join(getAppDataVideosDirectoryPath(), videoId + '/adaptive'));
+    await deleteDirectoryRecursive(path.join(getAppDataVideosDirectoryPath(), videoId + '/progressive'));
     
     const sourceFilePath =  path.join(getAppDataVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
     

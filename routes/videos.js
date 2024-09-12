@@ -2,7 +2,7 @@ const express = require('express');
 
 const { 
     root_GET, search_GET, import_POST, videoIdImportingStop_POST, videoIdPublishingStop_POST, videoIdPublish_POST, videoIdUnpublish_POST,
-    tags_GET, tagsAll_GET, videoIdPublishes_GET, videoIdInformation_GET, videoIdInformation_POST, delete_POST, finalize_POST, videoIdIndexAdd_POST,
+    tags_GET, tagsAll_GET, videoIdPublishes_GET, videoIdData_GET, videoIdData_POST, delete_POST, finalize_POST, videoIdIndexAdd_POST,
     videoIdIndexRemove_POST, videoIdThumbnail_GET, videoIdPreview_GET, videoIdPoster_GET, videoIdThumbnail_POST,
     videoIdPreview_POST, videoIdPoster_POST, videoIdSources_GET
 } = require('../controllers/videos');
@@ -49,12 +49,12 @@ router.get('/:videoId/publishes', (req, res) => {
     videoIdPublishes_GET(req, res);
 });
 
-router.get('/:videoId/information', (req, res) => {
-    videoIdInformation_GET(req, res);
+router.get('/:videoId/data', (req, res) => {
+    videoIdData_GET(req, res);
 });
 
-router.post('/:videoId/information', (req, res) => {
-    videoIdInformation_POST(req, res);
+router.post('/:videoId/data', (req, res) => {
+    videoIdData_POST(req, res);
 });
 
 router.post('/delete', (req, res) => {

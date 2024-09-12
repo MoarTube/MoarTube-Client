@@ -8,10 +8,10 @@ sharp.cache(false);
 
 const { logDebugMessageToConsole, deleteDirectoryRecursive, getPublicDirectoryPath, getAppDataVideosDirectoryPath, timestampToSeconds, websocketClientBroadcast, getFfmpegPath } = require('../utils/helpers');
 const { 
-    node_isAuthenticated, node_doSignout, node_getSettings, node_stopVideoImporting, node_getVideoInformation, node_doVideosSearch, 
+    node_isAuthenticated, node_doSignout, node_getSettings, node_stopVideoImporting, node_doVideosSearch, 
     node_getThumbnail, node_getPreview, node_getPoster, node_getVideoData, node_unpublishVideo, node_stopVideoPublishing, node_importVideo,
     node_setVideoError, node_setSourceFileExtension, node_setThumbnail, node_setPreview, node_setPoster, node_setVideoLengths, node_setVideoImported, node_getVideosTags,
-    node_getSourceFileExtension, node_getVideosTagsAll, node_getVideoPublishes, node_setVideoInformation, node_deleteVideos, node_finalizeVideos, node_addVideoToIndex,
+    node_getSourceFileExtension, node_getVideosTagsAll, node_getVideoPublishes, node_setVideoData, node_deleteVideos, node_finalizeVideos, node_addVideoToIndex,
     node_removeVideoFromIndex, node_getVideoSources
 } = require('../utils/node-communications');
 const { addVideoToImportVideoTracker, isVideoImportStopping } = require('../utils/trackers/import-video-tracker');
@@ -299,7 +299,7 @@ function import_POST(req, res) {
                                                                             logDebugMessageToConsole('uploaded preview to node for video: ' + videoId, null, null, true);
                                                                             
                                                                             node_setPoster(jwtToken, videoId, posterImagePath)
-                                                                            .then(nodeResponseData => {
+                                                                            .then(async nodeResponseData => {
                                                                                 if(nodeResponseData.isError) {
                                                                                     logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                                                                                     
@@ -308,7 +308,7 @@ function import_POST(req, res) {
                                                                                 else {
                                                                                     logDebugMessageToConsole('uploaded poster to node for video: ' + videoId, null, null, true);
                                                                                     
-                                                                                    deleteDirectoryRecursive(imagesDirectoryPath);
+                                                                                    await deleteDirectoryRecursive(imagesDirectoryPath);
                                                                                     
                                                                                     logDebugMessageToConsole('uploading video length to node for video: ' + videoId, null, null, true);
                                                                                     
@@ -539,7 +539,7 @@ function videoIdPublish_POST(req, res) {
                 const videoId = req.params.videoId;
                 const publishings = JSON.parse(req.body.publishings);
                 
-                node_getVideoInformation(jwtToken, videoId)
+                node_getVideoData(jwtToken, videoId)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -547,9 +547,9 @@ function videoIdPublish_POST(req, res) {
                         res.send({isError: true, message: nodeResponseData.message});
                     }
                     else {
-                        const isLive = nodeResponseData.information.isLive;
-                        const isStreaming = nodeResponseData.information.isStreaming;
-                        const isFinalized = nodeResponseData.information.isFinalized;
+                        const isLive = nodeResponseData.videoData.isLive;
+                        const isStreaming = nodeResponseData.videoData.isStreaming;
+                        const isFinalized = nodeResponseData.videoData.isFinalized;
                         
                         if(isLive && isStreaming) {
                             res.send({isError: true, message: 'this video is currently streaming'});
@@ -810,7 +810,7 @@ function videoIdPublishes_GET(req, res) {
     });
 }
 
-function videoIdInformation_GET(req, res) {
+function videoIdData_GET(req, res) {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
@@ -824,7 +824,7 @@ function videoIdInformation_GET(req, res) {
             if(nodeResponseData.isAuthenticated) {
                 const videoId = req.params.videoId;
                 
-                node_getVideoInformation(jwtToken, videoId)
+                node_getVideoData(jwtToken, videoId)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -832,7 +832,7 @@ function videoIdInformation_GET(req, res) {
                         res.send({isError: true, message: nodeResponseData.message});
                     }
                     else {
-                        res.send({isError: false, information: nodeResponseData.information});
+                        res.send({isError: false, videoData: nodeResponseData.videoData});
                     }
                 })
                 .catch(error => {
@@ -855,7 +855,7 @@ function videoIdInformation_GET(req, res) {
     });
 }
 
-function videoIdInformation_POST(req, res) {
+function videoIdData_POST(req, res) {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
@@ -872,7 +872,7 @@ function videoIdInformation_POST(req, res) {
                 const description = req.body.description;
                 const tags = req.body.tags;
                 
-                node_setVideoInformation(jwtToken, videoId, title, description, tags)
+                node_setVideoData(jwtToken, videoId, title, description, tags)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -880,7 +880,7 @@ function videoIdInformation_POST(req, res) {
                         res.send({isError: true, message: nodeResponseData.message});
                     }
                     else {
-                        res.send({isError: false, information: nodeResponseData.information});
+                        res.send({isError: false, videoData: nodeResponseData.videoData});
                     }
                 })
                 .catch(error => {
@@ -918,7 +918,7 @@ function delete_POST(req, res) {
                 const videoIdsJson = req.body.videoIdsJson;
                 
                 node_deleteVideos(jwtToken, videoIdsJson)
-                .then(nodeResponseData => {
+                .then(async nodeResponseData => {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
@@ -931,7 +931,7 @@ function delete_POST(req, res) {
                         for(const deletedVideoId of deletedVideoIds) {
                             const deletedVideoIdPath = path.join(getAppDataVideosDirectoryPath(), deletedVideoId);
                             
-                            deleteDirectoryRecursive(deletedVideoIdPath);
+                            await deleteDirectoryRecursive(deletedVideoIdPath);
                         }
                         
                         res.send({isError: false, deletedVideoIds: deletedVideoIds, nonDeletedVideoIds: nonDeletedVideoIds});
@@ -972,7 +972,7 @@ function finalize_POST(req, res) {
                 const videoIdsJson = req.body.videoIdsJson;
                 
                 node_finalizeVideos(jwtToken, videoIdsJson)
-                .then(nodeResponseData => {
+                .then(async nodeResponseData => {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
                         
@@ -985,7 +985,7 @@ function finalize_POST(req, res) {
                         for(const finalizedVideoId of finalizedVideoIds) {
                             const videoDirectory = path.join(getAppDataVideosDirectoryPath(), finalizedVideoId);
                             
-                            deleteDirectoryRecursive(videoDirectory);
+                            await deleteDirectoryRecursive(videoDirectory);
                             
                             websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'finalized', videoId: finalizedVideoId }}});
                         }
@@ -1563,8 +1563,8 @@ module.exports = {
     tags_GET,
     tagsAll_GET,
     videoIdPublishes_GET,
-    videoIdInformation_GET,
-    videoIdInformation_POST,
+    videoIdData_GET,
+    videoIdData_POST,
     delete_POST,
     finalize_POST,
     videoIdIndexAdd_POST,

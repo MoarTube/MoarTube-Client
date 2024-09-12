@@ -68,9 +68,13 @@ function logDebugMessageToConsole(message, error, stackTrace, isLoggingToFile) {
 }
 
 function deleteDirectoryRecursive(directoryPath) {
-	fs.rm(directoryPath, { recursive: true, force: true }, function(error) {
-		// do nothing, best effort
-	});
+    return new Promise(function(resolve, reject) {
+        fs.rm(directoryPath, { recursive: true, force: true }, function(error) {
+            // do nothing, best effort
+
+            resolve();
+        });
+    });
 }
 
 function timestampToSeconds(timestamp) {
@@ -217,7 +221,7 @@ function cleanVideosDirectory() {
                             
                             if(fs.existsSync(videoDirectoryPath)) {
                                 if (fs.statSync(videoDirectoryPath).isDirectory()) {
-                                    fs.readdir(videoDirectoryPath, function(error, directories) {
+                                    fs.readdir(videoDirectoryPath, async function(error, directories) {
                                         if (error) {
                                             reject(error);
                                         }
@@ -226,7 +230,7 @@ function cleanVideosDirectory() {
                                                 if(directory !== 'source') {
                                                     const directoryPath = path.join(videoDirectoryPath, directory);
                                                     
-                                                    deleteDirectoryRecursive(directoryPath);
+                                                    await deleteDirectoryRecursive(directoryPath);
                                                 }
                                             }
                                             

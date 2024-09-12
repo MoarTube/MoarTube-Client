@@ -165,24 +165,6 @@ function node_stopVideoImporting(jwtToken, videoId) {
     });
 }
 
-function node_getVideoInformation(jwtToken, videoId) {
-    return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/information', {
-          headers: {
-            Authorization: jwtToken
-          }
-        })
-        .then(response => {
-            const data = response.data;
-            
-            resolve(data);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
 function node_doVideosSearch(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
     return new Promise(function(resolve, reject) {
         axios.get(getMoarTubeNodeUrl() + '/videos/search', {
@@ -678,7 +660,7 @@ function node_getVideoReportsArchive(jwtToken) {
     });
 }
 
-function node_streamVideo(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress) {
+function node_streamVideo(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, resolution, videoId) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/streams/start', {
             title: title,
@@ -688,7 +670,9 @@ function node_streamVideo(jwtToken, title, description, tags, rtmpPort, uuid, is
             uuid: uuid,
             isRecordingStreamRemotely: isRecordingStreamRemotely,
             isRecordingStreamLocally: isRecordingStreamLocally,
-            networkAddress: networkAddress
+            networkAddress: networkAddress,
+            resolution: resolution,
+            videoId: videoId
         }, {
           headers: {
             Authorization: jwtToken
@@ -991,9 +975,9 @@ function node_getVideoPublishes(jwtToken, videoId) {
     });
 }
 
-function node_setVideoInformation(jwtToken, videoId, title, description, tags) {
+function node_setVideoData(jwtToken, videoId, title, description, tags) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/information', {
+        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/data', {
             title: title,
             description: description,
             tags: tags
@@ -1432,6 +1416,24 @@ function node_getVideoBandwidth(jwtToken, videoId) {
     });
 }
 
+function node_getStreamMeta(jwtToken, videoId) {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/streams/' + videoId + '/meta/', {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 function node_getVideoSources(videoId) {
     return new Promise(function(resolve, reject) {
         axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/watch')
@@ -1506,7 +1508,6 @@ module.exports = {
     node_setExternalNetwork,
     node_getReportCount,
     node_stopVideoImporting,
-    node_getVideoInformation,
     node_doVideosSearch,
     node_getThumbnail,
     node_setThumbnail,
@@ -1544,7 +1545,7 @@ module.exports = {
     node_removeCommentReportArchive,
     node_removeComment,
     node_getVideoPublishes,
-    node_setVideoInformation,
+    node_setVideoData,
     node_deleteVideos,
     node_finalizeVideos,
     node_addVideoToIndex,
@@ -1570,5 +1571,6 @@ module.exports = {
     node_searchComments,
     node_getNewContentCounts,
     node_setContentChecked,
-    node_getVideoSources
+    node_getVideoSources,
+    node_getStreamMeta
 };

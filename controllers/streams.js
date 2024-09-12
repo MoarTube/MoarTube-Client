@@ -2,7 +2,7 @@ const portscanner = require('portscanner');
 
 const { logDebugMessageToConsole, websocketClientBroadcast } = require('../utils/helpers');
 const { isPortValid } = require('../utils/validators');
-const { node_isAuthenticated, node_stopVideoStreaming, node_streamVideo, node_setSourceFileExtension, node_getVideoData, node_setVideoChatSettings } = require('../utils/node-communications');
+const { node_isAuthenticated, node_stopVideoStreaming, node_streamVideo, node_setSourceFileExtension, node_getVideoData, node_setVideoChatSettings, node_getStreamMeta } = require('../utils/node-communications');
 const { addLiveStreamToLiveStreamTracker } = require('../utils/trackers/live-stream-tracker');
 const { performStreamingJob } = require('../utils/handlers/live-stream-handler');
 
@@ -26,6 +26,7 @@ function start_POST(req, res) {
                 const isRecordingStreamRemotely = req.body.isRecordingStreamRemotely;
                 const isRecordingStreamLocally = req.body.isRecordingStreamLocally;
                 const networkAddress = req.body.networkAddress;
+                const videoId = req.body.videoId;
 
                 if(!isPortValid(rtmpPort)) {
                     res.send({isError: true, message: 'rtmpPort is not valid'});
@@ -39,7 +40,7 @@ function start_POST(req, res) {
                             if (portStatus === 'closed') {
                                 const uuid = 'moartube';
                                 
-                                node_streamVideo(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress)
+                                node_streamVideo(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, resolution, videoId)
                                 .then(nodeResponseData => {
                                     if(nodeResponseData.isError) {
                                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -164,7 +165,7 @@ function videoIdRtmpInformation_GET(req, res) {
                 
                 node_getVideoData(jwtToken, videoId)
                 .then(nodeResponseData => {
-                    const meta = JSON.parse(nodeResponseData.videoData.meta);
+                    const meta = nodeResponseData.videoData.meta;
 
                     const netorkAddress = meta.networkAddress;
                     const rtmpPort = meta.rtmpPort;
@@ -212,7 +213,7 @@ function videoIdChatSettings_GET(req, res) {
                 
                 node_getVideoData(jwtToken, videoId)
                 .then(nodeResponseData => {
-                    const meta = JSON.parse(nodeResponseData.videoData.meta);
+                    const meta = nodeResponseData.videoData.meta;
                     
                     const isChatHistoryEnabled = meta.chatSettings.isChatHistoryEnabled;
                     const chatHistoryLimit = meta.chatSettings.chatHistoryLimit;

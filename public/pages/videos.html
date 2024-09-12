@@ -539,15 +539,9 @@
 									OLDEST_VISIBLE_TIMESTAMP = row.creation_timestamp;
 									
 									let status = '';
-									
+
 									if(row.is_finalized) {
 										status = 'finalized';
-									}
-									else if(row.is_publishing) {
-										status = 'publishing';
-									}
-									else if(row.is_published) {
-										status = 'published';
 									}
 									else if(row.is_live) {
 										if(row.is_streaming) {
@@ -562,6 +556,12 @@
 									}
 									else if(row.is_imported) {
 										status = 'imported'
+									}
+									else if(row.is_publishing) {
+										status = 'publishing';
+									}
+									else if(row.is_published) {
+										status = 'published';
 									}
 									else {
 										status = 'error';
@@ -761,7 +761,6 @@
 									if($('#videos_table_row_' + videoId).length) {
 										$('#videos_table_row_' + videoId).find('td').eq(1).html('<span class="text-secondary text-sm d-flex justify-content-center align-items-center">' + lengthTimestamp + '</span>');
 										$('#videos_table_row_' + videoId).find('td').eq(5).html('<p class="text-secondary mb-0 text-sm">' + calculateBandwidthUsage_MB(bandwidth) + '</p>');
-										$('#videos_table_row_' + videoId).find('td').eq(6).find('span').text('live');
 									}
 									
 									fetch('/videos/' + videoId + '/thumbnail')
@@ -791,7 +790,7 @@
 									const videoId = data.payload.videoId;
 									
 									if($('#videos_table_row_' + videoId).length) {
-										$('#videos_table_row_' + videoId).find('td').eq(6).html('<span class="text-secondary text-sm d-flex justify-content-center align-items-center">stopped</span>');
+										$('#videos_table_row_' + videoId).find('td').eq(6).html('<span class="text-secondary text-sm d-flex justify-content-center align-items-center">streamed</span><a class="text-danger cursor-pointer" onclick="doRestreamJob(this)" data-videoid="' + videoId + '"><i class="fas fa-redo"></i></a>');
 									}
 									
 									if($('#video-thumbnail-loading-spinner-' + videoId).length) {
@@ -826,15 +825,9 @@
 								const isIndexed = data.payload.isIndexed;
 								
 								let status = '';
-								
+
 								if(data.payload.isFinalized) {
 									status = 'finalized';
-								}
-								else if(data.payload.isPublishing) {
-									status = 'publishing';
-								}
-								else if(data.payload.isPublished) {
-									status = 'published';
 								}
 								else if(data.payload.isLive) {
 									if(data.payload.isStreaming) {
@@ -849,6 +842,12 @@
 								}
 								else if(data.payload.isImported) {
 									status = 'imported'
+								}
+								else if(data.payload.isPublishing) {
+									status = 'publishing';
+								}
+								else if(data.payload.isPublished) {
+									status = 'published';
 								}
 								else {
 									status = 'error';
@@ -908,6 +907,8 @@
 					cancelButtonText: '<i class="fa fa-thumbs-down"></i> Cancel',
 					cancelButtonAriaLabel: "Thumbs down",
 					didOpen: () => {
+						choices = updateTagsInput(document.getElementById('importTagsInput'));
+
 						$('#importTitleInput').focus();
 					},
 					preConfirm: () => {
@@ -967,48 +968,9 @@
 						});
 					}
 				});
-				
-				const importTagsInput = document.getElementById('importTagsInput');
-
-				choices = new Choices(importTagsInput, {
-					removeItemButton: true,
-					placeholder: true,
-					placeholderValue: 'Tags (press enter)',
-					delimiter: ',',
-					paste: true,
-					duplicateItemsAllowed: false,
-					shouldSort: false,
-					renderChoiceLimit: -1,
-					uniqueItemText: '',
-					maxItemCount: 5,
-					maxItemText: 'only 5 tags can be added',
-					addItemFilter: (value) => {
-						let result = false;
-						
-						let regex = /^[a-zA-Z0-9\s]*$/;
-						
-						if(value.length <= 30 && regex.test(value)) {
-							result = true;
-						}
-						
-						return result;
-					},
-					customAddItemText: 'tag length must be 30 characters or less and can contain letters, numbers, and spaces',
-					classNames: {
-					  containerOuter: 'choices w-100'
-					}
-				});
-				
-				importTagsInput.addEventListener('addItem', (event) => {
-					console.log('Item added:', event.detail.value);
-				});
-
-				importTagsInput.addEventListener('removeItem', (event) => {
-					console.log('Item removed:', event.detail.value);
-				});
 			}
 			
-			function showLiveModal() {
+			function showLiveModal(videoId) {
 				let choices;
 				
 				const i = Swal.mixin({
@@ -1084,45 +1046,6 @@
 					cancelButtonText: '<i class="fa fa-thumbs-down"></i> Cancel',
 					cancelButtonAriaLabel: "Thumbs down",
 					willOpen: () => {
-						const importTagsInput = document.getElementById('importTagsInput');
-						
-						choices = new Choices(importTagsInput, {
-							removeItemButton: true,
-							placeholder: true,
-							placeholderValue: 'Tags (press enter)',
-							delimiter: ',',
-							paste: true,
-							duplicateItemsAllowed: false,
-							shouldSort: false,
-							renderChoiceLimit: -1,
-							uniqueItemText: '',
-							maxItemCount: 5,
-							maxItemText: 'only 5 tags can be added',
-							addItemFilter: (value) => {
-								let result = false;
-								
-								let regex = /^[a-zA-Z0-9\s]*$/;
-								
-								if(value.length <= 30 && regex.test(value)) {
-									result = true;
-								}
-								
-								return result;
-							},
-							customAddItemText: 'tag length must be 30 characters or less and can contain letters, numbers, and spaces',
-							classNames: {
-							  containerOuter: 'choices w-100'
-							}
-						});
-						
-						importTagsInput.addEventListener('addItem', (event) => {
-							console.log('Item added:', event.detail.value);
-						});
-
-						importTagsInput.addEventListener('removeItem', (event) => {
-							console.log('Item removed:', event.detail.value);
-						});
-						
 						$.ajax({type: 'GET', url: '/network'})
 						.done(function (data, textStatus, xhr)
 						{
@@ -1134,6 +1057,49 @@
 								
 								for(const networkAddress of networkAddresses) {
 									$('#liveNetworkAddressSelect').append('<option value="' + networkAddress + '">' + networkAddress + '</option>');
+								}
+								
+								if (videoId != null) {
+									$.ajax({type: 'GET', url: '/videos/' + videoId + '/data'})
+									.done(function (data, textStatus, xhr)
+									{
+										if(data.isError) {
+											showAlert(true, data.message);
+										}
+										else {
+											console.log(data);
+
+											const title = data.videoData.title;
+											const description = data.videoData.description;
+											const tags = data.videoData.tags;
+
+											const meta = data.videoData.meta;
+											const rtmpPort = meta.rtmpPort;
+											const networkAddress = meta.networkAddress;
+											const resolution = meta.resolution;
+
+											const isRecordingStreamLocally = meta.isRecordingStreamRemotely;
+											const isRecordingStreamRemotely = meta.isRecordingStreamRemotely;
+
+											$('#importTitleInput').val(title);
+											$('#importDescriptionInput').val(description);
+											$('#importTagsInput').val(tags);
+											$('#rtmpPortInput').val(rtmpPort);
+											$('#liveNetworkAddressSelect').val(networkAddress);
+											$('#streamResolution' + resolution).prop('checked', true);
+											$('#recordStreamRemotelyCheckbox').prop('checked', isRecordingStreamLocally);
+											$('#recordStreamLocallyCheckbox').prop('checked', isRecordingStreamRemotely);
+
+											choices = updateTagsInput(document.getElementById('importTagsInput'));
+										}
+									})
+									.fail(function()
+									{
+										console.log('unable to communicate with node');
+									});
+								}
+								else {
+									choices = updateTagsInput(document.getElementById('importTagsInput'));
 								}
 							}
 						})
@@ -1153,6 +1119,10 @@
 						const isRecordingStreamRemotely = Swal.getPopup().querySelector('#recordStreamRemotelyCheckbox').checked;
 						const isRecordingStreamLocally = Swal.getPopup().querySelector('#recordStreamLocallyCheckbox').checked;
 						const networkAddress = Swal.getPopup().querySelector('#liveNetworkAddressSelect').value;
+
+						if (videoId == null) {
+							videoId = '';
+						}
 						
 						let resolution = '';
 						
@@ -1184,7 +1154,7 @@
 							return false;
 						}
 						
-						return { title: title, description: description, tags: tags, rtmpPort: rtmpPort, resolution: resolution, isRecordingStreamRemotely: isRecordingStreamRemotely, isRecordingStreamLocally: isRecordingStreamLocally, networkAddress: networkAddress }
+						return { title: title, description: description, tags: tags, rtmpPort: rtmpPort, resolution: resolution, isRecordingStreamRemotely: isRecordingStreamRemotely, isRecordingStreamLocally: isRecordingStreamLocally, networkAddress: networkAddress, videoId: videoId }
 					}
 				})
 				.then((result) => {
@@ -1197,8 +1167,9 @@
 						const isRecordingStreamRemotely = result.value.isRecordingStreamRemotely;
 						const isRecordingStreamLocally = result.value.isRecordingStreamLocally;
 						const networkAddress = result.value.networkAddress;
+						const videoId = result.value.videoId;
 						
-						$.ajax({type: 'POST', url: '/streams/start', data: JSON.stringify({ title: title, description: description, tags: tags, rtmpPort: rtmpPort, resolution: resolution, isRecordingStreamRemotely: isRecordingStreamRemotely, isRecordingStreamLocally: isRecordingStreamLocally, networkAddress: networkAddress }), contentType: 'application/json; charset=utf-8'})
+						$.ajax({type: 'POST', url: '/streams/start', data: JSON.stringify({ title: title, description: description, tags: tags, rtmpPort: rtmpPort, resolution: resolution, isRecordingStreamRemotely: isRecordingStreamRemotely, isRecordingStreamLocally: isRecordingStreamLocally, networkAddress: networkAddress, videoId: videoId }), contentType: 'application/json; charset=utf-8'})
 						.always(function() {
 							
 						})
@@ -1408,16 +1379,16 @@
 					didOpen: () => {
 						Swal.showLoading();
 						
-						$.ajax({type: 'GET', url: '/videos/' + videoId + '/information'})
+						$.ajax({type: 'GET', url: '/videos/' + videoId + '/data'})
 						.done(function (data, textStatus, xhr) {
 							if(data.isError) {
 								showAlert(true, data.message);
 							}
 							else {
-								const information = data.information;
+								const videoData = data.videoData;
 										
-								const title = information.title;
-								const videoAliasUrl = information.videoAliasUrl;
+								const title = videoData.title;
+								const videoAliasUrl = videoData.videoAliasUrl;
 								
 								$.ajax({type: 'GET', url: '/videos/' + videoId + '/sources'})
 								.done(function (data, textStatus, xhr) {
@@ -1525,7 +1496,7 @@
 			
 			function showManageImportModal(videoId) {
 				let choices;
-			
+
 				const i = Swal.mixin({
 					customClass: {
 						confirmButton: "btn bg-gradient-success mt-4",
@@ -1613,18 +1584,18 @@
 						$('#importDescriptionInput').val('......................');
 						$('#importTagsInput').val('');
 						
-						$.ajax({type: 'GET', url: '/videos/' + videoId + '/information'})
+						$.ajax({type: 'GET', url: '/videos/' + videoId + '/data'})
 						.done(function (data, textStatus, xhr)
 						{
 							if(data.isError) {
 								showAlert(true, data.message);
 							}
 							else {
-								$('#importTitleInput').val(data.information.title);
-								$('#importDescriptionInput').val(data.information.description);
-								$('#importTagsInput').val(data.information.tags);
+								$('#importTitleInput').val(data.videoData.title);
+								$('#importDescriptionInput').val(data.videoData.description);
+								$('#importTagsInput').val(data.videoData.tags);
 								
-								updateTags();
+								choices = updateTagsInput(document.getElementById('importTagsInput'));
 								
 								$('.moving-tab-selector-1').click(function() {
 									const type = $(this).data('type');
@@ -1634,17 +1605,17 @@
 										$('#importDescriptionInput').val('......................');
 										choices.removeActiveItems();
 									
-										$.ajax({type: 'GET', url: '/videos/' + videoId + '/information'})
+										$.ajax({type: 'GET', url: '/videos/' + videoId + '/data'})
 										.done(function (data, textStatus, xhr)
 										{
 											if(data.isError) {
 												showAlert(true, data.message);
 											}
 											else {
-												$('#importTitleInput').val(data.information.title);
-												$('#importDescriptionInput').val(data.information.description);
+												$('#importTitleInput').val(data.videoData.title);
+												$('#importDescriptionInput').val(data.videoData.description);
 												
-												choices.setValue(data.information.tags.split(','));
+												choices.setValue(data.videoData.tags.split(','));
 											}
 										})
 										.fail(function()
@@ -1773,47 +1744,6 @@
 										});
 									}
 								});
-								
-								function updateTags() {
-									const importTagsInput = Swal.getPopup().querySelector('#importTagsInput');
-
-									choices = new Choices(importTagsInput, {
-										removeItemButton: true,
-										placeholder: true,
-										placeholderValue: 'Tags (press enter)',
-										delimiter: ',',
-										paste: true,
-										duplicateItemsAllowed: false,
-										shouldSort: false,
-										renderChoiceLimit: -1,
-										uniqueItemText: '',
-										maxItemCount: 5,
-										maxItemText: 'only 5 tags can be added',
-										addItemFilter: (value) => {
-											let result = false;
-											
-											let regex = /^[a-zA-Z0-9\s]*$/;
-											
-											if(value.length <= 30 && regex.test(value)) {
-												result = true;
-											}
-											
-											return result;
-										},
-										customAddItemText: 'tag length must be 30 characters or less and can contain letters, numbers, and spaces',
-										classNames: {
-										  containerOuter: 'choices w-100'
-										}
-									});
-									
-									importTagsInput.addEventListener('addItem', (event) => {
-										console.log('Item added:', event.detail.value);
-									});
-
-									importTagsInput.addEventListener('removeItem', (event) => {
-										console.log('Item removed:', event.detail.value);
-									});
-								}
 							}
 						})
 						.fail(function()
@@ -1852,16 +1782,16 @@
 						const description = result.value.description;
 						const tags = result.value.tags.join(',');
 						
-						$.ajax({type: 'POST', url: '/videos/' + videoId + '/information', data: {title: title, description: description, tags: tags }})
+						$.ajax({type: 'POST', url: '/videos/' + videoId + '/data', data: {title: title, description: description, tags: tags }})
 						.done(function (data, textStatus, xhr) {
 							if(data.isError) {
 								showAlert(true, data.message);
 							}
 							else {
-								const information = data.information;
+								const videoData = data.videoData;
 								
-								const title = information.title;
-								const tags = information.tags;
+								const title = videoData.title;
+								const tags = videoData.tags;
 								
 								$('#videos_table_row_' + videoId).find('.table-row-title-link').text(title);
 								$('#videos_table_row_' + videoId).find('.table-row-tags').text(tags);
@@ -2044,6 +1974,47 @@
 						console.log('unable to communicate with node');
 					});
 				}
+			}
+
+			function updateTagsInput(element) {
+				choices = new Choices(element, {
+					removeItemButton: true,
+					placeholder: true,
+					placeholderValue: 'Tags (press enter)',
+					delimiter: ',',
+					paste: true,
+					duplicateItemsAllowed: false,
+					shouldSort: false,
+					renderChoiceLimit: -1,
+					uniqueItemText: '',
+					maxItemCount: 5,
+					maxItemText: 'only 5 tags can be added',
+					addItemFilter: (value) => {
+						let result = false;
+						
+						let regex = /^[a-zA-Z0-9\s]*$/;
+						
+						if(value.length <= 30 && regex.test(value)) {
+							result = true;
+						}
+						
+						return result;
+					},
+					customAddItemText: 'tag length must be 30 characters or less and can contain letters, numbers, and spaces',
+					classNames: {
+						containerOuter: 'choices w-100'
+					}
+				});
+				
+				element.addEventListener('addItem', (event) => {
+					console.log('Item added:', event.detail.value);
+				});
+
+				element.addEventListener('removeItem', (event) => {
+					console.log('Item removed:', event.detail.value);
+				});
+
+				return choices;
 			}
 			
 			
@@ -2330,6 +2301,12 @@
 						showAlert(true, 'video stream stop error occurred');
 					});
 				}
+			}
+
+			function doRestreamJob(item) {
+				const videoId = $(item).data('videoid');
+
+				showLiveModal(videoId);
 			}
 			
 			function doIndexVideo(checkbox) {
@@ -2749,6 +2726,8 @@
 					</td> \
 					<td class="align-middle text-center"> \
 						<span class="text-secondary text-sm d-flex justify-content-center align-items-center">' + status + '</span>'
+				
+				
 					
 				if(status === 'importing') {
 					html += '<a class="text-danger cursor-pointer" onclick="doStopJob(this)" data-jobtype="importing" data-videoid="' + videoId + '"><i class="fas fa-stop"></i></a>';
@@ -2758,6 +2737,9 @@
 				}
 				else if(status === 'live') {
 					html += '<a class="text-danger cursor-pointer" onclick="doStopJob(this)" data-jobtype="streaming" data-videoid="' + videoId + '"><i class="fas fa-stop"></i></a>';
+				}
+				else if(status === 'streamed') {
+					html += '<a class="text-danger cursor-pointer" onclick="doRestreamJob(this)" data-videoid="' + videoId + '"><i class="fas fa-redo"></i></a>';
 				}
 				
 				let checked = '';
