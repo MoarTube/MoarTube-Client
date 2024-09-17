@@ -551,17 +551,17 @@
 											status = 'streamed';
 										}
 									}
-									else if(row.is_importing) {
-										status = 'importing'
-									}
-									else if(row.is_imported) {
-										status = 'imported'
-									}
 									else if(row.is_publishing) {
 										status = 'publishing';
 									}
 									else if(row.is_published) {
 										status = 'published';
+									}
+									else if(row.is_importing) {
+										status = 'importing'
+									}
+									else if(row.is_imported) {
+										status = 'imported'
 									}
 									else {
 										status = 'error';
@@ -837,17 +837,17 @@
 										status = 'streamed';
 									}
 								}
-								else if(data.payload.isImporting) {
-									status = 'importing'
-								}
-								else if(data.payload.isImported) {
-									status = 'imported'
-								}
 								else if(data.payload.isPublishing) {
 									status = 'publishing';
 								}
 								else if(data.payload.isPublished) {
 									status = 'published';
+								}
+								else if(data.payload.isImporting) {
+									status = 'importing'
+								}
+								else if(data.payload.isImported) {
+									status = 'imported'
 								}
 								else {
 									status = 'error';
