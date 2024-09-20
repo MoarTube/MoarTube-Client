@@ -190,13 +190,9 @@ function node_doVideosSearch(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, 
     });
 }
 
-function node_getVideoData(jwtToken, videoId) {
+function node_getVideoData(videoId) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/data', {
-          headers: {
-            Authorization: jwtToken
-          }
-        })
+        axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/data')
         .then(response => {
             const data = response.data;
             

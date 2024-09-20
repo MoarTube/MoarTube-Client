@@ -163,7 +163,7 @@ function videoIdRtmpInformation_GET(req, res) {
             if(nodeResponseData.isAuthenticated) {
                 const videoId = req.params.videoId;
                 
-                node_getVideoData(jwtToken, videoId)
+                node_getVideoData(videoId)
                 .then(nodeResponseData => {
                     const meta = nodeResponseData.videoData.meta;
 
@@ -211,7 +211,7 @@ function videoIdChatSettings_GET(req, res) {
             if(nodeResponseData.isAuthenticated) {
                 const videoId = req.params.videoId;
                 
-                node_getVideoData(jwtToken, videoId)
+                node_getVideoData(videoId)
                 .then(nodeResponseData => {
                     const meta = nodeResponseData.videoData.meta;
                     

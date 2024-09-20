@@ -539,7 +539,7 @@ function videoIdPublish_POST(req, res) {
                 const videoId = req.params.videoId;
                 const publishings = JSON.parse(req.body.publishings);
                 
-                node_getVideoData(jwtToken, videoId)
+                node_getVideoData(videoId)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -638,7 +638,7 @@ function videoIdUnpublish_POST(req, res) {
                 const format = req.body.format;
                 const resolution = req.body.resolution;
                 
-                node_getVideoData(jwtToken, videoId)
+                node_getVideoData(videoId)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -824,7 +824,7 @@ function videoIdData_GET(req, res) {
             if(nodeResponseData.isAuthenticated) {
                 const videoId = req.params.videoId;
                 
-                node_getVideoData(jwtToken, videoId)
+                node_getVideoData(videoId)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
