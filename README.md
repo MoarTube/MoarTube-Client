@@ -26,11 +26,11 @@ Welcome to the MoarTube Client setup guide! This document will guide you through
  - Admin panel for managing videos and live streams
  - **HLS** *(H.264, AAC)*, **MP4** *(H.264, AAC)*, **WEBM** *(VP9, Opus)*, **OGV** *(VP8, Opus)* container formats
  - Transcode static MP4/WEBM video to HLS/MP4/WEBM/OGV
- - Transcode RTMP stream ([such as from OBS](https://moartu.be/nodes/chris_moartube_node/videos/e9p_nivxkX7)) to HLS live stream
+ - Transcode RTMP stream ([such as from OBS](https://www.moartube.com/guides/how-to-live-stream-obs)) to HLS live stream
  - Video output resolutions: 2160p, 1440p, 1080p, 720p, 480p, 360p, 240p
  - No server-side encoding; client-side only
- - [HTTPS/WSS](https://moartu.be/nodes/chris_moartube_node/videos/L9qCCrsMtJl) capabilities
- - [GPU acceleration](https://moartu.be/nodes/chris_moartube_node/videos/X3xL5oPTJaz) for Nvidia and AMD (Windows only)
+ - [HTTPS/WSS](https://www.moartube.com/guides/how-to-secure-https) capabilities
+ - [GPU acceleration](https://www.moartube.com/guides/how-to-gpu-acceleration) for Nvidia and AMD (Windows only)
  - Different video player modes: streamer, theater, fullscreen
  - Dark mode option and browser appearance configuration recognition
  - Anonymous video comments section and live stream chat
@@ -39,9 +39,9 @@ Welcome to the MoarTube Client setup guide! This document will guide you through
  - Run your node in the cloud or on your home WiFi
  - Can run on a [Raspberry Pi Zero 2 W](https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/)
  - Publicize your node's content on [MoarTube](http://www.moartube.com) or run your node privately
- - [Dual box compatible](https://moartu.be/nodes/chris_moartube_node/videos/f7w9spnInuN); broadcast an RTMP stream with software such as OBS from a primary system over a network (WAN or LAN) to a secondary system running the MoarTube Client, separating stream broadcasting from stream processing. This is achieved without any special plugins, such as NDI.
- - [Cloudflare Turnstile](https://moartu.be/nodes/chris_moartube_node/videos/gQcsrSmsmrY); next-generation bot detection and human verification without the annoyance of captcha.
- - [Cloudflare one-click integration](https://moartu.be/nodes/chris_moartube_node/videos/9aP6aY4DYeH); easily integrate your node into the [Cloudflare Network](https://www.cloudflare.com/network/), allowing for global media delivery capabilities of your videos and live streams that rivals major platforms, all from a single node. Features automated caching strategy configuration and automated cache management, and of course the best security from the world's leading CDN.
+ - [Dual box compatible](https://www.moartube.com/guides/how-to-dual-box); broadcast an RTMP stream with software such as OBS from a primary system over a network (WAN or LAN) to a secondary system running the MoarTube Client, separating stream broadcasting from stream processing. This is achieved without any special plugins, such as NDI.
+ - [Cloudflare Turnstile](https://www.moartube.com/guides/how-to-enable-cloudflare-turnstile); next-generation bot detection and human verification without the annoyance of captcha.
+ - [Cloudflare one-click integration](https://www.moartube.com/guides/how-to-enable-cloudflare-integration); easily integrate your node into the [Cloudflare Network](https://www.cloudflare.com/network/), allowing for global media delivery capabilities of your videos and live streams that rivals major platforms, all from a single node. Features automated caching strategy configuration and automated cache management, and of course the best security from the world's leading CDN.
 
 ![image](https://github.com/MoarTube/MoarTube-Client/assets/26640616/0d8ac95f-f68b-4e36-849e-28139b45ce50)
 
@@ -51,7 +51,7 @@ Welcome to the MoarTube Client setup guide! This document will guide you through
 
 ## System Requirements
 
-MoarTube Client performs the heavy computational processing that comes with video and live stream decoding/encoding. As such, the only limiting factor is the system that it's running on. [Dual boxing](https://moartu.be/nodes/chris_moartube_node/videos/f7w9spnInuN) is supported if a dedicated system running the client is preferred.
+MoarTube Client performs the heavy computational processing that comes with video and live stream decoding/encoding. As such, the only limiting factor is the system that it's running on. [Dual boxing](https://www.moartube.com/guides/how-to-dual-box) is supported if a dedicated system running the client is preferred.
 
 The software supports GPU acceleration (Windows only), but is disabled by default. To enable it, just switch it on in the settings. Nvidia and AMD GPUs currently supported.
 
