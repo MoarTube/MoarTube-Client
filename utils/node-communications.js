@@ -1264,11 +1264,30 @@ function node_setCloudflareConfiguration(jwtToken, cloudflareEmailAddress, cloud
     });
 }
 
-function node_setCloudflareTurnstile(jwtToken, isCloudflareTurnstileEnabled) {
+function node_setCloudflareTurnstileConfiguration(jwtToken, cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare/turnstile', {
-            isCloudflareTurnstileEnabled: isCloudflareTurnstileEnabled
+        axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare/turnstile/configure', {
+            cloudflareTurnstileSiteKey: cloudflareTurnstileSiteKey,
+            cloudflareTurnstileSecretKey: cloudflareTurnstileSecretKey
         }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_CloudflareTurnstileConfigurationClear(jwtToken) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare/turnstile/clear', {}, {
           headers: {
             Authorization: jwtToken
           }
@@ -1563,7 +1582,8 @@ module.exports = {
     node_getVideoBandwidth,
     node_uploadStream,
     node_removeAdaptiveStreamSegment,
-    node_setCloudflareTurnstile,
+    node_setCloudflareTurnstileConfiguration,
+    node_CloudflareTurnstileConfigurationClear,
     node_searchComments,
     node_getNewContentCounts,
     node_setContentChecked,
