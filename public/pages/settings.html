@@ -273,7 +273,7 @@ input[type="range"]:focus::-moz-range-thumb{
 					<div class="col-12">
 						<div id="client-settings-container" class="card mt-4">
 							<div class="card-header">
-								<h5>Client Settings</h5>
+								<h5>Client Settings (<i>version <span id="client-version"></span></i> )</h5>
 							</div>
 							<div class="card-body pt-0">
 								<div class="card-body pt-0 d-flex">
@@ -320,7 +320,7 @@ input[type="range"]:focus::-moz-range-thumb{
 						</div>
 						<div id="node-settings-container" class="card mt-4">
 							<div class="card-header">
-								<h5>Node Settings</h5>
+								<h5>Node Settings (<i>version <span id="node-version"></span></i> )</h5>
 							</div>
 							<div class="card-body pt-0">
 								<form id="personalize_settings_node_name_form" role="form" method="POST" action="/settings/node/personalize">
@@ -630,6 +630,8 @@ input[type="range"]:focus::-moz-range-thumb{
 					else {
 						CLIENT_SETTINGS = data.clientSettings;
 						
+						$('#client-version').text(CLIENT_SETTINGS.version);
+						
 						if(CLIENT_SETTINGS.isGpuAccelerationEnabled) {
 							const gpuVendorAndModel = CLIENT_SETTINGS.gpuVendor + ' ' + CLIENT_SETTINGS.gpuModel;
 						
@@ -657,6 +659,8 @@ input[type="range"]:focus::-moz-range-thumb{
 					}
 					else {
 						const nodeSettings = data.nodeSettings;
+
+						$('#node-version').text(nodeSettings.version);
 						
 						$('#node-name-input').val(nodeSettings.nodeName);
 						$('#node-about-textarea').val(nodeSettings.nodeAbout);

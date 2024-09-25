@@ -2,6 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
 const multer = require('multer');
+const packageJson = require('../package.json');
 
 sharp.cache(false);
 
@@ -60,6 +61,8 @@ function client_GET(req, res) {
                 };
                 
                 const clientSettings = getClientSettings();
+
+                settings.version = packageJson.version;
                 
                 if(clientSettings.processingAgent.processingAgentType === 'gpu') {
                     settings.isGpuAccelerationEnabled = true;
@@ -69,7 +72,7 @@ function client_GET(req, res) {
 
                 settings.videoEncoderSettings = clientSettings.videoEncoderSettings;
                 settings.liveEncoderSettings = clientSettings.liveEncoderSettings;
-                
+
                 res.send({isError: false, clientSettings: settings});
             }
             else {
