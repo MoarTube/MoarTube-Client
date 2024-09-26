@@ -25,6 +25,7 @@ const {
 
 const homeRoutes = require('./routes/home');
 const accountRoutes = require('./routes/account');
+const monetizationRoutes = require('./routes/monetization');
 const settingsRoutes = require('./routes/settings');
 const videosRoutes = require('./routes/videos');
 const streamsRoutes = require('./routes/streams');
@@ -84,6 +85,7 @@ async function startClient() {
 
 	app.use('/', homeRoutes);
 	app.use('/account', accountRoutes);
+	app.use('/monetization', monetizationRoutes);
 	app.use('/settings', settingsRoutes);
 	app.use('/videos', videosRoutes);
 	app.use('/streams', streamsRoutes);

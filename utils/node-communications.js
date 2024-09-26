@@ -1514,6 +1514,61 @@ function node_removeAdaptiveStreamSegment(jwtToken, videoId, format, resolution,
     });
 }
 
+function node_WalletAddressAll() {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/monetization/walletAddress/all')
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_WalletAddressAdd(jwtToken, walletAddress, chain) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/monetization/walletAddress/add', {
+            walletAddress: walletAddress,
+            chain: chain
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_WalletAddressDelete(jwtToken, cryptoWalletAddressId) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/monetization/walletAddress/delete', {
+            cryptoWalletAddressId: cryptoWalletAddressId
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 module.exports = {
     node_isAuthenticated,
     node_doHeartBeat,
@@ -1588,5 +1643,8 @@ module.exports = {
     node_getNewContentCounts,
     node_setContentChecked,
     node_getVideoSources,
-    node_getStreamMeta
+    node_getStreamMeta,
+    node_WalletAddressAll,
+    node_WalletAddressAdd,
+    node_WalletAddressDelete
 };
