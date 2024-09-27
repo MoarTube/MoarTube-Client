@@ -67,7 +67,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
         process.on('spawn', function (code) {
             logDebugMessageToConsole('performStreamingJob ffmpeg process spawned with arguments: ' + ffmpegArguments, null, null, true);
             
-            const segmentHistoryLength = 20;
+            const segmentHistoryLength = 20; // client will maintain a sliding window consisting of the 20 most recent segments
 
             let uploadingThumbnail = false;
             let uploadingPreview = false;
@@ -94,16 +94,13 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                 if(segmentIndexToDelete >= 0) {
                                     const segmentIndexToDeleteFileName = 'segment-' + resolution + '-' + segmentIndexToDelete + '.ts';
                                     const segmentIndexToDeleteFilePath = path.join(segmentsDirectoryPath, '/' + segmentIndexToDeleteFileName);
-                                    
-                                    fs.access(segmentIndexToDeleteFilePath, fs.constants.F_OK, function(error) {
+
+                                    fs.unlink(segmentIndexToDeleteFilePath, function(error){
                                         if(error) {
                                             
                                         }
                                         else {
-                                            fs.unlink(segmentIndexToDeleteFilePath, function(error){
-                                                
-                                                
-                                            });
+
                                         }
                                     });
                                 }
