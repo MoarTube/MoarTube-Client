@@ -13,7 +13,7 @@ const {
 } = require('../utils/helpers');
 const { 
     node_isAuthenticated, node_setExternalNetwork, node_getSettings, node_doSignout, node_getAvatar, node_setAvatar, 
-    node_getBanner, node_setBanner, node_setNodeName, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials,
+    node_getBanner, node_setBanner, node_setNodeName, node_setNodeAbout, node_setNodeId, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials,
     node_setCloudflareConfiguration, node_clearCloudflareConfiguration, node_setCloudflareTurnstileConfiguration, node_CloudflareTurnstileConfigurationClear
 } = require('../utils/node-communications');
 
@@ -559,7 +559,7 @@ function nodeBanner_POST(req, res) {
     });
 }
 
-function nodePersonalize_POST(req, res) {
+function nodePersonalizeNodeName_POST(req, res) {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
@@ -572,10 +572,88 @@ function nodePersonalize_POST(req, res) {
         else {
             if(nodeResponseData.isAuthenticated) {
                 let nodeName = req.body.nodeName;
+                
+                node_setNodeName(jwtToken, nodeName)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        
+                        res.send({isError: true, message: nodeResponseData.message});
+                    }
+                    else {
+                        res.send({isError: false});
+                    }
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    });
+}
+
+function nodePersonalizeNodeAbout_POST(req, res) {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: nodeResponseData.message});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
                 let nodeAbout = req.body.nodeAbout;
+                
+                node_setNodeAbout(jwtToken, nodeAbout)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        
+                        res.send({isError: true, message: nodeResponseData.message});
+                    }
+                    else {
+                        res.send({isError: false});
+                    }
+                })
+                .catch(error => {
+                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    
+                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                });
+            }
+            else {
+                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
+
+                res.send({isError: true, message: 'you are not logged in'});
+            }
+        }
+    });
+}
+
+function nodePersonalizeNodeId_POST(req, res) {
+    const jwtToken = req.session.jwtToken;
+    
+    node_isAuthenticated(jwtToken)
+    .then(nodeResponseData => {
+        if(nodeResponseData.isError) {
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            
+            res.send({isError: true, message: nodeResponseData.message});
+        }
+        else {
+            if(nodeResponseData.isAuthenticated) {
                 let nodeId = req.body.nodeId;
                 
-                node_setNodeName(jwtToken, nodeName, nodeAbout, nodeId)
+                node_setNodeId(jwtToken, nodeId)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -1044,7 +1122,9 @@ module.exports = {
     nodeAvatar_POST,
     nodeBanner_GET,
     nodeBanner_POST,
-    nodePersonalize_POST,
+    nodePersonalizeNodeName_POST,
+    nodePersonalizeNodeAbout_POST,
+    nodePersonalizeNodeId_POST,
     node_Secure_POST,
     nodeNetworkInternal_POST,
     nodeNetworkExternal_POST,

@@ -1161,11 +1161,49 @@ function node_setBanner(jwtToken, bannerPath) {
     });
 }
 
-function node_setNodeName(jwtToken, nodeName, nodeAbout, nodeId) {
+function node_setNodeName(jwtToken, nodeName) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/settings/personalize', {
-            nodeName: nodeName,
-            nodeAbout: nodeAbout,
+        axios.post(getMoarTubeNodeUrl() + '/settings/personalize/nodeName', {
+            nodeName: nodeName
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_setNodeAbout(jwtToken, nodeAbout) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/settings/personalize/nodeAbout', {
+            nodeAbout: nodeAbout
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_setNodeId(jwtToken, nodeId) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/settings/personalize/nodeId', {
             nodeId: nodeId
         }, {
           headers: {
@@ -1626,6 +1664,8 @@ module.exports = {
     node_getBanner,
     node_setBanner,
     node_setNodeName,
+    node_setNodeAbout,
+    node_setNodeId,
     node_setSecureConnection,
     node_setNetworkInternal,
     node_setCloudflareConfiguration,

@@ -2,7 +2,7 @@ const express = require('express');
 
 const { 
     root_GET, client_GET, node_GET, clientGpuAcceleration_POST, clientEncoding_POST, nodeAvatar_GET, nodeAvatar_POST, nodeBanner_GET, nodeBanner_POST,
-    nodePersonalize_POST, node_Secure_POST, nodeNetworkInternal_POST, nodeNetworkExternal_POST, nodeAccount_POST,
+    nodePersonalizeNodeName_POST, nodePersonalizeNodeAbout_POST, nodePersonalizeNodeId_POST, node_Secure_POST, nodeNetworkInternal_POST, nodeNetworkExternal_POST, nodeAccount_POST,
     nodeCloudflareConfigure_POST, nodeCloudflareClear_POST, nodeCloudflareTurnstileConfigure_POST, nodeCloudflareTurnstileClear_POST, clientEncodingDefault_GET
  } = require('../controllers/settings');
 
@@ -48,8 +48,16 @@ router.post('/node/banner', (req, res) => {
     nodeBanner_POST(req, res);
 });
 
-router.post('/node/personalize', (req, res) => {
-    nodePersonalize_POST(req, res);
+router.post('/node/personalize/nodeName', (req, res) => {
+    nodePersonalizeNodeName_POST(req, res);
+});
+
+router.post('/node/personalize/nodeAbout', (req, res) => {
+    nodePersonalizeNodeAbout_POST(req, res);
+});
+
+router.post('/node/personalize/nodeId', (req, res) => {
+    nodePersonalizeNodeId_POST(req, res);
 });
 
 router.post('/node/secure', (req, res) => {
