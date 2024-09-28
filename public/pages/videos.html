@@ -2380,7 +2380,7 @@
 										$(checkbox).prop('checked', !isIndexing);
 									}
 									else {
-										showNotification('<span class=\"alert-text\">added your video to the MoarTube index</span>', 'alert-primary');
+										showNotification('<span class=\"alert-text\">added your video to the MoarTube Index</span>', 'alert-primary');
 										
 										revertAction = false;
 										
@@ -2405,23 +2405,40 @@
 					});
 				}
 				else {
-					$.ajax({type: 'POST', url: '/videos/' + videoId + '/index/remove'})
-					.done(function (data, textStatus, xhr) {
-						if(data.isError) {
-							showAlert(true, data.message);
-							
-							$(checkbox).prop('checked', !isIndexing);
+					Swal.fire({
+						title: 'please wait',
+						html: '...removing video from MoarTube Index...',
+						allowOutsideClick: false,
+						didOpen: async () => {
+							Swal.showLoading();
+
+							const cloudflareTurnstileToken = await getCloudflareTurnstileToken();
+
+							$.ajax({type: 'POST', url: '/videos/' + videoId + '/index/remove', data: {cloudflareTurnstileToken: cloudflareTurnstileToken}})
+							.done(function (data, textStatus, xhr) {
+								if(data.isError) {
+									showAlert(true, data.message);
+									
+									$(checkbox).prop('checked', !isIndexing);
+								}
+								else {
+									const notificationMessage = "<span class=\"alert-text\">removed your video from the MoarTube index</span>";
+									
+									showNotification(notificationMessage, 'alert-primary');
+
+									Swal.close();
+								}
+							})
+							.fail(function() {
+								showAlert(true, '...something went wrong...');
+								
+								$(checkbox).prop('checked', !isIndexing);
+							});
 						}
-						else {
-							const notificationMessage = "<span class=\"alert-text\">removed your video from the MoarTube index</span>";
-							
-							showNotification(notificationMessage, 'alert-primary');
+					}).then((result) => {
+						if (result.dismiss === Swal.DismissReason.timer) {
+							showAlert(false);
 						}
-					})
-					.fail(function() {
-						showAlert(true, '...something went wrong...');
-						
-						$(checkbox).prop('checked', !isIndexing);
 					});
 				}
 			}

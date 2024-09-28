@@ -1055,9 +1055,10 @@ function node_addVideoToIndex(jwtToken, videoId, containsAdultContent, termsOfSe
     });
 }
 
-function node_removeVideoFromIndex(jwtToken, videoId) {
+function node_removeVideoFromIndex(jwtToken, videoId, cloudflareTurnstileToken) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/index/remove', {
+            cloudflareTurnstileToken: cloudflareTurnstileToken
         }, {
           headers: {
             Authorization: jwtToken
@@ -1566,11 +1567,12 @@ function node_WalletAddressAll() {
     });
 }
 
-function node_WalletAddressAdd(jwtToken, walletAddress, chain) {
+function node_WalletAddressAdd(jwtToken, walletAddress, chain, currency) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/monetization/walletAddress/add', {
             walletAddress: walletAddress,
-            chain: chain
+            chain: chain,
+            currency: currency
         }, {
           headers: {
             Authorization: jwtToken

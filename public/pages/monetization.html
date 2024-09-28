@@ -211,7 +211,8 @@
 			<div class="container-fluid py-4">
 				<div class="row ">
                     <div class="mb-2">
-                        <button class="btn bg-gradient-primary mb-0 btn-outline-primary" onclick="showAddCryptoWalletAddressModal()">Add Crypto Wallet Address</button>
+                        <button class="btn bg-gradient-primary mb-0 btn-outline-primary" onclick="showAddCryptoWalletAddressModal()">Add Crypto Donation Address</button>
+                        <button class="btn bg-gradient-primary mb-0 btn-outline-primary" onclick="showSetNodeIncentiveAddressModal()">Set Node Incentive Address</button>
                     </div>
 					<div class="col-lg-12">
 						<div class="card">
@@ -359,6 +360,7 @@
 					const walletAddressId = cryptoWalletAddress.wallet_address_id;
                     const walletAddress = cryptoWalletAddress.wallet_address;
 					const chainName = cryptoWalletAddress.chain;
+                    const currency = cryptoWalletAddress.currency;
 					const timestamp = cryptoWalletAddress.timestamp;
 					
 					const timestampFormatted = createDateTimestamp(timestamp);
@@ -367,12 +369,13 @@
 						'<button type="button" class="btn btn-icon btn-2 btn-primary" onclick="deleteCryptoWalletAddress(this)" data-cryptoWalletAddressId="' + walletAddressId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete address" data-bs-original-title="delete address"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>', 
 						walletAddress,
 						chainName,
+                        currency,
 						timestampFormatted
 					]);
 				}
 
 				let tableData = {
-					headings: [ "actions", 'wallet address', "chain", "date" ],
+					headings: [ "actions", 'wallet address', "chain", "currency", "date" ],
 					data: data
 				};
 				
@@ -455,51 +458,75 @@
 			}
 
             function showAddCryptoWalletAddressModal() {
-                const html = $('<div class="multisteps-form__content">\
+                const html = $('\
+                <div class="multisteps-form__content">\
+                    <div>Crypto donation addresses to be used by your audience.</div>\
                     <div class="row mt-3">\
-                        <div class="col-9">\
+                        <div class="col-8">\
                             <label>Crypto Wallet Address</label>\
                             <input id="wallet-address-input" class="multisteps-form__input form-control" type="text" placeholder="0x....." onfocus="focused(this)" onfocusout="defocused(this)">\
                         </div>\
-                            <div class="col-3">\
-                                <label>Chain</label>\
-                                <select id="chain-select" class="multisteps-form__select form-control">\
-                                    <option selected="selected" disabled>...</option>\
-                                    <option value="BNB">BNB</option>\
-                                    <option value="ETH">ETH</option>\
-                                </select>\
-                            </div>\
+                        <div class="col-2">\
+                            <label>Chain</label>\
+                            <select id="chain-select" class="multisteps-form__select form-control">\
+                                <option selected="selected" disabled>...</option>\
+                                <option value="BNB">BNB</option>\
+                                <option value="ETH">ETH</option>\
+                            </select>\
+                        </div>\
+                        <div class="col-2">\
+                            <label>Currency</label>\
+                            <select id="currency-select" class="multisteps-form__select form-control" disabled>\
+                            </select>\
                         </div>\
                     </div>\
+                </div>\
                 ');
 
 				Swal.fire({
-					title: 'Add Crypto Wallet Address',
+					title: 'Add Crypto Donation Address',
 					html: html,
 					showConfirmButton: true,
+                    confirmButtonText: "Add",
 					showCloseButton: true,
 					showCancelButton: true,
 					didOpen: () => {
+                        $('#chain-select').on('change', function() {
+                            const selectedChain = $('#chain-select').val();
 
-                        
+                            $("#currency-select").removeAttr('disabled');
+
+                            $("#currency-select").empty();
+
+							$("#currency-select").append('<option selected="selected" disabled>...</option>');
+
+                            if(selectedChain === 'ETH') {
+                                $("#currency-select").append('<option value="ETH">ETH</option>');
+                            }
+                            else if(selectedChain === 'BNB') {
+                                $("#currency-select").append('<option value="BNB">BNB</option>');
+                            }
+						});
 					},
                     preConfirm: () => {
 						const walletAddress = Swal.getPopup().querySelector('#wallet-address-input').value;
 						const chain = Swal.getPopup().querySelector('#chain-select').value;
+                        const currency = Swal.getPopup().querySelector('#currency-select').value;
 						
-						if(walletAddress === '' || chain === '') {
+						if(walletAddress === '' || chain === '' || currency == '') {
 							return false;
 						}
 						
-						return { walletAddress: walletAddress, chain: chain }
+						return { walletAddress: walletAddress, chain: chain, currency: currency }
 					}
 				})
                 .then((result) => {
 					if (result.isConfirmed) {
 						const walletAddress = result.value.walletAddress;
 						const chain = result.value.chain;
+                        const currency = result.value.currency;
 						
-						$.ajax({type: 'POST', url: '/monetization/walletAddress/add', data: {walletAddress: walletAddress, chain: chain }})
+						$.ajax({type: 'POST', url: '/monetization/walletAddress/add', data: {walletAddress: walletAddress, chain: chain, currency: currency }})
 						.done(function (data, textStatus, xhr) {
 							if(data.isError) {
 								showAlert(true, data.message);
@@ -519,6 +546,10 @@
 						});
 					}
 				});
+            }
+
+            function showSetNodeIncentiveAddressModal() {
+                alert();
             }
 		</script>
 	</body>

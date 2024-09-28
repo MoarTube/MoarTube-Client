@@ -1074,8 +1074,9 @@ function videoIdIndexRemove_POST(req, res) {
         else {
             if(nodeResponseData.isAuthenticated) {
                 const videoId = req.params.videoId;
+                const cloudflareTurnstileToken = req.body.cloudflareTurnstileToken;
 
-                node_removeVideoFromIndex(jwtToken, videoId)
+                node_removeVideoFromIndex(jwtToken, videoId, cloudflareTurnstileToken)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);

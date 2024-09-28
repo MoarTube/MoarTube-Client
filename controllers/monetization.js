@@ -89,8 +89,9 @@ function walletAddressAdd_POST(req, res) {
         else {
             const walletAddress = req.body.walletAddress;
             const chain = req.body.chain;
+            const currency = req.body.currency;
 
-            node_WalletAddressAdd(jwtToken, walletAddress, chain)
+            node_WalletAddressAdd(jwtToken, walletAddress, chain, currency)
             .then(nodeResponseData => {
                 if(nodeResponseData.isError) {
                     logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
