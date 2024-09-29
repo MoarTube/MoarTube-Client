@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<title>MoarTube - Comments</title>
+		<title>MoarTube - Socials</title>
 		<link rel="icon" type="image/x-icon" href="/images/favicon.ico">
 		<meta charset="utf-8">
 		<script src="/javascript/jquery-3.6.4.min.js"></script>
@@ -43,7 +43,7 @@
 									</a>
 								</li>
 								<li class="nav-item ">
-									<a class="nav-link active " href="/comments">
+									<a class="nav-link " href="/comments">
 										<span class="sidenav-mini-icon"> C </span>
 										<span class="sidenav-normal"> Comments </span>
 										<span id="new-comments-count" class="badge badge-primary ms-1"></span>
@@ -81,8 +81,8 @@
 										<span id="new-comments-count" class="badge badge-primary ms-1"></span>
 									</a>
 								</li>
-								<li class="nav-item ">
-									<a class="nav-link " href="/socials">
+                                <li class="nav-item ">
+									<a class="nav-link active " href="/socials">
 										<span class="sidenav-mini-icon"> S </span>
 										<span class="sidenav-normal"> Socials </span>
 										<span id="new-comments-count" class="badge badge-primary ms-1"></span>
@@ -185,19 +185,10 @@
 			<nav class="navbar navbar-main navbar-expand-lg position-sticky mt-4 top-1 px-0 mx-4 shadow-none border-radius-xl z-index-sticky" id="navbarBlur" data-scroll="true">
 				<div class="container-fluid py-1 px-3">
 					<nav aria-label="breadcrumb">
-						<h6 class="font-weight-bolder mb-0">Comments</h6>
+						<h6 class="font-weight-bolder mb-0">Socials</h6>
 					</nav>
 					<div class="collapse navbar-collapse mt-sm-0 mt-2 me-md-0 me-sm-4" id="navbar">
 						<div class="ms-md-auto pe-md-3 d-flex align-items-center">
-							<div class="input-group">
-								<span class="input-group-text text-body">
-									<i id="search_input_icon" class="fas fa-search" aria-hidden="true"></i>
-									<div id="search_input_spinner" class="spinner-grow text-primary spinner-grow-sm hidden-elem" role="status">
-										<span class="sr-only">Loading...</span>
-									</div>
-								</span>
-								<input type="text" id="search-input" class="form-control" placeholder="Search here..." onfocus="focused(this)" onfocusout="defocused(this)" oninput="searchInputEntered(this)">
-							</div>
 						</div>
 						<ul class="navbar-nav justify-content-end">
 							<li class="nav-item d-flex align-items-center">
@@ -226,9 +217,12 @@
 			</nav>
 			<div class="container-fluid py-4">
 				<div class="row ">
+                    <div class="mb-2">
+                        <button class="btn bg-gradient-primary mb-0 btn-outline-primary" onclick="showAddSocialMediaModal()">Add Social Media</button>
+                    </div>
 					<div class="col-lg-12">
 						<div class="card">
-							<table id="comments-table" class="table table-striped">
+							<table id="social-media-table" class="table table-striped">
 							</table>
 						</div>
 					</div>
@@ -236,7 +230,7 @@
 			</div>
 			<div class="row align-items-center justify-content-center">
 				<div class="col-auto">
-					<div id="comments-scroller-loading-spinner" class="spinner-border text-primary spinner-md" role="status"></div>
+					<div id="scroller-loading-spinner" class="spinner-border text-primary spinner-md" role="status"></div>
 				</div>
 			</div>
 		</main>
@@ -250,30 +244,12 @@
 		<script src="/javascript/choices-9.0.1.min.js"></script>
 		<script src="/javascript/soft-ui-dashboard-1.1.0.min.js"></script>
 		<script>
-			let VIDEO_ID;
-			let NODE_BASE_URL;
-
-			let OLDEST_COMMENT_VISIBLE_TIMESTAMP;
-
-			let COMMENTS_LOADER_INTERVAL;
-
-            let DATA_TABLE_COMMENTS;
-			let DATA_TABLE_COMMENTS_LENGTH;
+            let DATA_TABLE;
 
 			$(document).ready(async function() {
-				const params = new URL(window.location.href).searchParams;
-				
-				VIDEO_ID = params.get('v');
-
-				if(VIDEO_ID == null) {
-					VIDEO_ID = '';
-				}
-
                 await getNodeInformation();
-				await setContentChecked('comments');
                 await getNewContentCounts();
-
-				startCommentsLoaderInterval('', 10, Date.now());
+                await getSocialMedias();
 			});
 
 			function getNodeInformation() {
@@ -292,32 +268,10 @@
 							const nodeAddress = nodeSettings.publicNodeAddress;
 							const nodePort = nodeSettings.publicNodePort;
 							
-							NODE_BASE_URL = nodeProtocol + '://' + nodeAddress + ':' + nodePort;
+							const nodeBaseUrl = nodeProtocol + '://' + nodeAddress + ':' + nodePort;
 							
-							$('#node-link').attr('href', NODE_BASE_URL);
+							$('#node-link').attr('href', nodeBaseUrl);
 
-							resolve();
-						}
-					})
-					.fail(function()
-					{
-						console.log('unable to communicate with node');
-
-						reject();
-					});
-				});
-			}
-
-			function setContentChecked(contentType) {
-				return new Promise(function(resolve, reject) {
-					$.ajax({type: 'POST', url: '/node/contentChecked', data: { contentType: contentType }})
-					.done(function (data, textStatus, xhr) {
-						if(data.isError) {
-							showAlert(true, data.message);
-
-							reject();
-						}
-						else {
 							resolve();
 						}
 					})
@@ -375,83 +329,23 @@
 				});
 			}
 
-			let searchInputTimer;
-			function searchInputEntered(input) {
-				const searchTerm = input.value;
-				
-				clearTimeout(searchInputTimer);
-				
-				$('#search_input_icon').addClass('hidden-elem');
-				$('#search_input_spinner').removeClass('hidden-elem');
-				searchInputTimer = setTimeout(async function() {
-					$('#videos_table tbody').empty();
-
-					if(DATA_TABLE_COMMENTS != null) {
-						DATA_TABLE_COMMENTS.destroy();
-						DATA_TABLE_COMMENTS = null;
-					}
-					
-					startCommentsLoaderInterval(searchTerm, 10, Date.now());
-					
-					$('#search_input_spinner').addClass('hidden-elem');
-					$('#search_input_icon').removeClass('hidden-elem');
-					
-				}, 500);
-			}
-
-			async function startCommentsLoaderInterval(searchTerm, limit, timestamp) {
-				clearInterval(COMMENTS_LOADER_INTERVAL);
-
-				OLDEST_COMMENT_VISIBLE_TIMESTAMP = timestamp;
-				
-				try {
-					const commentsTableLoadingSpinner = $('#comments-scroller-loading-spinner');
-					
-					$(commentsTableLoadingSpinner).removeClass('hidden-elem');
-					
-					await getComments(searchTerm, limit, OLDEST_COMMENT_VISIBLE_TIMESTAMP);
-					
-					let blocked = false;
-					
-					COMMENTS_LOADER_INTERVAL = setInterval(async function() {
-						const commentsTableLoadingSpinnerRect = $(commentsTableLoadingSpinner)[0].getBoundingClientRect();
-					
-						if(commentsTableLoadingSpinnerRect.top >= 0 && commentsTableLoadingSpinnerRect.bottom <= (window.innerHeight || document.documentElement.clientHeight)) {
-							if(!blocked) {
-								blocked = true;
-								await getComments(searchTerm, limit, OLDEST_COMMENT_VISIBLE_TIMESTAMP);
-								blocked = false;
-							}
-						}
-					}, 500);
-				}
-				catch(error) {
-					console.log(error);
-				}
-			}
-
-            function getComments(searchTerm, limit, timestamp) {
+            function getSocialMedias() {
 				return new Promise(function(resolve, reject) {
-					$.ajax({type: 'GET', url: '/comments/search', data: { videoId: VIDEO_ID, searchTerm: searchTerm, limit: limit, timestamp: timestamp }})
+					$.ajax({type: 'GET', url: '/socials/socialMedia/all', data: { }})
 					.done(function (data, textStatus, xhr) {
 						if(data.isError) {
 							// showAlert(true, data.message);
 						}
 						else {
-							let comments = data.comments;
+							const socialMedias = data.socialMedias;
+                            
+                            const tableData = parseSocialMedias(socialMedias);
 
-							if(comments.length > 0) {
-								const tableData = parseComments(comments);
+                            populateSocialMediasTable(tableData);
 
-								populateCommentsTable(tableData);
-
-								refreshHoverTooltips();
-							}
-							else {
-								clearInterval(COMMENTS_LOADER_INTERVAL);
-								
-								$('#comments-scroller-loading-spinner').addClass('hidden-elem');
-							}
+                            refreshHoverTooltips();
+                        
+                            $('#scroller-loading-spinner').addClass('hidden-elem');
 						}
 
 						resolve();
@@ -464,44 +358,37 @@
 				});
             }
 
-            function parseComments(comments) {
+            function parseSocialMedias(socialMedias) {
 				const data = [];
 				
-				for (const comment of comments) {
-					const videoId = comment.video_id;
-					const commentId = comment.id;
-					const message = comment.comment_plain_text_sanitized;
-					const timestamp = comment.timestamp;
+				for (const socialMedia of socialMedias) {
+					const socialMediaId = socialMedia.social_media_id;
+                    const link = socialMedia.link;
+					const svgGraphic = socialMedia.svg_graphic;
+                    const timestamp = socialMedia.timestamp;
 					
 					const timestampFormatted = createDateTimestamp(timestamp);
-					const videoIdFormatted = '<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '" target="_blank">' + videoId + '</a>';
-					const commentIdFormatted = '<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '#p' + commentId + '" target="_blank">' + commentId + '</a>';
 					
 					data.push([
-						'<button type="button" class="btn btn-icon btn-2 btn-primary" onclick="deleteComment(this)" data-videoid="' + videoId + '" data-commentid="' + commentId + '" data-timestamp="' + timestamp + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>', 
-						timestampFormatted, 
-						videoIdFormatted, 
-						commentIdFormatted, 
-						message
+						'<button type="button" class="btn btn-icon btn-2 btn-primary" onclick="deleteSocialMedia(this)" data-socialmediaid="' + socialMediaId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete social" data-bs-original-title="delete social"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>', 
+						'<a href="' + link + '" target="_blank">' + link + '</a>',
+						svgGraphic,
+						timestampFormatted
 					]);
-
-					if(OLDEST_COMMENT_VISIBLE_TIMESTAMP == null || timestamp < OLDEST_COMMENT_VISIBLE_TIMESTAMP) {
-						OLDEST_COMMENT_VISIBLE_TIMESTAMP = timestamp;
-					}
 				}
 
 				let tableData = {
-					headings: [ "actions", 'comment date', "video id", "comment id", "message" ],
+					headings: [ "actions", 'link', "SVG Graphic", "date" ],
 					data: data
 				};
 				
 				return tableData;
 			}
 
-            function populateCommentsTable(data) {
-                if(DATA_TABLE_COMMENTS == null) {
-					DATA_TABLE_COMMENTS = new simpleDatatables.DataTable(
-						"#comments-table",
+            function populateSocialMediasTable(data) {
+                if(DATA_TABLE == null) {
+					DATA_TABLE = new simpleDatatables.DataTable(
+						"#social-media-table",
 						{
 							searchable: false,
 							sortable: false,
@@ -511,17 +398,15 @@
 					);
 				}
 				
-				DATA_TABLE_COMMENTS.insert(data);
+				DATA_TABLE.insert(data);
             }
 
-            function deleteComment(button) {
+            function deleteSocialMedia(button) {
 				const row = button.closest('tr');
 
-                const videoId = $(button).data('videoid');
-				const commentId = $(button).data('commentid');
-				const timestamp = $(button).data('timestamp');
+                const socialMediaId = $(button).data('socialmediaid');
 				
-				$.ajax({type: 'POST', url: '/comments/delete', data: {videoId: videoId, commentId: commentId, timestamp: timestamp}})
+				$.ajax({type: 'POST', url: '/socials/socialMedia/delete', data: {socialMediaId: socialMediaId}})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
 						showAlert(true, data.message);
@@ -529,7 +414,7 @@
 					else {
                         const row = button.closest('tr');
 
-						DATA_TABLE_COMMENTS.rows().remove(parseInt(row.dataIndex));
+						DATA_TABLE.rows().remove(parseInt(row.dataIndex));
 					}
 				})
 				.fail(function() {
@@ -574,6 +459,102 @@
 				
 				return ('0' + (date.getMonth() + 1).toString()).substr(-2) + '/' + ('0' + date.getDate().toString()).substr(-2)  + '/' + (date.getFullYear().toString()).substr(2) + '(' + weekday[date.getDay()] + ')' + date.toTimeString().split(' ')[0];
 			}
+
+            function showAddSocialMediaModal() {
+                const html = $('\
+                <div class="multisteps-form__content">\
+                    <div>Crypto donation addresses to be used by your viewers.</div>\
+                    <div class="row mt-3">\
+                        <div class="col-6">\
+                            <label>Crypto Wallet Address</label>\
+                            <input id="wallet-address-input" class="multisteps-form__input form-control" type="text" placeholder="0x....." onfocus="focused(this)" onfocusout="defocused(this)">\
+                        </div>\
+                        <div class="col-3">\
+                            <label>Chain</label>\
+                            <select id="chain-select" class="multisteps-form__select form-control text-center">\
+                                <option selected="selected" disabled>...</option>\
+                                <option value="BNB">BNB</option>\
+                                <option value="ETH">ETH</option>\
+                            </select>\
+                        </div>\
+                        <div class="col-3">\
+                            <label>Currency</label>\
+                            <select id="currency-select" class="multisteps-form__select form-control text-center" disabled>\
+                            </select>\
+                        </div>\
+                    </div>\
+                </div>\
+                ');
+
+				Swal.fire({
+					title: 'Add Social Media',
+					html: html,
+					showConfirmButton: true,
+                    confirmButtonText: "Add",
+					showCloseButton: true,
+					showCancelButton: true,
+                    width: "auto",
+					didOpen: () => {
+                        $('#chain-select').on('change', function() {
+                            const selectedChain = $('#chain-select').val();
+
+                            $("#currency-select").removeAttr('disabled');
+
+                            $("#currency-select").empty();
+
+							$("#currency-select").append('<option selected="selected" disabled>...</option>');
+
+                            if(selectedChain === 'ETH') {
+                                $("#currency-select").append('<option value="ETH">ETH</option>');
+                            }
+                            else if(selectedChain === 'BNB') {
+                                $("#currency-select").append('<option value="BNB">BNB</option>');
+                            }
+						});
+					},
+                    preConfirm: () => {
+						const walletAddress = Swal.getPopup().querySelector('#wallet-address-input').value;
+						const chain = Swal.getPopup().querySelector('#chain-select').value;
+                        const currency = Swal.getPopup().querySelector('#currency-select').value;
+						
+						if(walletAddress === '' || chain === '' || currency == '') {
+							return false;
+						}
+						
+						return { walletAddress: walletAddress, chain: chain, currency: currency }
+					}
+				})
+                .then((result) => {
+					if (result.isConfirmed) {
+						const walletAddress = result.value.walletAddress;
+						const chain = result.value.chain;
+                        const currency = result.value.currency;
+						
+						$.ajax({type: 'POST', url: '/socials/socialMedia/add', data: {walletAddress: walletAddress, chain: chain, currency: currency }})
+						.done(function (data, textStatus, xhr) {
+							if(data.isError) {
+								showAlert(true, data.message);
+							}
+							else {
+                                const cryptoWalletAddress = data.cryptoWalletAddress;
+
+								const tableData = parseCryptoWalletAddresses([cryptoWalletAddress]);
+
+								populateCryptoWalletAddressesTable(tableData);
+
+                                refreshHoverTooltips();
+							}
+						})
+						.fail(function() {
+							showAlert(true, 'error occurred');
+						});
+					}
+				});
+            }
+
+            function showSetNodeIncentiveAddressModal() {
+                alert();
+            }
 		</script>
 	</body>
 </html>
