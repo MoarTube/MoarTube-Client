@@ -98,9 +98,9 @@ function socialMediaAdd_POST(req, res) {
                     res.send({isError: true, message: nodeResponseData.message});
                 }
                 else {
-                    const socialmedias = nodeResponseData.socialmedias;
+                    const socialMedia = nodeResponseData.socialMedia;
 
-                    res.send({isError: false, socialmedias: socialmedias});
+                    res.send({isError: false, socialMedia: socialMedia});
                 }
             })
             .catch(error => {
