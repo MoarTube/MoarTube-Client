@@ -82,9 +82,9 @@
 									</a>
 								</li>
 								<li class="nav-item ">
-									<a class="nav-link " href="/socials">
-										<span class="sidenav-mini-icon"> S </span>
-										<span class="sidenav-normal"> Socials </span>
+									<a class="nav-link " href="/links">
+										<span class="sidenav-mini-icon"> L </span>
+										<span class="sidenav-normal"> Links </span>
 										<span id="new-comments-count" class="badge badge-primary ms-1"></span>
 									</a>
 								</li>
@@ -517,10 +517,10 @@
 								select: 0,
 								sortable: false,
 								render: function (emptyString, cell, row) {
-									const deleteArchiveButton = '<button class="btn btn-icon btn-2 btn-primary me-1" onclick="deleteArchive(this)" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete archive" data-bs-original-title="delete archive"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/></svg></span></button>';
-									const deleteCommentButton = '<button class="btn btn-icon btn-2 btn-primary" onclick="deleteComment2(this)" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>';
+									const deleteCommentButton = '<button class="btn btn-icon btn-2 btn-primary me-1" onclick="deleteComment2(this)" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>';
+									const deleteArchiveButton = '<button class="btn btn-icon btn-2 btn-primary" onclick="deleteArchive(this)" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete archive" data-bs-original-title="delete archive"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/></svg></span></button>';
 									
-									return deleteArchiveButton + deleteCommentButton;
+									return deleteCommentButton + deleteArchiveButton;
 								}
 							},
 							{

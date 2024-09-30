@@ -1609,9 +1609,9 @@ function node_WalletAddressDelete(jwtToken, cryptoWalletAddressId) {
     });
 }
 
-function node_SocialsSocialMediaAll() {
+function node_LinksAll() {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/socials/socialMedia/all')
+        axios.get(getMoarTubeNodeUrl() + '/links/all')
         .then(response => {
             const data = response.data;
             
@@ -1623,9 +1623,9 @@ function node_SocialsSocialMediaAll() {
     });
 }
 
-function node_SocialsSocialMediaAdd(jwtToken, link, svgGraphic) {
+function node_LinksAdd(jwtToken, link, svgGraphic) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/socials/socialMedia/add', {
+        axios.post(getMoarTubeNodeUrl() + '/links/add', {
             link: link,
             svgGraphic: svgGraphic
         }, {
@@ -1644,10 +1644,10 @@ function node_SocialsSocialMediaAdd(jwtToken, link, svgGraphic) {
     });
 }
 
-function node_SocialsSocialMediaDelete(jwtToken, socialMediaId) {
+function node_LinksDelete(jwtToken, linkId) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/socials/socialMedia/delete', {
-            socialMediaId: socialMediaId
+        axios.post(getMoarTubeNodeUrl() + '/links/delete', {
+            linkId: linkId
         }, {
           headers: {
             Authorization: jwtToken
@@ -1744,7 +1744,7 @@ module.exports = {
     node_WalletAddressAll,
     node_WalletAddressAdd,
     node_WalletAddressDelete,
-    node_SocialsSocialMediaAll,
-    node_SocialsSocialMediaAdd,
-    node_SocialsSocialMediaDelete
+    node_LinksAll,
+    node_LinksAdd,
+    node_LinksDelete
 };

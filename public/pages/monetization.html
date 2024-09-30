@@ -82,9 +82,9 @@
 									</a>
 								</li>
                                 <li class="nav-item ">
-									<a class="nav-link " href="/socials">
-										<span class="sidenav-mini-icon"> S </span>
-										<span class="sidenav-normal"> Socials </span>
+									<a class="nav-link " href="/links">
+										<span class="sidenav-mini-icon"> L </span>
+										<span class="sidenav-normal"> Links </span>
 										<span id="new-comments-count" class="badge badge-primary ms-1"></span>
 									</a>
 								</li>
@@ -246,8 +246,7 @@
 		<script src="/javascript/choices-9.0.1.min.js"></script>
 		<script src="/javascript/soft-ui-dashboard-1.1.0.min.js"></script>
 		<script>
-            let DATA_TABLE_CRYPTO_WALLET_ADDRESSES;
-			let DATA_TABLE_CRYPTO_WALLET_ADDRESSES_LENGTH;
+            let DATA_TABLE;
 
 			$(document).ready(async function() {
                 await getNodeInformation();
@@ -391,8 +390,8 @@
 			}
 
             function populateCryptoWalletAddressesTable(data) {
-                if(DATA_TABLE_CRYPTO_WALLET_ADDRESSES == null) {
-					DATA_TABLE_CRYPTO_WALLET_ADDRESSES = new simpleDatatables.DataTable(
+                if(DATA_TABLE == null) {
+					DATA_TABLE = new simpleDatatables.DataTable(
 						"#crypto-wallet-addresses-table",
 						{
 							searchable: false,
@@ -403,7 +402,7 @@
 					);
 				}
 				
-				DATA_TABLE_CRYPTO_WALLET_ADDRESSES.insert(data);
+				DATA_TABLE.insert(data);
             }
 
             function deleteCryptoWalletAddress(button) {
@@ -419,7 +418,7 @@
 					else {
                         const row = button.closest('tr');
 
-						DATA_TABLE_CRYPTO_WALLET_ADDRESSES.rows().remove(parseInt(row.dataIndex));
+						DATA_TABLE.rows().remove(parseInt(row.dataIndex));
 					}
 				})
 				.fail(function() {

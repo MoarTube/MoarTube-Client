@@ -5,7 +5,7 @@ const {
     logDebugMessageToConsole, getPublicDirectoryPath
 } = require('../utils/helpers');
 const { 
-    node_isAuthenticated, node_doSignout, node_SocialsSocialMediaAll, node_SocialsSocialMediaAdd, node_SocialsSocialMediaDelete
+    node_isAuthenticated, node_doSignout, node_LinksAll, node_LinksAdd, node_LinksDelete
 } = require('../utils/node-communications');
 
 
@@ -21,7 +21,7 @@ function root_GET(req, res) {
         }
         else {
             if(nodeResponseData.isAuthenticated) {
-                const pagePath = path.join(getPublicDirectoryPath(), 'pages/socials.html');
+                const pagePath = path.join(getPublicDirectoryPath(), 'pages/links.html');
                 const fileStream = fs.createReadStream(pagePath);
                 res.setHeader('Content-Type', 'text/html');
                 fileStream.pipe(res);
@@ -38,7 +38,7 @@ function root_GET(req, res) {
     });
 }
 
-function socialMediaAll_GET(req, res) {
+function linksAll_GET(req, res) {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
@@ -49,7 +49,7 @@ function socialMediaAll_GET(req, res) {
             res.send({isError: true, message: nodeResponseData.message});
         }
         else {
-            node_SocialsSocialMediaAll()
+            node_LinksAll()
             .then(nodeResponseData => {
                 if(nodeResponseData.isError) {
                     logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -57,9 +57,9 @@ function socialMediaAll_GET(req, res) {
                     res.send({isError: true, message: nodeResponseData.message});
                 }
                 else {
-                    const socialMedias = nodeResponseData.socialMedias;
+                    const links = nodeResponseData.links;
 
-                    res.send({isError: false, socialMedias: socialMedias});
+                    res.send({isError: false, links: links});
                 }
             })
             .catch(error => {
@@ -76,7 +76,7 @@ function socialMediaAll_GET(req, res) {
     });
 }
 
-function socialMediaAdd_POST(req, res) {
+function linksAdd_POST(req, res) {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
@@ -90,7 +90,7 @@ function socialMediaAdd_POST(req, res) {
             const link = req.body.link;
             const svgGraphic = req.body.svgGraphic;
 
-            node_SocialsSocialMediaAdd(jwtToken, link, svgGraphic)
+            node_LinksAdd(jwtToken, link, svgGraphic)
             .then(nodeResponseData => {
                 if(nodeResponseData.isError) {
                     logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -98,9 +98,9 @@ function socialMediaAdd_POST(req, res) {
                     res.send({isError: true, message: nodeResponseData.message});
                 }
                 else {
-                    const socialMedia = nodeResponseData.socialMedia;
+                    const link = nodeResponseData.link;
 
-                    res.send({isError: false, socialMedia: socialMedia});
+                    res.send({isError: false, link: link});
                 }
             })
             .catch(error => {
@@ -117,7 +117,7 @@ function socialMediaAdd_POST(req, res) {
     });
 }
 
-function socialMediaDelete_POST(req, res) {
+function linksDelete_POST(req, res) {
     const jwtToken = req.session.jwtToken;
     
     node_isAuthenticated(jwtToken)
@@ -128,9 +128,9 @@ function socialMediaDelete_POST(req, res) {
             res.send({isError: true, message: nodeResponseData.message});
         }
         else {
-            const socialMediaId = req.body.socialMediaId;
+            const linkId = req.body.linkId;
 
-            node_SocialsSocialMediaDelete(jwtToken, socialMediaId)
+            node_LinksDelete(jwtToken, linkId)
             .then(nodeResponseData => {
                 if(nodeResponseData.isError) {
                     logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -157,7 +157,7 @@ function socialMediaDelete_POST(req, res) {
 
 module.exports = {
     root_GET,
-    socialMediaAll_GET,
-    socialMediaAdd_POST,
-    socialMediaDelete_POST
+    linksAll_GET,
+    linksAdd_POST,
+    linksDelete_POST
 }

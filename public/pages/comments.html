@@ -82,9 +82,9 @@
 									</a>
 								</li>
 								<li class="nav-item ">
-									<a class="nav-link " href="/socials">
-										<span class="sidenav-mini-icon"> S </span>
-										<span class="sidenav-normal"> Socials </span>
+									<a class="nav-link " href="/links">
+										<span class="sidenav-mini-icon"> L </span>
+										<span class="sidenav-normal"> Links </span>
 										<span id="new-comments-count" class="badge badge-primary ms-1"></span>
 									</a>
 								</li>
@@ -257,8 +257,7 @@
 
 			let COMMENTS_LOADER_INTERVAL;
 
-            let DATA_TABLE_COMMENTS;
-			let DATA_TABLE_COMMENTS_LENGTH;
+            let DATA_TABLE;
 
 			$(document).ready(async function() {
 				const params = new URL(window.location.href).searchParams;
@@ -386,9 +385,9 @@
 				searchInputTimer = setTimeout(async function() {
 					$('#videos_table tbody').empty();
 
-					if(DATA_TABLE_COMMENTS != null) {
-						DATA_TABLE_COMMENTS.destroy();
-						DATA_TABLE_COMMENTS = null;
+					if(DATA_TABLE != null) {
+						DATA_TABLE.destroy();
+						DATA_TABLE = null;
 					}
 					
 					startCommentsLoaderInterval(searchTerm, 10, Date.now());
@@ -499,8 +498,8 @@
 			}
 
             function populateCommentsTable(data) {
-                if(DATA_TABLE_COMMENTS == null) {
-					DATA_TABLE_COMMENTS = new simpleDatatables.DataTable(
+                if(DATA_TABLE == null) {
+					DATA_TABLE = new simpleDatatables.DataTable(
 						"#comments-table",
 						{
 							searchable: false,
@@ -511,7 +510,7 @@
 					);
 				}
 				
-				DATA_TABLE_COMMENTS.insert(data);
+				DATA_TABLE.insert(data);
             }
 
             function deleteComment(button) {
@@ -529,7 +528,7 @@
 					else {
                         const row = button.closest('tr');
 
-						DATA_TABLE_COMMENTS.rows().remove(parseInt(row.dataIndex));
+						DATA_TABLE.rows().remove(parseInt(row.dataIndex));
 					}
 				})
 				.fail(function() {
