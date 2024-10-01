@@ -1623,10 +1623,10 @@ function node_LinksAll() {
     });
 }
 
-function node_LinksAdd(jwtToken, link, svgGraphic) {
+function node_LinksAdd(jwtToken, url, svgGraphic) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/links/add', {
-            link: link,
+            url: url,
             svgGraphic: svgGraphic
         }, {
           headers: {

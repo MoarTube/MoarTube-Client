@@ -87,10 +87,10 @@ function linksAdd_POST(req, res) {
             res.send({isError: true, message: nodeResponseData.message});
         }
         else {
-            const link = req.body.link;
+            const url = req.body.url;
             const svgGraphic = req.body.svgGraphic;
 
-            node_LinksAdd(jwtToken, link, svgGraphic)
+            node_LinksAdd(jwtToken, url, svgGraphic)
             .then(nodeResponseData => {
                 if(nodeResponseData.isError) {
                     logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
