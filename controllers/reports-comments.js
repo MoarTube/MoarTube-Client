@@ -1,39 +1,5 @@
-const path = require('path');
-const fs = require('fs');
-
-const { logDebugMessageToConsole, getPublicDirectoryPath } = require('../utils/helpers');
-const { 
-    node_isAuthenticated, node_doSignout, node_getCommentReports, node_getCommentReportsArchive, node_archiveCommentReport, node_removeCommentReport, node_removeCommentReportArchive
-} = require('../utils/node-communications');
-
-function root_GET(req, res) {
-    const jwtToken = req.session.jwtToken;
-    
-    node_isAuthenticated(jwtToken)
-    .then(nodeResponseData => {
-        if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-            
-            node_doSignout(req, res);
-        }
-        else {
-            if(nodeResponseData.isAuthenticated) {
-                const pagePath = path.join(getPublicDirectoryPath(), 'pages/reports-comments.html');
-                const fileStream = fs.createReadStream(pagePath);
-                res.setHeader('Content-Type', 'text/html');
-                fileStream.pipe(res);
-            }
-            else {
-                res.redirect('/account/signin');
-            }
-        }
-    })
-    .catch(error => {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
-        
-        node_doSignout(req, res);
-    });
-}
+const { logDebugMessageToConsole } = require('../utils/helpers');
+const { node_getCommentReports, node_getCommentReportsArchive, node_archiveCommentReport, node_removeCommentReport, node_removeCommentReportArchive } = require('../utils/node-communications');
 
 function all_GET(req, res) {
     const jwtToken = req.session.jwtToken;
@@ -151,7 +117,6 @@ function archiveDelete_POST(req, res) {
 }
 
 module.exports = {
-    root_GET,
     all_GET,
     archiveAll_GET,
     archive_POST,

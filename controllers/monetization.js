@@ -1,117 +1,75 @@
-const path = require('path');
-const fs = require('fs');
+const { logDebugMessageToConsole } = require('../utils/helpers');
+const { node_MonetizationAll, node_MonetizationAdd, node_MonetizationDelete } = require('../utils/node-communications');
 
-const { 
-    logDebugMessageToConsole, getPublicDirectoryPath
-} = require('../utils/helpers');
-const { 
-    node_isAuthenticated, node_doSignout, node_WalletAddressAll, node_WalletAddressAdd, node_WalletAddressDelete
-} = require('../utils/node-communications');
-
-
-function root_GET(req, res) {
-    const jwtToken = req.session.jwtToken;
-    
-    node_isAuthenticated(jwtToken)
-    .then(nodeResponseData => {
-        if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-
-            node_doSignout(req, res);
-        }
-        else {
-            if(nodeResponseData.isAuthenticated) {
-                const pagePath = path.join(getPublicDirectoryPath(), 'pages/monetization.html');
-                const fileStream = fs.createReadStream(pagePath);
-                res.setHeader('Content-Type', 'text/html');
-                fileStream.pipe(res);
+function monetizationAll_GET() {
+    return new Promise(function(resolve, reject) {
+        node_MonetizationAll()
+        .then(nodeResponseData => {
+            if(nodeResponseData.isError) {
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                
+                resolve({isError: true, message: nodeResponseData.message});
             }
             else {
-                res.redirect('/account/signin');
+                const cryptoWalletAddresses = nodeResponseData.cryptoWalletAddresses;
+
+                resolve({isError: false, cryptoWalletAddresses: cryptoWalletAddresses});
             }
-        }
-    })
-    .catch(error => {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
-        
-        node_doSignout(req, res);
+        })
+        .catch(error => {
+            logDebugMessageToConsole(null, error, new Error().stack, true);
+            
+            resolve({isError: true, message: 'error communicating with the MoarTube node'});
+        });
     });
 }
 
-function walletAddressAll_GET(req, res) {
-    node_WalletAddressAll()
-    .then(nodeResponseData => {
-        if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-            
-            res.send({isError: true, message: nodeResponseData.message});
-        }
-        else {
-            const cryptoWalletAddresses = nodeResponseData.cryptoWalletAddresses;
+function monetizationAdd_POST(jwtToken, walletAddress, chain, currency) {
+    return new Promise(function(resolve, reject) {
+        node_MonetizationAdd(jwtToken, walletAddress, chain, currency)
+        .then(nodeResponseData => {
+            if(nodeResponseData.isError) {
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                
+                resolve({isError: true, message: nodeResponseData.message});
+            }
+            else {
+                const cryptoWalletAddress = nodeResponseData.cryptoWalletAddress;
 
-            res.send({isError: false, cryptoWalletAddresses: cryptoWalletAddresses});
-        }
-    })
-    .catch(error => {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
-        
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                resolve({isError: false, cryptoWalletAddress: cryptoWalletAddress});
+            }
+        })
+        .catch(error => {
+            logDebugMessageToConsole(null, error, new Error().stack, true);
+            
+            resolve({isError: true, message: 'error communicating with the MoarTube node'});
+        });
     });
 }
 
-function walletAddressAdd_POST(req, res) {
-    const jwtToken = req.session.jwtToken;
-    
-    const walletAddress = req.body.walletAddress;
-    const chain = req.body.chain;
-    const currency = req.body.currency;
-
-    node_WalletAddressAdd(jwtToken, walletAddress, chain, currency)
-    .then(nodeResponseData => {
-        if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+function monetizationDelete_POST(jwtToken, cryptoWalletAddressId) {
+    return new Promise(function(resolve, reject) {
+        node_MonetizationDelete(jwtToken, cryptoWalletAddressId)
+        .then(nodeResponseData => {
+            if(nodeResponseData.isError) {
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                
+                resolve({isError: true, message: nodeResponseData.message});
+            }
+            else {
+                resolve({isError: false});
+            }
+        })
+        .catch(error => {
+            logDebugMessageToConsole(null, error, new Error().stack, true);
             
-            res.send({isError: true, message: nodeResponseData.message});
-        }
-        else {
-            const cryptoWalletAddress = nodeResponseData.cryptoWalletAddress;
-
-            res.send({isError: false, cryptoWalletAddress: cryptoWalletAddress});
-        }
-    })
-    .catch(error => {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
-        
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
-    });
-}
-
-function walletAddressDelete_POST(req, res) {
-    const jwtToken = req.session.jwtToken;
-    
-    const cryptoWalletAddressId = req.body.cryptoWalletAddressId;
-
-    node_WalletAddressDelete(jwtToken, cryptoWalletAddressId)
-    .then(nodeResponseData => {
-        if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-            
-            res.send({isError: true, message: nodeResponseData.message});
-        }
-        else {
-            res.send({isError: false});
-        }
-    })
-    .catch(error => {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
-        
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+            resolve({isError: true, message: 'error communicating with the MoarTube node'});
+        });
     });
 }
 
 module.exports = {
-    root_GET,
-    walletAddressAll_GET,
-    walletAddressAdd_POST,
-    walletAddressDelete_POST
+    monetizationAll_GET,
+    monetizationAdd_POST,
+    monetizationDelete_POST
 }

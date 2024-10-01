@@ -1520,7 +1520,7 @@ function node_removeAdaptiveStreamSegment(jwtToken, videoId, format, resolution,
     });
 }
 
-function node_WalletAddressAll() {
+function node_MonetizationAll() {
     return new Promise(function(resolve, reject) {
         axios.get(getMoarTubeNodeUrl() + '/monetization/all')
         .then(response => {
@@ -1534,7 +1534,7 @@ function node_WalletAddressAll() {
     });
 }
 
-function node_WalletAddressAdd(jwtToken, walletAddress, chain, currency) {
+function node_MonetizationAdd(jwtToken, walletAddress, chain, currency) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/monetization/add', {
             walletAddress: walletAddress,
@@ -1556,7 +1556,7 @@ function node_WalletAddressAdd(jwtToken, walletAddress, chain, currency) {
     });
 }
 
-function node_WalletAddressDelete(jwtToken, cryptoWalletAddressId) {
+function node_MonetizationDelete(jwtToken, cryptoWalletAddressId) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/monetization/delete', {
             cryptoWalletAddressId: cryptoWalletAddressId
@@ -1707,9 +1707,9 @@ module.exports = {
     node_setContentChecked,
     node_getVideoSources,
     node_getStreamMeta,
-    node_WalletAddressAll,
-    node_WalletAddressAdd,
-    node_WalletAddressDelete,
+    node_MonetizationAll,
+    node_MonetizationAdd,
+    node_MonetizationDelete,
     node_LinksAll,
     node_LinksAdd,
     node_LinksDelete
