@@ -39,34 +39,17 @@ function root_GET(req, res) {
 }
 
 function walletAddressAll_GET(req, res) {
-    const jwtToken = req.session.jwtToken;
-    
-    node_isAuthenticated(jwtToken)
+    node_WalletAddressAll()
     .then(nodeResponseData => {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-
+            
             res.send({isError: true, message: nodeResponseData.message});
         }
         else {
-            node_WalletAddressAll()
-            .then(nodeResponseData => {
-                if(nodeResponseData.isError) {
-                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-                    
-                    res.send({isError: true, message: nodeResponseData.message});
-                }
-                else {
-                    const cryptoWalletAddresses = nodeResponseData.cryptoWalletAddresses;
+            const cryptoWalletAddresses = nodeResponseData.cryptoWalletAddresses;
 
-                    res.send({isError: false, cryptoWalletAddresses: cryptoWalletAddresses});
-                }
-            })
-            .catch(error => {
-                logDebugMessageToConsole(null, error, new Error().stack, true);
-                
-                res.send({isError: true, message: 'error communicating with the MoarTube node'});
-            });
+            res.send({isError: false, cryptoWalletAddresses: cryptoWalletAddresses});
         }
     })
     .catch(error => {
@@ -79,36 +62,21 @@ function walletAddressAll_GET(req, res) {
 function walletAddressAdd_POST(req, res) {
     const jwtToken = req.session.jwtToken;
     
-    node_isAuthenticated(jwtToken)
+    const walletAddress = req.body.walletAddress;
+    const chain = req.body.chain;
+    const currency = req.body.currency;
+
+    node_WalletAddressAdd(jwtToken, walletAddress, chain, currency)
     .then(nodeResponseData => {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-
+            
             res.send({isError: true, message: nodeResponseData.message});
         }
         else {
-            const walletAddress = req.body.walletAddress;
-            const chain = req.body.chain;
-            const currency = req.body.currency;
+            const cryptoWalletAddress = nodeResponseData.cryptoWalletAddress;
 
-            node_WalletAddressAdd(jwtToken, walletAddress, chain, currency)
-            .then(nodeResponseData => {
-                if(nodeResponseData.isError) {
-                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-                    
-                    res.send({isError: true, message: nodeResponseData.message});
-                }
-                else {
-                    const cryptoWalletAddress = nodeResponseData.cryptoWalletAddress;
-
-                    res.send({isError: false, cryptoWalletAddress: cryptoWalletAddress});
-                }
-            })
-            .catch(error => {
-                logDebugMessageToConsole(null, error, new Error().stack, true);
-                
-                res.send({isError: true, message: 'error communicating with the MoarTube node'});
-            });
+            res.send({isError: false, cryptoWalletAddress: cryptoWalletAddress});
         }
     })
     .catch(error => {
@@ -121,32 +89,17 @@ function walletAddressAdd_POST(req, res) {
 function walletAddressDelete_POST(req, res) {
     const jwtToken = req.session.jwtToken;
     
-    node_isAuthenticated(jwtToken)
+    const cryptoWalletAddressId = req.body.cryptoWalletAddressId;
+
+    node_WalletAddressDelete(jwtToken, cryptoWalletAddressId)
     .then(nodeResponseData => {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-
+            
             res.send({isError: true, message: nodeResponseData.message});
         }
         else {
-            const cryptoWalletAddressId = req.body.cryptoWalletAddressId;
-
-            node_WalletAddressDelete(jwtToken, cryptoWalletAddressId)
-            .then(nodeResponseData => {
-                if(nodeResponseData.isError) {
-                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-                    
-                    res.send({isError: true, message: nodeResponseData.message});
-                }
-                else {
-                    res.send({isError: false});
-                }
-            })
-            .catch(error => {
-                logDebugMessageToConsole(null, error, new Error().stack, true);
-                
-                res.send({isError: true, message: 'error communicating with the MoarTube node'});
-            });
+            res.send({isError: false});
         }
     })
     .catch(error => {

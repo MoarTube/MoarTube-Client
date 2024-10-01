@@ -3,8 +3,7 @@ const fs = require('fs');
 
 const { logDebugMessageToConsole, getPublicDirectoryPath } = require('../utils/helpers');
 const { 
-    node_isAuthenticated, node_getSettings, node_doSignout, node_getVideoReportsArchive, node_archiveVideoReport, node_removeVideoReport,
-    node_removeVideoReportArchive, node_getVideoReports
+    node_isAuthenticated, node_doSignout, node_getVideoReportsArchive, node_archiveVideoReport, node_removeVideoReport, node_removeVideoReportArchive, node_getVideoReports
 } = require('../utils/node-communications');
 
 function root_GET(req, res) {
@@ -39,7 +38,7 @@ function root_GET(req, res) {
 function all_GET(req, res) {
     const jwtToken = req.session.jwtToken;
     
-    node_isAuthenticated(jwtToken)
+    node_getVideoReports(jwtToken)
     .then(nodeResponseData => {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -47,31 +46,9 @@ function all_GET(req, res) {
             res.send({isError: true, message: nodeResponseData.message});
         }
         else {
-            if(nodeResponseData.isAuthenticated) {
-                node_getVideoReports(jwtToken)
-                .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-                        
-                        res.send({isError: true, message: nodeResponseData.message});
-                    }
-                    else {
-                        const reports = nodeResponseData.reports;
-                        
-                        res.send({isError: false, reports: reports});
-                    }
-                })
-                .catch(error => {
-                    logDebugMessageToConsole(null, error, new Error().stack, true);
-                    
-                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
-                });
-            }
-            else {
-                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
-
-                res.send({isError: true, message: 'you are not logged in'});
-            }
+            const reports = nodeResponseData.reports;
+            
+            res.send({isError: false, reports: reports});
         }
     })
     .catch(error => {
@@ -84,7 +61,7 @@ function all_GET(req, res) {
 function archiveAll_GET(req, res) {
     const jwtToken = req.session.jwtToken;
     
-    node_isAuthenticated(jwtToken)
+    node_getVideoReportsArchive(jwtToken)
     .then(nodeResponseData => {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -92,31 +69,9 @@ function archiveAll_GET(req, res) {
             res.send({isError: true, message: nodeResponseData.message});
         }
         else {
-            if(nodeResponseData.isAuthenticated) {
-                node_getVideoReportsArchive(jwtToken)
-                .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-                        
-                        res.send({isError: true, message: nodeResponseData.message});
-                    }
-                    else {
-                        const reports = nodeResponseData.reports;
-                        
-                        res.send({isError: false, reports: reports});
-                    }
-                })
-                .catch(error => {
-                    logDebugMessageToConsole(null, error, new Error().stack, true);
-                    
-                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
-                });
-            }
-            else {
-                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
-
-                res.send({isError: true, message: 'you are not logged in'});
-            }
+            const reports = nodeResponseData.reports;
+            
+            res.send({isError: false, reports: reports});
         }
     })
     .catch(error => {
@@ -129,7 +84,9 @@ function archiveAll_GET(req, res) {
 function archive_POST(req, res) {
     const jwtToken = req.session.jwtToken;
     
-    node_isAuthenticated(jwtToken)
+    const reportId = req.body.reportId;
+    
+    node_archiveVideoReport(jwtToken, reportId)
     .then(nodeResponseData => {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -137,31 +94,7 @@ function archive_POST(req, res) {
             res.send({isError: true, message: nodeResponseData.message});
         }
         else {
-            if(nodeResponseData.isAuthenticated) {
-                const reportId = req.body.reportId;
-                
-                node_archiveVideoReport(jwtToken, reportId)
-                .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-                        
-                        res.send({isError: true, message: nodeResponseData.message});
-                    }
-                    else {
-                        res.send({isError: false});
-                    }
-                })
-                .catch(error => {
-                    logDebugMessageToConsole(null, error, new Error().stack, true);
-                    
-                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
-                });
-            }
-            else {
-                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
-
-                res.send({isError: true, message: 'you are not logged in'});
-            }
+            res.send({isError: false});
         }
     })
     .catch(error => {
@@ -174,7 +107,9 @@ function archive_POST(req, res) {
 function delete_POST(req, res) {
     const jwtToken = req.session.jwtToken;
 	
-    node_isAuthenticated(jwtToken)
+    const reportId = req.body.reportId;
+    
+    node_removeVideoReport(jwtToken, reportId)
     .then(nodeResponseData => {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -182,31 +117,7 @@ function delete_POST(req, res) {
             res.send({isError: true, message: nodeResponseData.message});
         }
         else {
-            if(nodeResponseData.isAuthenticated) {
-                const reportId = req.body.reportId;
-                
-                node_removeVideoReport(jwtToken, reportId)
-                .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-                        
-                        res.send({isError: true, message: nodeResponseData.message});
-                    }
-                    else {
-                        res.send({isError: false});
-                    }
-                })
-                .catch(error => {
-                    logDebugMessageToConsole(null, error, new Error().stack, true);
-                    
-                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
-                });
-            }
-            else {
-                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
-
-                res.send({isError: true, message: 'you are not logged in'});
-            }
+            res.send({isError: false});
         }
     })
     .catch(error => {
@@ -219,7 +130,9 @@ function delete_POST(req, res) {
 function archiveDelete_POST(req, res) {
     const jwtToken = req.session.jwtToken;
     
-    node_isAuthenticated(jwtToken)
+    const archiveId = req.body.archiveId;
+    
+    node_removeVideoReportArchive(jwtToken, archiveId)
     .then(nodeResponseData => {
         if(nodeResponseData.isError) {
             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
@@ -227,31 +140,7 @@ function archiveDelete_POST(req, res) {
             res.send({isError: true, message: nodeResponseData.message});
         }
         else {
-            if(nodeResponseData.isAuthenticated) {
-                const archiveId = req.body.archiveId;
-                
-                node_removeVideoReportArchive(jwtToken, archiveId)
-                .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
-                        
-                        res.send({isError: true, message: nodeResponseData.message});
-                    }
-                    else {
-                        res.send({isError: false});
-                    }
-                })
-                .catch(error => {
-                    logDebugMessageToConsole(null, error, new Error().stack, true);
-                    
-                    res.send({isError: true, message: 'error communicating with the MoarTube node'});
-                });
-            }
-            else {
-                logDebugMessageToConsole('unauthenticated communication was rejected', null, new Error().stack, true);
-
-                res.send({isError: true, message: 'you are not logged in'});
-            }
+            res.send({isError: false});
         }
     })
     .catch(error => {

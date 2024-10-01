@@ -86,12 +86,9 @@ function node_getSettings(jwtToken) {
     });
 }
 
-function node_getAvatar(jwtToken) {
+function node_getAvatar() {
     return new Promise(function(resolve, reject) {
         axios.get(getMoarTubeNodeUrl() + '/settings/avatar', {
-          headers: {
-            Authorization: jwtToken
-          },
           responseType: 'stream'
         })
         .then(response => {
@@ -204,12 +201,9 @@ function node_getVideoData(videoId) {
     });
 }
 
-function node_getThumbnail(jwtToken, videoId) {
+function node_getThumbnail(videoId) {
     return new Promise(function(resolve, reject) {
         axios.get(getMoarTubeNodeUrl() + '/external/videos/' + videoId + '/thumbnail', {
-          headers: {
-            Authorization: jwtToken
-          },
           responseType: 'stream'
         })
         .then(response => {
@@ -247,12 +241,9 @@ function node_setThumbnail(jwtToken, videoId, thumbnailPath) {
     });
 }
 
-function node_getPreview(jwtToken, videoId) {
+function node_getPreview(videoId) {
     return new Promise(function(resolve, reject) {
         axios.get(getMoarTubeNodeUrl() + '/external/videos/' + videoId + '/preview', {
-          headers: {
-            Authorization: jwtToken
-          },
           responseType: 'stream'
         })
         .then(response => {
@@ -290,12 +281,9 @@ function node_setPreview(jwtToken, videoId, previewPath) {
     });
 }
 
-function node_getPoster(jwtToken, videoId) {
+function node_getPoster(videoId) {
     return new Promise(function(resolve, reject) {
         axios.get(getMoarTubeNodeUrl() + '/external/videos/' + videoId + '/poster', {
-          headers: {
-            Authorization: jwtToken
-          },
           responseType: 'stream'
         })
         .then(response => {
@@ -584,24 +572,6 @@ function node_searchComments(jwtToken, videoId, searchTerm, limit, timestamp) {
     });
 }
 
-function node_getAllComments(jwtToken) {
-    return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/videos/comments/all', {
-          headers: {
-            Authorization: jwtToken
-          }
-        })
-        .then(response => {
-            const data = response.data;
-            
-            resolve(data);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
 function node_getVideosTags(jwtToken) {
     return new Promise(function(resolve, reject) {
         axios.get(getMoarTubeNodeUrl() + '/videos/tags', {
@@ -721,7 +691,7 @@ function node_getVideosTagsAll(jwtToken) {
     });
 }
 
-function node_doVideosSearchAll(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
+function node_doVideosSearchAll(searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
     return new Promise(function(resolve, reject) {
         axios.get(getMoarTubeNodeUrl() + '/node/search', {
           params: {
@@ -730,9 +700,6 @@ function node_doVideosSearchAll(jwtToken, searchTerm, sortTerm, tagTerm, tagLimi
               tagTerm: tagTerm,
               tagLimit: tagLimit,
               timestamp: timestamp
-          },
-          headers: {
-            Authorization: jwtToken
           }
         })
         .then(response => {
@@ -1692,7 +1659,6 @@ module.exports = {
     node_setVideoPublishing,
     node_setVideoPublished,
     node_getVideoComments,
-    node_getAllComments,
     node_getVideosTags,
     node_getVideoReports,
     node_getVideoReportsArchive,
