@@ -333,7 +333,7 @@
 
             function getCryptoWalletAddresses() {
 				return new Promise(function(resolve, reject) {
-					$.ajax({type: 'GET', url: '/monetization/walletAddress/all', data: { }})
+					$.ajax({type: 'GET', url: '/monetization/all', data: { }})
 					.done(function (data, textStatus, xhr) {
 						if(data.isError) {
 							// showAlert(true, data.message);
@@ -371,10 +371,18 @@
 					const timestamp = cryptoWalletAddress.timestamp;
 					
 					const timestampFormatted = createDateTimestamp(timestamp);
+
+					let addressLink;
+					if(chainName === 'ETH') {
+						addressLink = '<a href="https://etherscan.io/address/' + walletAddress + '" target="_blank">' + walletAddress + '</a>';
+					}
+					else if(chainName === 'BNB') {
+						addressLink = '<a href="https://bscscan.com/address/' + walletAddress + '" target="_blank">' + walletAddress + '</a>';
+					}
 					
 					data.push([
 						'<button type="button" class="btn btn-icon btn-2 btn-primary" onclick="deleteCryptoWalletAddress(this)" data-cryptoWalletAddressId="' + walletAddressId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete address" data-bs-original-title="delete address"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>', 
-						walletAddress,
+						addressLink,
 						chainName,
                         currency,
 						timestampFormatted
@@ -410,7 +418,7 @@
 
                 const cryptoWalletAddressId = $(button).data('cryptowalletaddressid');
 				
-				$.ajax({type: 'POST', url: '/monetization/walletAddress/delete', data: {cryptoWalletAddressId: cryptoWalletAddressId}})
+				$.ajax({type: 'POST', url: '/monetization/delete', data: {cryptoWalletAddressId: cryptoWalletAddressId}})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
 						showAlert(true, data.message);
@@ -533,7 +541,7 @@
 						const chain = result.value.chain;
                         const currency = result.value.currency;
 						
-						$.ajax({type: 'POST', url: '/monetization/walletAddress/add', data: {walletAddress: walletAddress, chain: chain, currency: currency }})
+						$.ajax({type: 'POST', url: '/monetization/add', data: {walletAddress: walletAddress, chain: chain, currency: currency }})
 						.done(function (data, textStatus, xhr) {
 							if(data.isError) {
 								showAlert(true, data.message);
