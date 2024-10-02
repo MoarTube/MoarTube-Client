@@ -124,24 +124,6 @@ function node_setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeAddress
     });
 }
 
-function node_getReportCount(jwtToken) {
-    return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/reports/count', {
-          headers: {
-            Authorization: jwtToken
-          }
-        })
-        .then(response => {
-            const data = response.data;
-            
-            resolve(data);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
 function node_stopVideoImporting(jwtToken, videoId) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/importing/stop', {
@@ -1638,7 +1620,6 @@ module.exports = {
     node_doSignout,
     node_getSettings,
     node_setExternalNetwork,
-    node_getReportCount,
     node_stopVideoImporting,
     node_doVideosSearch,
     node_getThumbnail,

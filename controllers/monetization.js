@@ -17,9 +17,7 @@ function monetizationAll_GET() {
             }
         })
         .catch(error => {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
-            
-            resolve({isError: true, message: 'error communicating with the MoarTube node'});
+            reject(error);
         });
     });
 }
@@ -40,9 +38,7 @@ function monetizationAdd_POST(jwtToken, walletAddress, chain, currency) {
             }
         })
         .catch(error => {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
-            
-            resolve({isError: true, message: 'error communicating with the MoarTube node'});
+            reject(error);
         });
     });
 }
@@ -61,9 +57,7 @@ function monetizationDelete_POST(jwtToken, cryptoWalletAddressId) {
             }
         })
         .catch(error => {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
-            
-            resolve({isError: true, message: 'error communicating with the MoarTube node'});
+            reject(error);
         });
     });
 }

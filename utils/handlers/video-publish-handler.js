@@ -117,6 +117,8 @@ function startPublishingJob(publishingJob) {
                         resolve(publishingJob);
                     })
                     .catch(error => {
+                        logDebugMessageToConsole(null, error, new Error().stack, true);
+                        
                         reject(publishingJob);
                     });
                 })
@@ -290,9 +292,7 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
                 }
             })
             .catch(error => {
-                logDebugMessageToConsole(null, error, new Error().stack, true);
-                
-                reject({isError: true, message: 'error communicating with the MoarTube node'});
+                reject(error);
             });
         }
         else {

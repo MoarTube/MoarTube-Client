@@ -30,9 +30,7 @@ function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort, remem
                 performSignIn('https', 'wss', moarTubeNodeIp, moarTubeNodePort);
             })
             .catch(error => {
-                logDebugMessageToConsole(null, error, new Error().stack, true);
-                
-                resolve({isError: true, message: 'error communicating with the MoarTube node'});
+                reject(error);
             });
         });
         
@@ -151,9 +149,7 @@ function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort, remem
                 }
             })
             .catch(error => {
-                logDebugMessageToConsole(null, error, new Error().stack, true);
-                
-                resolve({isError: true, message: 'error communicating with the MoarTube node'});
+                reject(error);
             });
         }
     });

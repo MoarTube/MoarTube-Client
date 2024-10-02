@@ -30,7 +30,6 @@ const linksRoutes = require('./routes/links');
 const settingsRoutes = require('./routes/settings');
 const videosRoutes = require('./routes/videos');
 const streamsRoutes = require('./routes/streams');
-const reportsRoutes = require('./routes/reports');
 const reportsVideosRoutes = require('./routes/reports-videos');
 const reportsCommentsRoutes = require('./routes/reports-comments');
 const commentsRoutes = require('./routes/comments');
@@ -91,7 +90,6 @@ async function startClient() {
 	app.use('/settings', settingsRoutes);
 	app.use('/videos', videosRoutes);
 	app.use('/streams', streamsRoutes);
-	app.use('/reports', reportsRoutes);
 	app.use('/reports/videos', reportsVideosRoutes);
 	app.use('/reports/comments', reportsCommentsRoutes);
 	app.use('/comments', commentsRoutes);

@@ -32,8 +32,8 @@ router.get('/signin', (req, res) => {
     })
     .catch(error => {
         logDebugMessageToConsole(null, error, new Error().stack, true);
-        
-        res.send('error communicating with the MoarTube node');
+
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
     });
 });
 

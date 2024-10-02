@@ -17,9 +17,7 @@ function linksAll_GET() {
             }
         })
         .catch(error => {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
-            
-            resolve({isError: true, message: 'error communicating with the MoarTube node'});
+            reject(error);
         });
     });
 }
@@ -40,9 +38,7 @@ function linksAdd_POST(jwtToken, url, svgGraphic) {
             }
         })
         .catch(error => {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
-            
-            resolve({isError: true, message: 'error communicating with the MoarTube node'});
+            reject(error);
         });
     });
 }
@@ -61,9 +57,7 @@ function linksDelete_POST(jwtToken, linkId) {
             }
         })
         .catch(error => {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
-            
-            resolve({isError: true, message: 'error communicating with the MoarTube node'});
+            reject(error);
         });
     });
 }

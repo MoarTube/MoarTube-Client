@@ -15,9 +15,7 @@ function search_GET(searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
             }
         })
         .catch(error => {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
-            
-            resolve({isError: true, message: 'error communicating with the MoarTube node'});
+            reject(error);
         });
     });
 }
@@ -36,9 +34,7 @@ function newContentCounts_GET(jwtToken) {
             }
         })
         .catch(error => {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
-            
-            resolve({isError: true, message: 'error communicating with the MoarTube node'});
+            reject(error);
         });
     });
 }
@@ -57,9 +53,7 @@ function contentChecked_POST(jwtToken, contentType) {
             }
         })
         .catch(error => {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
-            
-            resolve({isError: true, message: 'error communicating with the MoarTube node'});
+            reject(error);
         });
     });
 }
