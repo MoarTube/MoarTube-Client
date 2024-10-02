@@ -10,7 +10,7 @@ const { addProcessToLiveStreamTracker, isLiveStreamStopping, liveStreamExists } 
 
 function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUrl, format, resolution, isRecordingStreamRemotely, isRecordingStreamLocally) {
     return new Promise(async function(resolve, reject) {
-        logDebugMessageToConsole('starting live stream for id: ' + videoId, null, null, true);
+        logDebugMessageToConsole('starting live stream for id: ' + videoId, null, null);
 
         await deleteDirectoryRecursive(path.join(getAppDataVideosDirectoryPath(), videoId));
         
@@ -39,7 +39,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
         process.stderr.on('data', function (data) {
             if(!isLiveStreamStopping(videoId)) {
                 const stderrTemp = Buffer.from(data).toString();
-                logDebugMessageToConsole(stderrTemp, null, null, true);
+                logDebugMessageToConsole(stderrTemp, null, null);
                 
                 if(stderrTemp.indexOf('time=') != -1) {
                     let index = stderrTemp.indexOf('time=');
@@ -49,14 +49,14 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                     node_setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp)
                     .then(nodeResponseData => {
                         if(nodeResponseData.isError) {
-                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                         }
                         else {
                             // do nothing
                         }
                     })
                     .catch(error => {
-                        logDebugMessageToConsole(null, error, new Error().stack, true);
+                        logDebugMessageToConsole(null, error, new Error().stack);
                     });
                 }
             }
@@ -65,7 +65,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
         let segmentInterval;
 
         process.on('spawn', function (code) {
-            logDebugMessageToConsole('performStreamingJob ffmpeg process spawned with arguments: ' + ffmpegArguments, null, null, true);
+            logDebugMessageToConsole('performStreamingJob ffmpeg process spawned with arguments: ' + ffmpegArguments, null, null);
             
             const segmentHistoryLength = 20; // client will maintain a sliding window consisting of the 20 most recent segments
 
@@ -81,7 +81,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                         node_getNextExpectedSegmentIndex(jwtToken, videoId, format, resolution)
                         .then(nodeResponseData => {
                             if(nodeResponseData.isError) {
-                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
 
                                 clearInterval(segmentInterval);
 
@@ -105,13 +105,13 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                     });
                                 }
                                 
-                                logDebugMessageToConsole('node expects the next segment index to be sent: ' + nextExpectedSegmentIndex, null, null, true);
+                                logDebugMessageToConsole('node expects the next segment index to be sent: ' + nextExpectedSegmentIndex, null, null);
                                 
                                 const expectedSegmentFileName = 'segment-' + resolution + '-' + nextExpectedSegmentIndex + '.ts';
                                 const expectedSegmentFilePath = path.join(segmentsDirectoryPath, '/' + expectedSegmentFileName);
                                 
                                 if(fs.existsSync(manifestFilePath) && fs.existsSync(expectedSegmentFilePath)) {
-                                    logDebugMessageToConsole('generating live images for video: ' + videoId, null, null, true);
+                                    logDebugMessageToConsole('generating live images for video: ' + videoId, null, null);
 
                                     const directoryPaths = [
                                         {fileName : manifestFileName, filePath: manifestFilePath}, 
@@ -121,7 +121,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                     node_uploadStream(jwtToken, videoId, 'm3u8', resolution, directoryPaths)
                                     .then(nodeResponseData => {
                                         if(nodeResponseData.isError) {
-                                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                         }
                                         else {
                                             if(isRecordingStreamLocally) {
@@ -133,24 +133,24 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                                 });
 
                                                 inputStream.on('error', error => {
-                                                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                                                    logDebugMessageToConsole(null, error, new Error().stack);
                                                 });
 
                                                 inputStream.pipe(outputStream)
                                                 .on('error', error => {
-                                                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                                                    logDebugMessageToConsole(null, error, new Error().stack);
                                                 });
                                             }
                                         }
                                     })
                                     .catch(error => {
-                                        logDebugMessageToConsole(null, error, new Error().stack, true);
+                                        logDebugMessageToConsole(null, error, new Error().stack);
                                     });
                                     
                                     node_getVideoBandwidth(jwtToken, videoId)
                                     .then(nodeResponseData => {
                                         if(nodeResponseData.isError) {
-                                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                         }
                                         else {
                                             const bandwidth = nodeResponseData.bandwidth;
@@ -159,7 +159,7 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                         }
                                     })
                                     .catch(error => {
-                                        logDebugMessageToConsole(null, error, new Error().stack, true);
+                                        logDebugMessageToConsole(null, error, new Error().stack);
                                     });
                                     
                                     if(!isRecordingStreamRemotely) {
@@ -171,14 +171,14 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                             node_removeAdaptiveStreamSegment(jwtToken, videoId, format, resolution, segmentName)
                                             .then(nodeResponseData => {
                                                 if(nodeResponseData.isError) {
-                                                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                                 }
                                                 else {
-                                                    logDebugMessageToConsole('segment removed: ' + segmentName, null, null, true);
+                                                    logDebugMessageToConsole('segment removed: ' + segmentName, null, null);
                                                 }
                                             })
                                             .catch(error => {
-                                                logDebugMessageToConsole(null, error, new Error().stack, true);
+                                                logDebugMessageToConsole(null, error, new Error().stack);
                                             });
                                         }
                                     }
@@ -200,15 +200,15 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                         ]);
                                         
                                         process.on('spawn', function (code) {
-                                            logDebugMessageToConsole('live source image generating ffmpeg process spawned', null, null, true);
+                                            logDebugMessageToConsole('live source image generating ffmpeg process spawned', null, null);
                                         });
                                         
                                         process.on('exit', function (code) {
-                                            logDebugMessageToConsole('live source image generating ffmpeg process exited with exit code: ' + code, null, null, true);
+                                            logDebugMessageToConsole('live source image generating ffmpeg process exited with exit code: ' + code, null, null);
     
                                             if(code === 0) {
                                                 if(fs.existsSync(sourceImagePath)) {
-                                                    logDebugMessageToConsole('generated live source image for video: ' + videoId, null, null, true);
+                                                    logDebugMessageToConsole('generated live source image for video: ' + videoId, null, null);
     
                                                     uploadingThumbnail = true;
                                                     uploadingPreview = true;
@@ -223,18 +223,18 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                                         node_setThumbnail(jwtToken, videoId, thumbnailImagePath)
                                                         .then(nodeResponseData => {
                                                             if(nodeResponseData.isError) {
-                                                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                                             }
                                                         })
                                                         .catch(error => {
-                                                            logDebugMessageToConsole(null, error, new Error().stack, true);
+                                                            logDebugMessageToConsole(null, error, new Error().stack);
                                                         })
                                                         .finally(() => {
                                                             uploadingThumbnail = false;
                                                         });
                                                     })
                                                     .catch(error => {
-                                                        logDebugMessageToConsole(null, error, new Error().stack, true);
+                                                        logDebugMessageToConsole(null, error, new Error().stack);
     
                                                         uploadingThumbnail = false;
                                                     });
@@ -244,18 +244,18 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                                         node_setPreview(jwtToken, videoId, previewImagePath)
                                                         .then(nodeResponseData => {
                                                             if(nodeResponseData.isError) {
-                                                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                                             }
                                                         })
                                                         .catch(error => {
-                                                            logDebugMessageToConsole(null, error, new Error().stack, true);
+                                                            logDebugMessageToConsole(null, error, new Error().stack);
                                                         })
                                                         .finally(() => {
                                                             uploadingPreview = false;
                                                         });
                                                     })
                                                     .catch(error => {
-                                                        logDebugMessageToConsole(null, error, new Error().stack, true);
+                                                        logDebugMessageToConsole(null, error, new Error().stack);
     
                                                         uploadingPreview = false;
                                                     });
@@ -265,39 +265,39 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
                                                         node_setPoster(jwtToken, videoId, posterImagePath)
                                                         .then(nodeResponseData => {
                                                             if(nodeResponseData.isError) {
-                                                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                                             }
                                                         })
                                                         .catch(error => {
-                                                            logDebugMessageToConsole(null, error, new Error().stack, true);
+                                                            logDebugMessageToConsole(null, error, new Error().stack);
                                                         })
                                                         .finally(() => {
                                                             uploadingPoster = false;
                                                         });
                                                     })
                                                     .catch(error => {
-                                                        logDebugMessageToConsole(null, error, new Error().stack, true);
+                                                        logDebugMessageToConsole(null, error, new Error().stack);
     
                                                         uploadingPoster = false;
                                                     });
                                                 } else {
-                                                    logDebugMessageToConsole('expected a live source image to be generated in <' + sourceImagePath + '> but found none', null, null, true);
+                                                    logDebugMessageToConsole('expected a live source image to be generated in <' + sourceImagePath + '> but found none', null, null);
                                                 }
                                             }
                                             else {
-                                                logDebugMessageToConsole('live source image generating exited with code: ' + code, null, null, true);
+                                                logDebugMessageToConsole('live source image generating exited with code: ' + code, null, null);
                                             }
                                         });
                                         
                                         process.on('error', function (code) {
-                                            logDebugMessageToConsole('live source image generating errorred with error code: ' + code, null, null, true);
+                                            logDebugMessageToConsole('live source image generating errorred with error code: ' + code, null, null);
                                         });
                                     }
                                 }
                             }
                         })
                         .catch(error => {
-                            logDebugMessageToConsole(null, error, new Error().stack, true);
+                            logDebugMessageToConsole(null, error, new Error().stack);
                         });
                     })();
                 }
@@ -310,41 +310,41 @@ function performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUr
         });
         
         process.on('exit', function (code) {
-            logDebugMessageToConsole('performStreamingJob live stream process exited with exit code: ' + code, null, null, true);
+            logDebugMessageToConsole('performStreamingJob live stream process exited with exit code: ' + code, null, null);
             
             if(segmentInterval != null) {
                 clearInterval(segmentInterval);
             }
             
             if(liveStreamExists(videoId)) {
-                logDebugMessageToConsole('performStreamingJob checking if live stream process was interrupted by MoarTube Client...', null, null, true);
+                logDebugMessageToConsole('performStreamingJob checking if live stream process was interrupted by MoarTube Client...', null, null);
                 
                 if(!isLiveStreamStopping(videoId)) {
-                    logDebugMessageToConsole('performStreamingJob determined live stream process was not interrupted by MoarTube Client', null, null, true);
+                    logDebugMessageToConsole('performStreamingJob determined live stream process was not interrupted by MoarTube Client', null, null);
                     
                     websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
                     
                     node_stopVideoStreaming(jwtToken, videoId)
                     .then((nodeResponseData) => {
                         if(nodeResponseData.isError) {
-                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                         }
                         else {
                             websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId }}});
                         }
                     })
                     .catch(error => {
-                        logDebugMessageToConsole(null, error, new Error().stack, true);
+                        logDebugMessageToConsole(null, error, new Error().stack);
                     });
                 }
                 else {
-                    logDebugMessageToConsole('performStreamingJob determined live stream process was interrupted by MoarTube Client', null, null, true);
+                    logDebugMessageToConsole('performStreamingJob determined live stream process was interrupted by MoarTube Client', null, null);
                 }
             }
         });
         
         process.on('error', function (code) {
-            logDebugMessageToConsole('performEncodingJob errored with error code: ' + code, null, null, true);
+            logDebugMessageToConsole('performEncodingJob errored with error code: ' + code, null, null);
             
             if(segmentInterval != null) {
                 clearInterval(segmentInterval);

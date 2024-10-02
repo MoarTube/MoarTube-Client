@@ -18,7 +18,7 @@ let ffmpegPath;
 let websocketServer;
 let websocketClient;
 
-function logDebugMessageToConsole(message, error, stackTrace, isLoggingToFile) {
+function logDebugMessageToConsole(message, error, stackTrace) {
     const date = new Date(Date.now());
     const year = date.getFullYear();
     const month = ('0' + (date.getMonth() + 1)).slice(-2);
@@ -27,41 +27,29 @@ function logDebugMessageToConsole(message, error, stackTrace, isLoggingToFile) {
     const minutes = ('0' + date.getMinutes()).slice(-2);
     const seconds = ('0' + date.getSeconds()).slice(-2);
     const humanReadableTimestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-
-    if(message == null) {
-        message = 'none';
-    }
     
     let errorMessage = '<message: ' + message + ', date: ' + humanReadableTimestamp + '>';
 
     if(error != null) {
-        if(error.message != null) {
-            errorMessage += '\n' + error.message + '\n';
-        }
-
         if(error.stack != null) {
-            errorMessage += '\n' + error.stack + '\n';
+            errorMessage += '\n' + error.stack;
         }
         else if(error.stackTrace != null) {
-            errorMessage += '\n' + error.stackTrace + '\n';
-        }
-        else {
-            errorMessage += '\n' + error + '\n';
+            errorMessage += '\n' + error.stackTrace;
         }
     }
 
     if(stackTrace != null) {
-        errorMessage += '\n' + stackTrace + '\n';
+        errorMessage += '\n' + stackTrace;
     }
     
     console.log(errorMessage);
-    
-    errorMessage += '\n';
 
+    errorMessage += '\n';
+    
     /*
     if(isLoggingToFile) {
-        const logFilePath = path.join(__dirname, '/_client_log.txt');
-        
+        const logFilePath = path.join(__dirname, '/_node_log.txt');
         fs.appendFileSync(logFilePath, errorMessage);
     }
     */
@@ -127,7 +115,7 @@ function detectSystemGpu() {
             resolve({processingAgentName: processingAgentName, processingAgentModel: processingAgentModel});
         })
         .catch(function(error) {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
+            logDebugMessageToConsole(null, error, new Error().stack);
             
             reject(error);
         });
@@ -146,7 +134,7 @@ function detectSystemCpu() {
             resolve({processingAgentName: processingAgentName, processingAgentModel: processingAgentModel});
         })
         .catch(function(error) {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
+            logDebugMessageToConsole(null, error, new Error().stack);
             
             reject(error);
         });
@@ -183,19 +171,19 @@ function getNetworkAddresses() {
 
 function performEncodingDecodingAssessment() {
     return new Promise(async function(resolve, reject) {
-        logDebugMessageToConsole('assessing system encoding/decoding capabilities', null, null, true);
+        logDebugMessageToConsole('assessing system encoding/decoding capabilities', null, null);
         
         try {
             const systemCpu = await detectSystemCpu();
             const systemGpu = await detectSystemGpu();
             
-            logDebugMessageToConsole('CPU detected: ' + systemCpu.processingAgentName + ' ' + systemCpu.processingAgentModel, null, null, true);
-            logDebugMessageToConsole('GPU detected: ' + systemGpu.processingAgentName + ' ' + systemGpu.processingAgentModel, null, null, true);
+            logDebugMessageToConsole('CPU detected: ' + systemCpu.processingAgentName + ' ' + systemCpu.processingAgentModel, null, null);
+            logDebugMessageToConsole('GPU detected: ' + systemGpu.processingAgentName + ' ' + systemGpu.processingAgentModel, null, null);
             
             resolve();
         }
         catch(error) {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
+            logDebugMessageToConsole(null, error, new Error().stack);
             
             process.exit();
         }
@@ -204,7 +192,7 @@ function performEncodingDecodingAssessment() {
 
 function cleanVideosDirectory() {
     return new Promise(function(resolve, reject) {
-        logDebugMessageToConsole('cleaning imported video directories', null, null, true);
+        logDebugMessageToConsole('cleaning imported video directories', null, null);
         
         if(fs.existsSync(getAppDataVideosDirectoryPath())) {
             fs.readdir(getAppDataVideosDirectoryPath(), function(error, videoDirectories) {
@@ -259,9 +247,9 @@ function setFfmpegPath(value) {
 
         const execSync = require('child_process').execSync;
         
-        logDebugMessageToConsole('using ffmpeg at path: ' + ffmpegPath, null, null, true);
+        logDebugMessageToConsole('using ffmpeg at path: ' + ffmpegPath, null, null);
 
-        logDebugMessageToConsole(execSync(getFfmpegPath() + ' -version').toString(), null, null, true);
+        logDebugMessageToConsole(execSync(getFfmpegPath() + ' -version').toString(), null, null);
     }
     else {
         throw new Error('ffmpeg does not exist at path: ' + value);
@@ -364,61 +352,61 @@ function getWebsocketClient() {
 /* setters */
 
 function setPublicDirectoryPath(path) {
-    logDebugMessageToConsole('configured MoarTube Client to use public directory path: ' + path, null, null, true);
+    logDebugMessageToConsole('configured MoarTube Client to use public directory path: ' + path, null, null);
 
     publicDirectory = path;
 }
 
 function setAppDataDirectoryPath(path) {
-    logDebugMessageToConsole('configured MoarTube Client to use AppData directory path: ' + path, null, null, true);
+    logDebugMessageToConsole('configured MoarTube Client to use AppData directory path: ' + path, null, null);
 
     appDataDirectory = path;
 }
 
 function setAppDataCertificatesDirectoryPath(path) {
-    logDebugMessageToConsole('configured MoarTube Client to use AppData certificates directory path: ' + path, null, null, true);
+    logDebugMessageToConsole('configured MoarTube Client to use AppData certificates directory path: ' + path, null, null);
 
     appDataCertificatesDirectory = path;
 }
 
 function setAppDataVideosDirectoryPath(path) {
-    logDebugMessageToConsole('configured MoarTube Client to use AppData videos directory path: ' + path, null, null, true);
+    logDebugMessageToConsole('configured MoarTube Client to use AppData videos directory path: ' + path, null, null);
 
     appDataVideosDirectory = path;
 }
 
 function setAppDataImagesDirectoryPath(path) {
-    logDebugMessageToConsole('configured MoarTube Client to use AppData images directory path: ' + path, null, null, true);
+    logDebugMessageToConsole('configured MoarTube Client to use AppData images directory path: ' + path, null, null);
 
     appDataImagesDirectory = path;
 }
 
 function setMoarTubeClientPort(port) {
-    logDebugMessageToConsole('configured MoarTube Client to use port: ' + port, null, null, true);
+    logDebugMessageToConsole('configured MoarTube Client to use port: ' + port, null, null);
     
     moartubeClientPort = port;
 }
 
 function setMoarTubeNodeIp(ip) {
-    logDebugMessageToConsole('configured MoarTube Client to use MoarTube Node ip: ' + ip, null, null, true);
+    logDebugMessageToConsole('configured MoarTube Client to use MoarTube Node ip: ' + ip, null, null);
 
     moartubeNodeIp = ip;
 }
 
 function setMoarTubeNodePort(port) {
-    logDebugMessageToConsole('configured MoarTube Client to use MoarTube Node port: ' + port, null, null, true);
+    logDebugMessageToConsole('configured MoarTube Client to use MoarTube Node port: ' + port, null, null);
 
     moartubeNodePort = port;
 }
 
 function setMoarTubeNodeHttpProtocol(httpProtocol) {
-    logDebugMessageToConsole('configured MoarTube Client to use MoarTube Node http protocol: ' + httpProtocol, null, null, true);
+    logDebugMessageToConsole('configured MoarTube Client to use MoarTube Node http protocol: ' + httpProtocol, null, null);
 
     moartubeNodeHttpProtocol = httpProtocol;
 }
 
 function setMoarTubeNodeWebsocketProtocol(websocketprotocol) {
-    logDebugMessageToConsole('configured MoarTube Client to use MoarTube Node websocket protocol: ' + websocketprotocol, null, null, true);
+    logDebugMessageToConsole('configured MoarTube Client to use MoarTube Node websocket protocol: ' + websocketprotocol, null, null);
 
     moartubeNodeWebsocketProtocol = websocketprotocol;
 }
@@ -426,19 +414,19 @@ function setMoarTubeNodeWebsocketProtocol(websocketprotocol) {
 function setClientSettings(clientSettings) {
     const clientSettingsString = JSON.stringify(clientSettings);
 
-    logDebugMessageToConsole('configured MoarTube Client to use client settings: ' + clientSettingsString, null, null, true);
+    logDebugMessageToConsole('configured MoarTube Client to use client settings: ' + clientSettingsString, null, null);
 
 	fs.writeFileSync(path.join(getAppDataDirectoryPath(), '_client_settings.json'), clientSettingsString);
 }
 
 function setWebsocketServer(wss) {
-    logDebugMessageToConsole('configured MoarTube Client with websocket server', null, null, true);
+    logDebugMessageToConsole('configured MoarTube Client with websocket server', null, null);
 
     websocketServer = wss;
 }
 
 function setWebsocketClient(wsc) {
-    logDebugMessageToConsole('configured MoarTube Client with websocket client', null, null, true);
+    logDebugMessageToConsole('configured MoarTube Client with websocket client', null, null);
 
     websocketClient = wsc;
 }

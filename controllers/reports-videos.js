@@ -6,7 +6,7 @@ function all_GET(jwtToken) {
         node_getVideoReports(jwtToken)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -27,7 +27,7 @@ function archiveAll_GET(jwtToken) {
         node_getVideoReportsArchive(jwtToken)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -48,7 +48,7 @@ function archive_POST(jwtToken, reportId) {
         node_archiveVideoReport(jwtToken, reportId)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -67,7 +67,7 @@ function delete_POST(jwtToken, reportId) {
         node_removeVideoReport(jwtToken, reportId)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -86,7 +86,7 @@ function archiveDelete_POST(jwtToken, archiveId) {
         node_removeVideoReportArchive(jwtToken, archiveId)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }

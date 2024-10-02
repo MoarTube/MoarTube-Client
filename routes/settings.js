@@ -19,7 +19,7 @@ router.get('/', (req, res) => {
     node_isAuthenticated(jwtToken)
     .then(nodeResponseData => {
         if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
 
             node_doSignout(req, res);
         }
@@ -36,7 +36,7 @@ router.get('/', (req, res) => {
         }
     })
     .catch(error => {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
         
         node_doSignout(req, res);
     });
@@ -49,7 +49,7 @@ router.get('/client', (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -64,7 +64,7 @@ router.get('/node', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -79,7 +79,7 @@ router.post('/client/gpuAcceleration', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -92,7 +92,7 @@ router.get('/client/encoding/default', (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -108,7 +108,7 @@ router.post('/client/encoding', (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -123,7 +123,7 @@ router.get('/node/avatar', async (req, res) => {
         data.pipe(res);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -164,7 +164,7 @@ router.post('/node/avatar', (req, res) => {
     }).fields([{ name: 'avatar_file', maxCount: 1 }])
     (req, res, async function(error) {
         if(error) {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
+            logDebugMessageToConsole(null, error, new Error().stack);
             
             res.send({isError: true, message: 'error communicating with the MoarTube node'});
         }
@@ -177,7 +177,7 @@ router.post('/node/avatar', (req, res) => {
                 res.send(data);
             }
             catch(error) {
-                logDebugMessageToConsole(null, error, new Error().stack, true);
+                logDebugMessageToConsole(null, error, new Error().stack);
             
                 res.send({isError: true, message: 'error communicating with the MoarTube node'});
             }
@@ -194,7 +194,7 @@ router.get('/node/banner', async (req, res) => {
         data.pipe(res);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -235,7 +235,7 @@ router.post('/node/banner', (req, res) => {
     }).fields([{ name: 'banner_file', maxCount: 1 }])
     (req, res, async function(error) {
         if(error) {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
+            logDebugMessageToConsole(null, error, new Error().stack);
             
             res.send({isError: true, message: 'error communicating with the MoarTube node'});
         }
@@ -248,7 +248,7 @@ router.post('/node/banner', (req, res) => {
                 res.send(data);
             }
             catch(error) {
-                logDebugMessageToConsole(null, error, new Error().stack, true);
+                logDebugMessageToConsole(null, error, new Error().stack);
             
                 res.send({isError: true, message: 'error communicating with the MoarTube node'});
             }
@@ -267,7 +267,7 @@ router.post('/node/personalize/nodeName', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -284,7 +284,7 @@ router.post('/node/personalize/nodeAbout', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -301,7 +301,7 @@ router.post('/node/personalize/nodeId', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -346,7 +346,7 @@ router.post('/node/secure', async (req, res) => {
         }).fields([{ name: 'keyFile', maxCount: 1 }, { name: 'certFile', maxCount: 1 }, { name: 'caFiles', maxCount: 10 }])
         (req, res, async function(error) {
             if(error) {
-                logDebugMessageToConsole(null, error, new Error().stack, true);
+                logDebugMessageToConsole(null, error, new Error().stack);
                 
                 res.send({isError: true, message: 'error communicating with the MoarTube node'});
             }
@@ -361,7 +361,7 @@ router.post('/node/secure', async (req, res) => {
                     res.send(data);
                 }
                 catch(error) {
-                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    logDebugMessageToConsole(null, error, new Error().stack);
                     
                     res.send({isError: true, message: 'error communicating with the MoarTube node'});
                 }
@@ -375,7 +375,7 @@ router.post('/node/secure', async (req, res) => {
             res.send(data);
         }
         catch(error) {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
+            logDebugMessageToConsole(null, error, new Error().stack);
             
             res.send({isError: true, message: 'error communicating with the MoarTube node'});
         }
@@ -393,7 +393,7 @@ router.post('/node/network/internal', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -412,7 +412,7 @@ router.post('/node/network/external', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -431,7 +431,7 @@ router.post('/node/cloudflare/configure', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -449,7 +449,7 @@ router.post('/node/cloudflare/turnstile/configure', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -464,7 +464,7 @@ router.post('/node/cloudflare/turnstile/clear', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -479,7 +479,7 @@ router.post('/node/cloudflare/clear', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -497,7 +497,7 @@ router.post('/node/account', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }

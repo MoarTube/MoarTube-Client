@@ -6,7 +6,7 @@ function search_GET(searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
         node_doVideosSearchAll(searchTerm, sortTerm, tagTerm, tagLimit, timestamp)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -25,7 +25,7 @@ function newContentCounts_GET(jwtToken) {
         node_getNewContentCounts(jwtToken)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -44,7 +44,7 @@ function contentChecked_POST(jwtToken, contentType) {
         node_setContentChecked(jwtToken, contentType)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }

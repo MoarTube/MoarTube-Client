@@ -39,14 +39,14 @@ startClient();
 
 async function startClient() {
 	process.on('uncaughtException', (error) => {
-		logDebugMessageToConsole(null, error, error.stackTrace, true);
+		logDebugMessageToConsole(null, error, error.stackTrace);
 	});
 
 	process.on('unhandledRejection', (reason, promise) => {
-		logDebugMessageToConsole(null, reason, reason.stack, true);
+		logDebugMessageToConsole(null, reason, reason.stack);
 	});
 
-	logDebugMessageToConsole('starting MoarTube Client', null, null, true);
+	logDebugMessageToConsole('starting MoarTube Client', null, null);
 
 	loadConfig();
 
@@ -100,7 +100,7 @@ async function startClient() {
 	httpServer.requestTimeout = 0; // needed for long duration requests (streaming, large uploads)
 	
 	httpServer.listen(getMoarTubeClientPort(), function() {
-		logDebugMessageToConsole('MoarTube Client is listening on port ' + getMoarTubeClientPort(), null, null, true);
+		logDebugMessageToConsole('MoarTube Client is listening on port ' + getMoarTubeClientPort(), null, null);
 
 		const websocketServer = new webSocket.Server({ 
 			noServer: true, 
@@ -110,10 +110,10 @@ async function startClient() {
 		setWebsocketServer(websocketServer);
 
 		websocketServer.on('connection', function connection(ws) {
-			logDebugMessageToConsole('browser websocket client connected', null, null, true);
+			logDebugMessageToConsole('browser websocket client connected', null, null);
 
 			ws.on('close', () => {
-				logDebugMessageToConsole('browser websocket client disconnected', null, null, true);
+				logDebugMessageToConsole('browser websocket client disconnected', null, null);
 			});
 		});
 		
@@ -123,7 +123,7 @@ async function startClient() {
 					node_isAuthenticated(req.session.jwtToken)
 					.then(nodeResponseData => {
 						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
 						}
 						else {
 							if(nodeResponseData.isAuthenticated) {
@@ -135,7 +135,7 @@ async function startClient() {
 						}
 					})
 					.catch(error => {
-						logDebugMessageToConsole(null, error, new Error().stack, true);
+						logDebugMessageToConsole(null, error, new Error().stack);
 					});
 				});
 			});
@@ -160,7 +160,7 @@ function loadConfig() {
 	setAppDataVideosDirectoryPath(path.join(getAppDataDirectoryPath(), 'media/videos'));
 	setAppDataImagesDirectoryPath(path.join(getAppDataDirectoryPath(), 'images'));
 
-	logDebugMessageToConsole('creating required directories and files', null, null, true);
+	logDebugMessageToConsole('creating required directories and files', null, null);
 
     if (!fs.existsSync(getAppDataDirectoryPath())) {
 		fs.mkdirSync(getAppDataDirectoryPath(), { recursive: true });

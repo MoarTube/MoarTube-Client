@@ -41,7 +41,7 @@ function node_GET(jwtToken) {
         node_getSettings(jwtToken)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -158,12 +158,12 @@ function nodeAvatar_POST(jwtToken, avatarFile) {
                     node_setAvatar(jwtToken, iconDestinationFilePath, avatarDestinationFilePath)
                     .then(nodeResponseData => {
                         if(nodeResponseData.isError) {
-                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                             
                             resolve({isError: true, message: nodeResponseData.message});
                         }
                         else {
-                            logDebugMessageToConsole('uploaded avatar to node', null, null, true);
+                            logDebugMessageToConsole('uploaded avatar to node', null, null);
                             
                             fs.unlinkSync(sourceFilePath);
                             fs.unlinkSync(iconDestinationFilePath);
@@ -220,12 +220,12 @@ function nodeBanner_POST(jwtToken, bannerFile) {
                 node_setBanner(jwtToken, bannerDestinationFilePath)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                         
                         resolve({isError: true, message: nodeResponseData.message});
                     }
                     else {
-                        logDebugMessageToConsole('uploaded avatar to node', null, null, true);
+                        logDebugMessageToConsole('uploaded avatar to node', null, null);
                         
                         fs.unlinkSync(bannerDestinationFilePath);
                         
@@ -252,7 +252,7 @@ function nodePersonalizeNodeName_POST(jwtToken, nodeName) {
         node_setNodeName(jwtToken, nodeName)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -271,7 +271,7 @@ function nodePersonalizeNodeAbout_POST(jwtToken, nodeAbout) {
         node_setNodeAbout(jwtToken, nodeAbout)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -290,7 +290,7 @@ function nodePersonalizeNodeId_POST(jwtToken, nodeId) {
         node_setNodeId(jwtToken, nodeId)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -314,7 +314,7 @@ function node_Secure_POST(jwtToken, isSecure, keyFile, certFile, caFiles) {
                 node_setSecureConnection(jwtToken, isSecure, keyFile, certFile, caFiles)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                         
                         resolve({isError: true, message: nodeResponseData.message});
                     }
@@ -337,7 +337,7 @@ function node_Secure_POST(jwtToken, isSecure, keyFile, certFile, caFiles) {
             node_setSecureConnection(jwtToken, isSecure, null, null, null)
             .then(nodeResponseData => {
                 if(nodeResponseData.isError) {
-                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                     
                     resolve({isError: true, message: nodeResponseData.message});
                 }
@@ -360,7 +360,7 @@ function nodeNetworkInternal_POST(jwtToken, nodeListeningPort) {
         node_setNetworkInternal(jwtToken, nodeListeningPort)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -381,7 +381,7 @@ function nodeNetworkExternal_POST(jwtToken, publicNodeProtocol, publicNodeAddres
         node_setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -400,7 +400,7 @@ function nodeCloudflareConfigure_POST(jwtToken, cloudflareEmailAddress, cloudfla
         node_setCloudflareConfiguration(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -419,7 +419,7 @@ function nodeCloudflareTurnstileConfigure_POST(jwtToken, cloudflareTurnstileSite
         node_setCloudflareTurnstileConfiguration(jwtToken, cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -438,7 +438,7 @@ function nodeCloudflareTurnstileClear_POST(jwtToken) {
         node_CloudflareTurnstileConfigurationClear(jwtToken)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) { 
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -457,7 +457,7 @@ function nodeCloudflareClear_POST(jwtToken) {
         node_clearCloudflareConfiguration(jwtToken)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) { 
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -476,7 +476,7 @@ function nodeAccount_POST(jwtToken, username, password) {
         node_setAccountCredentials(jwtToken, username, password)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }

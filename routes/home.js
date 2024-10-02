@@ -12,7 +12,7 @@ router.get('/', (req, res) => {
     node_isAuthenticated(jwtToken)
     .then(nodeResponseData => {
         if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
             
             res.send(nodeResponseData.message);
         }
@@ -34,7 +34,7 @@ router.get('/network', (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }

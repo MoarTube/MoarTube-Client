@@ -6,7 +6,7 @@ function search_GET(jwtToken, videoId, searchTerm, limit, timestamp) {
         node_searchComments(jwtToken, videoId, searchTerm, limit, timestamp)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -25,7 +25,7 @@ function videoId_GET(jwtToken, videoId, timestamp, type, sort) {
         node_getVideoComments(jwtToken, videoId, timestamp, type, sort)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve(nodeResponseData.message);
             }
@@ -46,7 +46,7 @@ function delete_POST(jwtToken, videoId, commentId, timestamp) {
         node_removeComment(jwtToken, videoId, commentId, timestamp)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }

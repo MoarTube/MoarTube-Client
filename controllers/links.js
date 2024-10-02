@@ -6,7 +6,7 @@ function linksAll_GET() {
         node_LinksAll()
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -27,7 +27,7 @@ function linksAdd_POST(jwtToken, url, svgGraphic) {
         node_LinksAdd(jwtToken, url, svgGraphic)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -48,7 +48,7 @@ function linksDelete_POST(jwtToken, linkId) {
         node_LinksDelete(jwtToken, linkId)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }

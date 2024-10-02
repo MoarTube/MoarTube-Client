@@ -6,7 +6,7 @@ function monetizationAll_GET() {
         node_MonetizationAll()
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -27,7 +27,7 @@ function monetizationAdd_POST(jwtToken, walletAddress, chain, currency) {
         node_MonetizationAdd(jwtToken, walletAddress, chain, currency)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -48,7 +48,7 @@ function monetizationDelete_POST(jwtToken, cryptoWalletAddressId) {
         node_MonetizationDelete(jwtToken, cryptoWalletAddressId)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }

@@ -14,7 +14,7 @@ router.get('/', (req, res) => {
     node_isAuthenticated(jwtToken)
     .then(nodeResponseData => {
         if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
             
             node_doSignout(req, res);
         }
@@ -23,7 +23,7 @@ router.get('/', (req, res) => {
                 node_getSettings(jwtToken)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                         
                         node_doSignout(req, res);
                     }
@@ -35,7 +35,7 @@ router.get('/', (req, res) => {
                     }
                 })
                 .catch(error => {
-                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    logDebugMessageToConsole(null, error, new Error().stack);
                     
                     node_doSignout(req, res);
                 });
@@ -46,7 +46,7 @@ router.get('/', (req, res) => {
         }
     })
     .catch(error => {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
         
         node_doSignout(req, res);
     });
@@ -66,7 +66,7 @@ router.get('/search', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -86,7 +86,7 @@ router.get('/:videoId', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -105,7 +105,7 @@ router.post('/delete', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
     
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }

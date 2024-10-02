@@ -22,7 +22,7 @@ router.get('/', (req, res) => {
     node_isAuthenticated(jwtToken)
     .then(nodeResponseData => {
         if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
             
             node_doSignout(req, res);
         }
@@ -39,7 +39,7 @@ router.get('/', (req, res) => {
         }
     })
     .catch(error => {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
         
         node_doSignout(req, res);
     });
@@ -60,7 +60,7 @@ router.get('/search', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
         
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -69,30 +69,30 @@ router.get('/search', async (req, res) => {
 router.post('/import', (req, res) => {
     const jwtToken = req.session.jwtToken;
 
-    logDebugMessageToConsole('attempting to import video file into the client file system', null, null, true);
+    logDebugMessageToConsole('attempting to import video file into the client file system', null, null);
     
     const totalFileSize = parseInt(req.headers['content-length']);
     
     if(totalFileSize > 0) {
-        logDebugMessageToConsole('importing video into the client file system: ' + totalFileSize + ' bytes', null, null, true);
+        logDebugMessageToConsole('importing video into the client file system: ' + totalFileSize + ' bytes', null, null);
         
         const title = req.query.title;
         const description = req.query.description;
         const tags = req.query.tags;
         
-        logDebugMessageToConsole('requesting video id for imported video....', null, null, true);
+        logDebugMessageToConsole('requesting video id for imported video....', null, null);
 
         node_importVideo(jwtToken, title, description, tags)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 res.send({isError: true, message: nodeResponseData.message});
             }
             else {
                 const videoId = nodeResponseData.videoId;
                 
-                logDebugMessageToConsole('imported video file assigned video id: ' + videoId, null, null, true);
+                logDebugMessageToConsole('imported video file assigned video id: ' + videoId, null, null);
 
                 addVideoToImportVideoTracker(videoId, req);
                 
@@ -143,7 +143,7 @@ router.post('/import', (req, res) => {
                             
                             const fileName = videoId + extension;
                             
-                            logDebugMessageToConsole('imported video file and assigned temporary file name: ' + fileName, null, null, true);
+                            logDebugMessageToConsole('imported video file and assigned temporary file name: ' + fileName, null, null);
                             
                             cb(null, fileName);
                         }
@@ -151,12 +151,12 @@ router.post('/import', (req, res) => {
                 }).fields([{ name: 'video_file', maxCount: 1 }])
                 (req, res, async function(error) {
                     if(error) {
-                        logDebugMessageToConsole(nodeResponseData.message, error, new Error().stack, true);
+                        logDebugMessageToConsole(nodeResponseData.message, error, new Error().stack);
                         
                         node_setVideoError(jwtToken, videoId)
                         .then(nodeResponseData => {
                             if(nodeResponseData.isError) {
-                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                 
                                 res.send({isError: true, message: nodeResponseData.message});
                             }
@@ -165,7 +165,7 @@ router.post('/import', (req, res) => {
                             }
                         })
                         .catch(error => {
-                            logDebugMessageToConsole(null, error, new Error().stack, true);
+                            logDebugMessageToConsole(null, error, new Error().stack);
                             
                             res.send({isError: true, message: 'error communicating with the MoarTube node'});
                         });
@@ -179,7 +179,7 @@ router.post('/import', (req, res) => {
                             res.send(data);
                         }
                         catch(error) {
-                            logDebugMessageToConsole(null, error, new Error().stack, true);
+                            logDebugMessageToConsole(null, error, new Error().stack);
 
                             res.send({isError: true, message: 'error communicating with the MoarTube node'});
                         }
@@ -188,13 +188,13 @@ router.post('/import', (req, res) => {
             }
         })
         .catch(error => {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
+            logDebugMessageToConsole(null, error, new Error().stack);
             
             res.send({isError: true, message: 'error communicating with the MoarTube node'});
         });
     }
     else {
-        logDebugMessageToConsole('expected totalFileSize of non-zero but got zero', null, null, true);
+        logDebugMessageToConsole('expected totalFileSize of non-zero but got zero', null, null);
         
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -211,7 +211,7 @@ router.post('/:videoId/importing/stop', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -228,7 +228,7 @@ router.post('/:videoId/publishing/stop', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
         
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -246,7 +246,7 @@ router.post('/:videoId/publish', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -265,7 +265,7 @@ router.post('/:videoId/unpublish', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -280,7 +280,7 @@ router.get('/tags', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -295,7 +295,7 @@ router.get('/tags/all', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -312,7 +312,7 @@ router.get('/:videoId/publishes', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -327,7 +327,7 @@ router.get('/:videoId/data', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -347,7 +347,7 @@ router.post('/:videoId/data', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -364,7 +364,7 @@ router.post('/delete', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
         
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -381,7 +381,7 @@ router.post('/finalize', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
         
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -401,7 +401,7 @@ router.post('/:videoId/index/add', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -419,7 +419,7 @@ router.post('/:videoId/index/remove', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
@@ -436,7 +436,7 @@ router.get('/:videoId/thumbnail', async (req, res) => {
         data.pipe(res);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.status(404).send('thumbnail not found');
     }
@@ -453,7 +453,7 @@ router.get('/:videoId/preview', async (req, res) => {
         data.pipe(res);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.status(404).send('preview not found');
     }
@@ -470,7 +470,7 @@ router.get('/:videoId/poster', async (req, res) => {
         data.pipe(res);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.status(404).send('poster not found');
     }
@@ -515,7 +515,7 @@ router.post('/:videoId/thumbnail', (req, res) => {
     }).fields([{ name: 'thumbnail_file', maxCount: 1 }])
     (req, res, async function(error) {
         if(error) {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
+            logDebugMessageToConsole(null, error, new Error().stack);
             
             res.send({isError: true, message: 'error communicating with the MoarTube node'});
         }
@@ -528,7 +528,7 @@ router.post('/:videoId/thumbnail', (req, res) => {
                 res.send(data);
             }
             catch(error) {
-                logDebugMessageToConsole(null, error, new Error().stack, true);
+                logDebugMessageToConsole(null, error, new Error().stack);
             
                 res.send({isError: true, message: 'error communicating with the MoarTube node'});
             }
@@ -575,7 +575,7 @@ router.post('/:videoId/preview', (req, res) => {
     }).fields([{ name: 'preview_file', maxCount: 1 }])
     (req, res, async function(error) {
         if(error) {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
+            logDebugMessageToConsole(null, error, new Error().stack);
             
             res.send({isError: true, message: 'error communicating with the MoarTube node'});
         }
@@ -588,7 +588,7 @@ router.post('/:videoId/preview', (req, res) => {
                 res.send(data);
             }
             catch(error) {
-                logDebugMessageToConsole(null, error, new Error().stack, true);
+                logDebugMessageToConsole(null, error, new Error().stack);
             
                 res.send({isError: true, message: 'error communicating with the MoarTube node'});
             }
@@ -635,7 +635,7 @@ router.post('/:videoId/poster', (req, res) => {
     }).fields([{ name: 'poster_file', maxCount: 1 }])
     (req, res, async function(error) {
         if(error) {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
+            logDebugMessageToConsole(null, error, new Error().stack);
             
             res.send({isError: true, message: 'error communicating with the MoarTube node'});
         }
@@ -648,7 +648,7 @@ router.post('/:videoId/poster', (req, res) => {
                 res.send(data);
             }
             catch(error) {
-                logDebugMessageToConsole(null, error, new Error().stack, true);
+                logDebugMessageToConsole(null, error, new Error().stack);
             
                 res.send({isError: true, message: 'error communicating with the MoarTube node'});
             }
@@ -665,7 +665,7 @@ router.get('/:videoId/sources', async (req, res) => {
         res.send(data);
     }
     catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack, true);
+        logDebugMessageToConsole(null, error, new Error().stack);
 
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }

@@ -19,7 +19,7 @@ function search_GET(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp
         node_doVideosSearch(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -51,7 +51,7 @@ function import_POST(jwtToken, videoFile, videoId) {
             node_setSourceFileExtension(jwtToken, videoId, sourceFileExtension)
             .then(nodeResponseData => {
                 if(nodeResponseData.isError) {
-                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                     
                     resolve({isError: true, message: nodeResponseData.message});
                 }
@@ -66,7 +66,7 @@ function import_POST(jwtToken, videoFile, videoId) {
                     const lengthTimestamp = result.stderr.substr(durationIndex + 10, 11);
                     const lengthSeconds = timestampToSeconds(lengthTimestamp);
                     
-                    logDebugMessageToConsole('generating images for video: ' + videoId, null, null, true);
+                    logDebugMessageToConsole('generating images for video: ' + videoId, null, null);
                     
                     const imagesDirectoryPath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images');
                     const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
@@ -87,78 +87,78 @@ function import_POST(jwtToken, videoFile, videoId) {
                             sharp(sourceImagePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toFile(posterImagePath)
                             .then(() => {
                                 if(!fs.existsSync(thumbnailImagePath)) {
-                                    logDebugMessageToConsole('expected a thumbnail to be generated in <' + thumbnailImagePath + '> but found none', null, new Error().stack, true);
+                                    logDebugMessageToConsole('expected a thumbnail to be generated in <' + thumbnailImagePath + '> but found none', null, new Error().stack);
                                     
                                     resolve({isError: true, message: 'error communicating with the MoarTube node'});
                                 }
                                 else if(!fs.existsSync(previewImagePath)) {
-                                    logDebugMessageToConsole('expected a preview to be generated in <' + previewImagePath + '> but found none', null, new Error().stack, true);
+                                    logDebugMessageToConsole('expected a preview to be generated in <' + previewImagePath + '> but found none', null, new Error().stack);
                                     
                                     resolve({isError: true, message: 'error communicating with the MoarTube node'});
                                 }
                                 else if(!fs.existsSync(posterImagePath)) {
-                                    logDebugMessageToConsole('expected a poster to be generated in <' + posterImagePath + '> but found none', null, new Error().stack, true);
+                                    logDebugMessageToConsole('expected a poster to be generated in <' + posterImagePath + '> but found none', null, new Error().stack);
                                     
                                     resolve({isError: true, message: 'error communicating with the MoarTube node'});
                                 }
                                 else {
-                                    logDebugMessageToConsole('generated thumbnail, preview, and poster for video: ' + videoId, null, null, true);
+                                    logDebugMessageToConsole('generated thumbnail, preview, and poster for video: ' + videoId, null, null);
                                     
-                                    logDebugMessageToConsole('uploading thumbnail, preview, and poster to node for video: ' + videoId, null, null, true);
+                                    logDebugMessageToConsole('uploading thumbnail, preview, and poster to node for video: ' + videoId, null, null);
                                     
                                     node_setThumbnail(jwtToken, videoId, thumbnailImagePath)
                                     .then(nodeResponseData => {
                                         if(nodeResponseData.isError) {
-                                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                             
                                             resolve({isError: true, message: nodeResponseData.message});
                                         }
                                         else {
-                                            logDebugMessageToConsole('uploaded thumbnail to node for video: ' + videoId, null, null, true);
+                                            logDebugMessageToConsole('uploaded thumbnail to node for video: ' + videoId, null, null);
                                             
                                             node_setPreview(jwtToken, videoId, previewImagePath)
                                             .then(nodeResponseData => {
                                                 if(nodeResponseData.isError) {
-                                                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                                     
                                                     resolve({isError: true, message: nodeResponseData.message});
                                                 }
                                                 else {
-                                                    logDebugMessageToConsole('uploaded preview to node for video: ' + videoId, null, null, true);
+                                                    logDebugMessageToConsole('uploaded preview to node for video: ' + videoId, null, null);
                                                     
                                                     node_setPoster(jwtToken, videoId, posterImagePath)
                                                     .then(async nodeResponseData => {
                                                         if(nodeResponseData.isError) {
-                                                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                                             
                                                             resolve({isError: true, message: nodeResponseData.message});
                                                         }
                                                         else {
-                                                            logDebugMessageToConsole('uploaded poster to node for video: ' + videoId, null, null, true);
+                                                            logDebugMessageToConsole('uploaded poster to node for video: ' + videoId, null, null);
                                                             
                                                             await deleteDirectoryRecursive(imagesDirectoryPath);
                                                             
-                                                            logDebugMessageToConsole('uploading video length to node for video: ' + videoId, null, null, true);
+                                                            logDebugMessageToConsole('uploading video length to node for video: ' + videoId, null, null);
                                                             
                                                             node_setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp)
                                                             .then(nodeResponseData => {
                                                                 if(nodeResponseData.isError) {
-                                                                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                                                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                                                     
                                                                     resolve({isError: true, message: nodeResponseData.message});
                                                                 }
                                                                 else {
-                                                                    logDebugMessageToConsole('uploaded video length to node for video: ' + videoId, null, null, true);
+                                                                    logDebugMessageToConsole('uploaded video length to node for video: ' + videoId, null, null);
                                                                     
                                                                     node_setVideoImported(jwtToken, videoId)
                                                                     .then(nodeResponseData => {
                                                                         if(nodeResponseData.isError) {
-                                                                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                                                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                                                             
                                                                             resolve({isError: true, message: nodeResponseData.message});
                                                                         }
                                                                         else {
-                                                                            logDebugMessageToConsole('flagging video as imported to node for video: ' + videoId, null, null, true);
+                                                                            logDebugMessageToConsole('flagging video as imported to node for video: ' + videoId, null, null);
                                                                             
                                                                             websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'imported', videoId: videoId, lengthTimestamp: lengthTimestamp }}});
                                                                             
@@ -220,7 +220,7 @@ function videoIdImportingStop_POST(jwtToken, videoId) {
         node_stopVideoImporting(jwtToken, videoId)
         .then((nodeResponseData) => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -243,7 +243,7 @@ function videoIdPublishingStop_POST(jwtToken, videoId) {
         node_stopVideoPublishing(jwtToken, videoId)
         .then((nodeResponseData) => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -266,7 +266,7 @@ function videoIdPublish_POST(jwtToken, videoId, publishings) {
         node_getVideoData(videoId)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -285,7 +285,7 @@ function videoIdPublish_POST(jwtToken, videoId, publishings) {
                     node_getSourceFileExtension(jwtToken, videoId)
                     .then(nodeResponseData => {
                         if(nodeResponseData.isError) {
-                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                             
                             resolve({isError: true, message: nodeResponseData.message});
                         }
@@ -337,7 +337,7 @@ function videoIdUnpublish_POST(jwtToken, videoId, format, resolution) {
         node_getVideoData(videoId)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -345,7 +345,7 @@ function videoIdUnpublish_POST(jwtToken, videoId, format, resolution) {
                 node_unpublishVideo(jwtToken, videoId, format, resolution)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                         
                         resolve({isError: true, message: nodeResponseData.message});
                     }
@@ -366,7 +366,7 @@ function tags_GET(jwtToken) {
         node_getVideosTags(jwtToken)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -385,7 +385,7 @@ function tagsAll_GET(jwtToken) {
         node_getVideosTagsAll(jwtToken)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -404,7 +404,7 @@ function videoIdPublishes_GET(jwtToken, videoId) {
         node_getVideoPublishes(jwtToken, videoId)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -423,7 +423,7 @@ function videoIdData_GET(videoId) {
         node_getVideoData(videoId)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -442,7 +442,7 @@ function videoIdData_POST(jwtToken, videoId, title, description, tags) {
         node_setVideoData(jwtToken, videoId, title, description, tags)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -461,7 +461,7 @@ function delete_POST(jwtToken, videoIdsJson) {
         node_deleteVideos(jwtToken, videoIdsJson)
         .then(async nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -489,7 +489,7 @@ function finalize_POST(jwtToken, videoIdsJson) {
         node_finalizeVideos(jwtToken, videoIdsJson)
         .then(async nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -519,7 +519,7 @@ function videoIdIndexAdd_POST(jwtToken, videoId, containsAdultContent, termsOfSe
         node_addVideoToIndex(jwtToken, videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -538,7 +538,7 @@ function videoIdIndexRemove_POST(jwtToken, videoId, cloudflareTurnstileToken) {
         node_removeVideoFromIndex(jwtToken, videoId, cloudflareTurnstileToken)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
@@ -601,12 +601,12 @@ function videoIdThumbnail_POST(jwtToken, videoId, thumbnailFile) {
                 node_setThumbnail(jwtToken, videoId, destinationFilePath)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                         
                         resolve({isError: true, message: nodeResponseData.message});
                     }
                     else {
-                        logDebugMessageToConsole('uploaded live preview to node for video: ' + videoId, null, null, true);
+                        logDebugMessageToConsole('uploaded live preview to node for video: ' + videoId, null, null);
                         
                         fs.unlinkSync(destinationFilePath);
                         
@@ -640,12 +640,12 @@ function videoIdPreview_POST(jwtToken, videoId, previewFile) {
                 node_setPreview(jwtToken, videoId, destinationFilePath)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                         
                         resolve({isError: true, message: nodeResponseData.message});
                     }
                     else {
-                        logDebugMessageToConsole('uploaded live preview to node for video: ' + videoId, null, null, true);
+                        logDebugMessageToConsole('uploaded live preview to node for video: ' + videoId, null, null);
                         
                         fs.unlinkSync(destinationFilePath);
                         
@@ -679,12 +679,12 @@ function videoIdPoster_POST(jwtToken, videoId, posterFile) {
                 node_setPoster(jwtToken, videoId, destinationFilePath)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                         
                         resolve({isError: true, message: nodeResponseData.message});
                     }
                     else {
-                        logDebugMessageToConsole('uploaded live poster to node for video: ' + videoId, null, null, true);
+                        logDebugMessageToConsole('uploaded live poster to node for video: ' + videoId, null, null);
                         
                         fs.unlinkSync(destinationFilePath);
                         
@@ -710,7 +710,7 @@ function videoIdSources_GET(videoId) {
         node_getVideoSources(videoId)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }

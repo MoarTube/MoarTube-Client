@@ -22,7 +22,7 @@ function startVideoPublishInterval() {
             
             startPublishingJob(inProgressPublishingJobs[inProgressPublishingJobs.length - 1])
             .then((completedPublishingJob) => {
-                logDebugMessageToConsole('completed publishing job: ' + completedPublishingJob, null, null, true);
+                logDebugMessageToConsole('completed publishing job: ' + completedPublishingJob, null, null);
 
                 const index = findInProgressPublishJobIndex(completedPublishingJob);
                 
@@ -53,7 +53,7 @@ function startVideoPublishInterval() {
                 The publish attempt will continue until the job is either successful or the user intervenes.
                 */
 
-                logDebugMessageToConsole('failed publishing job: ' + failedPublishingJob, null, null, true);
+                logDebugMessageToConsole('failed publishing job: ' + failedPublishingJob, null, null);
 
                 const index = findInProgressPublishJobIndex(failedPublishingJob);
 
@@ -117,7 +117,7 @@ function startPublishingJob(publishingJob) {
                         resolve(publishingJob);
                     })
                     .catch(error => {
-                        logDebugMessageToConsole(null, error, new Error().stack, true);
+                        logDebugMessageToConsole(null, error, new Error().stack);
                         
                         reject(publishingJob);
                     });
@@ -168,7 +168,7 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
             
             process.stdout.on('data', function (data) {
                 const output = Buffer.from(data).toString();
-                logDebugMessageToConsole(output, null, null, true);
+                logDebugMessageToConsole(output, null, null);
             });
             
             let lengthTimestamp = '00:00:00.00';
@@ -183,7 +183,7 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
                     logDebugMessageToConsole(stderrTemp, null, null, false);
                     
                     if(stderrTemp.indexOf('time=') != -1) {
-                        logDebugMessageToConsole(stderrTemp, null, null, true);
+                        logDebugMessageToConsole(stderrTemp, null, null);
                         
                         if(lengthSeconds === 0) {
                             let index = stderrOutput.indexOf('Duration: ');
@@ -213,11 +213,11 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
             });
             
             process.on('spawn', function (code) {
-                logDebugMessageToConsole('performEncodingJob ffmpeg process spawned with arguments: ' + ffmpegArguments, null, null, true);
+                logDebugMessageToConsole('performEncodingJob ffmpeg process spawned with arguments: ' + ffmpegArguments, null, null);
             });
             
             process.on('exit', function (code) {
-                logDebugMessageToConsole('performEncodingJob ffmpeg process exited with exit code: ' + code, null, null, true);
+                logDebugMessageToConsole('performEncodingJob ffmpeg process exited with exit code: ' + code, null, null);
                 
                 if(code === 0) {
                     resolve();
@@ -228,7 +228,7 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
             });
             
             process.on('error', function (code) {
-                logDebugMessageToConsole('performEncodingJob errorred with error code: ' + code, null, null, true);
+                logDebugMessageToConsole('performEncodingJob errorred with error code: ' + code, null, null);
             });
         }
         else {
@@ -277,7 +277,7 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
             node_uploadVideo(jwtToken, videoId, format, resolution, paths)
             .then(nodeResponseData => {
                 if(nodeResponseData.isError) {
-                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                     
                     reject({isError: true, message: nodeResponseData.message});
                 }
@@ -321,31 +321,31 @@ async function finishVideoPublish(jwtToken, videoId, sourceFileExtension) {
         node_setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
             }
             else {
                 node_setVideoPublished(jwtToken, videoId)
                 .then(nodeResponseData => {
                     if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                     }
                     else {
-                        logDebugMessageToConsole('video finished publishing for id: ' + videoId, null, null, true);
+                        logDebugMessageToConsole('video finished publishing for id: ' + videoId, null, null);
                         
                         websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'published', videoId: videoId, lengthTimestamp: lengthTimestamp, lengthSeconds: lengthSeconds }}});
                     }
                 })
                 .catch(error => {
-                    logDebugMessageToConsole(null, error, new Error().stack, true);
+                    logDebugMessageToConsole(null, error, new Error().stack);
                 });
             }
         })
         .catch(error => {
-            logDebugMessageToConsole(null, error, new Error().stack, true);
+            logDebugMessageToConsole(null, error, new Error().stack);
         });
     }
     else {
-        logDebugMessageToConsole('expected video source file to be in <' + sourceFilePath + '> but found none', null, null, true);
+        logDebugMessageToConsole('expected video source file to be in <' + sourceFilePath + '> but found none', null, null);
     }
 }
 

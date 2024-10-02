@@ -23,7 +23,7 @@ function start_POST(jwtToken, title, description, tags, rtmpPort, resolution, is
                         node_streamVideo(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, resolution, videoId)
                         .then(nodeResponseData => {
                             if(nodeResponseData.isError) {
-                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                 
                                 resolve({isError: true, message: nodeResponseData.message});
                             }
@@ -35,7 +35,7 @@ function start_POST(jwtToken, title, description, tags, rtmpPort, resolution, is
                                 node_setSourceFileExtension(jwtToken, videoId, '.ts')
                                 .then(nodeResponseData => {
                                     if(nodeResponseData.isError) {
-                                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                         
                                         resolve({isError: true, message: nodeResponseData.message});
                                     }
@@ -71,7 +71,7 @@ function videoIdStop_POST(jwtToken, videoId) {
         node_stopVideoStreaming(jwtToken, videoId)
         .then((nodeResponseData) => {
             if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }

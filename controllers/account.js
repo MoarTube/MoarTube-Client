@@ -12,20 +12,20 @@ const { stopPendingPublishVideo } = require('../utils/trackers/pending-publish-v
 
 function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe) {
     return new Promise(function(resolve, reject) {
-        logDebugMessageToConsole('attempting user sign in with HTTP...', null, null, true);
+        logDebugMessageToConsole('attempting user sign in with HTTP...', null, null);
         
         node_doHeartBeat('http', moarTubeNodeIp, moarTubeNodePort)
         .then((nodeResponseData) => {
-            logDebugMessageToConsole('user signing in with HTTP available', null, null, true);
+            logDebugMessageToConsole('user signing in with HTTP available', null, null);
             
             performSignIn('http', 'ws', moarTubeNodeIp, moarTubeNodePort);
         })
         .catch(error => {
-            logDebugMessageToConsole('attempting user sign in with HTTPS...', null, null, true);
+            logDebugMessageToConsole('attempting user sign in with HTTPS...', null, null);
             
             node_doHeartBeat('https', moarTubeNodeIp, moarTubeNodePort)
             .then((nodeResponseData) => {
-                logDebugMessageToConsole('user signing in with HTTPS available', null, null, true);
+                logDebugMessageToConsole('user signing in with HTTPS available', null, null);
                 
                 performSignIn('https', 'wss', moarTubeNodeIp, moarTubeNodePort);
             })
@@ -44,7 +44,7 @@ function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort, remem
             node_doSignin(username, password, moarTubeNodeHttpProtocol, moarTubeNodeIp, moarTubeNodePort, rememberMe)
             .then((nodeResponseData) => {
                 if(nodeResponseData.isError) {
-                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack, true);
+                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                     
                     resolve({isError: true, message: nodeResponseData.message});
                 }
@@ -62,20 +62,20 @@ function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort, remem
                                 setWebsocketClient(websocketClient);
 
                                 websocketClient.on('open', () => {
-                                    logDebugMessageToConsole('MoarTube Client websocket connected to node: ' + getMoarTubeNodeWebsocketUrl(), null, null, true);
+                                    logDebugMessageToConsole('MoarTube Client websocket connected to node: ' + getMoarTubeNodeWebsocketUrl(), null, null);
                                     
                                     websocketClient.send(JSON.stringify({eventName: 'register', socketType: 'moartube_client', jwtToken: jwtToken}));
 
                                     pingIntervalTimer = setInterval(function() {
                                         if(pingTimeoutTimer == null) {
                                             pingTimeoutTimer = setTimeout(function() {
-                                                logDebugMessageToConsole('terminating likely dead MoarTube Client websocket connection to node: ' + getMoarTubeNodeWebsocketUrl(), null, null, true);
+                                                logDebugMessageToConsole('terminating likely dead MoarTube Client websocket connection to node: ' + getMoarTubeNodeWebsocketUrl(), null, null);
 
                                                 clearInterval(pingIntervalTimer);
                                                 websocketClient.terminate();
                                             }, 3000);
 
-                                            //logDebugMessageToConsole('sending ping to node: ' + getMoarTubeNodeWebsocketUrl(), null, null, true);
+                                            //logDebugMessageToConsole('sending ping to node: ' + getMoarTubeNodeWebsocketUrl(), null, null);
                                             
                                             websocketClient.send(JSON.stringify({eventName: 'ping', jwtToken: jwtToken}));
                                         }
@@ -86,13 +86,13 @@ function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort, remem
                                     const parsedMessage = JSON.parse(message);
                                     
                                     if(parsedMessage.eventName === 'pong') {
-                                        //logDebugMessageToConsole('received pong from node: ' + getMoarTubeNodeWebsocketUrl(), null, null, true);
+                                        //logDebugMessageToConsole('received pong from node: ' + getMoarTubeNodeWebsocketUrl(), null, null);
 
                                         clearTimeout(pingTimeoutTimer);
                                         pingTimeoutTimer = null;
                                     }
                                     else if(parsedMessage.eventName === 'registered') {
-                                        logDebugMessageToConsole('MoarTube Client registered websocket with node: ' + getMoarTubeNodeWebsocketUrl(), null, null, true);
+                                        logDebugMessageToConsole('MoarTube Client registered websocket with node: ' + getMoarTubeNodeWebsocketUrl(), null, null);
                                     }
                                     else if(parsedMessage.eventName === 'echo') {
                                         if(parsedMessage.data.eventName === 'video_status') {
@@ -126,7 +126,7 @@ function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort, remem
                                 });
                                 
                                 websocketClient.on('close', () => {
-                                    logDebugMessageToConsole('MoarTube Client websocket disconnected from node <' + getMoarTubeNodeWebsocketUrl() + '>', null, null, true);
+                                    logDebugMessageToConsole('MoarTube Client websocket disconnected from node <' + getMoarTubeNodeWebsocketUrl() + '>', null, null);
 
                                     clearInterval(pingIntervalTimer);
                                     clearInterval(pingTimeoutTimer);
@@ -135,7 +135,7 @@ function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort, remem
                                 });
                             }
                             catch(error) {
-                                logDebugMessageToConsole(null, error, new Error().stack, true);
+                                logDebugMessageToConsole(null, error, new Error().stack);
                             }
                         };
                         
@@ -156,7 +156,7 @@ function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort, remem
 }
 
 function signOut_GET(req, res) {
-    logDebugMessageToConsole('signing user out', null, null, true);
+    logDebugMessageToConsole('signing user out', null, null);
     
     node_doSignout(req, res);
 }
