@@ -568,9 +568,9 @@
 			function deleteComment(button) {
 				const videoId = $(button).data('videoid');
 				const commentId = $(button).data('commentid');
-				const commentTimestamp = $(button).data('commenttimestamp');
+				const timestamp = $(button).data('commenttimestamp');
 				
-				$.ajax({type: 'POST', url: '/comments/delete', data: {videoId: videoId, commentId: commentId, commentTimestamp: commentTimestamp}})
+				$.ajax({type: 'POST', url: '/comments/delete', data: {videoId: videoId, commentId: commentId, timestamp: timestamp}})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
 						showAlert(true, data.message);

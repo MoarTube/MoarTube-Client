@@ -98,9 +98,9 @@ router.post('/delete', async (req, res) => {
 
         const videoId = req.body.videoId;
         const commentId = req.body.commentId;
-        const commentTimestamp = req.body.commentTimestamp;
+        const timestamp = req.body.timestamp;
         
-        const data = await delete_POST(jwtToken, videoId, commentId, commentTimestamp);
+        const data = await delete_POST(jwtToken, videoId, commentId, timestamp);
 
         res.send(data);
     }
