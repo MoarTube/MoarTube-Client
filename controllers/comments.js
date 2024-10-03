@@ -41,9 +41,9 @@ function videoId_GET(jwtToken, videoId, timestamp, type, sort) {
     });
 }
 
-function delete_POST(jwtToken, videoId, commentId, timestamp) {
+function delete_POST(jwtToken, videoId, commentId, commentTimestamp) {
     return new Promise(function(resolve, reject) {
-        node_removeComment(jwtToken, videoId, commentId, timestamp)
+        node_removeComment(jwtToken, videoId, commentId, commentTimestamp)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) {
                 logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);

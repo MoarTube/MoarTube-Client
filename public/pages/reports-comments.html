@@ -249,9 +249,6 @@
 			let DATA_TABLE_COMMENT_REPORTS;
 			let DATA_TABLE_COMMENT_REPORTS_ARCHIVE;
 			
-			let COMMENT_ID_VIDEO_ID_ASSOCIATIONS = {};
-			let COMMENT_ID_COMMENT_TIMESTAMP_ASSOCIATIONS = {};
-			
 			$(document).ready(async function() {
 				await getNodeInformation();
 				await setContentChecked('commentReports');
@@ -359,14 +356,9 @@
 					else {
 						let reports = data.reports;
 						
-						const parsedReports = parseReports(reports);
+						const parsedCommentReports = parseCommentReports(reports);
 						
-						let tableData = {
-							headings: [ "actions", "report id", "report date", 'comment date', "video id", "comment id", "email", "type", "message" ],
-							data: parsedReports
-						};
-						
-						populateCommentReportsTable(tableData);
+						populateCommentReportsTable(parsedCommentReports);
 						
 						refreshHoverTooltips();
 					}
@@ -385,14 +377,9 @@
 					else {
 						let reports = data.reports;
 						
-						const parsedReports = parseReports(reports);
-						
-						let tableData = {
-							headings: [ "actions", "archive id", "report id", "report date", 'comment date', "video id", "comment id", "email", "type", "message" ],
-							data: parsedReports
-						};
-						
-						populateCommentReportsArchiveTable(tableData);
+						const parsedCommentReportArchives = parseCommentReportArchives(reports);
+
+						populateCommentReportsArchiveTable(parsedCommentReportArchives);
 						
 						refreshHoverTooltips();
 					}
@@ -402,44 +389,90 @@
 				});
 			}
 			
-			function parseReports(reports) {
+			function parseCommentReports(reports) {
 				const data = [];
 				
-				if(reports.length > 0) {
-					for ( let i = 0; i < reports.length; i++ ) {
-						data[i] = [];
-						
-						let commentTimestamp;
-						let videoId;
-						let commentId;
-						
-						for (let p in reports[i]) {
-							if( reports[i].hasOwnProperty(p) ) {
-								data[i].push(reports[i][p]);
-								
-								if(p === 'comment_timestamp') {
-									commentTimestamp = reports[i][p];
-								}
-								else if(p === 'video_id') {
-									videoId = reports[i][p];
-								}
-								else if(p === 'comment_id') {
-									commentId = reports[i][p];
-								}
-							}
-						}
-						
-						COMMENT_ID_COMMENT_TIMESTAMP_ASSOCIATIONS[commentId] = commentTimestamp;
-						COMMENT_ID_VIDEO_ID_ASSOCIATIONS[commentId] = videoId;
-						
-						data[i].unshift('');
-					}
+				for (const report of reports) {
+					const reportId = report.report_id;
+                    const timestamp = report.timestamp;
+					const commentTimestamp = report.comment_timestamp;
+                    const videoId = report.video_id;
+					const commentId = report.comment_id;
+					const email = report.email;
+					const type = report.type;
+					const message = report.message;
+					
+					const timestampFormatted = createDateTimestamp(timestamp);
+					const commentTimestampFormatted = createDateTimestamp(commentTimestamp);
+
+					const deleteCommentButton = '<button type="button" class="btn btn-icon btn-2 btn-primary me-1" onclick="deleteComment(this)" data-videoid="' + videoId + '" data-commentid="' + commentId + '" data-commenttimestamp="' + commentTimestamp + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>';
+					const archiveReportButton = '<button type="button" class="btn btn-icon btn-2 btn-primary me-1" onclick="archiveReport(this)" data-reportid="' + reportId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="archive report" data-bs-original-title="archive report"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-archive" viewBox="0 0 16 16"><path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1V2zm2 3v7.5A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5H2zm13-3H1v2h14V2zM5 7.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/></svg></span></button>';
+					const deleteReportButton = '<button type="button" class="btn btn-icon btn-2 btn-primary" onclick="deleteReport(this)" data-reportid="' + reportId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete report" data-bs-original-title="delete report"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/></svg></span></button>';
+					
+					data.push([
+						deleteCommentButton + archiveReportButton + deleteReportButton, 
+						timestampFormatted,
+						commentTimestampFormatted,
+						reportId.toString(),
+						'<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '" target="_blank">' + videoId + '</a>',
+						'<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '#p' + commentId + '" target="_blank">' + commentId + '</a>',
+						email,
+						type,
+						message
+					]);
 				}
+
+				let tableData = {
+					headings: [ "actions", "report date", 'comment date', "report id", "video id", "comment id", "email", "type", "message" ],
+					data: data
+				};
 				
-				return data;
+				return tableData;
+			}
+
+			function parseCommentReportArchives(reports) {
+				const data = [];
+				
+				for (const report of reports) {
+					const archiveId = report.archive_id;
+                    const reportId = report.report_id;
+					const timestamp = report.timestamp;
+					const commentTimestamp = report.comment_timestamp;
+                    const videoId = report.video_id;
+					const commentId = report.comment_id;
+					const email = report.email;
+					const type = report.type;
+					const message = report.message;
+					
+					const timestampFormatted = createDateTimestamp(timestamp);
+					const commentTimestampFormatted = createDateTimestamp(commentTimestamp);
+
+					const deleteCommentButton = '<button class="btn btn-icon btn-2 btn-primary me-1" onclick="deleteComment(this)" data-videoid="' + videoId + '" data-commentid="' + commentId + '" data-commenttimestamp="' + commentTimestamp + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>';
+					const deleteArchiveButton = '<button class="btn btn-icon btn-2 btn-primary" onclick="deleteArchive(this)" data-archiveid="' + archiveId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete archive" data-bs-original-title="delete archive"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/></svg></span></button>';
+
+					data.push([
+						deleteCommentButton + deleteArchiveButton,
+						timestampFormatted,
+						commentTimestampFormatted,
+						archiveId.toString(),
+						reportId.toString(),
+						'<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '" target="_blank">' + videoId + '</a>',
+						'<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '#p' + commentId + '" target="_blank">' + commentId + '</a>',
+						email,
+						type,
+						message
+					]);
+				}
+
+				let tableData = {
+					headings: [ "actions", "report date", 'comment date', "archive id", "report id", "video id", "comment id", "email", "type", "message" ],
+					data: data
+				};
+				
+				return tableData;
 			}
 			
-			function populateCommentReportsTable(data) {
+			function populateCommentReportsTable(parsedCommentReports) {
 				if(DATA_TABLE_COMMENT_REPORTS != null) {
 					DATA_TABLE_COMMENT_REPORTS.destroy();
 				}
@@ -448,60 +481,14 @@
 					"#comment-reports-table",
 					{
 						searchable: true,
-						fixedHeight: true,
-						data: data,
-						columns: [
-							{
-								select: 0,
-								sortable: false,
-								render: function (emptyString, cell, row) {
-									const deleteCommentButton = '<button type="button" class="btn btn-icon btn-2 btn-primary me-1" onclick="deleteComment1(this)" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>';
-									const archiveReportButton = '<button type="button" class="btn btn-icon btn-2 btn-primary me-1" onclick="archiveReport(this)" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="archive report" data-bs-original-title="archive report"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-archive" viewBox="0 0 16 16"><path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1V2zm2 3v7.5A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5H2zm13-3H1v2h14V2zM5 7.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/></svg></span></button>';
-									const deleteReportButton = '<button type="button" class="btn btn-icon btn-2 btn-primary" onclick="deleteReport(this)" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete report" data-bs-original-title="delete report"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/></svg></span></button>';
-									
-									return deleteCommentButton + archiveReportButton + deleteReportButton;
-								}
-							},
-							{
-								select: 2,
-								render: function (timestampString, cell, row) {
-									const timestampParsed = parseInt(timestampString);
-									
-									return createDateTimestamp(timestampParsed);
-								}
-							},
-							{
-								select: 3,
-								render: function (timestampString, cell, row) {
-									const timestampParsed = parseInt(timestampString);
-									
-									return createDateTimestamp(timestampParsed);
-								}
-							},
-							{
-								select: 4,
-								render: function (videoId, cell, row) {
-									const videoWatchUrl = NODE_BASE_URL + '/watch?v=' + videoId;
-									
-									return '<a href="' + videoWatchUrl + '" target="_blank">' + videoId + '</a>';
-								}
-							},
-							{
-								select: 5,
-								render: function (commentId, cell, row) {
-									const videoId = COMMENT_ID_VIDEO_ID_ASSOCIATIONS[commentId];
-									
-									const videoCommentUrl = NODE_BASE_URL + '/watch?v=' + videoId + '#p' + commentId;
-									
-									return '<a href="' + videoCommentUrl + '" target="_blank">' + commentId + '</a>';
-								}
-							}
-						]
+						fixedHeight: true
 					}
 				);
+
+				DATA_TABLE_COMMENT_REPORTS.insert(parsedCommentReports);
 			}
 			
-			function populateCommentReportsArchiveTable(data) {
+			function populateCommentReportsArchiveTable(parsedCommentReportArchives) {
 				if(DATA_TABLE_COMMENT_REPORTS_ARCHIVE != null) {
 					DATA_TABLE_COMMENT_REPORTS_ARCHIVE.destroy();
 				}
@@ -510,62 +497,16 @@
 					"#comment-reports-archive-table",
 					{
 						searchable: true,
-						fixedHeight: true,
-						data: data,
-						columns: [
-							{
-								select: 0,
-								sortable: false,
-								render: function (emptyString, cell, row) {
-									const deleteCommentButton = '<button class="btn btn-icon btn-2 btn-primary me-1" onclick="deleteComment2(this)" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>';
-									const deleteArchiveButton = '<button class="btn btn-icon btn-2 btn-primary" onclick="deleteArchive(this)" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete archive" data-bs-original-title="delete archive"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/></svg></span></button>';
-									
-									return deleteCommentButton + deleteArchiveButton;
-								}
-							},
-							{
-								select: 3,
-								render: function (timestampString, cell, row) {
-									const timestampParsed = parseInt(timestampString);
-									
-									return createDateTimestamp(timestampParsed);
-								}
-							},
-							{
-								select: 4,
-								render: function (timestampString, cell, row) {
-									const timestampParsed = parseInt(timestampString);
-									
-									return createDateTimestamp(timestampParsed);
-								}
-							},
-							{
-								select: 5,
-								render: function (videoId, cell, row) {
-									const videoWatchUrl = NODE_BASE_URL + '/watch?v=' + videoId;
-									
-									return '<a href="' + videoWatchUrl + '" target="_blank">' + videoId + '</a>';
-								}
-							},
-							{
-								select: 6,
-								render: function (commentId, cell, row) {
-									const videoId = COMMENT_ID_VIDEO_ID_ASSOCIATIONS[commentId];
-									
-									const videoCommentUrl = NODE_BASE_URL + '/watch?v=' + videoId + '#p' + commentId;
-									
-									return '<a href="' + videoCommentUrl + '" target="_blank">' + commentId + '</a>';
-								}
-							}
-						]
+						fixedHeight: true
 					}
 				);
+
+				DATA_TABLE_COMMENT_REPORTS_ARCHIVE.insert(parsedCommentReportArchives);
 			}
 			
 			
 			function archiveReport(button) {
-				const row = button.closest('tr');
-				const reportId = row.cells[1].data;
+				const reportId = $(button).data('reportid');
 				
 				$.ajax({type: 'POST', url: '/reports/comments/archive', data: {reportId: reportId}})
 				.done(function (data, textStatus, xhr) {
@@ -573,6 +514,8 @@
 						showAlert(true, data.message);
 					}
 					else {
+						const row = button.closest('tr');
+
 						DATA_TABLE_COMMENT_REPORTS.rows().remove(parseInt(row.dataIndex));
 						
 						getCommentReportsArchive();
@@ -585,8 +528,7 @@
 			
 			
 			function deleteReport(button) {
-				const row = button.closest('tr');
-				const reportId = row.cells[1].data;
+				const reportId = $(button).data('reportid');
 				
 				$.ajax({type: 'POST', url: '/reports/comments/delete', data: {reportId: reportId}})
 				.done(function (data, textStatus, xhr) {
@@ -594,6 +536,8 @@
 						showAlert(true, data.message);
 					}
 					else {
+						const row = button.closest('tr');
+
 						DATA_TABLE_COMMENT_REPORTS.rows().remove(parseInt(row.dataIndex));
 					}
 				})
@@ -603,8 +547,7 @@
 			}
 			
 			function deleteArchive(button) {
-				const row = button.closest('tr');
-				const archiveId = row.cells[1].data;
+				const archiveId = $(button).data('archiveid');
 				
 				$.ajax({type: 'POST', url: '/reports/comments/archive/delete', data: {archiveId: archiveId}})
 				.done(function (data, textStatus, xhr) {
@@ -612,6 +555,8 @@
 						showAlert(true, data.message);
 					}
 					else {
+						const row = button.closest('tr');
+
 						DATA_TABLE_COMMENT_REPORTS_ARCHIVE.rows().remove(parseInt(row.dataIndex));
 					}
 				})
@@ -620,34 +565,12 @@
 				});
 			}
 			
-			
-			function deleteComment1(button) {
-				const row = button.closest('tr');
-				const videoId = row.cells[4].data;
-				const commentId = row.cells[5].data;
-				const timestamp = COMMENT_ID_COMMENT_TIMESTAMP_ASSOCIATIONS[commentId];
+			function deleteComment(button) {
+				const videoId = $(button).data('videoid');
+				const commentId = $(button).data('commentid');
+				const commentTimestamp = $(button).data('commenttimestamp');
 				
-				$.ajax({type: 'POST', url: '/comments/delete', data: {videoId: videoId, commentId: commentId, timestamp: timestamp}})
-				.done(function (data, textStatus, xhr) {
-					if(data.isError) {
-						showAlert(true, data.message);
-					}
-					else {
-						showAlert(false, 'comment deleted');
-					}
-				})
-				.fail(function() {
-					console.log('unable to communicate with node');
-				});
-			}
-			
-			function deleteComment2(button) {
-				const row = button.closest('tr');
-				const videoId = row.cells[5].data;
-				const commentId = row.cells[6].data;
-				const timestamp = COMMENT_ID_COMMENT_TIMESTAMP_ASSOCIATIONS[commentId];
-				
-				$.ajax({type: 'POST', url: '/comments/delete', data: {videoId: videoId, commentId: commentId, timestamp: timestamp}})
+				$.ajax({type: 'POST', url: '/comments/delete', data: {videoId: videoId, commentId: commentId, commentTimestamp: commentTimestamp}})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
 						showAlert(true, data.message);

@@ -881,11 +881,11 @@ function node_removeCommentReportArchive(jwtToken, archiveId) {
     });
 }
 
-function node_removeComment(jwtToken, videoId, commentId, timestamp) {
+function node_removeComment(jwtToken, videoId, commentId, commentTimestamp) {
     return new Promise(function(resolve, reject) {
         axios.delete(getMoarTubeNodeUrl() + '/videos/' + videoId + '/comments/' + commentId + '/delete',  {
           params: {
-              timestamp: timestamp
+            commentTimestamp: commentTimestamp
           },
           headers: {
             Authorization: jwtToken

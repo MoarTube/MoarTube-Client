@@ -439,14 +439,13 @@
 						else {
 							let comments = data.comments;
 
-							if(comments.length > 0) {
-								const tableData = parseComments(comments);
+							const tableData = parseComments(comments);
 
-								populateCommentsTable(tableData);
+							populateCommentsTable(tableData);
 
-								refreshHoverTooltips();
-							}
-							else {
+							refreshHoverTooltips();
+
+							if(comments.length === 0) {
 								clearInterval(COMMENTS_LOADER_INTERVAL);
 								
 								$('#comments-scroller-loading-spinner').addClass('hidden-elem');
@@ -518,9 +517,9 @@
 
                 const videoId = $(button).data('videoid');
 				const commentId = $(button).data('commentid');
-				const timestamp = $(button).data('timestamp');
+				const commentTimestamp = $(button).data('timestamp');
 				
-				$.ajax({type: 'POST', url: '/comments/delete', data: {videoId: videoId, commentId: commentId, timestamp: timestamp}})
+				$.ajax({type: 'POST', url: '/comments/delete', data: {videoId: videoId, commentId: commentId, commentTimestamp: commentTimestamp}})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
 						showAlert(true, data.message);

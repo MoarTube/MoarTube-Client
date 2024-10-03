@@ -382,15 +382,15 @@
 					
 					data.push([
 						'<button type="button" class="btn btn-icon btn-2 btn-primary" onclick="deleteCryptoWalletAddress(this)" data-cryptoWalletAddressId="' + walletAddressId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete address" data-bs-original-title="delete address"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>', 
+						timestampFormatted,
 						addressLink,
 						chainName,
-                        currency,
-						timestampFormatted
+                        currency
 					]);
 				}
 
 				let tableData = {
-					headings: [ "actions", 'wallet address', "chain", "currency", "date" ],
+					headings: [ "actions", "date", 'wallet address', "chain", "currency" ],
 					data: data
 				};
 				
