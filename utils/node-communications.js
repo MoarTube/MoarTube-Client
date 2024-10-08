@@ -1,6 +1,8 @@
 const fs = require('fs');
 const axios = require('axios').default;
 const FormData = require('form-data');
+const http = require('http');
+const https = require('https');
 
 const { getMoarTubeNodeUrl } = require('./helpers');
 
@@ -1383,24 +1385,6 @@ function node_setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled, chat
     });
 }
 
-function node_getNextExpectedSegmentIndex(jwtToken, videoId, format, resolution) {
-    return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/streams/' + videoId + '/adaptive/' + format + '/' + resolution + '/segments/nextExpectedSegmentIndex', {
-          headers: {
-            Authorization: jwtToken
-          }
-        })
-        .then(response => {
-            const data = response.data;
-            
-            resolve(data);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
 function node_getVideoBandwidth(jwtToken, videoId) {
     return new Promise(function(resolve, reject) {
         axios.get(getMoarTubeNodeUrl() + '/streams/' + videoId + '/bandwidth', {
@@ -1451,16 +1435,21 @@ function node_getVideoSources(videoId) {
     });
 }
 
-function node_uploadStream(jwtToken, videoId, format, resolution, directoryPaths) {
+const httpAgent = new http.Agent({ keepAlive: true, keepAliveMsecs: 10000 });
+const httpsAgent = new https.Agent({ keepAlive: true, keepAliveMsecs: 10000 });
+function node_uploadStream(jwtToken, videoId, format, resolution, manifestData, segmentData, manifestFileName, segmentFileName) {
     return new Promise(function(resolve, reject) {
         const formData = new FormData();
-        for (const directoryPath of directoryPaths) {
-            const fileName = directoryPath.fileName;
-            const filePath = directoryPath.filePath;
-            const fileStream = fs.createReadStream(filePath);
-            
-            formData.append('video_files', fileStream, fileName);
-        }
+
+        formData.append('video_files', manifestData, {
+            filename: manifestFileName,
+            contentType: 'application/vnd.apple.mpegurl',
+        });
+
+        formData.append('video_files', segmentData, {
+            filename: segmentFileName,
+            contentType: 'video/mp2t',
+        });
 
         axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/stream', formData, {
             params: {
@@ -1469,7 +1458,10 @@ function node_uploadStream(jwtToken, videoId, format, resolution, directoryPaths
             },
             headers: {
                 Authorization: jwtToken
-            }
+            },
+            timeout: 15000,
+            httpAgent: httpAgent,
+            httpsAgent: httpsAgent
         })
         .then(response => {
             const data = response.data;
@@ -1677,7 +1669,6 @@ module.exports = {
     node_setAccountCredentials,
     node_uploadVideo,
     node_setVideoChatSettings,
-    node_getNextExpectedSegmentIndex,
     node_getVideoBandwidth,
     node_uploadStream,
     node_removeAdaptiveStreamSegment,

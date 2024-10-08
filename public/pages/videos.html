@@ -1092,8 +1092,8 @@
 											const networkAddress = meta.networkAddress;
 											const resolution = meta.resolution;
 
-											const isRecordingStreamLocally = meta.isRecordingStreamRemotely;
 											const isRecordingStreamRemotely = meta.isRecordingStreamRemotely;
+											const isRecordingStreamLocally = meta.isRecordingStreamLocally;
 
 											$('#importTitleInput').val(title);
 											$('#importDescriptionInput').val(description);
@@ -1101,8 +1101,8 @@
 											$('#rtmpPortInput').val(rtmpPort);
 											$('#liveNetworkAddressSelect').val(networkAddress);
 											$('#streamResolution' + resolution).prop('checked', true);
-											$('#recordStreamRemotelyCheckbox').prop('checked', isRecordingStreamLocally);
-											$('#recordStreamLocallyCheckbox').prop('checked', isRecordingStreamRemotely);
+											$('#recordStreamRemotelyCheckbox').prop('checked', isRecordingStreamRemotely);
+											$('#recordStreamLocallyCheckbox').prop('checked', isRecordingStreamLocally);
 
 											choices = updateTagsInput(document.getElementById('importTagsInput'));
 										}

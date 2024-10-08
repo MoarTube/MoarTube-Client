@@ -42,7 +42,7 @@ function start_POST(jwtToken, title, description, tags, rtmpPort, resolution, is
                                     else {
                                         const rtmpUrl = 'rtmp://' + networkAddress + ':' + rtmpPort + '/live/' + uuid;
                                         
-                                        performStreamingJob(jwtToken, videoId, title, description, tags, rtmpUrl, 'm3u8', resolution, isRecordingStreamRemotely, isRecordingStreamLocally);
+                                        performStreamingJob(jwtToken, videoId, rtmpUrl, 'm3u8', resolution, isRecordingStreamRemotely, isRecordingStreamLocally);
                                         
                                         resolve({isError: false, rtmpUrl: rtmpUrl});
                                     }

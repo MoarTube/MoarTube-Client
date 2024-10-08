@@ -39,7 +39,14 @@ startClient();
 
 async function startClient() {
 	process.on('uncaughtException', (error) => {
-		logDebugMessageToConsole(null, error, error.stackTrace);
+		/*
+        ffmpeg utilizes trailer information to detect the end (end of file, EOF) of piped input to stdin.
+        This will trigger an uncaught exception (Error: write EOF) due to live mpeg-ts segments not having a trailer, thus no EOF indication.
+        This is benign, also reportedly does not occur on Unix-based systems, though unconfirmed.
+        */
+		if(!error.stack.includes('Error: write EOF')) {
+			logDebugMessageToConsole(null, error, error.stackTrace);
+		}
 	});
 
 	process.on('unhandledRejection', (reason, promise) => {
