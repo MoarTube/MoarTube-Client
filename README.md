@@ -6,6 +6,8 @@ A repository containing the client software for managing your [MoarTube Node](ht
 # How to Get Started
 Welcome to the MoarTube Client setup guide! This document will guide you through the different setup methods to get your MoarTube Client up and running. Don't worry! MoarTube is so easy to set up and use, you'll be done in minutes. When ready, head over to [MoarTube Node](https://github.com/MoarTube/MoarTube-Node) if you haven't yet.
 
+[TL;DR; quickstart video](https://www.moartube.com/guides/moartube-quick-start)
+
 ## Table of Contents
 - [Features](#features)
 - [System Requirements](#system-requirements)
