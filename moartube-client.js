@@ -9,10 +9,10 @@ const webSocket = require('ws');
 const crypto = require('crypto');
 
 const { 
-	logDebugMessageToConsole, performEncodingDecodingAssessment, cleanVideosDirectory, getPublicDirectoryPath, getAppDataDirectoryPath,
-    getMoarTubeClientPort, setPublicDirectoryPath, setAppDataDirectoryPath, setAppDataCertificatesDirectoryPath,
-    setAppDataVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getClientSettings,
-	getAppDataCertificatesDirectoryPath, getAppDataVideosDirectoryPath, setAppDataImagesDirectoryPath, getAppDataImagesDirectoryPath
+	logDebugMessageToConsole, performEncodingDecodingAssessment, cleanVideosDirectory, getPublicDirectoryPath, getDataDirectoryPath,
+    getMoarTubeClientPort, setPublicDirectoryPath, setDataDirectoryPath, setCertificatesDirectoryPath,
+    setVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getClientSettings,
+	getCertificatesDirectoryPath, getVideosDirectoryPath, setImagesDirectoryPath, getImagesDirectoryPath
 } = require('./utils/helpers');
 
 const { 
@@ -54,6 +54,7 @@ async function startClient() {
 	});
 
 	logDebugMessageToConsole('starting MoarTube Client', null, null);
+	logDebugMessageToConsole('moartube-client directory: ' + discoverDataDirectoryPath(), null, null);
 
 	loadConfig();
 
@@ -149,43 +150,30 @@ async function startClient() {
 		});
 	});
 }
-	
+
+function discoverDataDirectoryPath() {
+	const dataDirectory = process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + '/Library/Preferences' : process.env.HOME + '/.local/share');
+	const dataDirectoryPath = path.join(dataDirectory, 'moartube-client');
+
+	return dataDirectoryPath;
+}
+
 function loadConfig() {
 	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 	setPublicDirectoryPath(path.join(__dirname, 'public'));
-
-	if(global != null && global.electronPaths != null) {
-		// C:/Users/<user>/AppData/Roaming/moartube-client
-		setAppDataDirectoryPath(path.join(global.electronPaths.appData, 'moartube-client'));
-	}
-	else {
-		setAppDataDirectoryPath(path.join(__dirname, 'temp'));
-	}
 	
-	setAppDataCertificatesDirectoryPath(path.join(getAppDataDirectoryPath(), 'certificates'));
-	setAppDataVideosDirectoryPath(path.join(getAppDataDirectoryPath(), 'media/videos'));
-	setAppDataImagesDirectoryPath(path.join(getAppDataDirectoryPath(), 'images'));
+	setDataDirectoryPath(discoverDataDirectoryPath());
+	setCertificatesDirectoryPath(path.join(getDataDirectoryPath(), 'certificates'));
+	setVideosDirectoryPath(path.join(getDataDirectoryPath(), 'media/videos'));
+	setImagesDirectoryPath(path.join(getDataDirectoryPath(), 'images'));
 
-	logDebugMessageToConsole('creating required directories and files', null, null);
+	fs.mkdirSync(getDataDirectoryPath(), { recursive: true });
+	fs.mkdirSync(getCertificatesDirectoryPath(), { recursive: true });
+	fs.mkdirSync(getVideosDirectoryPath(), { recursive: true });
+	fs.mkdirSync(getImagesDirectoryPath(), { recursive: true });
 
-    if (!fs.existsSync(getAppDataDirectoryPath())) {
-		fs.mkdirSync(getAppDataDirectoryPath(), { recursive: true });
-	}
-
-	if (!fs.existsSync(getAppDataCertificatesDirectoryPath())) {
-		fs.mkdirSync(getAppDataCertificatesDirectoryPath(), { recursive: true });
-	}
-
-	if (!fs.existsSync(getAppDataVideosDirectoryPath())) {
-		fs.mkdirSync(getAppDataVideosDirectoryPath(), { recursive: true });
-	}
-
-	if (!fs.existsSync(getAppDataImagesDirectoryPath())) {
-		fs.mkdirSync(getAppDataImagesDirectoryPath(), { recursive: true });
-	}
-
-    if (!fs.existsSync(path.join(getAppDataDirectoryPath(), '_client_settings.json'))) {
+    if (!fs.existsSync(path.join(getDataDirectoryPath(), '_client_settings.json'))) {
 		const clientSettings = {
             "clientListeningPort":8080,
 			"processingAgent":{
@@ -220,8 +208,8 @@ function loadConfig() {
 			}
 		};
 
-		fs.writeFileSync(path.join(getAppDataDirectoryPath(), '_client_settings_default.json'), JSON.stringify(clientSettings));
-		fs.writeFileSync(path.join(getAppDataDirectoryPath(), '_client_settings.json'), JSON.stringify(clientSettings));
+		fs.writeFileSync(path.join(getDataDirectoryPath(), '_client_settings_default.json'), JSON.stringify(clientSettings));
+		fs.writeFileSync(path.join(getDataDirectoryPath(), '_client_settings.json'), JSON.stringify(clientSettings));
 	}
 
 	const clientSettings = getClientSettings();

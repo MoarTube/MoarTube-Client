@@ -7,7 +7,7 @@ sharp.cache(false);
 
 const { 
     logDebugMessageToConsole, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodePort, detectOperatingSystem, detectSystemGpu, 
-    detectSystemCpu, getClientSettings, setClientSettings, getAppDataImagesDirectoryPath, getClientSettingsDefault
+    detectSystemCpu, getClientSettings, setClientSettings, getImagesDirectoryPath, getClientSettingsDefault
 } = require('../utils/helpers');
 const { 
     node_setExternalNetwork, node_getSettings, node_getAvatar, node_setAvatar, node_getBanner, node_setBanner, node_setNodeName, node_setNodeAbout, 
@@ -144,7 +144,7 @@ function nodeAvatar_POST(jwtToken, avatarFile) {
         if(avatarFile != null && avatarFile.length === 1) {
             avatarFile = avatarFile[0];
 
-            const imagesDirectory = getAppDataImagesDirectoryPath();
+            const imagesDirectory = getImagesDirectoryPath();
             
             const sourceFilePath = path.join(imagesDirectory, avatarFile.filename);
             
@@ -207,7 +207,7 @@ function nodeBanner_POST(jwtToken, bannerFile) {
         if(bannerFile != null && bannerFile.length === 1) {
             bannerFile = bannerFile[0];
 
-            const imagesDirectory = getAppDataImagesDirectoryPath();
+            const imagesDirectory = getImagesDirectoryPath();
         
             const sourceFilePath = path.join(imagesDirectory, bannerFile.filename);
             

@@ -8,7 +8,7 @@ const {
     nodePersonalizeNodeName_POST, nodePersonalizeNodeAbout_POST, nodePersonalizeNodeId_POST, node_Secure_POST, nodeNetworkInternal_POST, nodeNetworkExternal_POST, nodeAccount_POST,
     nodeCloudflareConfigure_POST, nodeCloudflareClear_POST, nodeCloudflareTurnstileConfigure_POST, nodeCloudflareTurnstileClear_POST, clientEncodingDefault_GET
  } = require('../controllers/settings');
- const { logDebugMessageToConsole, getPublicDirectoryPath, getAppDataCertificatesDirectoryPath } = require('../utils/helpers');
+ const { logDebugMessageToConsole, getPublicDirectoryPath, getCertificatesDirectoryPath } = require('../utils/helpers');
 const { node_isAuthenticated, node_doSignout } = require('../utils/node-communications');
 
 const router = express.Router();
@@ -135,7 +135,7 @@ router.post('/node/avatar', (req, res) => {
     multer({
         storage: multer.diskStorage({
             destination: function (req, file, cb) {
-                const filePath = getAppDataImagesDirectoryPath();
+                const filePath = getImagesDirectoryPath();
                 
                 fs.access(filePath, fs.constants.F_OK, function(error) {
                     if(error) {
@@ -206,7 +206,7 @@ router.post('/node/banner', (req, res) => {
     multer({
         storage: multer.diskStorage({
             destination: function (req, file, cb) {
-                const filePath = getAppDataImagesDirectoryPath();
+                const filePath = getImagesDirectoryPath();
                 
                 fs.access(filePath, fs.constants.F_OK, function(error) {
                     if(error) {
@@ -319,12 +319,12 @@ router.post('/node/secure', async (req, res) => {
             },
             storage: multer.diskStorage({
                 destination: function (req, file, cb) {
-                    fs.access(getAppDataCertificatesDirectoryPath(), fs.constants.F_OK, function(error) {
+                    fs.access(getCertificatesDirectoryPath(), fs.constants.F_OK, function(error) {
                         if(error) {
                             cb(new Error('file upload error'), null);
                         }
                         else {
-                            cb(null, getAppDataCertificatesDirectoryPath());
+                            cb(null, getCertificatesDirectoryPath());
                         }
                     });
                 },

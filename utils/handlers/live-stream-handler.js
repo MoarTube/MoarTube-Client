@@ -3,7 +3,7 @@ const path = require('path');
 const spawn = require('child_process').spawn;
 const sharp = require('sharp');
 
-const { logDebugMessageToConsole, getAppDataVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds, deleteDirectoryRecursive } = require('../helpers');
+const { logDebugMessageToConsole, getVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds, deleteDirectoryRecursive } = require('../helpers');
 const { node_setVideoLengths, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, node_removeAdaptiveStreamSegment, node_stopVideoStreaming } = require('../node-communications');
 const { addProcessToLiveStreamTracker, isLiveStreamStopping, liveStreamExists } = require('../trackers/live-stream-tracker');
 
@@ -11,14 +11,14 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
     return new Promise(async function(resolve, reject) {
         logDebugMessageToConsole('starting live stream for id: ' + videoId, null, null);
 
-        await deleteDirectoryRecursive(path.join(getAppDataVideosDirectoryPath(), videoId));
+        await deleteDirectoryRecursive(path.join(getVideosDirectoryPath(), videoId));
         
-        fs.mkdirSync(path.join(getAppDataVideosDirectoryPath(), videoId + '/source'), { recursive: true });
-        fs.mkdirSync(path.join(getAppDataVideosDirectoryPath(), videoId + '/images'), { recursive: true });
-        fs.mkdirSync(path.join(getAppDataVideosDirectoryPath(), videoId + '/adaptive'), { recursive: true });
-        fs.mkdirSync(path.join(getAppDataVideosDirectoryPath(), videoId + '/progressive'), { recursive: true });
+        fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/source'), { recursive: true });
+        fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/images'), { recursive: true });
+        fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/adaptive'), { recursive: true });
+        fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/progressive'), { recursive: true });
         
-        const sourceDirectoryPath = path.join(getAppDataVideosDirectoryPath(), videoId + '/source');
+        const sourceDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/source');
         const sourceFilePath = path.join(sourceDirectoryPath, '/' + videoId + '.ts');
         const manifestFileName = 'manifest-' + resolution + '.m3u8';
         
@@ -260,7 +260,7 @@ function sendImagesToNode(jwtToken, videoId, segmentBuffer) {
     if(!uploadingThumbnail && !uploadingPreview && !uploadingPoster && (Date.now() - lastVideoImagesUpdateTimestamp > 10000)) {
         lastVideoImagesUpdateTimestamp = Date.now();
 
-        const imagesDirectoryPath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images');
+        const imagesDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/images');
         const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
         
         let process = spawn(getFfmpegPath(), [

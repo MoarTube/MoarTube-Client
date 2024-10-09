@@ -2,11 +2,11 @@ const path = require('path');
 const fs = require('fs');
 const webSocket = require('ws');
 
-let publicDirectory;
-let appDataDirectory;
-let appDataCertificatesDirectory;
-let appDataVideosDirectory;
-let appDataImagesDirectory;
+let publicDirectoryPath;
+let dataDirectoryPath;
+let certificatesDirectoryPath;
+let videosDirectoryPath;
+let imagesDirectoryPath;
 let moartubeClientPort;
 let moartubeNodeIp;
 let moartubeNodePort;
@@ -194,8 +194,8 @@ function cleanVideosDirectory() {
     return new Promise(function(resolve, reject) {
         logDebugMessageToConsole('cleaning imported video directories', null, null);
         
-        if(fs.existsSync(getAppDataVideosDirectoryPath())) {
-            fs.readdir(getAppDataVideosDirectoryPath(), function(error, videoDirectories) {
+        if(fs.existsSync(getVideosDirectoryPath())) {
+            fs.readdir(getVideosDirectoryPath(), function(error, videoDirectories) {
                 if (error) {
                     reject(error);
                 }
@@ -205,7 +205,7 @@ function cleanVideosDirectory() {
                     }
                     else {
                         for(const videoDirectory of videoDirectories) {
-                            const videoDirectoryPath = path.join(getAppDataVideosDirectoryPath(), videoDirectory);
+                            const videoDirectoryPath = path.join(getVideosDirectoryPath(), videoDirectory);
                             
                             if(fs.existsSync(videoDirectoryPath)) {
                                 if (fs.statSync(videoDirectoryPath).isDirectory()) {
@@ -236,7 +236,7 @@ function cleanVideosDirectory() {
             });
         }
         else {
-            reject('expected path does not exist: ' + getAppDataVideosDirectoryPath());
+            reject('expected path does not exist: ' + getVideosDirectoryPath());
         }
     });
 }
@@ -281,23 +281,23 @@ function websocketServerBroadcast(message) {
 /* getters */
 
 function getPublicDirectoryPath() {
-    return publicDirectory;
+    return publicDirectoryPath;
 }
 
-function getAppDataDirectoryPath() {
-    return appDataDirectory;
+function getDataDirectoryPath() {
+    return dataDirectoryPath;
 }
 
-function getAppDataCertificatesDirectoryPath() {
-    return appDataCertificatesDirectory;
+function getCertificatesDirectoryPath() {
+    return certificatesDirectoryPath;
 }
 
-function getAppDataVideosDirectoryPath() {
-    return appDataVideosDirectory;
+function getVideosDirectoryPath() {
+    return videosDirectoryPath;
 }
 
-function getAppDataImagesDirectoryPath() {
-    return appDataImagesDirectory;
+function getImagesDirectoryPath() {
+    return imagesDirectoryPath;
 }
 
 function getMoarTubeClientPort() {
@@ -329,13 +329,13 @@ function getMoarTubeNodeWebsocketUrl() {
 }
 
 function getClientSettings() {
-	const clientSettings = JSON.parse(fs.readFileSync(path.join(getAppDataDirectoryPath(), '_client_settings.json'), 'utf8'));
+	const clientSettings = JSON.parse(fs.readFileSync(path.join(getDataDirectoryPath(), '_client_settings.json'), 'utf8'));
 
 	return clientSettings;
 }
 
 function getClientSettingsDefault() {
-	const clientSettingsDefault = JSON.parse(fs.readFileSync(path.join(getAppDataDirectoryPath(), '_client_settings_default.json'), 'utf8'));
+	const clientSettingsDefault = JSON.parse(fs.readFileSync(path.join(getDataDirectoryPath(), '_client_settings_default.json'), 'utf8'));
 
 	return clientSettingsDefault;
 }
@@ -354,31 +354,31 @@ function getWebsocketClient() {
 function setPublicDirectoryPath(path) {
     logDebugMessageToConsole('configured MoarTube Client to use public directory path: ' + path, null, null);
 
-    publicDirectory = path;
+    publicDirectoryPath = path;
 }
 
-function setAppDataDirectoryPath(path) {
-    logDebugMessageToConsole('configured MoarTube Client to use AppData directory path: ' + path, null, null);
+function setDataDirectoryPath(path) {
+    logDebugMessageToConsole('configured MoarTube Client to use data directory path: ' + path, null, null);
 
-    appDataDirectory = path;
+    dataDirectoryPath = path;
 }
 
-function setAppDataCertificatesDirectoryPath(path) {
-    logDebugMessageToConsole('configured MoarTube Client to use AppData certificates directory path: ' + path, null, null);
+function setCertificatesDirectoryPath(path) {
+    logDebugMessageToConsole('configured MoarTube Client to use certificates directory path: ' + path, null, null);
 
-    appDataCertificatesDirectory = path;
+    certificatesDirectoryPath = path;
 }
 
-function setAppDataVideosDirectoryPath(path) {
-    logDebugMessageToConsole('configured MoarTube Client to use AppData videos directory path: ' + path, null, null);
+function setVideosDirectoryPath(path) {
+    logDebugMessageToConsole('configured MoarTube Client to use videos directory path: ' + path, null, null);
 
-    appDataVideosDirectory = path;
+    videosDirectoryPath = path;
 }
 
-function setAppDataImagesDirectoryPath(path) {
-    logDebugMessageToConsole('configured MoarTube Client to use AppData images directory path: ' + path, null, null);
+function setImagesDirectoryPath(path) {
+    logDebugMessageToConsole('configured MoarTube Client to use images directory path: ' + path, null, null);
 
-    appDataImagesDirectory = path;
+    imagesDirectoryPath = path;
 }
 
 function setMoarTubeClientPort(port) {
@@ -416,7 +416,7 @@ function setClientSettings(clientSettings) {
 
     logDebugMessageToConsole('configured MoarTube Client to use client settings: ' + clientSettingsString, null, null);
 
-	fs.writeFileSync(path.join(getAppDataDirectoryPath(), '_client_settings.json'), clientSettingsString);
+	fs.writeFileSync(path.join(getDataDirectoryPath(), '_client_settings.json'), clientSettingsString);
 }
 
 function setWebsocketServer(wss) {
@@ -444,10 +444,10 @@ module.exports = {
     websocketClientBroadcast,
     websocketServerBroadcast,
     getPublicDirectoryPath,
-    getAppDataDirectoryPath,
-    getAppDataCertificatesDirectoryPath,
-    getAppDataVideosDirectoryPath,
-    getAppDataImagesDirectoryPath,
+    getDataDirectoryPath,
+    getCertificatesDirectoryPath,
+    getVideosDirectoryPath,
+    getImagesDirectoryPath,
     getMoarTubeClientPort,
     getMoarTubeNodeIp,
     getMoarTubeNodePort,
@@ -461,10 +461,10 @@ module.exports = {
     getWebsocketServer,
     getWebsocketClient,
     setPublicDirectoryPath,
-    setAppDataDirectoryPath,
-    setAppDataCertificatesDirectoryPath,
-    setAppDataVideosDirectoryPath,
-    setAppDataImagesDirectoryPath,
+    setDataDirectoryPath,
+    setCertificatesDirectoryPath,
+    setVideosDirectoryPath,
+    setImagesDirectoryPath,
     setMoarTubeClientPort,
     setMoarTubeNodeIp,
     setMoarTubeNodePort,

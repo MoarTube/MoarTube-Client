@@ -10,7 +10,7 @@ const {
     videoIdPreview_POST, videoIdPoster_POST, videoIdSources_GET
 } = require('../controllers/videos');
 
-const { logDebugMessageToConsole, getPublicDirectoryPath, websocketClientBroadcast, getAppDataVideosDirectoryPath } = require('../utils/helpers');
+const { logDebugMessageToConsole, getPublicDirectoryPath, websocketClientBroadcast, getVideosDirectoryPath } = require('../utils/helpers');
 const { node_isAuthenticated, node_doSignout, node_importVideo, node_setVideoError } = require('../utils/node-communications');
 const { addVideoToImportVideoTracker, isVideoImportStopping } = require('../utils/trackers/import-video-tracker');
 
@@ -118,7 +118,7 @@ router.post('/import', (req, res) => {
                 multer({
                     storage: multer.diskStorage({
                         destination: function (req, file, cb) {
-                            const sourceDirectoryPath =  path.join(getAppDataVideosDirectoryPath(), videoId + '/source');
+                            const sourceDirectoryPath =  path.join(getVideosDirectoryPath(), videoId + '/source');
                             
                             fs.mkdirSync(sourceDirectoryPath, { recursive: true });
                             
@@ -484,7 +484,7 @@ router.post('/:videoId/thumbnail', (req, res) => {
     multer({
         storage: multer.diskStorage({
             destination: function (req, file, cb) {
-                const filePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images');
+                const filePath = path.join(getVideosDirectoryPath(), videoId + '/images');
                 
                 fs.mkdirSync(filePath, { recursive: true });
                 
@@ -544,7 +544,7 @@ router.post('/:videoId/preview', (req, res) => {
     multer({
         storage: multer.diskStorage({
             destination: function (req, file, cb) {
-                const filePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images');
+                const filePath = path.join(getVideosDirectoryPath(), videoId + '/images');
                 
                 fs.mkdirSync(filePath, { recursive: true });
                 
@@ -604,7 +604,7 @@ router.post('/:videoId/poster', (req, res) => {
     multer({
         storage: multer.diskStorage({
             destination: function (req, file, cb) {
-                const filePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images');
+                const filePath = path.join(getVideosDirectoryPath(), videoId + '/images');
                 
                 fs.mkdirSync(filePath, { recursive: true });
                 

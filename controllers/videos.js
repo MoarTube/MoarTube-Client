@@ -6,7 +6,7 @@ const multer = require('multer');
 
 sharp.cache(false);
 
-const { logDebugMessageToConsole, deleteDirectoryRecursive, getAppDataVideosDirectoryPath, timestampToSeconds, websocketClientBroadcast, getFfmpegPath } = require('../utils/helpers');
+const { logDebugMessageToConsole, deleteDirectoryRecursive, getVideosDirectoryPath, timestampToSeconds, websocketClientBroadcast, getFfmpegPath } = require('../utils/helpers');
 const { 
     node_stopVideoImporting, node_doVideosSearch, node_getThumbnail, node_getPreview, node_getPoster, node_getVideoData, node_unpublishVideo, node_stopVideoPublishing,
     node_setSourceFileExtension, node_setThumbnail, node_setPreview, node_setPoster, node_setVideoLengths, node_setVideoImported, node_getVideosTags, node_getSourceFileExtension, 
@@ -68,7 +68,7 @@ function import_POST(jwtToken, videoFile, videoId) {
                     
                     logDebugMessageToConsole('generating images for video: ' + videoId, null, null);
                     
-                    const imagesDirectoryPath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images');
+                    const imagesDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/images');
                     const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
                     const thumbnailImagePath = path.join(imagesDirectoryPath, 'thumbnail.jpg');
                     const previewImagePath = path.join(imagesDirectoryPath, 'preview.jpg');
@@ -292,7 +292,7 @@ function videoIdPublish_POST(jwtToken, videoId, publishings) {
                         else {
                             const sourceFileExtension = nodeResponseData.sourceFileExtension;
                             
-                            const sourceFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
+                            const sourceFilePath = path.join(getVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
 
                             if(fs.existsSync(sourceFilePath)) {
                                 for(const publishing of publishings) {
@@ -470,7 +470,7 @@ function delete_POST(jwtToken, videoIdsJson) {
                 const nonDeletedVideoIds = nodeResponseData.nonDeletedVideoIds;
 
                 for(const deletedVideoId of deletedVideoIds) {
-                    const deletedVideoIdPath = path.join(getAppDataVideosDirectoryPath(), deletedVideoId);
+                    const deletedVideoIdPath = path.join(getVideosDirectoryPath(), deletedVideoId);
                     
                     await deleteDirectoryRecursive(deletedVideoIdPath);
                 }
@@ -498,7 +498,7 @@ function finalize_POST(jwtToken, videoIdsJson) {
                 const nonFinalizedVideoIds = nodeResponseData.nonFinalizedVideoIds;
                 
                 for(const finalizedVideoId of finalizedVideoIds) {
-                    const videoDirectory = path.join(getAppDataVideosDirectoryPath(), finalizedVideoId);
+                    const videoDirectory = path.join(getVideosDirectoryPath(), finalizedVideoId);
                     
                     await deleteDirectoryRecursive(videoDirectory);
                     
@@ -593,8 +593,8 @@ function videoIdThumbnail_POST(jwtToken, videoId, thumbnailFile) {
         if(thumbnailFile != null && thumbnailFile.length === 1) {
             thumbnailFile = thumbnailFile[0];
 
-            const sourceFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images/' + thumbnailFile.filename);
-            const destinationFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images/thumbnail.jpg');
+            const sourceFilePath = path.join(getVideosDirectoryPath(), videoId + '/images/' + thumbnailFile.filename);
+            const destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/images/thumbnail.jpg');
             
             sharp(sourceFilePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toFile(destinationFilePath)
             .then(() => {
@@ -632,8 +632,8 @@ function videoIdPreview_POST(jwtToken, videoId, previewFile) {
         if(previewFile != null && previewFile.length === 1) {
             previewFile = previewFile[0];
 
-            const sourceFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images/' + previewFile.filename);
-            const destinationFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images/preview.jpg');
+            const sourceFilePath = path.join(getVideosDirectoryPath(), videoId + '/images/' + previewFile.filename);
+            const destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/images/preview.jpg');
             
             sharp(sourceFilePath).resize({width: 512}).resize(512, 288).jpeg({quality : 90}).toFile(destinationFilePath)
             .then(() => {
@@ -671,8 +671,8 @@ function videoIdPoster_POST(jwtToken, videoId, posterFile) {
         if(posterFile != null && posterFile.length === 1) {
             posterFile = posterFile[0];
         
-            const sourceFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images/' + posterFile.filename);
-            const destinationFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/images/poster.jpg');
+            const sourceFilePath = path.join(getVideosDirectoryPath(), videoId + '/images/' + posterFile.filename);
+            const destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/images/poster.jpg');
             
             sharp(sourceFilePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toFile(destinationFilePath)
             .then(() => {

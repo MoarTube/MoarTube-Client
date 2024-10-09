@@ -3,7 +3,7 @@ const path = require('path');
 const spawn = require('child_process').spawn;
 const spawnSync = require('child_process').spawnSync;
 
-const { logDebugMessageToConsole, deleteDirectoryRecursive, timestampToSeconds, websocketClientBroadcast, getAppDataVideosDirectoryPath, getFfmpegPath, getClientSettings } = require('../helpers');
+const { logDebugMessageToConsole, deleteDirectoryRecursive, timestampToSeconds, websocketClientBroadcast, getVideosDirectoryPath, getFfmpegPath, getClientSettings } = require('../helpers');
 const { node_setVideoPublishing, node_setVideoLengths, node_setVideoPublished, node_uploadVideo } = require('../node-communications');
 const { getPendingPublishVideoTracker, getPendingPublishVideoTrackerQueueSize, enqueuePendingPublishVideo, dequeuePendingPublishVideo } = require('../trackers/pending-publish-video-tracker');
 const { addToPublishVideoEncodingTracker, isPublishVideoEncodingStopping } = require('../trackers/publish-video-encoding-tracker');
@@ -136,30 +136,30 @@ function startPublishingJob(publishingJob) {
 function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExtension) {
     return new Promise(function(resolve, reject) {
         if(!isPublishVideoEncodingStopping(videoId)) {
-            const sourceFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
+            const sourceFilePath = path.join(getVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
             
             const destinationFileExtension = '.' + format;
             let destinationFilePath = '';
             
             if(format === 'm3u8') {
-                fs.mkdirSync(path.join(getAppDataVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution), { recursive: true });
+                fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution), { recursive: true });
                 
-                destinationFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + destinationFileExtension);
+                destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + destinationFileExtension);
             }
             else if(format === 'mp4') {
-                fs.mkdirSync(path.join(getAppDataVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution), { recursive: true });
+                fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution), { recursive: true });
                 
-                destinationFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution + '/' + resolution + destinationFileExtension);
+                destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution + '/' + resolution + destinationFileExtension);
             }
             else if(format === 'webm') {
-                fs.mkdirSync(path.join(getAppDataVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution), { recursive: true });
+                fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution), { recursive: true });
                 
-                destinationFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution + '/' + resolution + destinationFileExtension);
+                destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution + '/' + resolution + destinationFileExtension);
             }
             else if(format === 'ogv') {
-                fs.mkdirSync(path.join(getAppDataVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution), { recursive: true });
+                fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution), { recursive: true });
                 
-                destinationFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution + '/' + resolution + destinationFileExtension);
+                destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution + '/' + resolution + destinationFileExtension);
             }
             
             const ffmpegArguments = generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePath, destinationFilePath, sourceFileExtension);
@@ -243,8 +243,8 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
             const paths = [];
             
             if(format === 'm3u8') {
-                const manifestFilePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
-                const segmentsDirectoryPath = path.join(getAppDataVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution);
+                const manifestFilePath = path.join(getVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
+                const segmentsDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution);
                 
                 paths.push({fileName : 'manifest-' + resolution + '.m3u8', filePath: manifestFilePath});
                 
@@ -257,19 +257,19 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
             }
             else if(format === 'mp4') {
                 const fileName = resolution + '.mp4';
-                const filePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution + '/' + fileName);
+                const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution + '/' + fileName);
                 
                 paths.push({fileName : fileName, filePath: filePath});
             }
             else if(format === 'webm') {
                 const fileName = resolution + '.webm';
-                const filePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution + '/' + fileName);
+                const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution + '/' + fileName);
                 
                 paths.push({fileName : fileName, filePath: filePath});
             }
             else if(format === 'ogv') {
                 const fileName = resolution + '.ogv';
-                const filePath = path.join(getAppDataVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution + '/' + fileName);
+                const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution + '/' + fileName);
                 
                 paths.push({fileName : fileName, filePath: filePath});
             }
@@ -302,10 +302,10 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
 }
 
 async function finishVideoPublish(jwtToken, videoId, sourceFileExtension) {
-    await deleteDirectoryRecursive(path.join(getAppDataVideosDirectoryPath(), videoId + '/adaptive'));
-    await deleteDirectoryRecursive(path.join(getAppDataVideosDirectoryPath(), videoId + '/progressive'));
+    await deleteDirectoryRecursive(path.join(getVideosDirectoryPath(), videoId + '/adaptive'));
+    await deleteDirectoryRecursive(path.join(getVideosDirectoryPath(), videoId + '/progressive'));
     
-    const sourceFilePath =  path.join(getAppDataVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
+    const sourceFilePath =  path.join(getVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
     
     if(fs.existsSync(sourceFilePath)) {
         const result = spawnSync(getFfmpegPath(), [
@@ -438,7 +438,7 @@ function generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePat
         }
     }
 
-    const hlsSegmentOutputPath = path.join(getAppDataVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
+    const hlsSegmentOutputPath = path.join(getVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
     
     let ffmpegArguments = [];
     
