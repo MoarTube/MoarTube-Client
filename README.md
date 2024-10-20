@@ -129,7 +129,7 @@ Open a web browser at [localhost:8080](http://localhost:8080) to view the MoarTu
 
 The default login credentials for your node are below. Be sure to change these upon logging in.
 
-By default, MoarTube Node listens on port 80.
+By default, MoarTube Client listens on port 8080.
 
 **username**: admin<br/>**password**: admin
 
