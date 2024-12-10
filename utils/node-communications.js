@@ -1605,6 +1605,106 @@ function node_LinksDelete(jwtToken, linkId) {
     });
 }
 
+function node_commentsToggle(jwtToken, isCommentsEnabled) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/settings/comments/toggle', {
+            isCommentsEnabled: isCommentsEnabled,
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_likesToggle(jwtToken, isLikesEnabled) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/settings/likes/toggle', {
+            isLikesEnabled: isLikesEnabled,
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_dislikesToggle(jwtToken, isDislikesEnabled) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/settings/dislikes/toggle', {
+            isDislikesEnabled: isDislikesEnabled,
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_reportsToggle(jwtToken, isReportsEnabled) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/settings/reports/toggle', {
+            isReportsEnabled: isReportsEnabled,
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_liveChatToggle(jwtToken, isLiveChatEnabled) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/settings/liveChat/toggle', {
+            isLiveChatEnabled: isLiveChatEnabled,
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 module.exports = {
     node_isAuthenticated,
     node_doHeartBeat,
@@ -1684,5 +1784,10 @@ module.exports = {
     node_MonetizationDelete,
     node_LinksAll,
     node_LinksAdd,
-    node_LinksDelete
+    node_LinksDelete,
+    node_commentsToggle,
+    node_likesToggle,
+    node_dislikesToggle,
+    node_reportsToggle,
+    node_liveChatToggle
 };

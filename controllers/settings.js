@@ -12,7 +12,8 @@ const {
 const { 
     node_setExternalNetwork, node_getSettings, node_getAvatar, node_setAvatar, node_getBanner, node_setBanner, node_setNodeName, node_setNodeAbout, 
     node_setNodeId, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials, node_setCloudflareConfiguration, 
-    node_clearCloudflareConfiguration, node_setCloudflareTurnstileConfiguration, node_CloudflareTurnstileConfigurationClear
+    node_clearCloudflareConfiguration, node_setCloudflareTurnstileConfiguration, node_CloudflareTurnstileConfigurationClear,
+    node_commentsToggle, node_likesToggle, node_dislikesToggle, node_reportsToggle, node_liveChatToggle
 } = require('../utils/node-communications');
 
 function client_GET() {
@@ -471,6 +472,101 @@ function nodeCloudflareClear_POST(jwtToken) {
     });
 }
 
+function nodeCommentsToggle_POST(jwtToken, isCommentsEnabled) {
+    return new Promise(function(resolve, reject) {
+        node_commentsToggle(jwtToken, isCommentsEnabled)
+        .then(nodeResponseData => {
+            if(nodeResponseData.isError) {
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
+                
+                resolve({isError: true, message: nodeResponseData.message});
+            }
+            else {
+                resolve({isError: false});
+            }
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function nodeLikesToggle_POST(jwtToken, isLikesEnabled) {
+    return new Promise(function(resolve, reject) {
+        node_likesToggle(jwtToken, isLikesEnabled)
+        .then(nodeResponseData => {
+            if(nodeResponseData.isError) {
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
+                
+                resolve({isError: true, message: nodeResponseData.message});
+            }
+            else {
+                resolve({isError: false});
+            }
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function nodeDislikesToggle_POST(jwtToken, isDislikesEnabled) {
+    return new Promise(function(resolve, reject) {
+        node_dislikesToggle(jwtToken, isDislikesEnabled)
+        .then(nodeResponseData => {
+            if(nodeResponseData.isError) {
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
+                
+                resolve({isError: true, message: nodeResponseData.message});
+            }
+            else {
+                resolve({isError: false});
+            }
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function nodeReportsToggle_POST(jwtToken, isReportsEnabled) {
+    return new Promise(function(resolve, reject) {
+        node_reportsToggle(jwtToken, isReportsEnabled)
+        .then(nodeResponseData => {
+            if(nodeResponseData.isError) {
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
+                
+                resolve({isError: true, message: nodeResponseData.message});
+            }
+            else {
+                resolve({isError: false});
+            }
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function nodeLiveChatToggle_POST(jwtToken, isLiveChatEnabled) {
+    return new Promise(function(resolve, reject) {
+        node_liveChatToggle(jwtToken, isLiveChatEnabled)
+        .then(nodeResponseData => {
+            if(nodeResponseData.isError) {
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
+                
+                resolve({isError: true, message: nodeResponseData.message});
+            }
+            else {
+                resolve({isError: false});
+            }
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 function nodeAccount_POST(jwtToken, username, password) {
     return new Promise(function(resolve, reject) {
         node_setAccountCredentials(jwtToken, username, password)
@@ -510,5 +606,10 @@ module.exports = {
     nodeCloudflareTurnstileConfigure_POST,
     nodeCloudflareTurnstileClear_POST,
     nodeCloudflareClear_POST,
+    nodeCommentsToggle_POST,
+    nodeLikesToggle_POST,
+    nodeDislikesToggle_POST,
+    nodeReportsToggle_POST,
+    nodeLiveChatToggle_POST,
     nodeAccount_POST
 };

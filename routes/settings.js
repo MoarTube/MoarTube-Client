@@ -6,7 +6,8 @@ const multer = require('multer');
 const { 
     client_GET, node_GET, clientGpuAcceleration_POST, clientEncoding_POST, nodeAvatar_GET, nodeAvatar_POST, nodeBanner_GET, nodeBanner_POST,
     nodePersonalizeNodeName_POST, nodePersonalizeNodeAbout_POST, nodePersonalizeNodeId_POST, node_Secure_POST, nodeNetworkInternal_POST, nodeNetworkExternal_POST, nodeAccount_POST,
-    nodeCloudflareConfigure_POST, nodeCloudflareClear_POST, nodeCloudflareTurnstileConfigure_POST, nodeCloudflareTurnstileClear_POST, clientEncodingDefault_GET
+    nodeCloudflareConfigure_POST, nodeCloudflareClear_POST, nodeCloudflareTurnstileConfigure_POST, nodeCloudflareTurnstileClear_POST, clientEncodingDefault_GET,
+    nodeCommentsToggle_POST, nodeDislikesToggle_POST, nodeLikesToggle_POST, nodeReportsToggle_POST, nodeLiveChatToggle_POST
  } = require('../controllers/settings');
  const { logDebugMessageToConsole, getPublicDirectoryPath, getCertificatesDirectoryPath } = require('../utils/helpers');
 const { node_isAuthenticated, node_doSignout } = require('../utils/node-communications');
@@ -55,21 +56,6 @@ router.get('/client', (req, res) => {
     }
 });
 
-router.get('/node', async (req, res) => {
-    try {
-        const jwtToken = req.session.jwtToken;
-
-        const data = await node_GET(jwtToken);
-
-        res.send(data);
-    }
-    catch(error) {
-        logDebugMessageToConsole(null, error, new Error().stack);
-
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
-    }
-});
-
 router.post('/client/gpuAcceleration', async (req, res) => {
     try {
         const isGpuAccelerationEnabled = req.body.isGpuAccelerationEnabled;
@@ -110,6 +96,25 @@ router.post('/client/encoding', (req, res) => {
     catch(error) {
         logDebugMessageToConsole(null, error, new Error().stack);
     
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    }
+});
+
+
+
+
+
+router.get('/node', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+
+        const data = await node_GET(jwtToken);
+
+        res.send(data);
+    }
+    catch(error) {
+        logDebugMessageToConsole(null, error, new Error().stack);
+
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
 });
@@ -481,6 +486,86 @@ router.post('/node/cloudflare/clear', async (req, res) => {
     catch(error) {
         logDebugMessageToConsole(null, error, new Error().stack);
     
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    }
+});
+
+router.post('/node/comments/toggle', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+        const isCommentsEnabled = req.body.isCommentsEnabled;
+
+        const data = await nodeCommentsToggle_POST(jwtToken, isCommentsEnabled);
+
+        res.send(data);
+    }
+    catch(error) {
+        logDebugMessageToConsole(null, error, new Error().stack);
+
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    }
+});
+
+router.post('/node/likes/toggle', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+        const isLikesEnabled = req.body.isLikesEnabled;
+
+        const data = await nodeLikesToggle_POST(jwtToken, isLikesEnabled);
+
+        res.send(data);
+    }
+    catch(error) {
+        logDebugMessageToConsole(null, error, new Error().stack);
+
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    }
+});
+
+router.post('/node/dislikes/toggle', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+        const isDislikesEnabled = req.body.isDislikesEnabled;
+
+        const data = await nodeDislikesToggle_POST(jwtToken, isDislikesEnabled);
+
+        res.send(data);
+    }
+    catch(error) {
+        logDebugMessageToConsole(null, error, new Error().stack);
+
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    }
+});
+
+router.post('/node/reports/toggle', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+        const isReportsEnabled = req.body.isReportsEnabled;
+
+        const data = await nodeReportsToggle_POST(jwtToken, isReportsEnabled);
+
+        res.send(data);
+    }
+    catch(error) {
+        logDebugMessageToConsole(null, error, new Error().stack);
+
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    }
+});
+
+router.post('/node/liveChat/toggle', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+        const isLiveChatEnabled = req.body.isLiveChatEnabled;
+
+        const data = await nodeLiveChatToggle_POST(jwtToken, isLiveChatEnabled);
+
+        res.send(data);
+    }
+    catch(error) {
+        logDebugMessageToConsole(null, error, new Error().stack);
+
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
 });

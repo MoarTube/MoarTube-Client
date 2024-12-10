@@ -54,7 +54,6 @@ async function startClient() {
 	});
 
 	logDebugMessageToConsole('starting MoarTube Client', null, null);
-	logDebugMessageToConsole('moartube-client directory: ' + discoverDataDirectoryPath(), null, null);
 
 	loadConfig();
 
@@ -160,10 +159,10 @@ function discoverDataDirectoryPath() {
 
 function loadConfig() {
 	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
-	setPublicDirectoryPath(path.join(__dirname, 'public'));
 	
 	setDataDirectoryPath(discoverDataDirectoryPath());
+
+	setPublicDirectoryPath(path.join(__dirname, 'public'));
 	setCertificatesDirectoryPath(path.join(getDataDirectoryPath(), 'certificates'));
 	setVideosDirectoryPath(path.join(getDataDirectoryPath(), 'media/videos'));
 	setImagesDirectoryPath(path.join(getDataDirectoryPath(), 'images'));
