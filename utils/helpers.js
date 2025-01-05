@@ -2,6 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const webSocket = require('ws');
 
+let isDeveloperMode;
 let publicDirectoryPath;
 let dataDirectoryPath;
 let certificatesDirectoryPath;
@@ -328,6 +329,10 @@ function getMoarTubeNodeWebsocketUrl() {
     return (getMoarTubeNodeWebsocketProtocol() + '://' + getMoarTubeNodeIp() + ':' + getMoarTubeNodePort());
 }
 
+function getIsDeveloperMode() {
+    return isDeveloperMode;
+}
+
 function getClientSettings() {
 	const clientSettings = JSON.parse(fs.readFileSync(path.join(getDataDirectoryPath(), '_client_settings.json'), 'utf8'));
 
@@ -411,6 +416,10 @@ function setMoarTubeNodeWebsocketProtocol(websocketprotocol) {
     moartubeNodeWebsocketProtocol = websocketprotocol;
 }
 
+function setIsDeveloperMode(value) {
+    isDeveloperMode = value;
+}
+
 function setClientSettings(clientSettings) {
     const clientSettingsString = JSON.stringify(clientSettings);
 
@@ -473,5 +482,7 @@ module.exports = {
     setClientSettings,
     setFfmpegPath,
     setWebsocketServer,
-    setWebsocketClient
+    setWebsocketClient,
+    getIsDeveloperMode,
+    setIsDeveloperMode
 };

@@ -12,7 +12,8 @@ const {
 	logDebugMessageToConsole, performEncodingDecodingAssessment, cleanVideosDirectory, getPublicDirectoryPath, getDataDirectoryPath,
     getMoarTubeClientPort, setPublicDirectoryPath, setDataDirectoryPath, setCertificatesDirectoryPath,
     setVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getClientSettings,
-	getCertificatesDirectoryPath, getVideosDirectoryPath, setImagesDirectoryPath, getImagesDirectoryPath
+	getCertificatesDirectoryPath, getVideosDirectoryPath, setImagesDirectoryPath, getImagesDirectoryPath,
+	getIsDeveloperMode, setIsDeveloperMode
 } = require('./utils/helpers');
 
 const { 
@@ -159,8 +160,17 @@ function discoverDataDirectoryPath() {
 
 function loadConfig() {
 	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+	const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config_test.json'), 'utf8'));
+
+	setIsDeveloperMode(config.isDeveloperMode);
 	
-	setDataDirectoryPath(discoverDataDirectoryPath());
+	if(getIsDeveloperMode()) {
+		setDataDirectoryPath(path.join(__dirname, 'data'));
+	}
+	else {
+		setDataDirectoryPath(discoverDataDirectoryPath());
+	}
 
 	setPublicDirectoryPath(path.join(__dirname, 'public'));
 	setCertificatesDirectoryPath(path.join(getDataDirectoryPath(), 'certificates'));
