@@ -1311,6 +1311,26 @@ function node_clearCloudflareConfiguration(jwtToken) {
     });
 }
 
+function node_databaseConfigToggle(jwtToken, databaseConfig) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/settings/databaseConfig/toggle', {
+            databaseConfig: databaseConfig
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 function node_setAccountCredentials(jwtToken, username, password) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/settings/account', {
@@ -1789,5 +1809,6 @@ module.exports = {
     node_likesToggle,
     node_dislikesToggle,
     node_reportsToggle,
-    node_liveChatToggle
+    node_liveChatToggle,
+    node_databaseConfigToggle
 };

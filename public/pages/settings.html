@@ -369,13 +369,6 @@ input[type="range"]:focus::-moz-range-thumb{
 												<div class="col-12">
 													<label class="form-label">Node Name</label>
 													<div class="input-group">
-														<!-- 
-														https://bugs.jquery.com/ticket/10891
-														name="nodeName" will create a runtime error because in JQuery "nodeName" is a reserved keyword (property, attribute, function name, etc...)
-														that feeling when you're about 70% done with a project and you encounter shit like this
-														and then you realize that this library is balls deep in your code
-														lol
-														-->
 														<input id="node-name-input" class="form-control" name="nodeNameJustCuz" type="text" placeholder="node name" onfocus="focused(this)" onfocusout="defocused(this)">
 													</div>
 												</div>
@@ -475,6 +468,30 @@ input[type="range"]:focus::-moz-range-thumb{
 											<div class="col-6">
 												<div class="form-check form-switch my-auto">
 													<input id="cloudflare-turnstile-checkbox" class="form-check-input" type="checkbox" onclick="toggleCloudflareTurnstileCheckbox(this)">
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+								<div class="card-body pt-0 pb-0">
+									<div class="">
+										<a href="https://www.moartube.com/guides/how-to-database-storage-mode" target="_blank"><p class="mb-0 d-flex">Database Storage Mode<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
+											<path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/>
+											<path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/>
+										  </svg></p></a>
+									</div>
+									<div class="card-body pt-0">
+										<div class="row">
+											<div class="col-6">
+												<div class="radio-group">
+													<label class="form-check-label me-3" for="database-storage-mode-sqlite-radio">
+													  <input id="database-storage-mode-sqlite-radio" class="form-check-input database-storage-mode-radio" type="radio" name="database-storage-mode" data-databasedialect="sqlite" onclick="toggleDatabaseConfig(this, event)">
+													  SQLite (local)
+													</label>
+													<label class="form-check-label" for="database-storage-mode-postgres-radio">
+													  <input id="database-storage-mode-postgres-radio" class="form-check-input database-storage-mode-radio" type="radio" name="database-storage-mode" data-databasedialect="postgres" onclick="toggleDatabaseConfig(this, event)">
+													  PostgreSQL (remote)
+													</label>
 												</div>
 											</div>
 										</div>
@@ -766,7 +783,7 @@ input[type="range"]:focus::-moz-range-thumb{
 					}
 				})
 				.fail(function() {
-					console.log('unable to communicate with node');
+					showAlert(true, 'failed to retrieve client settings');
 				});
 			}
 			
@@ -792,6 +809,13 @@ input[type="range"]:focus::-moz-range-thumb{
 						$('#cloudflare-one-click-integration-checkbox').prop('checked', nodeSettings.isCloudflareIntegrationEnabled);
 						$('#cloudflare-turnstile-checkbox').prop('checked', nodeSettings.isCloudflareTurnstileEnabled);
 
+						if(nodeSettings.databaseConfig.databaseDialect === 'sqlite') {
+							$('#database-storage-mode-sqlite-radio').prop('checked', true);
+						}
+						else if(nodeSettings.databaseConfig.databaseDialect === 'postgres') {
+							$('#database-storage-mode-postgres-radio').prop('checked', true);
+						}
+
 						$('#comments-checkbox').prop('checked', nodeSettings.isCommentsEnabled);
 						$('#likes-checkbox').prop('checked', nodeSettings.isLikesEnabled);
 						$('#dislikes-checkbox').prop('checked', nodeSettings.isDislikesEnabled);
@@ -806,7 +830,7 @@ input[type="range"]:focus::-moz-range-thumb{
 					}
 				})
 				.fail(function() {
-					console.log('unable to communicate with node');
+					showAlert(true, 'failed to retrieve node settings');
 				});
 			}
 			
@@ -1078,6 +1102,8 @@ input[type="range"]:focus::-moz-range-thumb{
 				})
 				.fail(function() {
 					$(checkbox).prop('checked', !isGpuAccelerationEnabled);
+
+					showAlert(true, 'an error occurred, please try again');
 				});
 			}
 
@@ -1333,7 +1359,7 @@ input[type="range"]:focus::-moz-range-thumb{
 										}
 									})
 									.fail(function() {
-										alert('an error occurred, please try again');
+										showAlert(true, 'an error occurred, please try again');
 									});
 								}
 							});
@@ -1666,6 +1692,106 @@ input[type="range"]:focus::-moz-range-thumb{
 				}
 			}
 
+			function toggleDatabaseConfig(radio, event) {
+				event.preventDefault();
+
+				$('#database-storage-mode-sqlite-radio').prop('disabled', true);
+				$('#database-storage-mode-postgres-radio').prop('disabled', true);
+
+				const databaseDialect = $(radio).data('databasedialect');
+
+				const databaseConfig = {
+					databaseDialect:databaseDialect
+				}
+				
+				if(databaseDialect === 'sqlite') {
+					submitDatabaseConfig(databaseConfig, radio);
+				}
+				else if(databaseDialect === 'postgres') {
+					const html = '\
+					<div id="secure-connection-modal" class="container-fluid">\
+						<div class="input-group mb-3"><input id="postgresConfigName" class="form-control" type="text" required="" autocomplete="off" placeholder="Database Name"></div>\
+						<div class="input-group mb-3"><input id="postgresConfigUsername" class="form-control" type="text" required="" autocomplete="off" placeholder="Username"></div>\
+						<div class="input-group mb-3"><input id="postgresConfigPassword" class="form-control" type="text" required="" autocomplete="off" placeholder="Password"></div>\
+						<div class="input-group mb-3"><input id="postgresConfigHost" class="form-control" type="text" required="" autocomplete="off" placeholder="Host"></div>\
+						<div class="input-group mb-3"><input id="postgresConfigPort" class="form-control" type="text" required="" autocomplete="off" placeholder="Port"></div>\
+					</div>';
+					
+					Swal.fire({
+						title: 'Postgres Configuration',
+						html: html,
+						showCloseButton: true,
+						showConfirmButton: true,
+						confirmButtonText: 'Save',
+						willOpen: () => {
+							
+						},
+						didOpen: () => {
+							
+						},
+						preConfirm: () => {
+							Swal.showLoading();
+
+							const postgresConfigName = $('#postgresConfigName').val();
+							const postgresConfigUsername = $('#postgresConfigUsername').val();
+							const postgresConfigPassword = $('#postgresConfigPassword').val();
+							const postgresConfigHost = $('#postgresConfigHost').val();
+							const postgresConfigPort = $('#postgresConfigPort').val();
+
+							return { 
+								postgresConfigName: postgresConfigName, 
+								postgresConfigUsername: postgresConfigUsername, 
+								postgresConfigPassword: postgresConfigPassword,
+								postgresConfigHost: postgresConfigHost,
+								postgresConfigPort: postgresConfigPort
+							}
+						}
+					})
+					.then((result) => {
+						if (result.isConfirmed) {
+							const postgresConfigName = result.value.postgresConfigName;
+							const postgresConfigUsername = result.value.postgresConfigUsername;
+							const postgresConfigPassword = result.value.postgresConfigPassword;
+							const postgresConfigHost = result.value.postgresConfigHost;
+							const postgresConfigPort = result.value.postgresConfigPort;
+
+							databaseConfig.postgresConfig = {
+								databaseName:postgresConfigName,
+								username:postgresConfigUsername,
+								password:postgresConfigPassword,
+								host:postgresConfigHost,
+								port:Number(postgresConfigPort)
+							};
+
+							submitDatabaseConfig(databaseConfig, radio);
+						}
+						else {
+							$('#database-storage-mode-sqlite-radio').prop('disabled', false);
+							$('#database-storage-mode-postgres-radio').prop('disabled', false);
+						}
+					});
+				}
+
+				function submitDatabaseConfig(databaseConfig, radio) {
+					$.ajax({type: 'POST', url: '/settings/node/databaseConfig/toggle', data: JSON.stringify({databaseConfig: databaseConfig}), contentType: 'application/json; charset=utf-8'})
+					.always(function() {
+						$('#database-storage-mode-sqlite-radio').prop('disabled', false);
+						$('#database-storage-mode-postgres-radio').prop('disabled', false);
+					})
+					.done(function (data, textStatus, xhr) {
+						if(data.isError) {
+							showAlert(true, data.message);
+						}
+						else {
+							$(radio).prop('checked', true);
+						}
+					})
+					.fail(function() {
+						showAlert(true, 'an error occurred, please try again');
+					});
+				}
+			}
+
 			function toggleCommentsCheckbox(checkbox) {
 				const isCommentsEnabled = $(checkbox).is(':checked');
 				
@@ -1687,6 +1813,8 @@ input[type="range"]:focus::-moz-range-thumb{
 				})
 				.fail(function() {
 					$(checkbox).prop('checked', !isCommentsEnabled);
+
+					showAlert(true, 'an error occurred, please try again');
 				});
 			}
 
@@ -1711,6 +1839,8 @@ input[type="range"]:focus::-moz-range-thumb{
 				})
 				.fail(function() {
 					$(checkbox).prop('checked', !isLikesEnabled);
+
+					showAlert(true, 'an error occurred, please try again');
 				});
 			}
 
@@ -1735,6 +1865,8 @@ input[type="range"]:focus::-moz-range-thumb{
 				})
 				.fail(function() {
 					$(checkbox).prop('checked', !isDislikesEnabled);
+
+					showAlert(true, 'an error occurred, please try again');
 				});
 			}
 
@@ -1759,6 +1891,8 @@ input[type="range"]:focus::-moz-range-thumb{
 				})
 				.fail(function() {
 					$(checkbox).prop('checked', !isDislikesEnabled);
+
+					showAlert(true, 'an error occurred, please try again');
 				});
 			}
 
@@ -1783,6 +1917,8 @@ input[type="range"]:focus::-moz-range-thumb{
 				})
 				.fail(function() {
 					$(checkbox).prop('checked', !isDislikesEnabled);
+
+					showAlert(true, 'an error occurred, please try again');
 				});
 			}
 			
