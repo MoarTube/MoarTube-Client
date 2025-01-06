@@ -475,7 +475,7 @@ input[type="range"]:focus::-moz-range-thumb{
 								</div>
 								<div class="card-body pt-0 pb-0">
 									<div class="">
-										<a href="https://www.moartube.com/guides/how-to-database-storage-mode" target="_blank"><p class="mb-0 d-flex">Database Storage Mode<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
+										<a href="https://www.moartube.com/guides/how-to-database-configuration" target="_blank"><p class="mb-0 d-flex">Database Configuration<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
 											<path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/>
 											<path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/>
 										  </svg></p></a>
@@ -484,13 +484,37 @@ input[type="range"]:focus::-moz-range-thumb{
 										<div class="row">
 											<div class="col-6">
 												<div class="radio-group">
-													<label class="form-check-label me-3" for="database-storage-mode-sqlite-radio">
-													  <input id="database-storage-mode-sqlite-radio" class="form-check-input database-storage-mode-radio" type="radio" name="database-storage-mode" data-databasedialect="sqlite" onclick="toggleDatabaseConfig(this, event)">
+													<label class="form-check-label me-3" for="database-dialect-sqlite-radio">
+													  <input id="database-dialect-sqlite-radio" class="form-check-input database-dialect-radio" type="radio" name="database-dialect" data-databasedialect="sqlite" onclick="toggleDatabaseConfiguration(this, event)">
 													  SQLite (local)
 													</label>
-													<label class="form-check-label" for="database-storage-mode-postgres-radio">
-													  <input id="database-storage-mode-postgres-radio" class="form-check-input database-storage-mode-radio" type="radio" name="database-storage-mode" data-databasedialect="postgres" onclick="toggleDatabaseConfig(this, event)">
+													<label class="form-check-label" for="database-dialect-postgres-radio">
+													  <input id="database-dialect-postgres-radio" class="form-check-input database-dialect-radio" type="radio" name="database-dialect" data-databasedialect="postgres" onclick="toggleDatabaseConfiguration(this, event)">
 													  PostgreSQL (remote)
+													</label>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+								<div class="card-body pt-0 pb-0">
+									<div class="">
+										<a href="https://www.moartube.com/guides/how-to-storage-configuration" target="_blank"><p class="mb-0 d-flex">Storage Configuration<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
+											<path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/>
+											<path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/>
+										  </svg></p></a>
+									</div>
+									<div class="card-body pt-0">
+										<div class="row">
+											<div class="col-6">
+												<div class="radio-group">
+													<label class="form-check-label me-3" for="storage-configuration-filesystem-radio">
+													  <input id="storage-configuration-filesystem-radio" class="form-check-input storage-configuration-radio" type="radio" name="storage-configuration" data-storagemode="filesystem" onclick="toggleStorageConfiguration(this, event)">
+													  Filesystem (local)
+													</label>
+													<label class="form-check-label" for="storage-configuration-s3provider-radio">
+													  <input id="storage-configuration-s3provider-radio" class="form-check-input storage-configuration-radio" type="radio" name="storage-configuration" data-storagemode="s3provider" onclick="toggleStorageConfiguration(this, event)">
+													  S3 Provider (remote)
 													</label>
 												</div>
 											</div>
@@ -810,10 +834,17 @@ input[type="range"]:focus::-moz-range-thumb{
 						$('#cloudflare-turnstile-checkbox').prop('checked', nodeSettings.isCloudflareTurnstileEnabled);
 
 						if(nodeSettings.databaseConfig.databaseDialect === 'sqlite') {
-							$('#database-storage-mode-sqlite-radio').prop('checked', true);
+							$('#database-dialect-sqlite-radio').prop('checked', true);
 						}
 						else if(nodeSettings.databaseConfig.databaseDialect === 'postgres') {
-							$('#database-storage-mode-postgres-radio').prop('checked', true);
+							$('#database-dialect-postgres-radio').prop('checked', true);
+						}
+
+						if(nodeSettings.storageConfig.storageMode === 'filesystem') {
+							$('#storage-configuration-filesystem-radio').prop('checked', true);
+						}
+						else if(nodeSettings.storageConfig.storageMode === 's3provider') {
+							$('#storage-configuration-s3provider-radio').prop('checked', true);
 						}
 
 						$('#comments-checkbox').prop('checked', nodeSettings.isCommentsEnabled);
@@ -1692,11 +1723,11 @@ input[type="range"]:focus::-moz-range-thumb{
 				}
 			}
 
-			function toggleDatabaseConfig(radio, event) {
+			function toggleDatabaseConfiguration(radio, event) {
 				event.preventDefault();
 
-				$('#database-storage-mode-sqlite-radio').prop('disabled', true);
-				$('#database-storage-mode-postgres-radio').prop('disabled', true);
+				$('#database-dialect-sqlite-radio').prop('disabled', true);
+				$('#database-dialect-postgres-radio').prop('disabled', true);
 
 				const databaseDialect = $(radio).data('databasedialect');
 
@@ -1709,7 +1740,7 @@ input[type="range"]:focus::-moz-range-thumb{
 				}
 				else if(databaseDialect === 'postgres') {
 					const html = '\
-					<div id="secure-connection-modal" class="container-fluid">\
+					<div id="database-configuration-modal" class="container-fluid">\
 						<div class="input-group mb-3"><input id="postgresConfigName" class="form-control" type="text" required="" autocomplete="off" placeholder="Database Name"></div>\
 						<div class="input-group mb-3"><input id="postgresConfigUsername" class="form-control" type="text" required="" autocomplete="off" placeholder="Username"></div>\
 						<div class="input-group mb-3"><input id="postgresConfigPassword" class="form-control" type="text" required="" autocomplete="off" placeholder="Password"></div>\
@@ -1730,8 +1761,6 @@ input[type="range"]:focus::-moz-range-thumb{
 							
 						},
 						preConfirm: () => {
-							Swal.showLoading();
-
 							const postgresConfigName = $('#postgresConfigName').val();
 							const postgresConfigUsername = $('#postgresConfigUsername').val();
 							const postgresConfigPassword = $('#postgresConfigPassword').val();
@@ -1766,8 +1795,8 @@ input[type="range"]:focus::-moz-range-thumb{
 							submitDatabaseConfig(databaseConfig, radio);
 						}
 						else {
-							$('#database-storage-mode-sqlite-radio').prop('disabled', false);
-							$('#database-storage-mode-postgres-radio').prop('disabled', false);
+							$('#database-dialect-sqlite-radio').prop('disabled', false);
+							$('#database-dialect-postgres-radio').prop('disabled', false);
 						}
 					});
 				}
@@ -1775,8 +1804,145 @@ input[type="range"]:focus::-moz-range-thumb{
 				function submitDatabaseConfig(databaseConfig, radio) {
 					$.ajax({type: 'POST', url: '/settings/node/databaseConfig/toggle', data: JSON.stringify({databaseConfig: databaseConfig}), contentType: 'application/json; charset=utf-8'})
 					.always(function() {
-						$('#database-storage-mode-sqlite-radio').prop('disabled', false);
-						$('#database-storage-mode-postgres-radio').prop('disabled', false);
+						$('#database-dialect-sqlite-radio').prop('disabled', false);
+						$('#database-dialect-postgres-radio').prop('disabled', false);
+					})
+					.done(function (data, textStatus, xhr) {
+						if(data.isError) {
+							showAlert(true, data.message);
+						}
+						else {
+							$(radio).prop('checked', true);
+						}
+					})
+					.fail(function() {
+						showAlert(true, 'an error occurred, please try again');
+					});
+				}
+			}
+
+			function toggleStorageConfiguration(radio, event) {
+				event.preventDefault();
+
+				$('#storage-configuration-filesystem-radio').prop('disabled', true);
+				$('#storage-configuration-s3provider-radio').prop('disabled', true);
+
+				const storageMode = $(radio).data('storagemode');
+
+				const storageConfig = {
+					storageMode:storageMode
+				}
+				
+				if(storageMode === 'filesystem') {
+					submitStorageConfig(storageConfig, radio);
+				}
+				else if(storageMode === 's3provider') {
+					const rowBucket = '\
+					<div class="row">\
+						<div class="col-6">\
+							<div class="input-group mb-3">\
+								<input class="form-control json-property-name" type="text" required="" autocomplete="off" value="Bucket" disabled>\
+							</div>\
+						</div>\
+						<div class="col-6">\
+							<div class="input-group mb-3">\
+								<input class="form-control json-property-value" type="text" required="" autocomplete="off" placeholder="Property Value">\
+							</div>\
+						</div>\
+					</div>';
+
+					const rowEntry = '\
+					<div class="row">\
+						<div class="col-6">\
+							<div class="input-group mb-3">\
+								<input class="form-control json-property-name" type="text" required="" autocomplete="off" placeholder="Property Name">\
+							</div>\
+						</div>\
+						<div class="col-6">\
+							<div class="input-group mb-3">\
+								<input class="form-control json-property-value" type="text" required="" autocomplete="off" placeholder="Property Value">\
+							</div>\
+						</div>\
+					</div>';
+
+					const html = '\
+					<div id="storage-configuration-modal" class="container-fluid">\
+						<div id="storage-configuration-rows">' + rowBucket + '</div>\
+						<button id="add-storage-configuration-row" class="btn btn-primary btn-sm w-100 mt-2">Add Row</button>\
+						<button id="remove-storage-configuration-row" class="btn btn-primary btn-sm w-100 mt-2" disabled>Remove Row</button>\
+					</div>';
+					
+					Swal.fire({
+						title: 'S3 Configuration',
+						html: html,
+						showCloseButton: true,
+						showConfirmButton: true,
+						confirmButtonText: 'Save',
+						willOpen: () => {
+							
+						},
+						didOpen: () => {
+							$('#add-storage-configuration-row').click(function() {
+								$('#storage-configuration-rows').append(rowEntry);
+
+								$('#remove-storage-configuration-row').prop('disabled', false);
+							});
+
+							$('#remove-storage-configuration-row').click(function() {
+								if($('#storage-configuration-rows').children().length > 1) {
+									$('#storage-configuration-rows').children().last().remove();
+
+									if($('#storage-configuration-rows').children().length === 1) {
+										$('#remove-storage-configuration-row').prop('disabled', true);
+									}
+								}
+							});
+						},
+						preConfirm: () => {
+							const properties = $('.json-property-name').map(function() {
+								return $(this).val().trim();
+							}).get();
+
+							const values = $('.json-property-value').map(function() {
+								return $(this).val().trim();
+							}).get();
+
+							const s3Config = {};
+
+							properties.forEach((property, index) => {
+								if (property !== '' && values[index] !== '') {
+									s3Config[property] = values[index];
+								}
+							});
+
+							if (Object.keys(s3Config).length > 0) {
+								return {s3Config: s3Config};
+							}
+							else {
+								return false;
+							}
+						}
+					})
+					.then((result) => {
+						if (result.isConfirmed) {
+							const s3Config = result.value.s3Config;
+
+							storageConfig.s3Config = s3Config;
+
+							submitStorageConfig(storageConfig, radio);
+						}
+						else {
+							$('#storage-configuration-filesystem-radio').prop('disabled', false);
+							$('#storage-configuration-s3provider-radio').prop('disabled', false);
+						}
+					});
+				}
+
+				function submitStorageConfig(storageConfig, radio) {
+					$.ajax({type: 'POST', url: '/settings/node/storageConfig/toggle', data: JSON.stringify({storageConfig: storageConfig}), contentType: 'application/json; charset=utf-8'})
+					.always(function() {
+						$('#storage-configuration-filesystem-radio').prop('disabled', false);
+						$('#storage-configuration-s3provider-radio').prop('disabled', false);
 					})
 					.done(function (data, textStatus, xhr) {
 						if(data.isError) {

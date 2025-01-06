@@ -1331,6 +1331,26 @@ function node_databaseConfigToggle(jwtToken, databaseConfig) {
     });
 }
 
+function node_storageConfigToggle(jwtToken, storageConfig) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/settings/storageConfig/toggle', {
+            storageConfig: storageConfig
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 function node_setAccountCredentials(jwtToken, username, password) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/settings/account', {
@@ -1810,5 +1830,6 @@ module.exports = {
     node_dislikesToggle,
     node_reportsToggle,
     node_liveChatToggle,
-    node_databaseConfigToggle
+    node_databaseConfigToggle,
+    node_storageConfigToggle
 };

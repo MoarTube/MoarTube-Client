@@ -180,7 +180,7 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
                 if(!isPublishVideoEncodingStopping(videoId)) {
                     const stderrTemp = Buffer.from(data).toString();
                     
-                    logDebugMessageToConsole(stderrTemp, null, null, false);
+                    logDebugMessageToConsole(stderrTemp, null, null);
                     
                     if(stderrTemp.indexOf('time=') != -1) {
                         logDebugMessageToConsole(stderrTemp, null, null);

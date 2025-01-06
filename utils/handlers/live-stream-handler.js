@@ -68,16 +68,16 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
 
             /*
             The end of an HLS manifest is indicated by a newline character.
-            Preceding that newline character is the most recent expected segment entry.
+            Preceding that newline character is the latest expected segment manifest entry.
             By looking for the pattern ".ts\n" at the end of the latest data packet, we can detect the end of the manifest.
-            This detection will also indicate the accumulation of the video data for the most recent expected segment entry.
+            This detection will also indicate the accumulation of the video data for the latest expected segment manifest entry.
             This is because ffmpeg outputs the segment data first, followed by the manifest data.
-            Using the #EXTM3U entry of the manifest reveals the partitioning location between the most recent expected segment data and the manifest data.
+            Using the #EXTM3U section of the manifest reveals the partitioning location between the latest expected segment data and the manifest data.
 
             Note:
-            1) Since stdout is a data stream, the last data packet for the most recent expected segment may contain both video data and manifest data.
+            1) Since stdout is a data stream, the last data packet may contain both video data for the latest expected segment and manifest data.
             2) A data packet may end with the pattern ".ts\n" but instead be a false positive for detecting the end of the manifest if the data packet 
-            happened to be mid-manifest with that pattern. Validation is performed to guard against this rare edge case.
+            happened to be mid-manifest ending with that pattern. Validation is performed to guard against this rare edge case.
             */
 
             // end of manifest detection

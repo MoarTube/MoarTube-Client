@@ -13,7 +13,8 @@ const {
     node_setExternalNetwork, node_getSettings, node_getAvatar, node_setAvatar, node_getBanner, node_setBanner, node_setNodeName, node_setNodeAbout, 
     node_setNodeId, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials, node_setCloudflareConfiguration, 
     node_clearCloudflareConfiguration, node_setCloudflareTurnstileConfiguration, node_CloudflareTurnstileConfigurationClear,
-    node_commentsToggle, node_likesToggle, node_dislikesToggle, node_reportsToggle, node_liveChatToggle, node_databaseConfigToggle
+    node_commentsToggle, node_likesToggle, node_dislikesToggle, node_reportsToggle, node_liveChatToggle, node_databaseConfigToggle,
+    node_storageConfigToggle
 } = require('../utils/node-communications');
 
 function client_GET() {
@@ -491,6 +492,25 @@ function nodeDatabaseConfigToggle_POST(jwtToken, databaseConfig) {
     });
 }
 
+function nodeStorageConfigToggle_POST(jwtToken, storageConfig) {
+    return new Promise(function(resolve, reject) {
+        node_storageConfigToggle(jwtToken, storageConfig)
+        .then(nodeResponseData => {
+            if(nodeResponseData.isError) { 
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
+                
+                resolve({isError: true, message: nodeResponseData.message});
+            }
+            else {
+                resolve({isError: false});
+            }
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 function nodeCommentsToggle_POST(jwtToken, isCommentsEnabled) {
     return new Promise(function(resolve, reject) {
         node_commentsToggle(jwtToken, isCommentsEnabled)
@@ -631,5 +651,6 @@ module.exports = {
     nodeReportsToggle_POST,
     nodeLiveChatToggle_POST,
     nodeAccount_POST,
-    nodeDatabaseConfigToggle_POST
+    nodeDatabaseConfigToggle_POST,
+    nodeStorageConfigToggle_POST
 };

@@ -7,7 +7,8 @@ const {
     client_GET, node_GET, clientGpuAcceleration_POST, clientEncoding_POST, nodeAvatar_GET, nodeAvatar_POST, nodeBanner_GET, nodeBanner_POST,
     nodePersonalizeNodeName_POST, nodePersonalizeNodeAbout_POST, nodePersonalizeNodeId_POST, node_Secure_POST, nodeNetworkInternal_POST, nodeNetworkExternal_POST, nodeAccount_POST,
     nodeCloudflareConfigure_POST, nodeCloudflareClear_POST, nodeCloudflareTurnstileConfigure_POST, nodeCloudflareTurnstileClear_POST, clientEncodingDefault_GET,
-    nodeCommentsToggle_POST, nodeDislikesToggle_POST, nodeLikesToggle_POST, nodeReportsToggle_POST, nodeLiveChatToggle_POST, nodeDatabaseConfigToggle_POST
+    nodeCommentsToggle_POST, nodeDislikesToggle_POST, nodeLikesToggle_POST, nodeReportsToggle_POST, nodeLiveChatToggle_POST, nodeDatabaseConfigToggle_POST,
+    nodeStorageConfigToggle_POST
  } = require('../controllers/settings');
  const { logDebugMessageToConsole, getPublicDirectoryPath, getCertificatesDirectoryPath } = require('../utils/helpers');
 const { node_isAuthenticated, node_doSignout } = require('../utils/node-communications');
@@ -497,6 +498,23 @@ router.post('/node/databaseConfig/toggle', async (req, res) => {
         const databaseConfig = req.body.databaseConfig;
 
         const data = await nodeDatabaseConfigToggle_POST(jwtToken, databaseConfig);
+
+        res.send(data);
+    }
+    catch(error) {
+        logDebugMessageToConsole(null, error, new Error().stack);
+    
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    }
+});
+
+router.post('/node/storageConfig/toggle', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+
+        const storageConfig = req.body.storageConfig;
+
+        const data = await nodeStorageConfigToggle_POST(jwtToken, storageConfig);
 
         res.send(data);
     }
