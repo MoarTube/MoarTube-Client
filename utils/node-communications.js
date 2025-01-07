@@ -509,6 +509,26 @@ function node_setVideoPublished(jwtToken, videoId) {
     });
 }
 
+function node_setVideoFormatResolutionPublished(jwtToken, videoId, format, resolution) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/videos/' + format + '/' + resolution + '/published', {
+            videoId: videoId
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 function node_getVideoComments(jwtToken, videoId, timestamp, type, sort) {
     return new Promise(function(resolve, reject) {
         axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/comments', {
@@ -1745,6 +1765,24 @@ function node_liveChatToggle(jwtToken, isLiveChatEnabled) {
     });
 }
 
+function node_getExternalVideosBaseUrl(jwtToken) {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/external/videos/baseUrl', {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 module.exports = {
     node_isAuthenticated,
     node_doHeartBeat,
@@ -1771,6 +1809,7 @@ module.exports = {
     node_setVideoImported,
     node_setVideoPublishing,
     node_setVideoPublished,
+    node_setVideoFormatResolutionPublished,
     node_getVideoComments,
     node_getVideosTags,
     node_getVideoReports,
@@ -1831,5 +1870,6 @@ module.exports = {
     node_reportsToggle,
     node_liveChatToggle,
     node_databaseConfigToggle,
-    node_storageConfigToggle
+    node_storageConfigToggle,
+    node_getExternalVideosBaseUrl
 };

@@ -13,8 +13,17 @@
   "bin": {
     "moartube-client": "./bin/moartube-client-start"
   },
-  "keywords": ["alternative", "youtube", "twitch", "video", "stream", "live", "moartube"],
+  "keywords": [
+    "alternative",
+    "youtube",
+    "twitch",
+    "video",
+    "stream",
+    "live",
+    "moartube"
+  ],
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.723.0",
     "axios": "^1.7.7",
     "body-parser": "^1.20.3",
     "cors": "^2.8.5",

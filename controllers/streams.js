@@ -2,7 +2,7 @@ const portscanner = require('portscanner');
 
 const { logDebugMessageToConsole, websocketClientBroadcast } = require('../utils/helpers');
 const { isPortValid } = require('../utils/validators');
-const { node_stopVideoStreaming, node_streamVideo, node_setSourceFileExtension, node_getVideoData, node_setVideoChatSettings, node_getStreamMeta } = require('../utils/node-communications');
+const { node_stopVideoStreaming, node_streamVideo, node_setSourceFileExtension, node_getVideoData, node_setVideoChatSettings, node_getExternalVideosBaseUrl } = require('../utils/node-communications');
 const { addLiveStreamToLiveStreamTracker } = require('../utils/trackers/live-stream-tracker');
 const { performStreamingJob } = require('../utils/handlers/live-stream-handler');
 
@@ -33,7 +33,7 @@ function start_POST(jwtToken, title, description, tags, rtmpPort, resolution, is
                                 addLiveStreamToLiveStreamTracker(videoId);
                                 
                                 node_setSourceFileExtension(jwtToken, videoId, '.ts')
-                                .then(nodeResponseData => {
+                                .then(async nodeResponseData => {
                                     if(nodeResponseData.isError) {
                                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                         
@@ -41,8 +41,10 @@ function start_POST(jwtToken, title, description, tags, rtmpPort, resolution, is
                                     }
                                     else {
                                         const rtmpUrl = 'rtmp://' + networkAddress + ':' + rtmpPort + '/live/' + uuid;
+
+                                        const externalVideosBaseUrl = (await node_getExternalVideosBaseUrl(jwtToken)).externalVideosBaseUrl;
                                         
-                                        performStreamingJob(jwtToken, videoId, rtmpUrl, 'm3u8', resolution, isRecordingStreamRemotely, isRecordingStreamLocally);
+                                        performStreamingJob(jwtToken, videoId, rtmpUrl, 'm3u8', resolution, isRecordingStreamRemotely, isRecordingStreamLocally, externalVideosBaseUrl);
                                         
                                         resolve({isError: false, rtmpUrl: rtmpUrl});
                                     }

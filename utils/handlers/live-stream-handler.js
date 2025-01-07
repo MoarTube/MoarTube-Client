@@ -3,11 +3,15 @@ const path = require('path');
 const spawn = require('child_process').spawn;
 const sharp = require('sharp');
 
-const { logDebugMessageToConsole, getVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds, deleteDirectoryRecursive } = require('../helpers');
-const { node_setVideoLengths, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, node_removeAdaptiveStreamSegment, node_stopVideoStreaming } = require('../node-communications');
+const { 
+    logDebugMessageToConsole, getVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds, deleteDirectoryRecursive,
+ } = require('../helpers');
+const { node_setVideoLengths, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, node_removeAdaptiveStreamSegment, 
+    node_stopVideoStreaming
+} = require('../node-communications');
 const { addProcessToLiveStreamTracker, isLiveStreamStopping, liveStreamExists } = require('../trackers/live-stream-tracker');
 
-function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isRecordingStreamRemotely, isRecordingStreamLocally) {
+function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isRecordingStreamRemotely, isRecordingStreamLocally, externalVideosBaseUrl) {
     return new Promise(async function(resolve, reject) {
         logDebugMessageToConsole('starting live stream for id: ' + videoId, null, null);
 
@@ -22,7 +26,7 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
         const sourceFilePath = path.join(sourceDirectoryPath, '/' + videoId + '.ts');
         const manifestFileName = 'manifest-' + resolution + '.m3u8';
         
-        const ffmpegArguments = generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely);
+        const ffmpegArguments = generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely, externalVideosBaseUrl);
         
         let process = spawn(getFfmpegPath(), ffmpegArguments);
 
@@ -381,7 +385,7 @@ function sendImagesToNode(jwtToken, videoId, segmentBuffer) {
     }
 }
 
-function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely) {
+function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely, externalVideosBaseUrl) {
     //let width;
     //let height;
     let bitrate;
@@ -481,7 +485,7 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                 '-c:a', 'aac',
                 '-f', 'hls', 
                 '-hls_time', segmentLength, '-hls_list_size', '20',
-                '-hls_base_url', `/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+                '-hls_base_url', `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
                 '-hls_playlist_type', 'event', 
                 'pipe:1'
             ];
@@ -504,7 +508,7 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                     '-c:a', 'aac',
                     '-f', 'hls', 
                     '-hls_time', segmentLength, '-hls_list_size', '20',
-                    '-hls_base_url', `/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+                    '-hls_base_url', `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
                     '-hls_playlist_type', 'event', 
                     'pipe:1'
                 ];
@@ -526,7 +530,7 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                     '-c:a', 'aac',
                     '-f', 'hls', 
                     '-hls_time', segmentLength, '-hls_list_size', '20',
-                    '-hls_base_url', `/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+                    '-hls_base_url', `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
                     '-hls_playlist_type', 'event', 
                     'pipe:1'
                 ];
