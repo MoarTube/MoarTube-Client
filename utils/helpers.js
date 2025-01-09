@@ -4,6 +4,7 @@ const webSocket = require('ws');
 
 let isDeveloperMode;
 let publicDirectoryPath;
+let viewsDirectoryPath;
 let dataDirectoryPath;
 let certificatesDirectoryPath;
 let videosDirectoryPath;
@@ -285,6 +286,10 @@ function getPublicDirectoryPath() {
     return publicDirectoryPath;
 }
 
+function getViewsDirectoryPath() {
+    return viewsDirectoryPath;
+}
+
 function getDataDirectoryPath() {
     return dataDirectoryPath;
 }
@@ -360,6 +365,10 @@ function setPublicDirectoryPath(path) {
     logDebugMessageToConsole('configured MoarTube Client to use public directory path: ' + path, null, null);
 
     publicDirectoryPath = path;
+}
+
+function setViewsDirectoryPath(path) {
+    viewsDirectoryPath = path;
 }
 
 function setDataDirectoryPath(path) {
@@ -453,6 +462,7 @@ module.exports = {
     websocketClientBroadcast,
     websocketServerBroadcast,
     getPublicDirectoryPath,
+    getViewsDirectoryPath,
     getDataDirectoryPath,
     getCertificatesDirectoryPath,
     getVideosDirectoryPath,
@@ -470,6 +480,7 @@ module.exports = {
     getWebsocketServer,
     getWebsocketClient,
     setPublicDirectoryPath,
+    setViewsDirectoryPath,
     setDataDirectoryPath,
     setCertificatesDirectoryPath,
     setVideosDirectoryPath,

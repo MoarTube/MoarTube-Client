@@ -185,33 +185,16 @@ function node_getVideoData(videoId) {
     });
 }
 
-function node_getThumbnail(videoId) {
+function node_setThumbnail(jwtToken, videoId, thumbnailBuffer) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/external/videos/' + videoId + '/thumbnail', {
-          responseType: 'stream'
-        })
-        .then(response => {
-            const data = response.data;
-            
-            resolve(data);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function node_setThumbnail(jwtToken, videoId, thumbnailPath) {
-    return new Promise(function(resolve, reject) {
-        const thumbnailFileStream = fs.createReadStream(thumbnailPath);
-        
         const formData = new FormData();
-        formData.append('thumbnailFile', thumbnailFileStream, 'thumbnail.jpg');
+
+        formData.append('thumbnailFile', thumbnailBuffer, 'thumbnail.jpg');
         
         const headers = formData.getHeaders();
         headers.Authorization = jwtToken;
         
-        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/thumbnail', formData, {
+        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/images/thumbnail', formData, {
           headers: headers
         })
         .then(response => {
@@ -225,33 +208,16 @@ function node_setThumbnail(jwtToken, videoId, thumbnailPath) {
     });
 }
 
-function node_getPreview(videoId) {
+function node_setPreview(jwtToken, videoId, previewBuffer) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/external/videos/' + videoId + '/preview', {
-          responseType: 'stream'
-        })
-        .then(response => {
-            const data = response.data;
-            
-            resolve(data);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function node_setPreview(jwtToken, videoId, previewPath) {
-    return new Promise(function(resolve, reject) {
-        const previewFileStream = fs.createReadStream(previewPath);
-        
         const formData = new FormData();
-        formData.append('previewFile', previewFileStream, 'preview.jpg');
+
+        formData.append('previewFile', previewBuffer, 'preview.jpg');
         
         const headers = formData.getHeaders();
         headers.Authorization = jwtToken;
         
-        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/preview', formData, {
+        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/images/preview', formData, {
           headers: headers
         })
         .then(response => {
@@ -265,33 +231,16 @@ function node_setPreview(jwtToken, videoId, previewPath) {
     });
 }
 
-function node_getPoster(videoId) {
+function node_setPoster(jwtToken, videoId, posterBuffer) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/external/videos/' + videoId + '/poster', {
-          responseType: 'stream'
-        })
-        .then(response => {
-            const data = response.data;
-            
-            resolve(data);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function node_setPoster(jwtToken, videoId, posterPath) {
-    return new Promise(function(resolve, reject) {
-        const posterFileStream = fs.createReadStream(posterPath);
-        
         const formData = new FormData();
-        formData.append('posterFile', posterFileStream, 'poster.jpg');
+
+        formData.append('posterFile', posterBuffer, 'poster.jpg');
         
         const headers = formData.getHeaders();
         headers.Authorization = jwtToken;
         
-        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/poster', formData, {
+        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/images/poster', formData, {
           headers: headers
         })
         .then(response => {
@@ -1783,6 +1732,20 @@ function node_getExternalVideosBaseUrl(jwtToken) {
     });
 }
 
+function node_getManifestFile(videoId, type, format, manifestName) {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/external/videos/' + videoId + '/adaptive/' + type + '/' + format + '/manifests/' + manifestName)
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 module.exports = {
     node_isAuthenticated,
     node_doHeartBeat,
@@ -1792,11 +1755,8 @@ module.exports = {
     node_setExternalNetwork,
     node_stopVideoImporting,
     node_doVideosSearch,
-    node_getThumbnail,
     node_setThumbnail,
-    node_getPreview,
     node_setPreview,
-    node_getPoster,
     node_setPoster,
     node_getVideoData,
     node_unpublishVideo,
@@ -1871,5 +1831,6 @@ module.exports = {
     node_liveChatToggle,
     node_databaseConfigToggle,
     node_storageConfigToggle,
-    node_getExternalVideosBaseUrl
+    node_getExternalVideosBaseUrl,
+    node_getManifestFile
 };

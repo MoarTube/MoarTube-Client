@@ -7,13 +7,14 @@ const fs = require('fs');
 const ffmpegPath = require('ffmpeg-static').replace('app.asar', 'app.asar.unpacked');
 const webSocket = require('ws');
 const crypto = require('crypto');
+const engine = require('express-dot-engine');
 
 const { 
 	logDebugMessageToConsole, performEncodingDecodingAssessment, cleanVideosDirectory, getPublicDirectoryPath, getDataDirectoryPath,
     getMoarTubeClientPort, setPublicDirectoryPath, setDataDirectoryPath, setCertificatesDirectoryPath,
     setVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getClientSettings,
 	getCertificatesDirectoryPath, getVideosDirectoryPath, setImagesDirectoryPath, getImagesDirectoryPath,
-	getIsDeveloperMode, setIsDeveloperMode
+	getIsDeveloperMode, setIsDeveloperMode, getViewsDirectoryPath, setViewsDirectoryPath
 } = require('./utils/helpers');
 
 const { 
@@ -87,9 +88,10 @@ async function startClient() {
 	app.use(bodyParser.urlencoded({ extended: false }));
 	app.use(bodyParser.json());
 
-	app.use(function(req, res, next) {
-		next();
-	});
+	app.engine('dot', engine.__express);
+	
+	app.set('views', getViewsDirectoryPath());
+	app.set('view engine', 'dot');
 
 	app.use('/', homeRoutes);
 	app.use('/account', accountRoutes);
@@ -173,6 +175,7 @@ function loadConfig() {
 	}
 
 	setPublicDirectoryPath(path.join(__dirname, 'public'));
+	setViewsDirectoryPath(path.join(getPublicDirectoryPath(), 'views'));
 	setCertificatesDirectoryPath(path.join(getDataDirectoryPath(), 'certificates'));
 	setVideosDirectoryPath(path.join(getDataDirectoryPath(), 'media/videos'));
 	setImagesDirectoryPath(path.join(getDataDirectoryPath(), 'images'));

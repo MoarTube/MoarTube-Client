@@ -1837,39 +1837,22 @@ input[type="range"]:focus::-moz-range-thumb{
 					submitStorageConfig(storageConfig, radio);
 				}
 				else if(storageMode === 's3provider') {
-					const rowBucket = '\
-					<div class="row">\
-						<div class="col-6">\
-							<div class="input-group mb-3">\
-								<input class="form-control json-property-name" type="text" required="" autocomplete="off" value="Bucket" disabled>\
-							</div>\
-						</div>\
-						<div class="col-6">\
-							<div class="input-group mb-3">\
-								<input class="form-control json-property-value" type="text" required="" autocomplete="off" placeholder="Property Value">\
-							</div>\
-						</div>\
-					</div>';
-
-					const rowEntry = '\
-					<div class="row">\
-						<div class="col-6">\
-							<div class="input-group mb-3">\
-								<input class="form-control json-property-name" type="text" required="" autocomplete="off" placeholder="Property Name">\
-							</div>\
-						</div>\
-						<div class="col-6">\
-							<div class="input-group mb-3">\
-								<input class="form-control json-property-value" type="text" required="" autocomplete="off" placeholder="Property Value">\
-							</div>\
-						</div>\
-					</div>';
-
 					const html = '\
 					<div id="storage-configuration-modal" class="container-fluid">\
-						<div id="storage-configuration-rows">' + rowBucket + '</div>\
-						<button id="add-storage-configuration-row" class="btn btn-primary btn-sm w-100 mt-2">Add Row</button>\
-						<button id="remove-storage-configuration-row" class="btn btn-primary btn-sm w-100 mt-2" disabled>Remove Row</button>\
+						<div class="row">\
+							<div class="input-group mb-2">\
+								<input id="s3-provider-bucket-name" class="form-control json-property-value" type="text" required="" autocomplete="off" placeholder="bucket name">\
+							</div>\
+						</div>\
+						<div class="row">\
+							<div class="input-group mb-2">\
+								<input id="s3-provider-bucket-endpoint" class="form-control json-property-value" type="text" required="" autocomplete="off" placeholder="bucket endpoint">\
+							</div>\
+						</div>\
+						<div class="input-group">\
+							<textarea id="s3-provider-client-configuration-textarea" class="form-control" name="nodeAbout" type="text" placeholder="Copy/Paste the S3 Provider Client Configuration JSON here" rows="5" maxlength="1000" onfocus="focused(this)" onfocusout="defocused(this)"></textarea>\
+						</div>\
+						<p id="s3-provider-error-message"></p>\
 					</div>';
 					
 					Swal.fire({
@@ -1882,41 +1865,40 @@ input[type="range"]:focus::-moz-range-thumb{
 							
 						},
 						didOpen: () => {
-							$('#add-storage-configuration-row').click(function() {
-								$('#storage-configuration-rows').append(rowEntry);
-
-								$('#remove-storage-configuration-row').prop('disabled', false);
-							});
-
-							$('#remove-storage-configuration-row').click(function() {
-								if($('#storage-configuration-rows').children().length > 1) {
-									$('#storage-configuration-rows').children().last().remove();
-
-									if($('#storage-configuration-rows').children().length === 1) {
-										$('#remove-storage-configuration-row').prop('disabled', true);
-									}
-								}
-							});
+							
 						},
 						preConfirm: () => {
-							const properties = $('.json-property-name').map(function() {
-								return $(this).val().trim();
-							}).get();
+							const bucketName = $('#s3-provider-bucket-name').val();
+							const bucketEndpoint = $('#s3-provider-bucket-endpoint').val();
+							let s3ProviderClientConfig = $('#s3-provider-client-configuration-textarea').val();
 
-							const values = $('.json-property-value').map(function() {
-								return $(this).val().trim();
-							}).get();
+							if(bucketName !== '' && bucketEndpoint !== '' && s3ProviderClientConfig !== '') {
+								s3ProviderClientConfig = s3ProviderClientConfig.replace(/\s+/g, ' ').trim();
+								
+								s3ProviderClientConfig = s3ProviderClientConfig.replace(/'/g, '"');
+								
+								s3ProviderClientConfig = s3ProviderClientConfig.replace(/([a-zA-Z0-9_]+):/g, '"$1":');
+								
+								s3ProviderClientConfig = s3ProviderClientConfig.replace(/,\s*([}\]])/g, '$1');
+								
+								s3ProviderClientConfig = s3ProviderClientConfig.replace(/,\s*$/, '');
 
-							const s3Config = {};
+								try {
+									const s3ProviderClientConfigParsed = JSON.parse(s3ProviderClientConfig);
 
-							properties.forEach((property, index) => {
-								if (property !== '' && values[index] !== '') {
-									s3Config[property] = values[index];
+									const s3Config = {
+										bucketName: bucketName,
+										bucketEndpoint: bucketEndpoint,
+										s3ProviderClientConfig: s3ProviderClientConfigParsed
+									};
+
+									return {s3Config: s3Config};
 								}
-							});
+								catch(e) {
+									$('#s3-provider-error-message').val('Error: Invalid JSON Configuration');
 
-							if (Object.keys(s3Config).length > 0) {
-								return {s3Config: s3Config};
+									return false;
+								}
 							}
 							else {
 								return false;

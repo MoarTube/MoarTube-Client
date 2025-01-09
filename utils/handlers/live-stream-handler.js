@@ -7,11 +7,11 @@ const {
     logDebugMessageToConsole, getVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds, deleteDirectoryRecursive,
  } = require('../helpers');
 const { node_setVideoLengths, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, node_removeAdaptiveStreamSegment, 
-    node_stopVideoStreaming
+    node_stopVideoStreaming, node_getExternalVideosBaseUrl
 } = require('../node-communications');
 const { addProcessToLiveStreamTracker, isLiveStreamStopping, liveStreamExists } = require('../trackers/live-stream-tracker');
 
-function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isRecordingStreamRemotely, isRecordingStreamLocally, externalVideosBaseUrl) {
+function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isRecordingStreamRemotely, isRecordingStreamLocally) {
     return new Promise(async function(resolve, reject) {
         logDebugMessageToConsole('starting live stream for id: ' + videoId, null, null);
 
@@ -25,6 +25,8 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
         const sourceDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/source');
         const sourceFilePath = path.join(sourceDirectoryPath, '/' + videoId + '.ts');
         const manifestFileName = 'manifest-' + resolution + '.m3u8';
+
+        const externalVideosBaseUrl = (await node_getExternalVideosBaseUrl(jwtToken)).externalVideosBaseUrl;
         
         const ffmpegArguments = generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely, externalVideosBaseUrl);
         

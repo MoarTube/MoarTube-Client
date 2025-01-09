@@ -17,6 +17,10 @@ const {
     node_storageConfigToggle
 } = require('../utils/node-communications');
 
+const {
+    s3_validateS3Config
+} = require('../utils/s3-communications');
+
 function client_GET() {
     const settings = {
         isGpuAccelerationEnabled: false
@@ -494,20 +498,75 @@ function nodeDatabaseConfigToggle_POST(jwtToken, databaseConfig) {
 
 function nodeStorageConfigToggle_POST(jwtToken, storageConfig) {
     return new Promise(function(resolve, reject) {
-        node_storageConfigToggle(jwtToken, storageConfig)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) { 
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
+        if(storageConfig.storageMode === 'filesystem') {
+            node_storageConfigToggle(jwtToken, storageConfig)
+            .then(nodeResponseData => {
+                if(nodeResponseData.isError) { 
+                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
+                    
+                    resolve({isError: true, message: nodeResponseData.message});
+                }
+                else {
+                    resolve({isError: false});
+                }
+            })
+            .catch(error => {
+                const message = 'error communicating with the MoarTube Node';
+
+                logDebugMessageToConsole(message, error, null);
+
+                resolve({isError: true, message: message});
+            });
+        }
+        else if(storageConfig.storageMode === 's3provider') {
+            /*
+            AWS SDK modifies storageConfig object passed into the S3Client constructor by injecting properties within s3ProviderClientConfig into s3Config.
+            I don't want extraneous data recorded by the node.
+            Deep copy the storageConfig and pass it instead.
+            */
+            const storageConfigDeepCopy = JSON.parse(JSON.stringify(storageConfig));
+            const s3ConfigDeepCopy = storageConfigDeepCopy.s3Config;
+
+            s3_validateS3Config(s3ConfigDeepCopy)
+            .then(result => {
+                if(result.isError) { 
+                    logDebugMessageToConsole(result.message, null, new Error().stack);
+                    
+                    resolve({isError: true, message: result.message});
+                }
+                else {
+                    // send the original non-deep copy storageConfig to the node
+                    node_storageConfigToggle(jwtToken, storageConfig)
+                    .then(nodeResponseData => {
+                        if(nodeResponseData.isError) { 
+                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
+                            
+                            resolve({isError: true, message: nodeResponseData.message});
+                        }
+                        else {
+                            resolve({isError: false});
+                        }
+                    })
+                    .catch(error => {
+                        const message = 'error communicating with the MoarTube Node';
+
+                        logDebugMessageToConsole(message, error, null);
+
+                        resolve({isError: true, message: message});
+                    });
+                }
+            })
+            .catch(error => {
+                const message = 'error communicating with the MoarTube Node';
+
+                logDebugMessageToConsole(message, error, null);
+
+                resolve({isError: true, message: message});
+            });
+        }
+        else {
+            resolve({isError: true, message: 'invalid parameters'});
+        }
     });
 }
 

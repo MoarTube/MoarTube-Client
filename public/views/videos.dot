@@ -381,13 +381,14 @@
 		<script src="/javascript/circle-progress-1.2.2.min.js"></script>
 		<script src="/javascript/pickr-nano-theme-1.9.0.min.js"></script>
 		<script>
+            const INCOMING_PARAMETERS = [[= JSON.stringify(model) ]];
+
 			let NODE_BASE_URL;
-			
-			let lastUsedTag = '';
-			
 			let OLDEST_VISIBLE_TIMESTAMP;
-			
 			let VIDEOS_LOADER_INTERVAL;
+			let EXTERNAL_VIDEOS_BASE_URL;
+
+			let lastUsedTag = '';
 			
 			$(document).ready(async function() {
 				const params = new URL(window.location.href).searchParams;
@@ -402,6 +403,8 @@
 					$('#search-input').attr('placeholder', 'Searching ' + tagTerm + '...');
 				}
 				
+                EXTERNAL_VIDEOS_BASE_URL = INCOMING_PARAMETERS.externalVideosBaseUrl;
+
 				await getNodeInformation();
 				await getNewContentCounts();
 				
@@ -448,6 +451,10 @@
 						reject();
 					});
 				});
+			}
+
+			function getExternalVideosBaseUrl() {
+
 			}
 			
 			function getNewContentCounts() {
@@ -540,7 +547,7 @@
 							if(searchResults.length > 0) {
 								searchResults.forEach(function(row) {
 									const videoId = row.video_id;
-									const thumbnail = '/videos/' + videoId + '/thumbnail';
+									const thumbnail = EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/thumbnail.jpg';
 									const title = row.title;
 									const tags = row.tags;
 									const lengthTimestamp = row.length_timestamp;
@@ -662,7 +669,7 @@
 									const lengthTimestamp = data.payload.lengthTimestamp;
 									
 									if($('#videos_table_row_' + videoId).length) {
-										$('#video-thumbnail-loading-spinner-' + videoId).replaceWith('<img id="video-thumbnail-' + videoId + '" src="/videos/' + videoId + '/thumbnail" class="avatar avatar-sm me-3 cursor-pointer" alt="avatar image" onclick="showThumbnailModal(\''+videoId+'\')" data-bs-toggle="tooltip" data-bs-placement="top" title="upload images" data-container="body" data-animation="true">');
+										$('#video-thumbnail-loading-spinner-' + videoId).replaceWith('<img id="video-thumbnail-' + videoId + '" src="' + EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/thumbnail.jpg" class="avatar avatar-sm me-3 cursor-pointer" alt="avatar image" onclick="showThumbnailModal(\''+videoId+'\')" data-bs-toggle="tooltip" data-bs-placement="top" title="upload images" data-container="body" data-animation="true">');
 										$('#videos_table_row_' + videoId).find('td').eq(1).html('<span class="text-secondary text-sm d-flex justify-content-center align-items-center">' + lengthTimestamp + '</span>');
 										$('#videos_table_row_' + videoId).find('td').eq(6).html('<span class="text-secondary text-sm d-flex justify-content-center align-items-center">imported</span>');
 										
@@ -673,7 +680,7 @@
 									const videoId = data.payload.videoId;
 									
 									if($('#videos_table_row_' + videoId).length) {
-										$('#video-thumbnail-loading-spinner-' + videoId).replaceWith('<img id="video-thumbnail-' + videoId + '" src="/videos/' + videoId + '/thumbnail" class="avatar avatar-sm me-3 cursor-pointer" alt="avatar image" />');
+										$('#video-thumbnail-loading-spinner-' + videoId).replaceWith('<img id="video-thumbnail-' + videoId + '" src="' + EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/thumbnail.jpg" class="avatar avatar-sm me-3 cursor-pointer" alt="avatar image" />');
 										$('#videos_table_row_' + videoId).find('td').eq(6).html('<span class="text-secondary text-sm d-flex justify-content-center align-items-center">stopped</span>');
 										
 										refreshHoverTooltips();
@@ -777,7 +784,7 @@
 										$('#videos_table_row_' + videoId).find('td').eq(5).html('<p class="text-secondary mb-0 text-sm">' + calculateBandwidthUsage_MB(bandwidth) + '</p>');
 									}
 									
-									fetch('/videos/' + videoId + '/thumbnail')
+									fetch(EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/thumbnail.jpg')
 									.then(async response => {
 										if (response.ok) {
 											return response.blob();
@@ -808,7 +815,7 @@
 									}
 									
 									if($('#video-thumbnail-loading-spinner-' + videoId).length) {
-										$('#video-thumbnail-loading-spinner-' + videoId).replaceWith('<img id="video-thumbnail-' + videoId + '" src="/videos/' + videoId + '/thumbnail" class="avatar avatar-sm me-3 cursor-pointer" alt="avatar image">');
+										$('#video-thumbnail-loading-spinner-' + videoId).replaceWith('<img id="video-thumbnail-' + videoId + '" src="' + EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/thumbnail.jpg" class="avatar avatar-sm me-3 cursor-pointer" alt="avatar image">');
 									}
 								}
 								else if(type === 'finalized') {
@@ -1824,7 +1831,7 @@
 				<div class="row row-cols-3 g-4">\
 					<div class="col-auto d-flex align-items-center justify-content-center">\
 						<div class="card upload-images-button-container">\
-							<img id="thumbnail-image-button" src="/videos/' + videoId + '/thumbnail" class="card-img-top rounded-top" alt="thumbnail" role="button" style="width: 100px; height: 100px;">\
+							<img id="thumbnail-image-button" src="' + EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/thumbnail.jpg" class="card-img-top rounded-top" alt="thumbnail" role="button" style="width: 100px; height: 100px;">\
 							<span>thumb</span>\
 							<span>100 x 100</span>\
 							<input id="upload-thumbnail-input" type="file" accept=".jpg,.png" hidden />\
@@ -1832,7 +1839,7 @@
 					</div>\
 					<div class="col-auto d-flex align-items-center justify-content-center">\
 						<div class="card upload-images-button-container">\
-							<img id="preview-image-button" src="/videos/' + videoId + '/preview" class="card-img-top rounded-top" alt="preview" role="button" style="width: 256px; height: 144px;">\
+							<img id="preview-image-button" src="' + EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/preview.jpg" class="card-img-top rounded-top" alt="preview" role="button" style="width: 256px; height: 144px;">\
 							<span>preview</span>\
 							<span>512 x 288</span>\
 							<input id="upload-preview-input" type="file" accept=".jpg,.png" hidden />\
@@ -1840,7 +1847,7 @@
 					</div>\
 					<div class="col-auto d-flex align-items-center justify-content-center">\
 						<div class="card upload-images-button-container">\
-							<img id="poster-image-button" src="/videos/' + videoId + '/poster" class="card-img-top rounded-top" alt="poster" role="button" style="width: 512px; height: 288px;">\
+							<img id="poster-image-button" src="' + EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/poster.jpg" class="card-img-top rounded-top" alt="poster" role="button" style="width: 512px; height: 288px;">\
 							<span>poster</span>\
 							<span>1280 x 720</span>\
 							<input id="upload-poster-input" type="file" accept=".jpg,.png" hidden />\
@@ -1866,14 +1873,14 @@
 								
 								formData.append('thumbnail_file', file);
 
-								$.ajax({type: 'POST', url: '/videos/' + videoId + '/thumbnail', data: formData, processData: false, contentType: false})
+								$.ajax({type: 'POST', url: '/videos/' + videoId + '/images/thumbnail', data: formData, processData: false, contentType: false})
 								.done(function (data, textStatus, xhr) {
 									if(data.isError) {
 									
 									}
 									else {
-										$('#videos_table_row_' + videoId).find('td').eq(0).find('.spinner').eq(0).replaceWith('<img src="/videos/' + videoId + '/thumbnail" class="avatar avatar-sm me-3" alt="avatar image" onclick="showThumbnailModal(\''+videoId+'\')" data-bs-toggle="tooltip" data-bs-placement="top" title="upload images" data-container="body" data-animation="true" role="button"/>');
-										$('#thumbnail-image-button').replaceWith('<img id="thumbnail-image-button" src="/videos/' + videoId + '/thumbnail" class="card-img-top rounded-top" alt="thumbnail" role="button" style="width: 100px; height: 100px;">');
+										$('#videos_table_row_' + videoId).find('td').eq(0).find('.spinner').eq(0).replaceWith('<img src="' + EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/thumbnail.jpg?cache-bust=' + Date.now() + '" class="avatar avatar-sm me-3" alt="avatar image" onclick="showThumbnailModal(\''+videoId+'\')" data-bs-toggle="tooltip" data-bs-placement="top" title="upload images" data-container="body" data-animation="true" role="button"/>');
+										$('#thumbnail-image-button').replaceWith('<img id="thumbnail-image-button" src="' + EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/thumbnail.jpg?cache-bust=' + Date.now() + '" class="card-img-top rounded-top" alt="thumbnail" role="button" style="width: 100px; height: 100px;">');
 										
 										$('#thumbnail-image-button').on('click', function(event) {
 											$('#upload-thumbnail-input').trigger('click');
@@ -1897,13 +1904,13 @@
 								
 								formData.append('preview_file', file);
 
-								$.ajax({type: 'POST', url: '/videos/' + videoId + '/preview', data: formData, processData: false, contentType: false})
+								$.ajax({type: 'POST', url: '/videos/' + videoId + '/images/preview', data: formData, processData: false, contentType: false})
 								.done(function (data, textStatus, xhr) {
 									if(data.isError) {
 									
 									}
 									else {
-										$('#preview-image-button').replaceWith('<img id="preview-image-button" src="/videos/' + videoId + '/preview" class="card-img-top rounded-top" alt="preview" role="button" style="width: 256px; height: 144px;">');
+										$('#preview-image-button').replaceWith('<img id="preview-image-button" src="' + EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/preview.jpg?cache-bust=' + Date.now() + '" class="card-img-top rounded-top" alt="preview" role="button" style="width: 256px; height: 144px;">');
 										
 										$('#preview-image-button').on('click', function(event) {
 											$('#upload-preview-input').trigger('click');
@@ -1924,13 +1931,13 @@
 								
 								formData.append('poster_file', file);
 
-								$.ajax({type: 'POST', url: '/videos/' + videoId + '/poster', data: formData, processData: false, contentType: false})
+								$.ajax({type: 'POST', url: '/videos/' + videoId + '/images/poster', data: formData, processData: false, contentType: false})
 								.done(function (data, textStatus, xhr) {
 									if(data.isError) {
 									
 									}
 									else {
-										$('#poster-image-button').replaceWith('<img id="poster-image-button" src="/videos/' + videoId + '/poster" class="card-img-top rounded-top" alt="poster" role="button" style="width: 512px; height: 288px;">');
+										$('#poster-image-button').replaceWith('<img id="poster-image-button" src="' + EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/poster.jpg?cache-bust=' + Date.now() + '" class="card-img-top rounded-top" alt="poster" role="button" style="width: 512px; height: 288px;">');
 										
 										$('#poster-image-button').on('click', function(event) {
 											$('#upload-poster-input').trigger('click');

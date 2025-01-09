@@ -8,10 +8,17 @@ sharp.cache(false);
 
 const { logDebugMessageToConsole, deleteDirectoryRecursive, getVideosDirectoryPath, timestampToSeconds, websocketClientBroadcast, getFfmpegPath } = require('../utils/helpers');
 const { 
-    node_stopVideoImporting, node_doVideosSearch, node_getThumbnail, node_getPreview, node_getPoster, node_getVideoData, node_unpublishVideo, node_stopVideoPublishing,
+    node_stopVideoImporting, node_doVideosSearch, node_getVideoData, node_unpublishVideo, node_stopVideoPublishing,
     node_setSourceFileExtension, node_setThumbnail, node_setPreview, node_setPoster, node_setVideoLengths, node_setVideoImported, node_getVideosTags, node_getSourceFileExtension, 
-    node_getVideosTagsAll, node_getVideoPublishes, node_setVideoData, node_deleteVideos, node_finalizeVideos, node_addVideoToIndex, node_removeVideoFromIndex, node_getVideoSources
+    node_getVideosTagsAll, node_getVideoPublishes, node_setVideoData, node_deleteVideos, node_finalizeVideos, node_addVideoToIndex, node_removeVideoFromIndex, node_getVideoSources,
+    node_getSettings
 } = require('../utils/node-communications');
+const {
+    s3_putObjectFromData
+} = require('../utils/s3-communications');
+const {
+    s3_putObjectsFromFilePaths
+} = require('../utils/s3-communications');
 const { enqueuePendingPublishVideo } = require('../utils/trackers/pending-publish-video-tracker');
 
 function search_GET(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
@@ -34,178 +41,95 @@ function search_GET(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp
 }
 
 function import_POST(jwtToken, videoFile, videoId) {
-    return new Promise(function(resolve, reject) {
+    return new Promise(async function(resolve, reject) {
         if(videoFile != null && videoFile.length === 1) {
             videoFile = videoFile[0];
 
             const videoFilePath = videoFile.path;
-            
-            let sourceFileExtension = '';
-            if(videoFile.mimetype === 'video/mp4') {
+            const mimetype = videoFile.mimetype;
+
+            let sourceFileExtension;
+            if(mimetype === 'video/mp4') {
                 sourceFileExtension = '.mp4';
             }
-            else if(videoFile.mimetype === 'video/webm') {
+            else if(mimetype === 'video/webm') {
                 sourceFileExtension = '.webm';
             }
+            else {
+                throw new Error('unexpected source file: ' + sourceFileExtension);
+            }
+
+            const result = spawnSync(getFfmpegPath(), ['-i', videoFilePath], { encoding: 'utf-8' });
             
-            node_setSourceFileExtension(jwtToken, videoId, sourceFileExtension)
-            .then(nodeResponseData => {
-                if(nodeResponseData.isError) {
-                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                    
-                    resolve({isError: true, message: nodeResponseData.message});
-                }
-                else {
-                    const result = spawnSync(getFfmpegPath(), [
-                        '-i', videoFilePath
-                    ], 
-                    {encoding: 'utf-8' }
-                    );
-                    
-                    const durationIndex = result.stderr.indexOf('Duration: ');
-                    const lengthTimestamp = result.stderr.substr(durationIndex + 10, 11);
-                    const lengthSeconds = timestampToSeconds(lengthTimestamp);
-                    
-                    logDebugMessageToConsole('generating images for video: ' + videoId, null, null);
-                    
-                    const imagesDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/images');
-                    const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
-                    const thumbnailImagePath = path.join(imagesDirectoryPath, 'thumbnail.jpg');
-                    const previewImagePath = path.join(imagesDirectoryPath, 'preview.jpg');
-                    const posterImagePath = path.join(imagesDirectoryPath, 'poster.jpg');
-                    
-                    fs.mkdirSync(imagesDirectoryPath, { recursive: true });
-                    
-                    const imageExtractionTimestamp = Math.floor(lengthSeconds * 0.25);
-                    
-                    spawnSync(getFfmpegPath(), ['-ss', imageExtractionTimestamp, '-i', videoFilePath, sourceImagePath]);
-                    
-                    sharp(sourceImagePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toFile(thumbnailImagePath)
-                    .then(() => {
-                        sharp(sourceImagePath).resize({width: 512}).resize(512, 288).jpeg({quality : 90}).toFile(previewImagePath)
-                        .then(() => {
-                            sharp(sourceImagePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toFile(posterImagePath)
-                            .then(() => {
-                                if(!fs.existsSync(thumbnailImagePath)) {
-                                    logDebugMessageToConsole('expected a thumbnail to be generated in <' + thumbnailImagePath + '> but found none', null, new Error().stack);
-                                    
-                                    resolve({isError: true, message: 'error communicating with the MoarTube node'});
-                                }
-                                else if(!fs.existsSync(previewImagePath)) {
-                                    logDebugMessageToConsole('expected a preview to be generated in <' + previewImagePath + '> but found none', null, new Error().stack);
-                                    
-                                    resolve({isError: true, message: 'error communicating with the MoarTube node'});
-                                }
-                                else if(!fs.existsSync(posterImagePath)) {
-                                    logDebugMessageToConsole('expected a poster to be generated in <' + posterImagePath + '> but found none', null, new Error().stack);
-                                    
-                                    resolve({isError: true, message: 'error communicating with the MoarTube node'});
-                                }
-                                else {
-                                    logDebugMessageToConsole('generated thumbnail, preview, and poster for video: ' + videoId, null, null);
-                                    
-                                    logDebugMessageToConsole('uploading thumbnail, preview, and poster to node for video: ' + videoId, null, null);
-                                    
-                                    node_setThumbnail(jwtToken, videoId, thumbnailImagePath)
-                                    .then(nodeResponseData => {
-                                        if(nodeResponseData.isError) {
-                                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                                            
-                                            resolve({isError: true, message: nodeResponseData.message});
-                                        }
-                                        else {
-                                            logDebugMessageToConsole('uploaded thumbnail to node for video: ' + videoId, null, null);
-                                            
-                                            node_setPreview(jwtToken, videoId, previewImagePath)
-                                            .then(nodeResponseData => {
-                                                if(nodeResponseData.isError) {
-                                                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                                                    
-                                                    resolve({isError: true, message: nodeResponseData.message});
-                                                }
-                                                else {
-                                                    logDebugMessageToConsole('uploaded preview to node for video: ' + videoId, null, null);
-                                                    
-                                                    node_setPoster(jwtToken, videoId, posterImagePath)
-                                                    .then(async nodeResponseData => {
-                                                        if(nodeResponseData.isError) {
-                                                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                                                            
-                                                            resolve({isError: true, message: nodeResponseData.message});
-                                                        }
-                                                        else {
-                                                            logDebugMessageToConsole('uploaded poster to node for video: ' + videoId, null, null);
-                                                            
-                                                            await deleteDirectoryRecursive(imagesDirectoryPath);
-                                                            
-                                                            logDebugMessageToConsole('uploading video length to node for video: ' + videoId, null, null);
-                                                            
-                                                            node_setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp)
-                                                            .then(nodeResponseData => {
-                                                                if(nodeResponseData.isError) {
-                                                                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                                                                    
-                                                                    resolve({isError: true, message: nodeResponseData.message});
-                                                                }
-                                                                else {
-                                                                    logDebugMessageToConsole('uploaded video length to node for video: ' + videoId, null, null);
-                                                                    
-                                                                    node_setVideoImported(jwtToken, videoId)
-                                                                    .then(nodeResponseData => {
-                                                                        if(nodeResponseData.isError) {
-                                                                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                                                                            
-                                                                            resolve({isError: true, message: nodeResponseData.message});
-                                                                        }
-                                                                        else {
-                                                                            logDebugMessageToConsole('flagging video as imported to node for video: ' + videoId, null, null);
-                                                                            
-                                                                            websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'imported', videoId: videoId, lengthTimestamp: lengthTimestamp }}});
-                                                                            
-                                                                            resolve({isError: false});
-                                                                        }
-                                                                    })
-                                                                    .catch(error => {
-                                                                        reject(error);
-                                                                    });
-                                                                }
-                                                            })
-                                                            .catch(error => {
-                                                                reject(error);
-                                                            });
-                                                        }
-                                                    })
-                                                    .catch(error => {
-                                                        reject(error);
-                                                    });
-                                                }
-                                            })
-                                            .catch(error => {
-                                                reject(error);
-                                            });
-                                        }
-                                    })
-                                    .catch(error => {
-                                        reject(error);
-                                    });
-                                }
-                            })
-                            .catch(error => {
-                                reject(error);
-                            });
-                        })
-                        .catch(error => {
-                            reject(error);
-                        });
-                    })
-                    .catch(error => {
-                        reject(error);
-                    });
-                }
-            })
-            .catch(error => {
-                reject(error);
-            });
+            const durationIndex = result.stderr.indexOf('Duration: ');
+            const lengthTimestamp = result.stderr.substr(durationIndex + 10, 11);
+            const lengthSeconds = timestampToSeconds(lengthTimestamp);
+            const imageExtractionTimestamp = Math.floor(lengthSeconds * 0.25);
+
+            logDebugMessageToConsole('uploading video length to node for video: ' + videoId, null, null);
+            await node_setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp);
+            logDebugMessageToConsole('uploaded video length to node for video: ' + videoId, null, null);
+
+            logDebugMessageToConsole('setting source file extension for video: ' + videoId, null, null);
+            await node_setSourceFileExtension(jwtToken, videoId, sourceFileExtension);
+            logDebugMessageToConsole('set source file extension for video: ' + videoId, null, null);
+            
+            logDebugMessageToConsole('generating images for video: ' + videoId, null, null);
+                            
+            const imagesDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/images');
+            const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
+            const thumbnailImagePath = path.join(imagesDirectoryPath, 'thumbnail.jpg');
+            const previewImagePath = path.join(imagesDirectoryPath, 'preview.jpg');
+            const posterImagePath = path.join(imagesDirectoryPath, 'poster.jpg');
+            
+            fs.mkdirSync(imagesDirectoryPath, { recursive: true });
+            
+            spawnSync(getFfmpegPath(), ['-ss', imageExtractionTimestamp, '-i', videoFilePath, sourceImagePath]);
+
+            logDebugMessageToConsole('generating thumbnail, preview, and poster for video: ' + videoId, null, null);
+            await sharp(sourceImagePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toFile(thumbnailImagePath);
+            await sharp(sourceImagePath).resize({width: 512}).resize(512, 288).jpeg({quality : 90}).toFile(previewImagePath);
+            await sharp(sourceImagePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toFile(posterImagePath);
+            logDebugMessageToConsole('generated thumbnail, preview, and poster for video: ' + videoId, null, null);
+
+            const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+
+            const storageConfig = nodeSettings.storageConfig;
+            const storageMode = storageConfig.storageMode;
+
+            logDebugMessageToConsole('uploading thumbnail, preview, and poster for video: ' + videoId, null, null);
+
+            if(storageMode === 'filesystem') {
+                await node_setThumbnail(jwtToken, videoId, thumbnailImagePath);
+                logDebugMessageToConsole('uploaded thumbnail to node for video: ' + videoId, null, null);
+
+                await node_setPreview(jwtToken, videoId, previewImagePath);
+                logDebugMessageToConsole('uploaded preview to node for video: ' + videoId, null, null);
+
+                await node_setPoster(jwtToken, videoId, posterImagePath);
+                logDebugMessageToConsole('uploaded poster to node for video: ' + videoId, null, null);
+            }
+            else if(storageMode === 's3provider') {
+                const s3Config = storageConfig.s3Config;
+
+                const paths = [];
+
+                paths.push({key: 'external/videos/' + videoId + '/images/thumbnail.jpg', filePath: thumbnailImagePath});
+                paths.push({key: 'external/videos/' + videoId + '/images/preview.jpg', filePath: previewImagePath});
+                paths.push({key: 'external/videos/' + videoId + '/images/poster.jpg', filePath: posterImagePath});
+
+                await s3_putObjectsFromFilePaths(s3Config, paths);
+            }
+
+            await deleteDirectoryRecursive(imagesDirectoryPath);
+
+            await node_setVideoImported(jwtToken, videoId);
+
+            logDebugMessageToConsole('flagging video as imported to node for video: ' + videoId, null, null);
+            
+            websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'imported', videoId: videoId, lengthTimestamp: lengthTimestamp }}});
+            
+            resolve({isError: false});
         }
         else {
             resolve({isError: true, message: 'video file is missing'});
@@ -552,155 +476,137 @@ function videoIdIndexRemove_POST(jwtToken, videoId, cloudflareTurnstileToken) {
     });
 }
 
-function videoIdThumbnail_GET(videoId) {
-    return new Promise(function(resolve, reject) {
-        node_getThumbnail(videoId)
-        .then(nodeResponseData => {
-            resolve(nodeResponseData);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function videoIdPreview_GET(videoId) {
-    return new Promise(function(resolve, reject) {
-        node_getPreview(videoId)
-        .then(nodeResponseData => {
-            resolve(nodeResponseData);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function videoIdPoster_GET(videoId) {
-    return new Promise(function(resolve, reject) {
-        node_getPoster(videoId)
-        .then(nodeResponseData => {
-            resolve(nodeResponseData);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
 function videoIdThumbnail_POST(jwtToken, videoId, thumbnailFile) {
-    return new Promise(function(resolve, reject) {
-        if(thumbnailFile != null && thumbnailFile.length === 1) {
+    return new Promise(function (resolve, reject) {
+        if (thumbnailFile != null && thumbnailFile.length === 1) {
             thumbnailFile = thumbnailFile[0];
 
-            const sourceFilePath = path.join(getVideosDirectoryPath(), videoId + '/images/' + thumbnailFile.filename);
-            const destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/images/thumbnail.jpg');
-            
-            sharp(sourceFilePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toFile(destinationFilePath)
-            .then(() => {
-                node_setThumbnail(jwtToken, videoId, destinationFilePath)
-                .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                        
-                        resolve({isError: true, message: nodeResponseData.message});
-                    }
-                    else {
-                        logDebugMessageToConsole('uploaded live preview to node for video: ' + videoId, null, null);
-                        
-                        fs.unlinkSync(destinationFilePath);
-                        
-                        resolve({isError: false});
-                    }
-                })
-                .catch(error => {
-                    reject(error);
-                });
+            sharp(thumbnailFile.buffer).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer()
+            .then(async (thumbnailBuffer) => {
+                const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+
+                const storageConfig = nodeSettings.storageConfig;
+                const storageMode = storageConfig.storageMode;
+
+                if(storageMode === 'filesystem') {
+                    logDebugMessageToConsole('uploading thumbnail image to node for video: ' + videoId, null, null);
+
+                    await node_setThumbnail(jwtToken, videoId, thumbnailBuffer);
+
+                    logDebugMessageToConsole('uploaded thumbnail image to node for video: ' + videoId, null, null);
+                }
+                else if(storageMode === 's3provider') {
+                    logDebugMessageToConsole('uploading thumbnail image to s3 for video: ' + videoId, null, null);
+
+                    const s3Config = storageConfig.s3Config;
+
+                    const key = 'external/videos/' + videoId + '/images/thumbnail.jpg';
+
+                    await s3_putObjectFromData(s3Config, key, thumbnailBuffer);
+                    
+                    logDebugMessageToConsole('uploaded thumbnail image to s3 for video: ' + videoId, null, null);
+                }
+                else {
+                    throw new Error('videoIdThumbnail_POST received invalid storageMode: ' + storageMode);
+                }
+
+                resolve({ isError: false });
             })
-            .catch(error => {
+            .catch((error) => {
                 reject(error);
             });
-        }
-        else {
-            resolve({isError: true, message: 'thumbnail file is missing'});
+        } else {
+            resolve({ isError: true, message: 'thumbnail file is missing' });
         }
     });
 }
 
 function videoIdPreview_POST(jwtToken, videoId, previewFile) {
-    return new Promise(function(resolve, reject) {
-        if(previewFile != null && previewFile.length === 1) {
+    return new Promise(function (resolve, reject) {
+        if (previewFile != null && previewFile.length === 1) {
             previewFile = previewFile[0];
 
-            const sourceFilePath = path.join(getVideosDirectoryPath(), videoId + '/images/' + previewFile.filename);
-            const destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/images/preview.jpg');
-            
-            sharp(sourceFilePath).resize({width: 512}).resize(512, 288).jpeg({quality : 90}).toFile(destinationFilePath)
-            .then(() => {
-                node_setPreview(jwtToken, videoId, destinationFilePath)
-                .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                        
-                        resolve({isError: true, message: nodeResponseData.message});
-                    }
-                    else {
-                        logDebugMessageToConsole('uploaded live preview to node for video: ' + videoId, null, null);
-                        
-                        fs.unlinkSync(destinationFilePath);
-                        
-                        resolve({isError: false});
-                    }
-                })
-                .catch(error => {
-                    reject(error);
-                });
+            sharp(previewFile.buffer).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer()
+            .then(async (previewFileBuffer) => {
+                const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+
+                const storageConfig = nodeSettings.storageConfig;
+                const storageMode = storageConfig.storageMode;
+
+                if(storageMode === 'filesystem') {
+                    logDebugMessageToConsole('uploading preview image to node for video: ' + videoId, null, null);
+
+                    await node_setPreview(jwtToken, videoId, previewFileBuffer);
+
+                    logDebugMessageToConsole('uploaded preview image to node for video: ' + videoId, null, null);
+                }
+                else if(storageMode === 's3provider') {
+                    logDebugMessageToConsole('uploading preview image to s3 for video: ' + videoId, null, null);
+
+                    const s3Config = storageConfig.s3Config;
+
+                    const key = 'external/videos/' + videoId + '/images/preview.jpg';
+
+                    await s3_putObjectFromData(s3Config, key, previewFileBuffer);
+                    
+                    logDebugMessageToConsole('uploaded preview image to s3 for video: ' + videoId, null, null);
+                }
+                else {
+                    throw new Error('videoIdPreview_POST received invalid storageMode: ' + storageMode);
+                }
+
+                resolve({ isError: false });
             })
-            .catch(error => {
+            .catch((error) => {
                 reject(error);
             });
-        }
-        else {
-            resolve({isError: true, message: 'preview file is missing'});
+        } else {
+            resolve({ isError: true, message: 'preview file is missing' });
         }
     });
 }
 
 function videoIdPoster_POST(jwtToken, videoId, posterFile) {
-    return new Promise(function(resolve, reject) {
-        if(posterFile != null && posterFile.length === 1) {
+    return new Promise(function (resolve, reject) {
+        if (posterFile != null && posterFile.length === 1) {
             posterFile = posterFile[0];
-        
-            const sourceFilePath = path.join(getVideosDirectoryPath(), videoId + '/images/' + posterFile.filename);
-            const destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/images/poster.jpg');
-            
-            sharp(sourceFilePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toFile(destinationFilePath)
-            .then(() => {
-                node_setPoster(jwtToken, videoId, destinationFilePath)
-                .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                        
-                        resolve({isError: true, message: nodeResponseData.message});
-                    }
-                    else {
-                        logDebugMessageToConsole('uploaded live poster to node for video: ' + videoId, null, null);
-                        
-                        fs.unlinkSync(destinationFilePath);
-                        
-                        resolve({isError: false});
-                    }
-                })
-                .catch(error => {
-                    reject(error);
-                });
+
+            sharp(posterFile.buffer).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer()
+            .then(async (posterFileBuffer) => {
+                const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+
+                const storageConfig = nodeSettings.storageConfig;
+                const storageMode = storageConfig.storageMode;
+
+                if(storageMode === 'filesystem') {
+                    logDebugMessageToConsole('uploading poster image to node for video: ' + videoId, null, null);
+
+                    await node_setPoster(jwtToken, videoId, posterFileBuffer);
+
+                    logDebugMessageToConsole('uploaded poster image to node for video: ' + videoId, null, null);
+                }
+                else if(storageMode === 's3provider') {
+                    logDebugMessageToConsole('uploading poster image to s3 for video: ' + videoId, null, null);
+
+                    const s3Config = storageConfig.s3Config;
+
+                    const key = 'external/videos/' + videoId + '/images/poster.jpg';
+
+                    await s3_putObjectFromData(s3Config, key, posterFileBuffer);
+                    
+                    logDebugMessageToConsole('uploaded poster image to s3 for video: ' + videoId, null, null);
+                }
+                else {
+                    throw new Error('videoIdPoster_POST received invalid storageMode: ' + storageMode);
+                }
+
+                resolve({ isError: false });
             })
-            .catch(error => {
+            .catch((error) => {
                 reject(error);
             });
-        }
-        else {
-            resolve({isError: true, message: 'poster file is missing'});
+        } else {
+            resolve({ isError: true, message: 'poster file is missing' });
         }
     });
 }
@@ -745,9 +651,6 @@ module.exports = {
     finalize_POST,
     videoIdIndexAdd_POST,
     videoIdIndexRemove_POST,
-    videoIdThumbnail_GET,
-    videoIdPreview_GET,
-    videoIdPoster_GET,
     videoIdThumbnail_POST,
     videoIdPreview_POST,
     videoIdPoster_POST,
