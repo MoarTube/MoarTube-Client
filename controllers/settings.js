@@ -7,8 +7,12 @@ sharp.cache(false);
 
 const { 
     logDebugMessageToConsole, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodePort, detectOperatingSystem, detectSystemGpu, 
-    detectSystemCpu, getClientSettings, setClientSettings, getImagesDirectoryPath, getClientSettingsDefault
+    detectSystemCpu, getClientSettings, setClientSettings, getImagesDirectoryPath, getClientSettingsDefault,
+    getIsDeveloperMode
 } = require('../utils/helpers');
+const {
+    isIpv4Address
+} = require('../utils/validators')
 const { 
     node_setExternalNetwork, node_getSettings, node_getAvatar, node_setAvatar, node_getBanner, node_setBanner, node_setNodeName, node_setNodeAbout, 
     node_setNodeId, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials, node_setCloudflareConfiguration, 
@@ -16,6 +20,10 @@ const {
     node_commentsToggle, node_likesToggle, node_dislikesToggle, node_reportsToggle, node_liveChatToggle, node_databaseConfigToggle,
     node_storageConfigToggle
 } = require('../utils/node-communications');
+
+const {
+    cloudflare_addS3BucketCnameDnsRecord
+} = require('../utils/cloudflare_communications');
 
 const {
     s3_validateS3Config
@@ -496,76 +504,64 @@ function nodeDatabaseConfigToggle_POST(jwtToken, databaseConfig) {
     });
 }
 
-function nodeStorageConfigToggle_POST(jwtToken, storageConfig) {
-    return new Promise(function(resolve, reject) {
+function nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig) {
+    return new Promise(async function(resolve, reject) {
         if(storageConfig.storageMode === 'filesystem') {
-            node_storageConfigToggle(jwtToken, storageConfig)
-            .then(nodeResponseData => {
-                if(nodeResponseData.isError) { 
-                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                    
-                    resolve({isError: true, message: nodeResponseData.message});
+            const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+            
+            const publicNodeProtocol = nodeSettings.publicNodeProtocol;
+            const publicNodeAddress = nodeSettings.publicNodeAddress;
+            let publicNodePort = nodeSettings.publicNodePort;
+            
+            if(publicNodeProtocol === 'http') {
+                publicNodePort = publicNodePort == 80 ? '' : ':' + publicNodePort;
+            } 
+            else if(publicNodeProtocol === 'https') {
+                publicNodePort = publicNodePort == 443 ? '' : ':' + publicNodePort;
+            }
+            
+            if(isIpv4Address(publicNodeAddress)) {
+                storageConfig.externalVideosBaseUrl = `${publicNodeProtocol}://${publicNodeAddress}${publicNodePort}`;
+            }
+            else {
+                if(getIsDeveloperMode()) {
+                    storageConfig.externalVideosBaseUrl = `${publicNodeProtocol}://testingexternalvideos.${publicNodeAddress}${publicNodePort}`;
                 }
                 else {
-                    resolve({isError: false});
+                    storageConfig.externalVideosBaseUrl = `${publicNodeProtocol}://externalvideos.${publicNodeAddress}${publicNodePort}`;
                 }
-            })
-            .catch(error => {
-                const message = 'error communicating with the MoarTube Node';
+            }
 
-                logDebugMessageToConsole(message, error, null);
+            await node_storageConfigToggle(jwtToken, storageConfig)
 
-                resolve({isError: true, message: message});
-            });
+            resolve({isError: false});
         }
         else if(storageConfig.storageMode === 's3provider') {
-            /*
-            AWS SDK modifies storageConfig object passed into the S3Client constructor by injecting properties within s3ProviderClientConfig into s3Config.
-            I don't want extraneous data recorded by the node.
-            Deep copy the storageConfig and pass it instead.
-            */
-            const storageConfigDeepCopy = JSON.parse(JSON.stringify(storageConfig));
-            const s3ConfigDeepCopy = storageConfigDeepCopy.s3Config;
+            await s3_validateS3Config(JSON.parse(JSON.stringify(storageConfig.s3Config)));
 
-            s3_validateS3Config(s3ConfigDeepCopy)
-            .then(result => {
-                if(result.isError) { 
-                    logDebugMessageToConsole(result.message, null, new Error().stack);
-                    
-                    resolve({isError: true, message: result.message});
-                }
-                else {
-                    // send the original non-deep copy storageConfig to the node
-                    node_storageConfigToggle(jwtToken, storageConfig)
-                    .then(nodeResponseData => {
-                        if(nodeResponseData.isError) { 
-                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                            
-                            resolve({isError: true, message: nodeResponseData.message});
-                        }
-                        else {
-                            resolve({isError: false});
-                        }
-                    })
-                    .catch(error => {
-                        const message = 'error communicating with the MoarTube Node';
+            const bucketName = storageConfig.s3Config.bucketName;
+            const region = storageConfig.s3Config.s3ProviderClientConfig.region
+            
+            if(dnsConfig.isConfiguringDnsCname) {
+                const cloudflareCredentials = dnsConfig.cloudflareCredentials;
 
-                        logDebugMessageToConsole(message, error, null);
+                const cnameRecordName = bucketName;
+                const cnameRecordContent = `${bucketName}.s3.${region}.amazonaws.com`;
 
-                        resolve({isError: true, message: message});
-                    });
-                }
-            })
-            .catch(error => {
-                const message = 'error communicating with the MoarTube Node';
+                await cloudflare_addS3BucketCnameDnsRecord(cnameRecordName, cnameRecordContent, cloudflareCredentials);
 
-                logDebugMessageToConsole(message, error, null);
+                storageConfig.externalVideosBaseUrl = `https://${bucketName}`;
+            }
+            else {
+                storageConfig.externalVideosBaseUrl = `http://${bucketName}.s3.${region}.amazonaws.com`;
+            }
 
-                resolve({isError: true, message: message});
-            });
+            await node_storageConfigToggle(jwtToken, storageConfig);
+
+            resolve({isError: false});
         }
         else {
-            resolve({isError: true, message: 'invalid parameters'});
+            reject('invalid parameters');
         }
     });
 }

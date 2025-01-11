@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand, ListBucketsCommand, DeleteObjectCommand  } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, ListBucketsCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const fs = require('fs');
 
 const { 
@@ -53,7 +53,6 @@ function s3_validateS3Config(s3Config) {
     return new Promise(async function(resolve, reject) {
         try {
             const bucketName = s3Config.bucketName;
-            //const s3ProviderClientConfig = JSON.parse(JSON.stringify(storageConfigDeepCopy.s3Config.s3ProviderClientConfig));
             const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
 
             logDebugMessageToConsole('validating the s3 provider configuration: ' + JSON.stringify(s3ProviderClientConfig), null, null);
@@ -97,7 +96,7 @@ function s3_validateS3Config(s3Config) {
 
                             logDebugMessageToConsole(message, error, null);
 
-                            resolve({isError: true, message: message});
+                            reject(message);
                         });
                     })
                     .catch(error => {
@@ -105,7 +104,7 @@ function s3_validateS3Config(s3Config) {
 
                         logDebugMessageToConsole(message, error, null);
 
-                        resolve({isError: true, message: message});
+                        reject(message);
                     });
                 }
                 else {
@@ -113,7 +112,7 @@ function s3_validateS3Config(s3Config) {
 
                     logDebugMessageToConsole(message, null, null);
 
-                    resolve({isError: true, message: message});
+                    reject(message);
                 }
             })
             .catch(error => {
@@ -121,7 +120,7 @@ function s3_validateS3Config(s3Config) {
 
                 logDebugMessageToConsole(message, error, null);
 
-                resolve({isError: true, message: message});
+                reject(message);
             });
         }
         catch (error) {
@@ -129,7 +128,7 @@ function s3_validateS3Config(s3Config) {
 
             logDebugMessageToConsole(message, error, null);
 
-            resolve({isError: true, message: message});
+            reject(message);
         }
     });
 }

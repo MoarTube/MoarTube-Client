@@ -441,7 +441,7 @@ input[type="range"]:focus::-moz-range-thumb{
 								</div>
 								<div class="card-body pt-0 pb-0">
 									<div class="">
-										<a href="https://www.moartube.com/guides/how-to-enable-cloudflare-integration" target="_blank"><p class="mb-0 d-flex">Cloudflare One-Click Integration<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
+										<a href="https://www.moartube.com/guides/how-to-enable-cloudflare-integration" target="_blank"><p class="mb-0 d-flex">Cloudflare CDN<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
 											<path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/>
 											<path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/>
 										  </svg></p></a>
@@ -1528,9 +1528,9 @@ input[type="range"]:focus::-moz-range-thumb{
 						if (result.isConfirmed) {
 							const html = '\
 							<div id="secure-connection-modal" class="container-fluid">\
-								<div class="input-group mb-3"><input id="cloudflareEmailAddress" class="form-control" type="text" required="" autocomplete="off" placeholder="Email Address"></div>\
-								<div class="input-group mb-3"><input id="cloudflareZoneId" class="form-control" type="text" required="" autocomplete="off" placeholder="Zone ID"></div>\
-								<div class="input-group"><input id="cloudflareGlobalApiKey" class="form-control" type="text" required="" autocomplete="off" placeholder="Global API Key"></div>\
+								<div class="input-group mb-3"><input id="cloudflareEmailAddress" class="form-control" type="text" required="" autocomplete="off" placeholder="Cloudflare Email Address"></div>\
+								<div class="input-group mb-3"><input id="cloudflareZoneId" class="form-control" type="text" required="" autocomplete="off" placeholder="Cloudflare Zone ID"></div>\
+								<div class="input-group"><input id="cloudflareGlobalApiKey" class="form-control" type="text" required="" autocomplete="off" placeholder="Cloudflare Global API Key"></div>\
 							</div>';
 							
 							Swal.fire({
@@ -1845,12 +1845,30 @@ input[type="range"]:focus::-moz-range-thumb{
 							</div>\
 						</div>\
 						<div class="row">\
-							<div class="input-group mb-2">\
-								<input id="s3-provider-bucket-endpoint" class="form-control json-property-value" type="text" required="" autocomplete="off" placeholder="bucket endpoint">\
+							<div class="input-group mb-3">\
+								<textarea id="s3-provider-client-configuration-textarea" class="form-control" name="nodeAbout" type="text" placeholder="Paste the AWS SDK S3 Client Configuration JSON here" rows="5" maxlength="1000" onfocus="focused(this)" onfocusout="defocused(this)"></textarea>\
 							</div>\
 						</div>\
-						<div class="input-group">\
-							<textarea id="s3-provider-client-configuration-textarea" class="form-control" name="nodeAbout" type="text" placeholder="Copy/Paste the S3 Provider Client Configuration JSON here" rows="5" maxlength="1000" onfocus="focused(this)" onfocusout="defocused(this)"></textarea>\
+						<div class="row">\
+							<div class="input-group mb-3">\
+								<label class="custom-control-label">Configure Cloudflare DNS <i>(adds CNAME record, required if caching S3 with Cloudflare CDN)</i></label>\
+								<div class="input-group form-switch">\
+									<input id="s3-configuration-configure-dns-switch" class="form-check-input" type="checkbox" style="height: 1.10em;">\
+								</div>\
+							</div>\
+						</div>\
+						<div id="s3-configuration-cloudflare-container" class="row hidden-elem">\
+							<div>\
+								<div class="input-group mb-2">\
+									<input id="s3-configuration-cloudflare-email-address-input" class="form-control" type="text" required="" autocomplete="off" placeholder="Cloudflare Email Address" title="wee">\
+								</div>\
+								<div class="input-group mb-2">\
+									<input id="s3-configuration-cloudflare-zone-id-input" class="form-control" type="text" required="" autocomplete="off" placeholder="Cloudflare Zone ID">\
+								</div>\
+								<div class="input-group mb-2">\
+									<input id="s3-configuration-cloudflare-global-api-key-input" class="form-control" type="text" required="" autocomplete="off" placeholder="Cloudflare Global API Key">\
+								</div>\
+							</div>\
 						</div>\
 						<p id="s3-provider-error-message"></p>\
 					</div>';
@@ -1865,14 +1883,21 @@ input[type="range"]:focus::-moz-range-thumb{
 							
 						},
 						didOpen: () => {
-							
+							$('#s3-configuration-configure-dns-switch').change(function () {
+								if ($(this).is(':checked')) {
+									$('#s3-configuration-cloudflare-container').removeClass('hidden-elem');
+								}
+								else {
+									$('#s3-configuration-cloudflare-container').addClass('hidden-elem');
+								}
+							});
 						},
 						preConfirm: () => {
 							const bucketName = $('#s3-provider-bucket-name').val();
-							const bucketEndpoint = $('#s3-provider-bucket-endpoint').val();
 							let s3ProviderClientConfig = $('#s3-provider-client-configuration-textarea').val();
+							const isConfiguringDnsCname = $('#s3-configuration-configure-dns-switch').is(':checked');
 
-							if(bucketName !== '' && bucketEndpoint !== '' && s3ProviderClientConfig !== '') {
+							if(bucketName !== '' && s3ProviderClientConfig !== '') {
 								s3ProviderClientConfig = s3ProviderClientConfig.replace(/\s+/g, ' ').trim();
 								
 								s3ProviderClientConfig = s3ProviderClientConfig.replace(/'/g, '"');
@@ -1883,16 +1908,33 @@ input[type="range"]:focus::-moz-range-thumb{
 								
 								s3ProviderClientConfig = s3ProviderClientConfig.replace(/,\s*$/, '');
 
+								const dnsConfig = {
+									isConfiguringDnsCname: isConfiguringDnsCname
+								};
+
+								if(isConfiguringDnsCname) {
+									const cloudflareEmailAddress = $('#s3-configuration-cloudflare-email-address-input').val();
+									const cloudflareZoneId = $('#s3-configuration-cloudflare-zone-id-input').val();
+									const cloudflareGlobalApiKey = $('#s3-configuration-cloudflare-global-api-key-input').val();
+
+									if(cloudflareEmailAddress !== '' && cloudflareZoneId !== '' && cloudflareGlobalApiKey !== '') {
+										dnsConfig.cloudflareCredentials = {
+											cloudflareEmailAddress: cloudflareEmailAddress,
+											cloudflareZoneId: cloudflareZoneId,
+											cloudflareGlobalApiKey: cloudflareGlobalApiKey
+										};
+									}
+								}
+
 								try {
 									const s3ProviderClientConfigParsed = JSON.parse(s3ProviderClientConfig);
 
 									const s3Config = {
 										bucketName: bucketName,
-										bucketEndpoint: bucketEndpoint,
 										s3ProviderClientConfig: s3ProviderClientConfigParsed
 									};
 
-									return {s3Config: s3Config};
+									return {s3Config: s3Config, dnsConfig: dnsConfig};
 								}
 								catch(e) {
 									$('#s3-provider-error-message').val('Error: Invalid JSON Configuration');
@@ -1908,10 +1950,11 @@ input[type="range"]:focus::-moz-range-thumb{
 					.then((result) => {
 						if (result.isConfirmed) {
 							const s3Config = result.value.s3Config;
+							const dnsConfig = result.value.dnsConfig;
 
 							storageConfig.s3Config = s3Config;
 
-							submitStorageConfig(storageConfig, radio);
+							submitStorageConfig(storageConfig, dnsConfig, radio);
 						}
 						else {
 							$('#storage-configuration-filesystem-radio').prop('disabled', false);
@@ -1920,8 +1963,8 @@ input[type="range"]:focus::-moz-range-thumb{
 					});
 				}
 
-				function submitStorageConfig(storageConfig, radio) {
-					$.ajax({type: 'POST', url: '/settings/node/storageConfig/toggle', data: JSON.stringify({storageConfig: storageConfig}), contentType: 'application/json; charset=utf-8'})
+				function submitStorageConfig(storageConfig, dnsConfig, radio) {
+					$.ajax({type: 'POST', url: '/settings/node/storageConfig/toggle', data: JSON.stringify({storageConfig: storageConfig, dnsConfig: dnsConfig}), contentType: 'application/json; charset=utf-8'})
 					.always(function() {
 						$('#storage-configuration-filesystem-radio').prop('disabled', false);
 						$('#storage-configuration-s3provider-radio').prop('disabled', false);

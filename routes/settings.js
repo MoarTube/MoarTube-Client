@@ -514,7 +514,18 @@ router.post('/node/storageConfig/toggle', async (req, res) => {
 
         const storageConfig = req.body.storageConfig;
 
-        const data = await nodeStorageConfigToggle_POST(jwtToken, storageConfig);
+        let data;
+        if(storageConfig.storageMode === 'filesystem') {
+            data = await nodeStorageConfigToggle_POST(jwtToken, storageConfig, null);
+        }
+        else if(storageConfig.storageMode === 's3provider') {
+            const dnsConfig = req.body.dnsConfig;
+            
+            data = await nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig);
+        }
+        else {
+            throw new Error('invalid parameters');
+        }
 
         res.send(data);
     }
