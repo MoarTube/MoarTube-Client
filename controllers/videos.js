@@ -78,18 +78,15 @@ function import_POST(jwtToken, videoFile, videoId) {
                             
             const imagesDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/images');
             const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
-            const thumbnailImagePath = path.join(imagesDirectoryPath, 'thumbnail.jpg');
-            const previewImagePath = path.join(imagesDirectoryPath, 'preview.jpg');
-            const posterImagePath = path.join(imagesDirectoryPath, 'poster.jpg');
             
             fs.mkdirSync(imagesDirectoryPath, { recursive: true });
             
             spawnSync(getFfmpegPath(), ['-ss', imageExtractionTimestamp, '-i', videoFilePath, sourceImagePath]);
 
             logDebugMessageToConsole('generating thumbnail, preview, and poster for video: ' + videoId, null, null);
-            await sharp(sourceImagePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toFile(thumbnailImagePath);
-            await sharp(sourceImagePath).resize({width: 512}).resize(512, 288).jpeg({quality : 90}).toFile(previewImagePath);
-            await sharp(sourceImagePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toFile(posterImagePath);
+            const thumbnailBuffer = await sharp(sourceImagePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer();
+            const previewFileBuffer = await sharp(sourceImagePath).resize({width: 512}).resize(512, 288).jpeg({quality : 90}).toBuffer();
+            const posterFileBuffer = await sharp(sourceImagePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toBuffer();
             logDebugMessageToConsole('generated thumbnail, preview, and poster for video: ' + videoId, null, null);
 
             const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
@@ -100,25 +97,25 @@ function import_POST(jwtToken, videoFile, videoId) {
             logDebugMessageToConsole('uploading thumbnail, preview, and poster for video: ' + videoId, null, null);
 
             if(storageMode === 'filesystem') {
-                await node_setThumbnail(jwtToken, videoId, thumbnailImagePath);
+                await node_setThumbnail(jwtToken, videoId, thumbnailBuffer);
                 logDebugMessageToConsole('uploaded thumbnail to node for video: ' + videoId, null, null);
 
-                await node_setPreview(jwtToken, videoId, previewImagePath);
+                await node_setPreview(jwtToken, videoId, previewFileBuffer);
                 logDebugMessageToConsole('uploaded preview to node for video: ' + videoId, null, null);
 
-                await node_setPoster(jwtToken, videoId, posterImagePath);
+                await node_setPoster(jwtToken, videoId, posterFileBuffer);
                 logDebugMessageToConsole('uploaded poster to node for video: ' + videoId, null, null);
             }
             else if(storageMode === 's3provider') {
                 const s3Config = storageConfig.s3Config;
 
-                const paths = [];
+                const thumbnailImageKey = 'external/videos/' + videoId + '/images/thumbnail.jpg';
+                const previewImageKey = 'external/videos/' + videoId + '/images/preview.jpg';
+                const posterImageKey = 'external/videos/' + videoId + '/images/poster.jpg';
 
-                paths.push({key: 'external/videos/' + videoId + '/images/thumbnail.jpg', filePath: thumbnailImagePath});
-                paths.push({key: 'external/videos/' + videoId + '/images/preview.jpg', filePath: previewImagePath});
-                paths.push({key: 'external/videos/' + videoId + '/images/poster.jpg', filePath: posterImagePath});
-
-                await s3_putObjectsFromFilePaths(s3Config, paths);
+                await s3_putObjectFromData(s3Config, thumbnailImageKey, thumbnailBuffer);
+                await s3_putObjectFromData(s3Config, previewImageKey, previewFileBuffer);
+                await s3_putObjectFromData(s3Config, posterImageKey, posterFileBuffer);
             }
 
             await deleteDirectoryRecursive(imagesDirectoryPath);

@@ -516,7 +516,7 @@ router.post('/node/storageConfig/toggle', async (req, res) => {
 
         let data;
         if(storageConfig.storageMode === 'filesystem') {
-            data = await nodeStorageConfigToggle_POST(jwtToken, storageConfig, null);
+            data = await nodeStorageConfigToggle_POST(jwtToken, storageConfig, {});
         }
         else if(storageConfig.storageMode === 's3provider') {
             const dnsConfig = req.body.dnsConfig;

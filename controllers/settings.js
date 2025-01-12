@@ -7,12 +7,8 @@ sharp.cache(false);
 
 const { 
     logDebugMessageToConsole, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodePort, detectOperatingSystem, detectSystemGpu, 
-    detectSystemCpu, getClientSettings, setClientSettings, getImagesDirectoryPath, getClientSettingsDefault,
-    getIsDeveloperMode
+    detectSystemCpu, getClientSettings, setClientSettings, getImagesDirectoryPath, getClientSettingsDefault
 } = require('../utils/helpers');
-const {
-    isIpv4Address
-} = require('../utils/validators')
 const { 
     node_setExternalNetwork, node_getSettings, node_getAvatar, node_setAvatar, node_getBanner, node_setBanner, node_setNodeName, node_setNodeAbout, 
     node_setNodeId, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials, node_setCloudflareConfiguration, 
@@ -20,10 +16,6 @@ const {
     node_commentsToggle, node_likesToggle, node_dislikesToggle, node_reportsToggle, node_liveChatToggle, node_databaseConfigToggle,
     node_storageConfigToggle
 } = require('../utils/node-communications');
-
-const {
-    cloudflare_addS3BucketCnameDnsRecord
-} = require('../utils/cloudflare_communications');
 
 const {
     s3_validateS3Config
@@ -506,63 +498,26 @@ function nodeDatabaseConfigToggle_POST(jwtToken, databaseConfig) {
 
 function nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig) {
     return new Promise(async function(resolve, reject) {
-        if(storageConfig.storageMode === 'filesystem') {
-            const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
-            
-            const publicNodeProtocol = nodeSettings.publicNodeProtocol;
-            const publicNodeAddress = nodeSettings.publicNodeAddress;
-            let publicNodePort = nodeSettings.publicNodePort;
-            
-            if(publicNodeProtocol === 'http') {
-                publicNodePort = publicNodePort == 80 ? '' : ':' + publicNodePort;
-            } 
-            else if(publicNodeProtocol === 'https') {
-                publicNodePort = publicNodePort == 443 ? '' : ':' + publicNodePort;
-            }
-            
-            if(isIpv4Address(publicNodeAddress)) {
-                storageConfig.externalVideosBaseUrl = `${publicNodeProtocol}://${publicNodeAddress}${publicNodePort}`;
-            }
-            else {
-                if(getIsDeveloperMode()) {
-                    storageConfig.externalVideosBaseUrl = `${publicNodeProtocol}://testingexternalvideos.${publicNodeAddress}${publicNodePort}`;
-                }
-                else {
-                    storageConfig.externalVideosBaseUrl = `${publicNodeProtocol}://externalvideos.${publicNodeAddress}${publicNodePort}`;
-                }
-            }
-
-            await node_storageConfigToggle(jwtToken, storageConfig)
-
-            resolve({isError: false});
-        }
-        else if(storageConfig.storageMode === 's3provider') {
+        if(storageConfig.storageMode === 's3provider') {
             await s3_validateS3Config(JSON.parse(JSON.stringify(storageConfig.s3Config)));
 
-            const bucketName = storageConfig.s3Config.bucketName;
-            const region = storageConfig.s3Config.s3ProviderClientConfig.region
-            
-            if(dnsConfig.isConfiguringDnsCname) {
-                const cloudflareCredentials = dnsConfig.cloudflareCredentials;
+            await node_storageConfigToggle(jwtToken, storageConfig);
+        }
 
-                const cnameRecordName = bucketName;
-                const cnameRecordContent = `${bucketName}.s3.${region}.amazonaws.com`;
+        node_storageConfigToggle(jwtToken, storageConfig, dnsConfig)
+        .then(nodeResponseData => {
+            if(nodeResponseData.isError) { 
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
 
-                await cloudflare_addS3BucketCnameDnsRecord(cnameRecordName, cnameRecordContent, cloudflareCredentials);
-
-                storageConfig.externalVideosBaseUrl = `https://${bucketName}`;
+                resolve({isError: true, message: nodeResponseData.message});
             }
             else {
-                storageConfig.externalVideosBaseUrl = `http://${bucketName}.s3.${region}.amazonaws.com`;
+                resolve({isError: false});
             }
-
-            await node_storageConfigToggle(jwtToken, storageConfig);
-
-            resolve({isError: false});
-        }
-        else {
-            reject('invalid parameters');
-        }
+        })
+        .catch(error => {
+            reject(error);
+        });
     });
 }
 

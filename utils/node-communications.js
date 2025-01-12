@@ -1300,10 +1300,11 @@ function node_databaseConfigToggle(jwtToken, databaseConfig) {
     });
 }
 
-function node_storageConfigToggle(jwtToken, storageConfig) {
+function node_storageConfigToggle(jwtToken, storageConfig, dnsConfig) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/settings/storageConfig/toggle', {
-            storageConfig: storageConfig
+            storageConfig: storageConfig,
+            dnsConfig: dnsConfig
         }, {
           headers: {
             Authorization: jwtToken

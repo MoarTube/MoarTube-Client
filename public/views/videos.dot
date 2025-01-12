@@ -452,10 +452,6 @@
 					});
 				});
 			}
-
-			function getExternalVideosBaseUrl() {
-
-			}
 			
 			function getNewContentCounts() {
 				return new Promise(function(resolve, reject) {
@@ -767,10 +763,7 @@
 								}
 								else if(type === 'published') {
 									const videoId = data.payload.videoId;
-									const lengthTimestamp = data.payload.lengthTimestamp;
-									const lengthSeconds = data.payload.lengthSeconds;
 									
-									$('#videos_table_row_' + videoId).find('td').eq(1).html('<span class="text-secondary text-sm d-flex justify-content-center align-items-center">' + lengthTimestamp + '</span>');
 									$('#videos_table_row_' + videoId).find('td').eq(6).find('span').text('published');
 									$('#videos_table_row_' + videoId).find('td').eq(6).find('a').remove();
 								}

@@ -408,7 +408,7 @@ async function finishVideoPublish(jwtToken, videoId) {
                 else {
                     logDebugMessageToConsole('video finished publishing for id: ' + videoId, null, null);
                     
-                    websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'published', videoId: videoId, lengthTimestamp: lengthTimestamp, lengthSeconds: lengthSeconds }}});
+                    websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'published', videoId: videoId }}});
                 }
             })
             .catch(error => {

@@ -9,7 +9,7 @@ const {
     videoIdIndexRemove_POST, videoIdThumbnail_POST, videoIdPreview_POST, videoIdPoster_POST, videoIdSources_GET
 } = require('../controllers/videos');
 
-const { logDebugMessageToConsole, getPublicDirectoryPath, websocketClientBroadcast, getVideosDirectoryPath } = require('../utils/helpers');
+const { logDebugMessageToConsole, websocketClientBroadcast, getVideosDirectoryPath } = require('../utils/helpers');
 const { node_isAuthenticated, node_doSignout, node_importVideo, node_setVideoError, node_getExternalVideosBaseUrl } = require('../utils/node-communications');
 const { addVideoToImportVideoTracker, isVideoImportStopping } = require('../utils/trackers/import-video-tracker');
 
