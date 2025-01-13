@@ -1,13 +1,24 @@
 const portscanner = require('portscanner');
 
-const { logDebugMessageToConsole, websocketClientBroadcast } = require('../utils/helpers');
-const { isPortValid } = require('../utils/validators');
+const { 
+    logDebugMessageToConsole, websocketClientBroadcast 
+} = require('../utils/helpers');
+const { 
+    isPortValid 
+} = require('../utils/validators');
 const { 
     node_stopVideoStreaming, node_streamVideo, node_setSourceFileExtension, node_getVideoData, node_setVideoChatSettings,
     node_getSettings
  } = require('../utils/node-communications');
-const { addLiveStreamToLiveStreamTracker } = require('../utils/trackers/live-stream-tracker');
-const { performStreamingJob } = require('../utils/handlers/live-stream-handler');
+ const { 
+    s3_deleteObjectsWithPrefix, s3_convertM3u8DynamicManifestsToStatic
+ } = require('../utils/s3-communications');
+const { 
+    addLiveStreamToLiveStreamTracker 
+} = require('../utils/trackers/live-stream-tracker');
+const { 
+    performStreamingJob 
+} = require('../utils/handlers/live-stream-handler');
 
 function start_POST(jwtToken, title, description, tags, rtmpPort, resolution, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, videoId) {
     return new Promise(function(resolve, reject) {
@@ -75,19 +86,21 @@ function videoIdStop_POST(jwtToken, videoId) {
         const storageConfig = nodeSettings.storageConfig;
 
         if(storageConfig.storageMode === 's3provider') {
-            /*
-            get video information
+            const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+            const s3Config = nodeSettings.storageConfig.s3Config;
 
-            if the stream was not recorded remotely
-                delete segments and manifests from S3
-            
-            if the stream was recorded remotely
-                retrieve the manifests for the live stream from S3
-                append \n '#EXT-X-ENDLIST' \n to the end of the manifests
-                all resolutions
+            const videoData = (await node_getVideoData(videoId)).videoData;
+            const isStreamRecordedRemotely = videoData.isStreamRecordedRemotely;
+            const resolutions = JSON.parse(videoData.outputs).m3u8;
 
-            create new s3 communication
-            */
+            if(isStreamRecordedRemotely) {
+                await s3_convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions);
+            }
+            else {
+                const prefix = 'external/videos/' + videoId + '/adaptive';
+
+                await s3_deleteObjectsWithPrefix(s3Config, prefix);
+            }
         }
 
         node_stopVideoStreaming(jwtToken, videoId)

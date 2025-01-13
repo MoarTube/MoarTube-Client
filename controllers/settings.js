@@ -500,8 +500,6 @@ function nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig) {
     return new Promise(async function(resolve, reject) {
         if(storageConfig.storageMode === 's3provider') {
             await s3_validateS3Config(JSON.parse(JSON.stringify(storageConfig.s3Config)));
-
-            await node_storageConfigToggle(jwtToken, storageConfig);
         }
 
         node_storageConfigToggle(jwtToken, storageConfig, dnsConfig)
