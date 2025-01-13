@@ -11,14 +11,14 @@ function s3_putObjectsFromFilePaths(s3Config, paths) {
         const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
 
         try {
-            const s3 = new S3Client(s3ProviderClientConfig);
+            const s3Client = new S3Client(s3ProviderClientConfig);
 
             const responses = [];
             for(const path of paths) {
                 const key = path.key;
                 const fileStream = fs.createReadStream(path.filePath);
 
-                const response = await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: fileStream }));
+                const response = await s3Client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: fileStream }));
 
                 responses.push(response);
             }
@@ -37,9 +37,27 @@ function s3_putObjectFromData(s3Config, key, data) {
         const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
 
         try {
-            const s3 = new S3Client(s3ProviderClientConfig);
+            const s3Client = new S3Client(s3ProviderClientConfig);
 
-            const response = await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: data }));
+            const response = await s3Client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: data }));
+
+            resolve(response);
+        }
+        catch (error) {
+            reject(error);
+        }
+    });
+}
+
+function s3_deleteObjectWithKey(s3Config, key) {
+    return new Promise(async function(resolve, reject) {
+        const bucket = s3Config.bucketName;
+        const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
+
+        try {
+            const s3Client = new S3Client(s3ProviderClientConfig);
+
+            const response = await s3Client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
 
             resolve(response);
         }
@@ -138,5 +156,6 @@ function s3_validateS3Config(s3Config) {
 module.exports = {
     s3_putObjectsFromFilePaths,
     s3_putObjectFromData,
+    s3_deleteObjectWithKey,
     s3_validateS3Config
 };

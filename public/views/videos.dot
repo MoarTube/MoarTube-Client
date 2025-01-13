@@ -691,9 +691,15 @@
 									// updates table of imports
 									if($('#videos_table_row_' + videoId).length) {
 										$('#videos_table_row_' + videoId).find('td').eq(6).find('span').text('publishing');
-										
-										if($('#videos_table_row_' + videoId).find('td').eq(6).find('a').length === 0) {
-											$('#videos_table_row_' + videoId).find('td').eq(6).append('<a class="text-danger cursor-pointer" onclick="doStopJob(this)" data-jobtype="publishing" data-videoid="' + videoId + '"><i class="fas fa-stop"></i></a>');
+
+                                        const html1 = '<a class="text-danger cursor-pointer publishing-job-stop" onclick="doStopJob(this)" data-jobtype="publishing" data-videoid="' + videoId + '"><i class="fas fa-stop"></i></a>';
+										const html2 = '<a class="text-danger cursor-pointer publishing-job-stop was-restream-job-start" onclick="doStopJob(this)" data-jobtype="publishing" data-videoid="' + videoId + '"><i class="fas fa-stop"></i></a>';
+
+                                        if($('#videos_table_row_' + videoId).find('td').eq(6).find('a').length === 0) {
+											$('#videos_table_row_' + videoId).find('td').eq(6).append(html1);
+										}
+										else if($('#videos_table_row_' + videoId).find('td').eq(6).find('.restream-job-start').length === 1) {
+                                            $('#videos_table_row_' + videoId).find('td').eq(6).find('.restream-job-start').replaceWith(html2);
 										}
 									}
 									
@@ -763,9 +769,17 @@
 								}
 								else if(type === 'published') {
 									const videoId = data.payload.videoId;
-									
-									$('#videos_table_row_' + videoId).find('td').eq(6).find('span').text('published');
-									$('#videos_table_row_' + videoId).find('td').eq(6).find('a').remove();
+
+                                    const html = '<a class="text-danger cursor-pointer restream-job-start" onclick="doRestreamJob(this)" data-videoid="' + videoId + '"><i class="fas fa-redo"></i></a>';
+
+                                    if($('#videos_table_row_' + videoId).find('td').eq(6).find('.was-restream-job-start').length === 1) {
+                                        $('#videos_table_row_' + videoId).find('td').eq(6).find('span').text('streamed');
+                                        $('#videos_table_row_' + videoId).find('td').eq(6).find('.was-restream-job-start').replaceWith(html);
+                                    }
+                                    else {
+                                        $('#videos_table_row_' + videoId).find('td').eq(6).find('span').text('published');
+									    $('#videos_table_row_' + videoId).find('td').eq(6).find('a').remove();
+                                    }
 								}
 								else if(type === 'streaming') {
 									const videoId = data.payload.videoId;
@@ -804,7 +818,7 @@
 									const videoId = data.payload.videoId;
 									
 									if($('#videos_table_row_' + videoId).length) {
-										$('#videos_table_row_' + videoId).find('td').eq(6).html('<span class="text-secondary text-sm d-flex justify-content-center align-items-center">streamed</span><a class="text-danger cursor-pointer" onclick="doRestreamJob(this)" data-videoid="' + videoId + '"><i class="fas fa-redo"></i></a>');
+										$('#videos_table_row_' + videoId).find('td').eq(6).html('<span class="text-secondary text-sm d-flex justify-content-center align-items-center">streamed</span><a class="text-danger cursor-pointer restream-job-start" onclick="doRestreamJob(this)" data-videoid="' + videoId + '"><i class="fas fa-redo"></i></a>');
 									}
 									
 									if($('#video-thumbnail-loading-spinner-' + videoId).length) {
@@ -2761,16 +2775,16 @@
 				
 					
 				if(status === 'importing') {
-					html += '<a class="text-danger cursor-pointer" onclick="doStopJob(this)" data-jobtype="importing" data-videoid="' + videoId + '"><i class="fas fa-stop"></i></a>';
+					html += '<a class="text-danger cursor-pointer importing-job-stop" onclick="doStopJob(this)" data-jobtype="importing" data-videoid="' + videoId + '"><i class="fas fa-stop"></i></a>';
 				}
 				else if(status === 'publishing') {
-					html += '<a class="text-danger cursor-pointer" onclick="doStopJob(this)" data-jobtype="publishing" data-videoid="' + videoId + '"><i class="fas fa-stop"></i></a>';
+					html += '<a class="text-danger cursor-pointer publishing-job-stop" onclick="doStopJob(this)" data-jobtype="publishing" data-videoid="' + videoId + '"><i class="fas fa-stop"></i></a>';
 				}
 				else if(status === 'live') {
-					html += '<a class="text-danger cursor-pointer" onclick="doStopJob(this)" data-jobtype="streaming" data-videoid="' + videoId + '"><i class="fas fa-stop"></i></a>';
+					html += '<a class="text-danger cursor-pointer streaming-job-stop" onclick="doStopJob(this)" data-jobtype="streaming" data-videoid="' + videoId + '"><i class="fas fa-stop"></i></a>';
 				}
 				else if(status === 'streamed') {
-					html += '<a class="text-danger cursor-pointer" onclick="doRestreamJob(this)" data-videoid="' + videoId + '"><i class="fas fa-redo"></i></a>';
+					html += '<a class="text-danger cursor-pointer restream-job-start" onclick="doRestreamJob(this)" data-videoid="' + videoId + '"><i class="fas fa-redo"></i></a>';
 				}
 				
 				let checked = '';

@@ -2,7 +2,10 @@ const portscanner = require('portscanner');
 
 const { logDebugMessageToConsole, websocketClientBroadcast } = require('../utils/helpers');
 const { isPortValid } = require('../utils/validators');
-const { node_stopVideoStreaming, node_streamVideo, node_setSourceFileExtension, node_getVideoData, node_setVideoChatSettings } = require('../utils/node-communications');
+const { 
+    node_stopVideoStreaming, node_streamVideo, node_setSourceFileExtension, node_getVideoData, node_setVideoChatSettings,
+    node_getSettings
+ } = require('../utils/node-communications');
 const { addLiveStreamToLiveStreamTracker } = require('../utils/trackers/live-stream-tracker');
 const { performStreamingJob } = require('../utils/handlers/live-stream-handler');
 
@@ -65,9 +68,28 @@ function start_POST(jwtToken, title, description, tags, rtmpPort, resolution, is
 }
 
 function videoIdStop_POST(jwtToken, videoId) {
-    return new Promise(function(resolve, reject) {
+    return new Promise(async function(resolve, reject) {
         websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
         
+        const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+        const storageConfig = nodeSettings.storageConfig;
+
+        if(storageConfig.storageMode === 's3provider') {
+            /*
+            get video information
+
+            if the stream was not recorded remotely
+                delete segments and manifests from S3
+            
+            if the stream was recorded remotely
+                retrieve the manifests for the live stream from S3
+                append \n '#EXT-X-ENDLIST' \n to the end of the manifests
+                all resolutions
+
+            create new s3 communication
+            */
+        }
+
         node_stopVideoStreaming(jwtToken, videoId)
         .then((nodeResponseData) => {
             if(nodeResponseData.isError) {

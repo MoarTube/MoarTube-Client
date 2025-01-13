@@ -6,10 +6,16 @@ const sharp = require('sharp');
 const { 
     logDebugMessageToConsole, getVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds, deleteDirectoryRecursive,
  } = require('../helpers');
-const { node_setVideoLengths, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, node_removeAdaptiveStreamSegment, 
-    node_stopVideoStreaming, node_getExternalVideosBaseUrl
+const { 
+    node_setVideoLengths, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, node_removeAdaptiveStreamSegment, 
+    node_stopVideoStreaming, node_getExternalVideosBaseUrl, node_getSettings
 } = require('../node-communications');
-const { addProcessToLiveStreamTracker, isLiveStreamStopping, liveStreamExists } = require('../trackers/live-stream-tracker');
+const { 
+    s3_putObjectFromData, s3_deleteObjectWithKey
+} = require('../s3-communications');
+const { 
+    addProcessToLiveStreamTracker, isLiveStreamStopping, liveStreamExists 
+} = require('../trackers/live-stream-tracker');
 
 function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isRecordingStreamRemotely, isRecordingStreamLocally) {
     return new Promise(async function(resolve, reject) {
@@ -20,14 +26,56 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
         fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/source'), { recursive: true });
         fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/images'), { recursive: true });
         fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/adaptive'), { recursive: true });
-        fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/progressive'), { recursive: true });
         
         const sourceDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/source');
         const sourceFilePath = path.join(sourceDirectoryPath, '/' + videoId + '.ts');
         const manifestFileName = 'manifest-' + resolution + '.m3u8';
 
+        const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+        const storageConfig = nodeSettings.storageConfig;
+
         const externalVideosBaseUrl = (await node_getExternalVideosBaseUrl(jwtToken)).externalVideosBaseUrl;
-        
+
+        if(storageConfig.storageMode === 's3provider') {
+            const s3Config = storageConfig.s3Config;
+            
+            let manifestFileString = '#EXTM3U\n#EXT-X-VERSION:3\n';
+
+            if(resolution === '240p') {
+                manifestFileString += '#EXT-X-STREAM-INF:BANDWIDTH=250000,RESOLUTION=426x240\n';
+                manifestFileString += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-240p.m3u8\n';
+            }
+            else if(resolution === '360p') {
+                manifestFileString += '#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=640x360\n';
+                manifestFileString += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-360p.m3u8\n';
+            }
+            else if(resolution === '480p') {
+                manifestFileString += '#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=854x480\n';
+                manifestFileString += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-480p.m3u8\n';
+            }
+            else if(resolution === '720p') {
+                manifestFileString += '#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1280x720\n';
+                manifestFileString += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-720p.m3u8\n';
+            }
+            else if(resolution === '1080p') {
+                manifestFileString += '#EXT-X-STREAM-INF:BANDWIDTH=6000000,RESOLUTION=1920x1080\n';
+                manifestFileString += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-1080p.m3u8\n';
+            }
+            else if(resolution === '1440p') {
+                manifestFileString += '#EXT-X-STREAM-INF:BANDWIDTH=8000000,RESOLUTION=2560x1440\n';
+                manifestFileString += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-1440p.m3u8\n';
+            }
+            else if(resolution === '2160p') {
+                manifestFileString += '#EXT-X-STREAM-INF:BANDWIDTH=16000000,RESOLUTION=3840x2160\n'
+                manifestFileString += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-2160p.m3u8\n';
+            }
+
+            const masterManifestKey = 'external/videos/' + videoId + '/adaptive/static/m3u8/manifests/manifest-master.m3u8';
+            const masterManifestBuffer = Buffer.from(masterManifestKey);
+
+            await s3_putObjectFromData(s3Config, masterManifestKey, masterManifestBuffer);
+        }
+
         const ffmpegArguments = generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely, externalVideosBaseUrl);
         
         let process = spawn(getFfmpegPath(), ffmpegArguments);
@@ -82,7 +130,7 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
 
             Note:
             1) Since stdout is a data stream, the last data packet may contain both video data for the latest expected segment and manifest data.
-            2) A data packet may end with the pattern ".ts\n" but instead be a false positive for detecting the end of the manifest if the data packet 
+            2) A data packet may end with the pattern ".ts\n" but instead be a false positive for detecting the end of the manifest if that data packet 
             happened to be mid-manifest ending with that pattern. Validation is performed to guard against this rare edge case.
             */
 
@@ -114,7 +162,7 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
                         hls_segment_filename cannot be used to configure segment naming when piping ffmpeg to stdout.
                         Setting hls_segment_filename activates file system storage instead for some stupid reason.
                         Manifest file must therefore be post-processed to configure segment naming.
-                        We can't generate an entire manifest because we can't anticipate ffmpeg's calculation of segment length (#EXTINF).
+                        We can't just generate an entire manifest because we can't anticipate ffmpeg's calculation of segment length (#EXTINF).
                         */
                         let updatedManifestLines = manifestLines.map(line => {
                             if (segmentRegex.test(line.trim())) {
@@ -147,8 +195,8 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
 
                             const segmentFileName = 'segment-' + resolution + '-' + segmentCounter + '.ts';
 
-                            sendSegmentToNode(jwtToken, videoId, resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName);
-                            sendImagesToNode(jwtToken, videoId, segmentBuffer);
+                            sendSegmentToNode(jwtToken, videoId, resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName, storageConfig);
+                            sendImagesToNode(jwtToken, videoId, segmentBuffer, storageConfig);
 
                             if(isRecordingStreamLocally) {
                                 fs.writeFileSync(sourceFilePath, segmentBuffer, { flag: 'a' });
@@ -158,20 +206,35 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
                                 const segmentIndexToRemove = segmentCounter - 20;
                                 
                                 if(segmentIndexToRemove >= 0) {
-                                    const segmentName = 'segment-' + resolution + '-' + segmentIndexToRemove + '.ts';
-                                    
-                                    node_removeAdaptiveStreamSegment(jwtToken, videoId, format, resolution, segmentName)
-                                    .then(nodeResponseData => {
-                                        if(nodeResponseData.isError) {
-                                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                                        }
-                                        else {
-                                            logDebugMessageToConsole('node removed segment ' + segmentName, null, null);
-                                        }
-                                    })
-                                    .catch(error => {
-                                        logDebugMessageToConsole(null, error, new Error().stack);
-                                    });
+                                    if(storageConfig.storageMode === 'filesystem') {
+                                        const segmentName = 'segment-' + resolution + '-' + segmentIndexToRemove + '.ts';
+                                        
+                                        node_removeAdaptiveStreamSegment(jwtToken, videoId, format, resolution, segmentName)
+                                        .then(nodeResponseData => {
+                                            if(nodeResponseData.isError) {
+                                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
+                                            }
+                                            else {
+                                                logDebugMessageToConsole('node removed segment ' + segmentName, null, null);
+                                            }
+                                        })
+                                        .catch(error => {
+                                            logDebugMessageToConsole(null, error, new Error().stack);
+                                        });
+                                    }
+                                    else if(storageConfig.storageMode === 's3provider') {
+                                        const s3Config = storageConfig.s3Config;
+
+                                        const segmentKey = 'external/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/' + segmentFileName;
+
+                                        s3_deleteObjectWithKey(s3Config, segmentKey)
+                                        .then(response => {
+
+                                        })
+                                        .catch(error => {
+                                            logDebugMessageToConsole(null, error, new Error().stack);
+                                        });
+                                    }
                                 }
                             }
 
@@ -237,46 +300,63 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
     });
 }
 
-function sendSegmentToNode(jwtToken, videoId, resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName) {
+function sendSegmentToNode(jwtToken, videoId, resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName, storageConfig) {
     logDebugMessageToConsole('sending segment ' + segmentFileName + ' to node for video Id ' + videoId, null, null);
 
-    node_uploadStream(jwtToken, videoId, 'm3u8', resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName)
-    .then(nodeResponseData => {
-        if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-        }
-        else {
-            // do nothing
-        }
-    })
-    .catch(error => {
-        logDebugMessageToConsole(null, error, new Error().stack);
-    })
-    .finally(() => {
+    if(storageConfig.storageMode === 'filesystem') {
+        node_uploadStream(jwtToken, videoId, 'm3u8', resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName)
+        .then(nodeResponseData => {
+            if(nodeResponseData.isError) {
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
+            }
+            else {
+                // do nothing
+            }
+        })
+        .catch(error => {
+            logDebugMessageToConsole(null, error, new Error().stack);
+        })
+        .finally(() => {
+            
+        });
+    }
+    else if(storageConfig.storageMode === 's3provider') {
+        const s3Config = storageConfig.s3Config;
+
+        const manifestKey = 'external/videos/' + videoId + '/adaptive/static/m3u8/manifests/manifest-' + resolution + '.m3u8';
+        const segmentKey = 'external/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/' + segmentFileName;
         
-    });
+        s3_putObjectFromData(s3Config, manifestKey, manifestBuffer)
+        .then(response => {
+            
+        })
+        .catch(error => {
+            logDebugMessageToConsole(null, error, new Error().stack);
+        });
+
+        s3_putObjectFromData(s3Config, segmentKey, segmentBuffer)
+        .then(response => {
+            
+        })
+        .catch(error => {
+            logDebugMessageToConsole(null, error, new Error().stack);
+        });
+    }
 }
 
 let uploadingThumbnail = false;
 let uploadingPreview = false;
 let uploadingPoster = false;
 let lastVideoImagesUpdateTimestamp = 0;
-function sendImagesToNode(jwtToken, videoId, segmentBuffer) {
+function sendImagesToNode(jwtToken, videoId, segmentBuffer, storageConfig) {
     // Update thumbnail, preview, and poster every 10 seconds.
     if(!uploadingThumbnail && !uploadingPreview && !uploadingPoster && (Date.now() - lastVideoImagesUpdateTimestamp > 10000)) {
         lastVideoImagesUpdateTimestamp = Date.now();
 
-        const imagesDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/images');
+        const imagesDirectoryPath = path.join(getVideosDirectoryPath(), videoId, '/images');
         const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
         
-        let process = spawn(getFfmpegPath(), [
-            '-i', 'pipe:0',
-            '-ss', '0.5',
-            '-q', '18',
-            '-frames:v', '1', 
-            '-y',
-            sourceImagePath
-        ]);
+        let process = spawn(getFfmpegPath(), ['-i', 'pipe:0', '-ss', '0.5', '-q', '18', '-frames:v', '1', '-y', sourceImagePath]);
 
         /*
         ffmpeg utilizes trailer information to detect the end (end of file, EOF) of piped input to stdin.
@@ -299,84 +379,58 @@ function sendImagesToNode(jwtToken, videoId, segmentBuffer) {
             logDebugMessageToConsole('live source image generating ffmpeg process spawned', null, null);
         });
         
-        process.on('exit', function (code) {
+        process.on('exit', async function (code) {
             logDebugMessageToConsole('live source image generating ffmpeg process exited with exit code: ' + code, null, null);
 
             if(code === 0) {
                 if(fs.existsSync(sourceImagePath)) {
                     logDebugMessageToConsole('generated live source image for video: ' + videoId, null, null);
 
-                    uploadingThumbnail = true;
-                    uploadingPreview = true;
-                    uploadingPoster = true;
+                    try {
+                        uploadingThumbnail = true;
+                        uploadingPreview = true;
+                        uploadingPoster = true;
 
-                    const thumbnailImagePath = path.join(imagesDirectoryPath, 'thumbnail.jpg');
-                    const previewImagePath = path.join(imagesDirectoryPath, 'preview.jpg');
-                    const posterImagePath = path.join(imagesDirectoryPath, 'poster.jpg');
+                        logDebugMessageToConsole('generating live thumbnail, preview, and poster for video: ' + videoId, null, null);
+                        const thumbnailBuffer = await sharp(sourceImagePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer();
+                        const previewFileBuffer = await sharp(sourceImagePath).resize({width: 512}).resize(512, 288).jpeg({quality : 90}).toBuffer();
+                        const posterFileBuffer = await sharp(sourceImagePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toBuffer();
+                        logDebugMessageToConsole('generated live thumbnail, preview, and poster for video: ' + videoId, null, null);
 
-                    sharp(sourceImagePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toFile(thumbnailImagePath)
-                    .then(() => {
-                        node_setThumbnail(jwtToken, videoId, thumbnailImagePath)
-                        .then(nodeResponseData => {
-                            if(nodeResponseData.isError) {
-                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                            }
-                        })
-                        .catch(error => {
-                            logDebugMessageToConsole(null, error, new Error().stack);
-                        })
-                        .finally(() => {
-                            uploadingThumbnail = false;
-                        });
-                    })
-                    .catch(error => {
-                        logDebugMessageToConsole(null, error, new Error().stack);
+                        const storageMode = storageConfig.storageMode;
 
+                        if(storageMode === 'filesystem') {
+                            await node_setThumbnail(jwtToken, videoId, thumbnailBuffer);
+                            logDebugMessageToConsole('uploaded thumbnail to node for video: ' + videoId, null, null);
+            
+                            await node_setPreview(jwtToken, videoId, previewFileBuffer);
+                            logDebugMessageToConsole('uploaded preview to node for video: ' + videoId, null, null);
+            
+                            await node_setPoster(jwtToken, videoId, posterFileBuffer);
+                            logDebugMessageToConsole('uploaded poster to node for video: ' + videoId, null, null);
+                        }
+                        else if(storageMode === 's3provider') {
+                            const s3Config = storageConfig.s3Config;
+            
+                            const thumbnailImageKey = 'external/videos/' + videoId + '/images/thumbnail.jpg';
+                            const previewImageKey = 'external/videos/' + videoId + '/images/preview.jpg';
+                            const posterImageKey = 'external/videos/' + videoId + '/images/poster.jpg';
+                            
+                            await s3_putObjectFromData(s3Config, thumbnailImageKey, thumbnailBuffer);
+                            await s3_putObjectFromData(s3Config, previewImageKey, previewFileBuffer);
+                            await s3_putObjectFromData(s3Config, posterImageKey, posterFileBuffer);
+                        }
+                    }
+                    catch(error) {
+                        logDebugMessageToConsole('failed to handle live thumbnail, preview, and poster for video: ' + videoId, error, null);
+                    }
+                    finally {
                         uploadingThumbnail = false;
-                    });
-
-                    sharp(sourceImagePath).resize({width: 512}).resize(512, 288).jpeg({quality : 90}).toFile(previewImagePath)
-                    .then(() => {
-                        node_setPreview(jwtToken, videoId, previewImagePath)
-                        .then(nodeResponseData => {
-                            if(nodeResponseData.isError) {
-                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                            }
-                        })
-                        .catch(error => {
-                            logDebugMessageToConsole(null, error, new Error().stack);
-                        })
-                        .finally(() => {
-                            uploadingPreview = false;
-                        });
-                    })
-                    .catch(error => {
-                        logDebugMessageToConsole(null, error, new Error().stack);
-
                         uploadingPreview = false;
-                    });
-
-                    sharp(sourceImagePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toFile(posterImagePath)
-                    .then(() => {
-                        node_setPoster(jwtToken, videoId, posterImagePath)
-                        .then(nodeResponseData => {
-                            if(nodeResponseData.isError) {
-                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                            }
-                        })
-                        .catch(error => {
-                            logDebugMessageToConsole(null, error, new Error().stack);
-                        })
-                        .finally(() => {
-                            uploadingPoster = false;
-                        });
-                    })
-                    .catch(error => {
-                        logDebugMessageToConsole(null, error, new Error().stack);
-
                         uploadingPoster = false;
-                    });
-                } else {
+                    }
+                }
+                else {
                     logDebugMessageToConsole('expected a live source image to be generated in <' + sourceImagePath + '> but found none', null, null);
                 }
             }

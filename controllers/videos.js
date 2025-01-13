@@ -16,9 +16,6 @@ const {
 const {
     s3_putObjectFromData
 } = require('../utils/s3-communications');
-const {
-    s3_putObjectsFromFilePaths
-} = require('../utils/s3-communications');
 const { enqueuePendingPublishVideo } = require('../utils/trackers/pending-publish-video-tracker');
 
 function search_GET(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {

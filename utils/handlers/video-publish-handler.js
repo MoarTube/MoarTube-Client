@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const spawn = require('child_process').spawn;
-const spawnSync = require('child_process').spawnSync;
 
 const { 
     logDebugMessageToConsole, deleteDirectoryRecursive, timestampToSeconds, websocketClientBroadcast, getVideosDirectoryPath, getFfmpegPath, getClientSettings,
@@ -318,7 +317,6 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
                     }
                     else if(nodeSettings.storageConfig.storageMode === 's3provider') {
                         const s3Config = nodeSettings.storageConfig.s3Config;
-                        const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
 
                         const paths = [];
             
