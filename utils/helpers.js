@@ -243,6 +243,75 @@ function cleanVideosDirectory() {
     });
 }
 
+async function refreshM3u8MasterManifest(jwtToken, videoId) {
+    const { node_getSettings, node_getVideoData, node_uploadM3u8MasterManifest, node_getExternalVideosBaseUrl } = require('./node-communications');
+    const { s3_putObjectFromData } = require('./s3-communications');
+
+    const videoData = (await node_getVideoData(videoId)).videoData;
+    const isStreaming = videoData.is_streaming;
+    const resolutions = videoData.outputs.m3u8;
+
+    const externalVideosBaseUrl = (await node_getExternalVideosBaseUrl(jwtToken)).externalVideosBaseUrl;
+
+    let manifestType;
+
+    if(isStreaming) {
+        manifestType = 'dynamic';
+    }
+    else {
+        manifestType = 'static';
+    }
+
+    let masterManifest = '#EXTM3U\n#EXT-X-VERSION:3\n';
+
+    for(const resolution of resolutions) {
+        if(resolution === '240p') {
+            masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=250000,RESOLUTION=426x240\n';
+            masterManifest += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-240p.m3u8\n';
+        }
+        else if(resolution === '360p') {
+            masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=640x360\n';
+            masterManifest += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-360p.m3u8\n';
+        }
+        else if(resolution === '480p') {
+            masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=854x480\n';
+            masterManifest += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-480p.m3u8\n';
+        }
+        else if(resolution === '720p') {
+            masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1280x720\n';
+            masterManifest += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-720p.m3u8\n';
+        }
+        else if(resolution === '1080p') {
+            masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=6000000,RESOLUTION=1920x1080\n';
+            masterManifest += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-1080p.m3u8\n';
+        }
+        else if(resolution === '1440p') {
+            masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=8000000,RESOLUTION=2560x1440\n';
+            masterManifest += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-1440p.m3u8\n';
+        }
+        else if(resolution === '2160p') {
+            masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=16000000,RESOLUTION=3840x2160\n'
+            masterManifest += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-2160p.m3u8\n';
+        }
+    }
+
+    const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+
+    const storageConfig = nodeSettings.storageConfig;
+    const storageMode = storageConfig.storageMode;
+
+    if(storageMode === 'filesystem') {
+        await node_uploadM3u8MasterManifest(jwtToken, videoId, 'dynamic', masterManifest);
+    }
+    else if(storageMode === 's3provider') {
+        const s3Config = storageConfig.s3Config;
+
+        const key = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-master.m3u8';
+
+        await s3_putObjectFromData(s3Config, key, Buffer.from(masterManifest));
+    }
+}
+
 function setFfmpegPath(value) {
     if(fs.existsSync(value)) {
         ffmpegPath = value;
@@ -495,5 +564,6 @@ module.exports = {
     setWebsocketServer,
     setWebsocketClient,
     getIsDeveloperMode,
-    setIsDeveloperMode
+    setIsDeveloperMode,
+    refreshM3u8MasterManifest
 };

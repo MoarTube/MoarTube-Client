@@ -4,11 +4,12 @@ const spawn = require('child_process').spawn;
 
 const { 
     logDebugMessageToConsole, deleteDirectoryRecursive, timestampToSeconds, websocketClientBroadcast, getVideosDirectoryPath, getFfmpegPath, getClientSettings,
+    refreshM3u8MasterManifest
  } = require('../helpers');
-const { node_setVideoPublishing, node_setVideoLengths, node_setVideoPublished, node_uploadVideo, node_getExternalVideosBaseUrl, node_setVideoFormatResolutionPublished,
-    node_getSettings, node_getManifestFile
+const { node_setVideoPublishing, node_setVideoPublished, node_uploadVideo, node_getExternalVideosBaseUrl, node_setVideoFormatResolutionPublished,
+    node_getSettings
  } = require('../node-communications');
- const { s3_putObjectsFromFilePaths, s3_putObjectFromData
+ const { s3_putObjectsFromFilePaths
  } = require('../s3-communications');
 const { getPendingPublishVideoTracker, getPendingPublishVideoTrackerQueueSize, enqueuePendingPublishVideo, dequeuePendingPublishVideo } = require('../trackers/pending-publish-video-tracker');
 const { addToPublishVideoEncodingTracker, isPublishVideoEncodingStopping } = require('../trackers/publish-video-encoding-tracker');
@@ -26,8 +27,10 @@ function startVideoPublishInterval() {
             inProgressPublishingJobs.push(dequeuePendingPublishVideo());
             
             startPublishingJob(inProgressPublishingJobs[inProgressPublishingJobs.length - 1])
-            .then((completedPublishingJob) => {
+            .then(async (completedPublishingJob) => {
                 logDebugMessageToConsole('completed publishing job: ' + completedPublishingJob, null, null);
+
+                await finishVideoFormatResolutionPublished(completedPublishingJob.jwtToken, completedPublishingJob.videoId, completedPublishingJob.format, completedPublishingJob.resolution);
 
                 const index = findInProgressPublishJobIndex(completedPublishingJob);
                 
@@ -37,10 +40,8 @@ function startVideoPublishInterval() {
                 const videoIdHasInProgressPublishingJobExists = inProgressPublishingJobs.some((inProgressPublishingJob) => inProgressPublishingJob.hasOwnProperty('videoId') && inProgressPublishingJob.videoId === completedPublishingJob.videoId);
                 
                 if(!videoIdHasPendingPublishingJobExists && !videoIdHasInProgressPublishingJobExists) {
-                    finishVideoPublish(completedPublishingJob.jwtToken, completedPublishingJob.videoId);
+                    await finishVideoPublish(completedPublishingJob.jwtToken, completedPublishingJob.videoId);
                 }
-                
-                finishVideoFormatResolutionPublished(completedPublishingJob.jwtToken, completedPublishingJob.videoId, completedPublishingJob.format, completedPublishingJob.resolution);
                 
                 inProgressPublishingJobCount--;
 
@@ -323,20 +324,20 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
                         if(format === 'm3u8') {
                             const manifestFilePath = path.join(getVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
                             const segmentsDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution);
-                            const key = 'external/videos/' + videoId + '/adaptive/static/m3u8/manifests/manifest-' + resolution + '.m3u8';
+                            const manifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-' + resolution + '.m3u8';
 
-                            paths.push({key: key, filePath: manifestFilePath});
+                            paths.push({key: manifestKey, filePath: manifestFilePath});
                             
                             fs.readdirSync(segmentsDirectoryPath).forEach(fileName => {
                                 const segmentFilePath = segmentsDirectoryPath + '/' + fileName;
                                 if (!fs.statSync(segmentFilePath).isDirectory()) {
-                                    const key = 'external/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/' + fileName;
-                                    paths.push({key: key, filePath: segmentFilePath});
+                                    const segmentKey = 'external/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/' + fileName;
+                                    paths.push({key: segmentKey, filePath: segmentFilePath});
                                 }
                             });
                         }
                         else if(format === 'mp4') {
-                            const key = 'external/videos/' + videoId + '/progressive/mp4/' + resolution;
+                            const key = 'external/videos/' + videoId + '/progressive/mp4/' + resolution; // here
                             const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution + '/' + resolution + '.mp4');
                             
                             paths.push({key: key, filePath: filePath});
@@ -377,60 +378,26 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
 async function finishVideoPublish(jwtToken, videoId) {
     await deleteDirectoryRecursive(path.join(getVideosDirectoryPath(), videoId + '/adaptive'));
     await deleteDirectoryRecursive(path.join(getVideosDirectoryPath(), videoId + '/progressive'));
-    
-    node_getSettings(jwtToken)
-    .then(async nodeResponseData => {
-        if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-        }
-        else {
-            const nodeSettings = nodeResponseData.nodeSettings;
 
-            const storageConfig = nodeSettings.storageConfig;
-            const storageMode = storageConfig.storageMode;
+    await refreshM3u8MasterManifest(jwtToken, videoId);
 
-            if(storageMode === 's3provider') {
-                const s3Config = storageConfig.s3Config;
+    await node_setVideoPublished(jwtToken, videoId);
 
-                const key = 'external/videos/' + videoId + '/adaptive/static/m3u8/manifests/manifest-master.m3u8';
-                const masterManifestFile = await node_getManifestFile(videoId, 'static', 'm3u8', 'manifest-master.m3u8');
-
-                await s3_putObjectFromData(s3Config, key, masterManifestFile);
-            }
-
-            node_setVideoPublished(jwtToken, videoId)
-            .then(nodeResponseData => {
-                if(nodeResponseData.isError) {
-                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                }
-                else {
-                    logDebugMessageToConsole('video finished publishing for id: ' + videoId, null, null);
-                    
-                    websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'published', videoId: videoId }}});
-                }
-            })
-            .catch(error => {
-                logDebugMessageToConsole(null, error, new Error().stack);
-            });
-        }
-    })
-    .catch(error => {
-        logDebugMessageToConsole(null, error, new Error().stack);
-    });
+    websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'published', videoId: videoId }}});
 }
 
 function finishVideoFormatResolutionPublished(jwtToken, videoId, format, resolution) {
-    node_setVideoFormatResolutionPublished(jwtToken, videoId, format, resolution)
-    .then(nodeResponseData => {
-        if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-        }
-        else {
+    return new Promise(async function(resolve, reject) {
+        try {
+            await node_setVideoFormatResolutionPublished(jwtToken, videoId, format, resolution);
+
             logDebugMessageToConsole('video finished publishing for id: ' + videoId + ' format: ' + format + ' resolution: ' + resolution, null, null);
+
+            resolve();
         }
-    })
-    .catch(error => {
-        logDebugMessageToConsole(null, error, new Error().stack);
+        catch(error) {
+            reject(error);
+        }
     });
 }
 

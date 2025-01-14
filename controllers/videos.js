@@ -6,7 +6,10 @@ const multer = require('multer');
 
 sharp.cache(false);
 
-const { logDebugMessageToConsole, deleteDirectoryRecursive, getVideosDirectoryPath, timestampToSeconds, websocketClientBroadcast, getFfmpegPath } = require('../utils/helpers');
+const { 
+    logDebugMessageToConsole, deleteDirectoryRecursive, getVideosDirectoryPath, timestampToSeconds, websocketClientBroadcast, getFfmpegPath,
+    refreshM3u8MasterManifest
+} = require('../utils/helpers');
 const { 
     node_stopVideoImporting, node_doVideosSearch, node_getVideoData, node_unpublishVideo, node_stopVideoPublishing,
     node_setSourceFileExtension, node_setThumbnail, node_setPreview, node_setPoster, node_setVideoLengths, node_setVideoImported, node_getVideosTags, node_getSourceFileExtension, 
@@ -16,7 +19,9 @@ const {
 const {
     s3_putObjectFromData
 } = require('../utils/s3-communications');
-const { enqueuePendingPublishVideo } = require('../utils/trackers/pending-publish-video-tracker');
+const { 
+    enqueuePendingPublishVideo 
+} = require('../utils/trackers/pending-publish-video-tracker');
 
 function search_GET(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
     return new Promise(function(resolve, reject) {
@@ -251,31 +256,12 @@ function videoIdPublish_POST(jwtToken, videoId, publishings) {
 }
 
 function videoIdUnpublish_POST(jwtToken, videoId, format, resolution) {
-    return new Promise(function(resolve, reject) {
-        node_getVideoData(videoId)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                node_unpublishVideo(jwtToken, videoId, format, resolution)
-                .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                        
-                        resolve({isError: true, message: nodeResponseData.message});
-                    }
-                    else {
-                        resolve({isError: false});
-                    }
-                })
-                .catch(error => {
-                    reject(error);
-                });
-            }
-        });
+    return new Promise(async function(resolve, reject) {
+        await node_unpublishVideo(jwtToken, videoId, format, resolution);
+
+        await refreshM3u8MasterManifest(jwtToken, videoId);
+
+        resolve({isError: false});
     });
 }
 

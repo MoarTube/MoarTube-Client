@@ -113,8 +113,8 @@ function s3_convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions) 
             const s3Client = new S3Client(s3ProviderClientConfig);
 
             for (const resolution of resolutions) {
-                const dynamicManifestKey = 'external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-' + resolution + '.m3u8';
-                const staticManifestKey = 'external/videos/' + videoId + '/adaptive/static/m3u8/manifests/manifest-' + resolution + '.m3u8';
+                const dynamicManifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/dynamic/manifests/manifest-' + resolution + '.m3u8';
+                const staticManifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-' + resolution + '.m3u8';
         
                 // Step 1: Retrieve the dynamic manifest
                 console.log(`Retrieving: ${dynamicManifestKey}`);
@@ -144,7 +144,7 @@ function s3_convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions) 
         async function streamToString(stream) {
             return new Promise((resolve, reject) => {
               const chunks = [];
-              
+
               stream.on("data", (chunk) => chunks.push(chunk));
               stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
               stream.on("error", reject);

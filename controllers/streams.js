@@ -1,7 +1,7 @@
 const portscanner = require('portscanner');
 
 const { 
-    logDebugMessageToConsole, websocketClientBroadcast 
+    logDebugMessageToConsole, websocketClientBroadcast, refreshM3u8MasterManifest
 } = require('../utils/helpers');
 const { 
     isPortValid 
@@ -54,6 +54,8 @@ function start_POST(jwtToken, title, description, tags, rtmpPort, resolution, is
                                         resolve({isError: true, message: nodeResponseData.message});
                                     }
                                     else {
+                                        await refreshM3u8MasterManifest(jwtToken, videoId);
+
                                         const rtmpUrl = 'rtmp://' + networkAddress + ':' + rtmpPort + '/live/' + uuid;
 
                                         performStreamingJob(jwtToken, videoId, rtmpUrl, 'm3u8', resolution, isRecordingStreamRemotely, isRecordingStreamLocally);
@@ -85,19 +87,22 @@ function videoIdStop_POST(jwtToken, videoId) {
         const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
         const storageConfig = nodeSettings.storageConfig;
 
-        if(storageConfig.storageMode === 's3provider') {
-            const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
-            const s3Config = nodeSettings.storageConfig.s3Config;
+        if(storageConfig.storageMode === 'filesystem') {
+            // HLS live manifests are converted from dynamic to static by the node
+        }
+        else if(storageConfig.storageMode === 's3provider') {
+            const s3Config = storageConfig.s3Config;
 
             const videoData = (await node_getVideoData(videoId)).videoData;
             const isStreamRecordedRemotely = videoData.isStreamRecordedRemotely;
-            const resolutions = JSON.parse(videoData.outputs).m3u8;
-
+            
             if(isStreamRecordedRemotely) {
+                const resolutions = JSON.parse(videoData.outputs).m3u8;
+
                 await s3_convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions);
             }
             else {
-                const prefix = 'external/videos/' + videoId + '/adaptive';
+                const prefix = 'external/videos/' + videoId + '/adaptive/m3u8';
 
                 await s3_deleteObjectsWithPrefix(s3Config, prefix);
             }

@@ -460,9 +460,7 @@ function node_setVideoPublished(jwtToken, videoId) {
 
 function node_setVideoFormatResolutionPublished(jwtToken, videoId, format, resolution) {
     return new Promise(function(resolve, reject) {
-        axios.post(getMoarTubeNodeUrl() + '/videos/' + format + '/' + resolution + '/published', {
-            videoId: videoId
-        }, {
+        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/' + format + '/' + resolution + '/published', {}, {
           headers: {
             Authorization: jwtToken
           }
@@ -1733,9 +1731,29 @@ function node_getExternalVideosBaseUrl(jwtToken) {
     });
 }
 
-function node_getManifestFile(videoId, type, format, manifestName) {
+function node_getManifestFile(videoId, format, type, manifestName) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/external/videos/' + videoId + '/adaptive/' + type + '/' + format + '/manifests/' + manifestName)
+        axios.get(getMoarTubeNodeUrl() + '/external/videos/' + videoId + '/adaptive/' + format + '/' + type + '/manifests/' + manifestName)
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_uploadM3u8MasterManifest(jwtToken, videoId, type, masterManifest) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/adaptive/m3u8/' + type + '/manifests/masterManifest', {
+            masterManifest: masterManifest,
+        }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
         .then(response => {
             const data = response.data;
             
@@ -1833,5 +1851,6 @@ module.exports = {
     node_databaseConfigToggle,
     node_storageConfigToggle,
     node_getExternalVideosBaseUrl,
-    node_getManifestFile
+    node_getManifestFile,
+    node_uploadM3u8MasterManifest
 };

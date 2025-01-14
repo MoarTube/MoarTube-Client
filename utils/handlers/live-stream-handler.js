@@ -4,7 +4,7 @@ const spawn = require('child_process').spawn;
 const sharp = require('sharp');
 
 const { 
-    logDebugMessageToConsole, getVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds, deleteDirectoryRecursive,
+    logDebugMessageToConsole, getVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds, deleteDirectoryRecursive
  } = require('../helpers');
 const { 
     node_setVideoLengths, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, node_removeAdaptiveStreamSegment, 
@@ -31,53 +31,7 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
         const sourceFilePath = path.join(sourceDirectoryPath, '/' + videoId + '.ts');
         const manifestFileName = 'manifest-' + resolution + '.m3u8';
 
-        const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
-        const storageConfig = nodeSettings.storageConfig;
-
         const externalVideosBaseUrl = (await node_getExternalVideosBaseUrl(jwtToken)).externalVideosBaseUrl;
-
-        if(storageConfig.storageMode === 'filesystem') {
-
-        }
-        else if(storageConfig.storageMode === 's3provider') {
-            const s3Config = storageConfig.s3Config;
-            
-            let manifestFileString = '#EXTM3U\n#EXT-X-VERSION:3\n';
-
-            if(resolution === '240p') {
-                manifestFileString += '#EXT-X-STREAM-INF:BANDWIDTH=250000,RESOLUTION=426x240\n';
-                manifestFileString += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-240p.m3u8\n';
-            }
-            else if(resolution === '360p') {
-                manifestFileString += '#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=640x360\n';
-                manifestFileString += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-360p.m3u8\n';
-            }
-            else if(resolution === '480p') {
-                manifestFileString += '#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=854x480\n';
-                manifestFileString += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-480p.m3u8\n';
-            }
-            else if(resolution === '720p') {
-                manifestFileString += '#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1280x720\n';
-                manifestFileString += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-720p.m3u8\n';
-            }
-            else if(resolution === '1080p') {
-                manifestFileString += '#EXT-X-STREAM-INF:BANDWIDTH=6000000,RESOLUTION=1920x1080\n';
-                manifestFileString += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-1080p.m3u8\n';
-            }
-            else if(resolution === '1440p') {
-                manifestFileString += '#EXT-X-STREAM-INF:BANDWIDTH=8000000,RESOLUTION=2560x1440\n';
-                manifestFileString += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-1440p.m3u8\n';
-            }
-            else if(resolution === '2160p') {
-                manifestFileString += '#EXT-X-STREAM-INF:BANDWIDTH=16000000,RESOLUTION=3840x2160\n'
-                manifestFileString += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-2160p.m3u8\n';
-            }
-
-            const masterManifestKey = 'external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-master.m3u8';
-            const masterManifestBuffer = Buffer.from(masterManifestKey);
-
-            await s3_putObjectFromData(s3Config, masterManifestKey, masterManifestBuffer);
-        }
 
         const ffmpegArguments = generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely, externalVideosBaseUrl);
         
@@ -328,7 +282,7 @@ function sendSegmentToNode(jwtToken, videoId, resolution, manifestBuffer, segmen
     else if(storageConfig.storageMode === 's3provider') {
         const s3Config = storageConfig.s3Config;
 
-        const manifestKey = 'external/videos/' + videoId + '/adaptive/dynamic/m3u8/manifests/manifest-' + resolution + '.m3u8';
+        const manifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/dynamic/manifests/manifest-' + resolution + '.m3u8';
         const segmentKey = 'external/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/' + segmentFileName;
         
         s3_putObjectFromData(s3Config, manifestKey, manifestBuffer)
