@@ -2161,9 +2161,7 @@
 							}
 						});
 						
-						const videoIdsJson = JSON.stringify(videoIds);
-						
-						$.ajax({type: 'POST', url: '/videos/delete', data: {videoIdsJson: videoIdsJson}})
+						$.ajax({type: 'POST', url: '/videos/delete', data: JSON.stringify({ videoIds: videoIds }), contentType: 'application/json; charset=utf-8'})
 						.done(function (data, textStatus, xhr) {
 							if(data.isError) {
 								
@@ -2233,9 +2231,7 @@
 							}
 						});
 						
-						const videoIdsJson = JSON.stringify(videoIds);
-						
-						$.ajax({type: 'POST', url: '/videos/finalize', data: {videoIdsJson: videoIdsJson}})
+						$.ajax({type: 'POST', url: '/videos/finalize', data: JSON.stringify({ videoIds: videoIds }), contentType: 'application/json; charset=utf-8'})
 						.done(function (data, textStatus, xhr) {
 							if(data.isError) {
 								showAlert(true, data.message);

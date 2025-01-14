@@ -28,29 +28,34 @@ function startVideoPublishInterval() {
             
             startPublishingJob(inProgressPublishingJobs[inProgressPublishingJobs.length - 1])
             .then(async (completedPublishingJob) => {
-                logDebugMessageToConsole('completed publishing job: ' + completedPublishingJob, null, null);
+                try {
+                    await finishVideoFormatResolutionPublished(completedPublishingJob.jwtToken, completedPublishingJob.videoId, completedPublishingJob.format, completedPublishingJob.resolution);
 
-                await finishVideoFormatResolutionPublished(completedPublishingJob.jwtToken, completedPublishingJob.videoId, completedPublishingJob.format, completedPublishingJob.resolution);
+                    const index = findInProgressPublishJobIndex(completedPublishingJob);
+                    
+                    inProgressPublishingJobs.splice(index, 1);
 
-                const index = findInProgressPublishJobIndex(completedPublishingJob);
-                
-                inProgressPublishingJobs.splice(index, 1);
+                    const videoIdHasPendingPublishingJobExists = getPendingPublishVideoTracker().some((pendingPublishingJob) => pendingPublishingJob.hasOwnProperty('videoId') && pendingPublishingJob.videoId === completedPublishingJob.videoId);
+                    const videoIdHasInProgressPublishingJobExists = inProgressPublishingJobs.some((inProgressPublishingJob) => inProgressPublishingJob.hasOwnProperty('videoId') && inProgressPublishingJob.videoId === completedPublishingJob.videoId);
+                    
+                    if(!videoIdHasPendingPublishingJobExists && !videoIdHasInProgressPublishingJobExists) {
+                        await finishVideoPublish(completedPublishingJob.jwtToken, completedPublishingJob.videoId, completedPublishingJob.format);
 
-                const videoIdHasPendingPublishingJobExists = getPendingPublishVideoTracker().some((pendingPublishingJob) => pendingPublishingJob.hasOwnProperty('videoId') && pendingPublishingJob.videoId === completedPublishingJob.videoId);
-                const videoIdHasInProgressPublishingJobExists = inProgressPublishingJobs.some((inProgressPublishingJob) => inProgressPublishingJob.hasOwnProperty('videoId') && inProgressPublishingJob.videoId === completedPublishingJob.videoId);
-                
-                if(!videoIdHasPendingPublishingJobExists && !videoIdHasInProgressPublishingJobExists) {
-                    await finishVideoPublish(completedPublishingJob.jwtToken, completedPublishingJob.videoId);
+                        logDebugMessageToConsole('completed publishing job for video: ' + completedPublishingJob.videoId, null, null);
+                    }
+                    
+                    inProgressPublishingJobCount--;
+
+                    /*
+                    If resource constraints was encountered, it was likely transient.
+                    Reset the maximum concurrent jobs allowed when no jobs remain.
+                    */
+                    if(inProgressPublishingJobCount === 0 && getPendingPublishVideoTrackerQueueSize() === 0) {
+                        maximumInProgressPublishingJobCount = 5;
+                    }
                 }
-                
-                inProgressPublishingJobCount--;
-
-                /*
-                If resource constraints was encountered, it was likely transient.
-                Reset the maximum concurrent jobs allowed when no jobs remain.
-                */
-                if(inProgressPublishingJobCount === 0 && getPendingPublishVideoTrackerQueueSize() === 0) {
-                    maximumInProgressPublishingJobCount = 5;
+                catch(error) {
+                    logDebugMessageToConsole(null, error, null);
                 }
             })
             .catch(failedPublishingJob => {
@@ -63,29 +68,31 @@ function startVideoPublishInterval() {
 
                 logDebugMessageToConsole('failed publishing job: ' + failedPublishingJob, null, null);
 
-                const index = findInProgressPublishJobIndex(failedPublishingJob);
+                if (!(failedPublishingJob instanceof Error)) {
+                    const index = findInProgressPublishJobIndex(failedPublishingJob);
 
-                inProgressPublishingJobs.splice(index, 1);
+                    inProgressPublishingJobs.splice(index, 1);
 
-                const videoId = failedPublishingJob.videoId;
-                
-                if(!isPublishVideoEncodingStopping(videoId)) {
-                    const jwtToken = failedPublishingJob.jwtToken;
-                    const format = failedPublishingJob.format;
-                    const resolution = failedPublishingJob.resolution;
+                    const videoId = failedPublishingJob.videoId;
+                    
+                    if(!isPublishVideoEncodingStopping(videoId)) {
+                        const jwtToken = failedPublishingJob.jwtToken;
+                        const format = failedPublishingJob.format;
+                        const resolution = failedPublishingJob.resolution;
 
-                    failedPublishingJob.idleInterval = setInterval(function() {
-                        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing', videoId: videoId, format: format, resolution: resolution, progress: 0 }}});
-                    }, 1000);
+                        failedPublishingJob.idleInterval = setInterval(function() {
+                            websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing', videoId: videoId, format: format, resolution: resolution, progress: 0 }}});
+                        }, 1000);
 
-                    enqueuePendingPublishVideo(failedPublishingJob);
+                        enqueuePendingPublishVideo(failedPublishingJob);
 
-                    if(maximumInProgressPublishingJobCount > 1) {
-                        maximumInProgressPublishingJobCount--;
+                        if(maximumInProgressPublishingJobCount > 1) {
+                            maximumInProgressPublishingJobCount--;
+                        }
                     }
-                }
 
-                inProgressPublishingJobCount--;
+                    inProgressPublishingJobCount--;
+                }
             });
         }
     }, 3000);
@@ -155,19 +162,19 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
                 destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + destinationFileExtension);
             }
             else if(format === 'mp4') {
-                fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution), { recursive: true });
+                fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/progressive/mp4'), { recursive: true });
                 
-                destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution + '/' + resolution + destinationFileExtension);
+                destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution + destinationFileExtension);
             }
             else if(format === 'webm') {
-                fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution), { recursive: true });
+                fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/progressive/webm'), { recursive: true });
                 
-                destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution + '/' + resolution + destinationFileExtension);
+                destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution + destinationFileExtension);
             }
             else if(format === 'ogv') {
-                fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution), { recursive: true });
+                fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/progressive/ogv'), { recursive: true });
                 
-                destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution + '/' + resolution + destinationFileExtension);
+                destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution + destinationFileExtension);
             }
 
             const externalVideosBaseUrl = (await node_getExternalVideosBaseUrl(jwtToken)).externalVideosBaseUrl;
@@ -278,19 +285,19 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
                         }
                         else if(format === 'mp4') {
                             const fileName = resolution + '.mp4';
-                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution + '/' + fileName);
+                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/mp4/' + fileName);
                             
                             paths.push({fileName: fileName, filePath: filePath});
                         }
                         else if(format === 'webm') {
                             const fileName = resolution + '.webm';
-                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution + '/' + fileName);
+                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/webm/' + fileName);
                             
                             paths.push({fileName: fileName, filePath: filePath});
                         }
                         else if(format === 'ogv') {
                             const fileName = resolution + '.ogv';
-                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution + '/' + fileName);
+                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/ogv/' + fileName);
                             
                             paths.push({fileName: fileName, filePath: filePath});
                         }
@@ -337,20 +344,20 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
                             });
                         }
                         else if(format === 'mp4') {
-                            const key = 'external/videos/' + videoId + '/progressive/mp4/' + resolution; // here
-                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution + '/' + resolution + '.mp4');
+                            const key = 'external/videos/' + videoId + '/progressive/mp4/' + resolution + '.mp4';
+                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution + '.mp4');
                             
                             paths.push({key: key, filePath: filePath});
                         }
                         else if(format === 'webm') {
-                            const key = 'external/videos/' + videoId + '/progressive/webm/' + resolution;
-                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution + '/' + resolution + '.webm');
+                            const key = 'external/videos/' + videoId + '/progressive/webm/' + resolution + '.webm';
+                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution + '.webm');
                             
                             paths.push({key: key, filePath: filePath});
                         }
                         else if(format === 'ogv') {
-                            const key = 'external/videos/' + videoId + '/progressive/ogv/' + resolution;
-                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution + '/' + resolution + '.ogv');
+                            const key = 'external/videos/' + videoId + '/progressive/ogv/' + resolution + '.ogv';
+                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution + '.ogv');
                             
                             paths.push({key: key, filePath: filePath});
                         }
@@ -375,11 +382,13 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
     });
 }
 
-async function finishVideoPublish(jwtToken, videoId) {
+async function finishVideoPublish(jwtToken, videoId, format) {
     await deleteDirectoryRecursive(path.join(getVideosDirectoryPath(), videoId + '/adaptive'));
     await deleteDirectoryRecursive(path.join(getVideosDirectoryPath(), videoId + '/progressive'));
 
-    await refreshM3u8MasterManifest(jwtToken, videoId);
+    if(format === 'm3u8') {
+        await refreshM3u8MasterManifest(jwtToken, videoId);
+    }
 
     await node_setVideoPublished(jwtToken, videoId);
 

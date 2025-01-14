@@ -911,10 +911,10 @@ function node_setVideoData(jwtToken, videoId, title, description, tags) {
     });
 }
 
-function node_deleteVideos(jwtToken, videoIdsJson) {
+function node_deleteVideos(jwtToken, videoIds) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/videos/delete', {
-            videoIdsJson: videoIdsJson
+            videoIds: videoIds
         }, {
           headers: {
             Authorization: jwtToken
@@ -931,10 +931,10 @@ function node_deleteVideos(jwtToken, videoIdsJson) {
     });
 }
 
-function node_finalizeVideos(jwtToken, videoIdsJson) {
+function node_finalizeVideos(jwtToken, videoIds) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/videos/finalize', {
-            videoIdsJson: videoIdsJson
+            videoIds: videoIds
         }, {
           headers: {
             Authorization: jwtToken

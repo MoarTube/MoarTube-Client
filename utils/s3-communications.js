@@ -122,9 +122,10 @@ function s3_convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions) 
         
                 // Step 2: Convert stream to string
                 const dynamicManifest = await streamToString(response.Body);
-        
+                
                 // Step 3: Modify the manifest
-                const staticManifest = dynamicManifest.trim() + "\n#EXT-X-ENDLIST\n";
+                let staticManifest = dynamicManifest.replace('#EXT-X-PLAYLIST-TYPE:EVENT', '#EXT-X-PLAYLIST-TYPE:VOD');
+                staticManifest = staticManifest.trim() + "\n#EXT-X-ENDLIST\n";
 
                 // Step 4: Upload the static manifest
                 console.log(`Uploading static manifest: ${staticManifestKey}`);

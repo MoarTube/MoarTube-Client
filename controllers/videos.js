@@ -17,7 +17,7 @@ const {
     node_getSettings
 } = require('../utils/node-communications');
 const {
-    s3_putObjectFromData
+    s3_putObjectFromData, s3_deleteObjectsWithPrefix, s3_deleteObjectWithKey
 } = require('../utils/s3-communications');
 const { 
     enqueuePendingPublishVideo 
@@ -79,9 +79,10 @@ function import_POST(jwtToken, videoFile, videoId) {
             logDebugMessageToConsole('generating images for video: ' + videoId, null, null);
                             
             const imagesDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/images');
-            const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
             
             fs.mkdirSync(imagesDirectoryPath, { recursive: true });
+
+            const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
             
             spawnSync(getFfmpegPath(), ['-ss', imageExtractionTimestamp, '-i', videoFilePath, sourceImagePath]);
 
@@ -257,9 +258,31 @@ function videoIdPublish_POST(jwtToken, videoId, publishings) {
 
 function videoIdUnpublish_POST(jwtToken, videoId, format, resolution) {
     return new Promise(async function(resolve, reject) {
+        const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+        const storageConfig = nodeSettings.storageConfig;
+
         await node_unpublishVideo(jwtToken, videoId, format, resolution);
 
-        await refreshM3u8MasterManifest(jwtToken, videoId);
+        if(storageConfig.storageMode === 's3provider') {
+            const s3Config = storageConfig.s3Config;
+
+            if(format === 'm3u8') {
+                const segmentsPrefix = 'external/videos/' + videoId + '/adaptive/m3u8/' + resolution;
+                const manifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-' + resolution + '.m3u8';
+
+                await s3_deleteObjectsWithPrefix(s3Config, segmentsPrefix);
+                await s3_deleteObjectWithKey(s3Config, manifestKey);
+            }
+            else if(format === 'mp4' || format === 'webm' || format === 'ogv') {
+                const key = 'external/videos/' + videoId + '/progressive/' + format + '/' + resolution + '.' + format;
+
+                await s3_deleteObjectWithKey(s3Config, key);
+            }
+        }
+
+        if(format === 'm3u8') {
+            await refreshM3u8MasterManifest(jwtToken, videoId);
+        }
 
         resolve({isError: false});
     });
@@ -360,37 +383,39 @@ function videoIdData_POST(jwtToken, videoId, title, description, tags) {
     });
 }
 
-function delete_POST(jwtToken, videoIdsJson) {
-    return new Promise(function(resolve, reject) {
-        node_deleteVideos(jwtToken, videoIdsJson)
-        .then(async nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                const deletedVideoIds = nodeResponseData.deletedVideoIds;
-                const nonDeletedVideoIds = nodeResponseData.nonDeletedVideoIds;
+function delete_POST(jwtToken, videoIds) {
+    return new Promise(async function(resolve, reject) {
+        const nodeResponseData = await node_deleteVideos(jwtToken, videoIds);
 
-                for(const deletedVideoId of deletedVideoIds) {
-                    const deletedVideoIdPath = path.join(getVideosDirectoryPath(), deletedVideoId);
-                    
-                    await deleteDirectoryRecursive(deletedVideoIdPath);
-                }
-                
-                resolve({isError: false, deletedVideoIds: deletedVideoIds, nonDeletedVideoIds: nonDeletedVideoIds});
+        const deletedVideoIds = nodeResponseData.deletedVideoIds;
+        const nonDeletedVideoIds = nodeResponseData.nonDeletedVideoIds;
+
+        for(const deletedVideoId of deletedVideoIds) {
+            const deletedVideoIdPath = path.join(getVideosDirectoryPath(), deletedVideoId);
+            
+            await deleteDirectoryRecursive(deletedVideoIdPath);
+        }
+
+        const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+        const storageConfig = nodeSettings.storageConfig;
+
+        if(storageConfig.storageMode === 's3provider') {
+            const s3Config = storageConfig.s3Config;
+
+            for(const videoId of videoIds) {
+                const videoPrefix = 'external/videos/' + videoId;
+
+                await s3_deleteObjectsWithPrefix(s3Config, videoPrefix);
             }
-        })
-        .catch(error => {
-            reject(error);
-        });
+        }
+
+        resolve({isError: false, deletedVideoIds: deletedVideoIds, nonDeletedVideoIds: nonDeletedVideoIds});
     });
 }
 
-function finalize_POST(jwtToken, videoIdsJson) {
+function finalize_POST(jwtToken, videoIds) {
     return new Promise(function(resolve, reject) {
-        node_finalizeVideos(jwtToken, videoIdsJson)
+        node_finalizeVideos(jwtToken, videoIds)
         .then(async nodeResponseData => {
             if(nodeResponseData.isError) {
                 logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);

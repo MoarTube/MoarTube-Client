@@ -357,9 +357,9 @@ router.post('/delete', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
         
-        const videoIdsJson = req.body.videoIdsJson;
+        const videoIds = req.body.videoIds;
 
-        const data = await delete_POST(jwtToken, videoIdsJson);
+        const data = await delete_POST(jwtToken, videoIds);
 
         res.send(data);
     }
@@ -374,9 +374,9 @@ router.post('/finalize', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
         
-        const videoIdsJson = req.body.videoIdsJson;
+        const videoIds = req.body.videoIds;
 
-        const data = await finalize_POST(jwtToken, videoIdsJson);
+        const data = await finalize_POST(jwtToken, videoIds);
 
         res.send(data);
     }

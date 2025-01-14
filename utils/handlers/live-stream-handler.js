@@ -21,6 +21,9 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
     return new Promise(async function(resolve, reject) {
         logDebugMessageToConsole('starting live stream for id: ' + videoId, null, null);
 
+        const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+        const storageConfig = nodeSettings.storageConfig;
+
         await deleteDirectoryRecursive(path.join(getVideosDirectoryPath(), videoId));
         
         fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/source'), { recursive: true });
