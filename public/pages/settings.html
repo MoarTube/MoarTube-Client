@@ -1839,13 +1839,13 @@ input[type="range"]:focus::-moz-range-thumb{
 				else if(storageMode === 's3provider') {
 					const html = '\
 					<div id="storage-configuration-modal" class="container-fluid">\
-						<div class="row">\
-							<div class="input-group mb-2">\
+						<div class="row mb-2">\
+							<div class="input-group">\
 								<input id="s3-provider-bucket-name" class="form-control json-property-value" type="text" required="" autocomplete="off" placeholder="bucket name">\
 							</div>\
 						</div>\
-						<div class="row">\
-							<div class="input-group mb-3">\
+						<div class="row mb-2">\
+							<div class="">\
 								<textarea id="s3-provider-client-configuration-textarea" class="form-control" name="nodeAbout" type="text" placeholder="Paste the AWS SDK S3 Client Configuration JSON here: { &quot;region&quot;: &quot;region&quot;, &quot;credentials&quot;: { &quot;accessKeyId&quot;: &quot;accessKeyId&quot;, &quot;secretAccessKey&quot;: &quot;secretAccessKey&quot; } }" rows="5" maxlength="1000" onfocus="focused(this)" onfocusout="defocused(this)"></textarea>\
 							</div>\
 						</div>\
@@ -1928,6 +1928,11 @@ input[type="range"]:focus::-moz-range-thumb{
 
 								try {
 									const s3ProviderClientConfigParsed = JSON.parse(s3ProviderClientConfig);
+
+									// remove trailing forward slash
+									if(s3ProviderClientConfigParsed.endpoint != null) {
+										s3ProviderClientConfigParsed.endpoint = s3ProviderClientConfigParsed.endpoint.replace(/\/+$/, '');
+									}
 
 									const s3Config = {
 										bucketName: bucketName,
