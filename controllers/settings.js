@@ -14,11 +14,11 @@ const {
     node_setNodeId, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials, node_setCloudflareConfiguration, 
     node_clearCloudflareConfiguration, node_setCloudflareTurnstileConfiguration, node_CloudflareTurnstileConfigurationClear,
     node_commentsToggle, node_likesToggle, node_dislikesToggle, node_reportsToggle, node_liveChatToggle, node_databaseConfigToggle,
-    node_storageConfigToggle
+    node_databaseConfigEmpty, node_storageConfigToggle, node_storageConfigEmpty, node_getVideoDataAll, node_getExternalVideosBaseUrl
 } = require('../utils/node-communications');
 
 const {
-    s3_validateS3Config
+    s3_validateS3Config, s3_updateM3u8ManifestsWithExternalVideosBaseUrl
 } = require('../utils/s3-communications');
 
 function client_GET() {
@@ -385,13 +385,22 @@ function nodeNetworkInternal_POST(jwtToken, nodeListeningPort) {
 function nodeNetworkExternal_POST(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort) {
     return new Promise(function(resolve, reject) {
         node_setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort)
-        .then(nodeResponseData => {
+        .then(async nodeResponseData => {
             if(nodeResponseData.isError) {
                 logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                 
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+
+                if(nodeSettings.storageConfig.storageMode === 's3provider') {
+                    const videosData = await node_getVideoDataAll(jwtToken);
+                    const externalVideosBaseUrl = (await node_getExternalVideosBaseUrl(jwtToken)).externalVideosBaseUrl;
+
+                    await s3_updateM3u8ManifestsWithExternalVideosBaseUrl(nodeSettings.storageConfig.s3Config, videosData, externalVideosBaseUrl);
+                }
+                
                 resolve({isError: false});
             }
         })
@@ -496,17 +505,49 @@ function nodeDatabaseConfigToggle_POST(jwtToken, databaseConfig) {
     });
 }
 
+function nodeDatabaseConfigEmpty_POST(jwtToken) {
+    return new Promise(function(resolve, reject) {
+        node_databaseConfigEmpty(jwtToken)
+        .then(nodeResponseData => {
+            if(nodeResponseData.isError) { 
+                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
+                
+                resolve({isError: true, message: nodeResponseData.message});
+            }
+            else {
+                resolve({isError: false});
+            }
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 function nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig) {
     return new Promise(async function(resolve, reject) {
         if(storageConfig.storageMode === 's3provider') {
             await s3_validateS3Config(JSON.parse(JSON.stringify(storageConfig.s3Config)));
         }
 
-        node_storageConfigToggle(jwtToken, storageConfig, dnsConfig)
+        const nodeResponseData = await node_storageConfigToggle(jwtToken, storageConfig, dnsConfig);
+
+        if(nodeResponseData.isError) {
+            resolve({isError: true, message: nodeResponseData.message});
+        }
+        else {
+            resolve({isError: false});
+        }
+    });
+}
+
+function nodeStorageConfigEmpty_POST(jwtToken) {
+    return new Promise(function(resolve, reject) {
+        node_storageConfigEmpty(jwtToken)
         .then(nodeResponseData => {
             if(nodeResponseData.isError) { 
                 logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-
+                
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
@@ -660,5 +701,7 @@ module.exports = {
     nodeLiveChatToggle_POST,
     nodeAccount_POST,
     nodeDatabaseConfigToggle_POST,
-    nodeStorageConfigToggle_POST
+    nodeDatabaseConfigEmpty_POST,
+    nodeStorageConfigToggle_POST,
+    nodeStorageConfigEmpty_POST
 };

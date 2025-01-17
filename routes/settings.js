@@ -7,8 +7,8 @@ const {
     client_GET, node_GET, clientGpuAcceleration_POST, clientEncoding_POST, nodeAvatar_GET, nodeAvatar_POST, nodeBanner_GET, nodeBanner_POST,
     nodePersonalizeNodeName_POST, nodePersonalizeNodeAbout_POST, nodePersonalizeNodeId_POST, node_Secure_POST, nodeNetworkInternal_POST, nodeNetworkExternal_POST, nodeAccount_POST,
     nodeCloudflareConfigure_POST, nodeCloudflareClear_POST, nodeCloudflareTurnstileConfigure_POST, nodeCloudflareTurnstileClear_POST, clientEncodingDefault_GET,
-    nodeCommentsToggle_POST, nodeDislikesToggle_POST, nodeLikesToggle_POST, nodeReportsToggle_POST, nodeLiveChatToggle_POST, nodeDatabaseConfigToggle_POST,
-    nodeStorageConfigToggle_POST
+    nodeCommentsToggle_POST, nodeDislikesToggle_POST, nodeLikesToggle_POST, nodeReportsToggle_POST, nodeLiveChatToggle_POST, nodeDatabaseConfigToggle_POST, nodeDatabaseConfigEmpty_POST,
+    nodeStorageConfigToggle_POST, nodeStorageConfigEmpty_POST
  } = require('../controllers/settings');
  const { logDebugMessageToConsole, getPublicDirectoryPath, getCertificatesDirectoryPath } = require('../utils/helpers');
 const { node_isAuthenticated, node_doSignout } = require('../utils/node-communications');
@@ -508,6 +508,21 @@ router.post('/node/databaseConfig/toggle', async (req, res) => {
     }
 });
 
+router.post('/node/databaseConfig/empty', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+
+        const data = await nodeDatabaseConfigEmpty_POST(jwtToken);
+
+        res.send(data);
+    }
+    catch(error) {
+        logDebugMessageToConsole(null, error, new Error().stack);
+    
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    }
+});
+
 router.post('/node/storageConfig/toggle', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
@@ -516,6 +531,21 @@ router.post('/node/storageConfig/toggle', async (req, res) => {
         const dnsConfig = req.body.dnsConfig;
 
         let data = await nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig);
+
+        res.send(data);
+    }
+    catch(error) {
+        logDebugMessageToConsole(null, error, new Error().stack);
+    
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    }
+});
+
+router.post('/node/storageConfig/empty', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+
+        let data = await nodeStorageConfigEmpty_POST(jwtToken);
 
         res.send(data);
     }

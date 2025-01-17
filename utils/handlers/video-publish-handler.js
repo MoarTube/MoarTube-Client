@@ -9,7 +9,7 @@ const {
 const { node_setVideoPublishing, node_setVideoPublished, node_uploadVideo, node_getExternalVideosBaseUrl, node_setVideoFormatResolutionPublished,
     node_getSettings
  } = require('../node-communications');
- const { s3_putObjectsFromFilePaths
+ const { s3_putObjectsFromFilePathsWithProgress
  } = require('../s3-communications');
 const { getPendingPublishVideoTracker, getPendingPublishVideoTrackerQueueSize, enqueuePendingPublishVideo, dequeuePendingPublishVideo } = require('../trackers/pending-publish-video-tracker');
 const { addToPublishVideoEncodingTracker, isPublishVideoEncodingStopping } = require('../trackers/publish-video-encoding-tracker');
@@ -362,7 +362,7 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
                             paths.push({key: key, filePath: filePath});
                         }
 
-                        s3_putObjectsFromFilePaths(s3Config, paths)
+                        s3_putObjectsFromFilePathsWithProgress(s3Config, jwtToken, paths, videoId, format, resolution)
                         .then(responses => {
                             resolve({isError: false});
                         })

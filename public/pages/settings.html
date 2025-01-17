@@ -835,16 +835,20 @@ input[type="range"]:focus::-moz-range-thumb{
 
 						if(nodeSettings.databaseConfig.databaseDialect === 'sqlite') {
 							$('#database-dialect-sqlite-radio').prop('checked', true);
+							$('#database-dialect-sqlite-radio').attr('data-selected', 'selected');
 						}
 						else if(nodeSettings.databaseConfig.databaseDialect === 'postgres') {
 							$('#database-dialect-postgres-radio').prop('checked', true);
+							$('#database-dialect-postgres-radio').attr('data-selected', 'selected');
 						}
 
 						if(nodeSettings.storageConfig.storageMode === 'filesystem') {
 							$('#storage-configuration-filesystem-radio').prop('checked', true);
+							$('#storage-configuration-filesystem-radio').attr('data-selected', 'selected');
 						}
 						else if(nodeSettings.storageConfig.storageMode === 's3provider') {
 							$('#storage-configuration-s3provider-radio').prop('checked', true);
+							$('#storage-configuration-s3provider-radio').attr('data-selected', 'selected');
 						}
 
 						$('#comments-checkbox').prop('checked', nodeSettings.isCommentsEnabled);
@@ -1723,8 +1727,13 @@ input[type="range"]:focus::-moz-range-thumb{
 				}
 			}
 
+
 			function toggleDatabaseConfiguration(radio, event) {
 				event.preventDefault();
+
+				if ($(radio).data('selected') === 'selected') {
+					return;
+				}
 
 				$('#database-dialect-sqlite-radio').prop('disabled', true);
 				$('#database-dialect-postgres-radio').prop('disabled', true);
@@ -1813,6 +1822,14 @@ input[type="range"]:focus::-moz-range-thumb{
 						}
 						else {
 							$(radio).prop('checked', true);
+
+							$('#database-dialect-sqlite-radio').removeAttr('data-selected');
+							$('#database-dialect-postgres-radio').removeAttr('data-selected');
+
+							$('#database-dialect-sqlite-radio').removeData('selected');
+							$('#database-dialect-postgres-radio').removeData('selected');
+
+							$(radio).data('selected', 'selected');
 						}
 					})
 					.fail(function() {
@@ -1824,6 +1841,10 @@ input[type="range"]:focus::-moz-range-thumb{
 			function toggleStorageConfiguration(radio, event) {
 				event.preventDefault();
 
+				if ($(radio).data('selected') === 'selected') {
+					return;
+				}
+
 				$('#storage-configuration-filesystem-radio').prop('disabled', true);
 				$('#storage-configuration-s3provider-radio').prop('disabled', true);
 
@@ -1832,9 +1853,13 @@ input[type="range"]:focus::-moz-range-thumb{
 				const storageConfig = {
 					storageMode:storageMode
 				}
+
+				const dnsConfig = {
+					isConfiguringDnsCname: false
+				};
 				
 				if(storageMode === 'filesystem') {
-					submitStorageConfig(storageConfig, radio);
+					submitStorageConfig(storageConfig, dnsConfig, radio);
 				}
 				else if(storageMode === 's3provider') {
 					const html = '\
@@ -1846,7 +1871,7 @@ input[type="range"]:focus::-moz-range-thumb{
 						</div>\
 						<div class="row mb-2">\
 							<div class="">\
-								<textarea id="s3-provider-client-configuration-textarea" class="form-control" name="nodeAbout" type="text" placeholder="Paste the AWS SDK S3 Client Configuration JSON here: { &quot;region&quot;: &quot;region&quot;, &quot;credentials&quot;: { &quot;accessKeyId&quot;: &quot;accessKeyId&quot;, &quot;secretAccessKey&quot;: &quot;secretAccessKey&quot; } }" rows="5" maxlength="1000" onfocus="focused(this)" onfocusout="defocused(this)"></textarea>\
+								<textarea id="s3-provider-client-configuration-textarea" class="form-control" name="nodeAbout" type="text" placeholder="Paste the S3 client configuration JSON from your S3 provider here: { &quot;region&quot;: &quot;region&quot;, &quot;credentials&quot;: { &quot;accessKeyId&quot;: &quot;accessKeyId&quot;, &quot;secretAccessKey&quot;: &quot;secretAccessKey&quot; } }" rows="5" maxlength="1000" onfocus="focused(this)" onfocusout="defocused(this)"></textarea>\
 							</div>\
 						</div>\
 						<div class="row">\
@@ -1908,16 +1933,14 @@ input[type="range"]:focus::-moz-range-thumb{
 								
 								s3ProviderClientConfig = s3ProviderClientConfig.replace(/,\s*$/, '');
 
-								const dnsConfig = {
-									isConfiguringDnsCname: isConfiguringDnsCname
-								};
-
 								if(isConfiguringDnsCname) {
 									const cloudflareEmailAddress = $('#s3-configuration-cloudflare-email-address-input').val();
 									const cloudflareZoneId = $('#s3-configuration-cloudflare-zone-id-input').val();
 									const cloudflareGlobalApiKey = $('#s3-configuration-cloudflare-global-api-key-input').val();
 
 									if(cloudflareEmailAddress !== '' && cloudflareZoneId !== '' && cloudflareGlobalApiKey !== '') {
+										dnsConfig.isConfiguringDnsCname = true;
+
 										dnsConfig.cloudflareCredentials = {
 											cloudflareEmailAddress: cloudflareEmailAddress,
 											cloudflareZoneId: cloudflareZoneId,
@@ -1981,6 +2004,14 @@ input[type="range"]:focus::-moz-range-thumb{
 						}
 						else {
 							$(radio).prop('checked', true);
+
+							$('#storage-configuration-filesystem-radio').removeAttr('data-selected');
+							$('#storage-configuration-s3provider-radio').removeAttr('data-selected');
+
+							$('#storage-configuration-filesystem-radio').removeData('selected');
+							$('#storage-configuration-s3provider-radio').removeData('selected');
+
+							$(radio).data('selected', 'selected');
 						}
 					})
 					.fail(function() {

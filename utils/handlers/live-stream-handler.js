@@ -167,9 +167,9 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
                                     const segmentIndexToRemove = segmentCounter - 20;
                                     
                                     if(segmentIndexToRemove >= 0) {
+                                        const segmentName = 'segment-' + resolution + '-' + segmentIndexToRemove + '.ts';
+
                                         if(storageConfig.storageMode === 'filesystem') {
-                                            const segmentName = 'segment-' + resolution + '-' + segmentIndexToRemove + '.ts';
-                                            
                                             node_removeAdaptiveStreamSegment(jwtToken, videoId, format, resolution, segmentName)
                                             .then(nodeResponseData => {
                                                 if(nodeResponseData.isError) {
@@ -186,11 +186,11 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
                                         else if(storageConfig.storageMode === 's3provider') {
                                             const s3Config = storageConfig.s3Config;
 
-                                            const segmentKey = 'external/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/' + segmentFileName;
+                                            const segmentKey = 'external/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/' + segmentName;
 
                                             s3_deleteObjectWithKey(s3Config, segmentKey)
                                             .then(response => {
-
+                                                logDebugMessageToConsole('s3 removed segment ' + segmentName, null, null);
                                             })
                                             .catch(error => {
                                                 logDebugMessageToConsole(null, error, new Error().stack);
@@ -283,6 +283,14 @@ function sendSegmentToNode(jwtToken, videoId, resolution, manifestBuffer, segmen
         });
     }
     else if(storageConfig.storageMode === 's3provider') {
+        const lines = manifestBuffer.toString().split(/\r?\n/);
+
+        if(lines.length >= 10) {
+            lines.splice(lines.length - 3, 3);
+            const newContent = lines.join('\n');
+            manifestBuffer = Buffer.from(newContent);
+        }
+        
         const s3Config = storageConfig.s3Config;
 
         const manifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/dynamic/manifests/manifest-' + resolution + '.m3u8';

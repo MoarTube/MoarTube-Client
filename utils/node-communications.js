@@ -1298,12 +1298,48 @@ function node_databaseConfigToggle(jwtToken, databaseConfig) {
     });
 }
 
+function node_databaseConfigEmpty(jwtToken) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/settings/databaseConfig/empty', {}, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 function node_storageConfigToggle(jwtToken, storageConfig, dnsConfig) {
     return new Promise(function(resolve, reject) {
         axios.post(getMoarTubeNodeUrl() + '/settings/storageConfig/toggle', {
             storageConfig: storageConfig,
             dnsConfig: dnsConfig
         }, {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function node_storageConfigEmpty(jwtToken) {
+    return new Promise(function(resolve, reject) {
+        axios.post(getMoarTubeNodeUrl() + '/settings/storageConfig/empty', {}, {
           headers: {
             Authorization: jwtToken
           }
@@ -1765,6 +1801,24 @@ function node_uploadM3u8MasterManifest(jwtToken, videoId, type, masterManifest) 
     });
 }
 
+function node_getVideoDataAll(jwtToken) {
+    return new Promise(function(resolve, reject) {
+        axios.get(getMoarTubeNodeUrl() + '/videos/data/all', {
+          headers: {
+            Authorization: jwtToken
+          }
+        })
+        .then(response => {
+            const data = response.data;
+            
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
 module.exports = {
     node_isAuthenticated,
     node_doHeartBeat,
@@ -1849,8 +1903,11 @@ module.exports = {
     node_reportsToggle,
     node_liveChatToggle,
     node_databaseConfigToggle,
+    node_databaseConfigEmpty,
     node_storageConfigToggle,
+    node_storageConfigEmpty,
     node_getExternalVideosBaseUrl,
     node_getManifestFile,
-    node_uploadM3u8MasterManifest
+    node_uploadM3u8MasterManifest,
+    node_getVideoDataAll
 };

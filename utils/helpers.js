@@ -248,7 +248,7 @@ async function refreshM3u8MasterManifest(jwtToken, videoId) {
     const { s3_putObjectFromData } = require('./s3-communications');
 
     const videoData = (await node_getVideoData(videoId)).videoData;
-    const isStreaming = videoData.is_streaming;
+    const isStreaming = videoData.isStreaming;
     const resolutions = videoData.outputs.m3u8;
 
     const externalVideosBaseUrl = (await node_getExternalVideosBaseUrl(jwtToken)).externalVideosBaseUrl;
@@ -301,12 +301,12 @@ async function refreshM3u8MasterManifest(jwtToken, videoId) {
     const storageMode = storageConfig.storageMode;
 
     if(storageMode === 'filesystem') {
-        await node_uploadM3u8MasterManifest(jwtToken, videoId, 'dynamic', masterManifest);
+        await node_uploadM3u8MasterManifest(jwtToken, videoId, manifestType, masterManifest);
     }
     else if(storageMode === 's3provider') {
         const s3Config = storageConfig.s3Config;
 
-        const key = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-master.m3u8';
+        const key = 'external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-master.m3u8';
 
         await s3_putObjectFromData(s3Config, key, Buffer.from(masterManifest));
     }
