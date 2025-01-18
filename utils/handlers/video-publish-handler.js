@@ -4,10 +4,9 @@ const spawn = require('child_process').spawn;
 
 const { 
     logDebugMessageToConsole, deleteDirectoryRecursive, timestampToSeconds, websocketClientBroadcast, getVideosDirectoryPath, getFfmpegPath, getClientSettings,
-    refreshM3u8MasterManifest
+    refreshM3u8MasterManifest, getNodeSettings
  } = require('../helpers');
-const { node_setVideoPublishing, node_setVideoPublished, node_uploadVideo, node_getExternalVideosBaseUrl, node_setVideoFormatResolutionPublished,
-    node_getSettings
+const { node_setVideoPublishing, node_setVideoPublished, node_uploadVideo, node_getExternalVideosBaseUrl, node_setVideoFormatResolutionPublished
  } = require('../node-communications');
  const { s3_putObjectsFromFilePathsWithProgress
  } = require('../s3-communications');
@@ -38,6 +37,10 @@ function startVideoPublishInterval() {
                     const videoIdHasPendingPublishingJobExists = getPendingPublishVideoTracker().some((pendingPublishingJob) => pendingPublishingJob.hasOwnProperty('videoId') && pendingPublishingJob.videoId === completedPublishingJob.videoId);
                     const videoIdHasInProgressPublishingJobExists = inProgressPublishingJobs.some((inProgressPublishingJob) => inProgressPublishingJob.hasOwnProperty('videoId') && inProgressPublishingJob.videoId === completedPublishingJob.videoId);
                     
+                    if(completedPublishingJob.format === 'm3u8') {
+                        await refreshM3u8MasterManifest(completedPublishingJob.jwtToken, completedPublishingJob.videoId);
+                    }
+
                     if(!videoIdHasPendingPublishingJobExists && !videoIdHasInProgressPublishingJobExists) {
                         await finishVideoPublish(completedPublishingJob.jwtToken, completedPublishingJob.videoId, completedPublishingJob.format);
 
@@ -255,126 +258,113 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
 }
 
 function performUploadingJob(jwtToken, videoId, format, resolution) {
-    return new Promise(function(resolve, reject) {			
+    return new Promise(async function(resolve, reject) {			
         if(!isPublishVideoEncodingStopping(videoId)) {
-            node_getSettings(jwtToken)
-            .then(nodeResponseData => {
-                if(nodeResponseData.isError) {
-                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
+            const nodeSettings = await getNodeSettings(jwtToken);
+
+            if(nodeSettings.storageConfig.storageMode === 'filesystem') {
+                const paths = [];
+    
+                if(format === 'm3u8') {
+                    const manifestFilePath = path.join(getVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
+                    const segmentsDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution);
                     
-                    reject({isError: true, message: nodeResponseData.message});
+                    paths.push({fileName : 'manifest-' + resolution + '.m3u8', filePath: manifestFilePath, contentType: 'application/vnd.apple.mpegurl'});
+                    
+                    fs.readdirSync(segmentsDirectoryPath).forEach(fileName => {
+                        const segmentFilePath = segmentsDirectoryPath + '/' + fileName;
+                        if (!fs.statSync(segmentFilePath).isDirectory()) {
+                            paths.push({fileName: fileName, filePath: segmentFilePath, contentType: 'video/mp2t'});
+                        }
+                    });
                 }
-                else {
-                    const nodeSettings = nodeResponseData.nodeSettings;
-
-                    if(nodeSettings.storageConfig.storageMode === 'filesystem') {
-                        const paths = [];
-            
-                        if(format === 'm3u8') {
-                            const manifestFilePath = path.join(getVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
-                            const segmentsDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution);
-                            
-                            paths.push({fileName : 'manifest-' + resolution + '.m3u8', filePath: manifestFilePath});
-                            
-                            fs.readdirSync(segmentsDirectoryPath).forEach(fileName => {
-                                const segmentFilePath = segmentsDirectoryPath + '/' + fileName;
-                                if (!fs.statSync(segmentFilePath).isDirectory()) {
-                                    paths.push({fileName: fileName, filePath: segmentFilePath});
-                                }
-                            });
-                        }
-                        else if(format === 'mp4') {
-                            const fileName = resolution + '.mp4';
-                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/mp4/' + fileName);
-                            
-                            paths.push({fileName: fileName, filePath: filePath});
-                        }
-                        else if(format === 'webm') {
-                            const fileName = resolution + '.webm';
-                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/webm/' + fileName);
-                            
-                            paths.push({fileName: fileName, filePath: filePath});
-                        }
-                        else if(format === 'ogv') {
-                            const fileName = resolution + '.ogv';
-                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/ogv/' + fileName);
-                            
-                            paths.push({fileName: fileName, filePath: filePath});
-                        }
+                else if(format === 'mp4') {
+                    const fileName = resolution + '.mp4';
+                    const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/mp4/' + fileName);
+                    
+                    paths.push({fileName: fileName, filePath: filePath, contentType: 'video/mp4'});
+                }
+                else if(format === 'webm') {
+                    const fileName = resolution + '.webm';
+                    const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/webm/' + fileName);
+                    
+                    paths.push({fileName: fileName, filePath: filePath, contentType: 'video/webm'});
+                }
+                else if(format === 'ogv') {
+                    const fileName = resolution + '.ogv';
+                    const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/ogv/' + fileName);
+                    
+                    paths.push({fileName: fileName, filePath: filePath, contentType: 'video/ogg'});
+                }
+                
+                node_uploadVideo(jwtToken, videoId, format, resolution, paths)
+                .then(nodeResponseData => {
+                    if(nodeResponseData.isError) {
+                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                         
-                        node_uploadVideo(jwtToken, videoId, format, resolution, paths)
-                        .then(nodeResponseData => {
-                            if(nodeResponseData.isError) {
-                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                                
-                                reject({isError: true, message: nodeResponseData.message});
-                            }
-                            else {
-                                resolve({isError: false});
-                            }
-                            
-                            for(const path of paths) {
-                                if(fs.existsSync(path.filePath)) {
-                                    fs.unlinkSync(path.filePath);
-                                }
-                            }
-                        })
-                        .catch(error => {
-                            reject(error);
-                        });
+                        reject({isError: true, message: nodeResponseData.message});
                     }
-                    else if(nodeSettings.storageConfig.storageMode === 's3provider') {
-                        const s3Config = nodeSettings.storageConfig.s3Config;
-
-                        const paths = [];
-            
-                        if(format === 'm3u8') {
-                            const manifestFilePath = path.join(getVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
-                            const segmentsDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution);
-                            const manifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-' + resolution + '.m3u8';
-
-                            paths.push({key: manifestKey, filePath: manifestFilePath});
-                            
-                            fs.readdirSync(segmentsDirectoryPath).forEach(fileName => {
-                                const segmentFilePath = segmentsDirectoryPath + '/' + fileName;
-                                if (!fs.statSync(segmentFilePath).isDirectory()) {
-                                    const segmentKey = 'external/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/' + fileName;
-                                    paths.push({key: segmentKey, filePath: segmentFilePath});
-                                }
-                            });
-                        }
-                        else if(format === 'mp4') {
-                            const key = 'external/videos/' + videoId + '/progressive/mp4/' + resolution + '.mp4';
-                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution + '.mp4');
-                            
-                            paths.push({key: key, filePath: filePath});
-                        }
-                        else if(format === 'webm') {
-                            const key = 'external/videos/' + videoId + '/progressive/webm/' + resolution + '.webm';
-                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution + '.webm');
-                            
-                            paths.push({key: key, filePath: filePath});
-                        }
-                        else if(format === 'ogv') {
-                            const key = 'external/videos/' + videoId + '/progressive/ogv/' + resolution + '.ogv';
-                            const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution + '.ogv');
-                            
-                            paths.push({key: key, filePath: filePath});
-                        }
-
-                        s3_putObjectsFromFilePathsWithProgress(s3Config, jwtToken, paths, videoId, format, resolution)
-                        .then(responses => {
-                            resolve({isError: false});
-                        })
-                        .catch(error => {
-                            reject(error);
-                        });
+                    else {
+                        resolve({isError: false});
                     }
+                    
+                    for(const path of paths) {
+                        if(fs.existsSync(path.filePath)) {
+                            fs.unlinkSync(path.filePath);
+                        }
+                    }
+                })
+                .catch(error => {
+                    reject(error);
+                });
+            }
+            else if(nodeSettings.storageConfig.storageMode === 's3provider') {
+                const s3Config = nodeSettings.storageConfig.s3Config;
+
+                const paths = [];
+    
+                if(format === 'm3u8') {
+                    const manifestFilePath = path.join(getVideosDirectoryPath(), videoId + '/adaptive/m3u8/manifest-' + resolution + '.m3u8');
+                    const segmentsDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution);
+                    const manifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-' + resolution + '.m3u8';
+
+                    paths.push({key: manifestKey, filePath: manifestFilePath, contentType: 'application/vnd.apple.mpegurl'});
+                    
+                    fs.readdirSync(segmentsDirectoryPath).forEach(fileName => {
+                        const segmentFilePath = segmentsDirectoryPath + '/' + fileName;
+                        if (!fs.statSync(segmentFilePath).isDirectory()) {
+                            const segmentKey = 'external/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/' + fileName;
+                            paths.push({key: segmentKey, filePath: segmentFilePath, contentType: 'video/mp2t'});
+                        }
+                    });
                 }
-            })
-            .catch(error => {
-                reject(error);
-            });
+                else if(format === 'mp4') {
+                    const key = 'external/videos/' + videoId + '/progressive/mp4/' + resolution + '.mp4';
+                    const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/mp4/' + resolution + '.mp4');
+                    
+                    paths.push({key: key, filePath: filePath, contentType: 'video/mp4'});
+                }
+                else if(format === 'webm') {
+                    const key = 'external/videos/' + videoId + '/progressive/webm/' + resolution + '.webm';
+                    const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/webm/' + resolution + '.webm');
+                    
+                    paths.push({key: key, filePath: filePath, contentType: 'video/webm'});
+                }
+                else if(format === 'ogv') {
+                    const key = 'external/videos/' + videoId + '/progressive/ogv/' + resolution + '.ogv';
+                    const filePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution + '.ogv');
+                    
+                    paths.push({key: key, filePath: filePath, contentType: 'video/ogg'});
+                }
+
+                s3_putObjectsFromFilePathsWithProgress(s3Config, jwtToken, paths, videoId, format, resolution)
+                .then(responses => {
+                    resolve({isError: false});
+                })
+                .catch(error => {
+                    reject(error);
+                });
+            }
         }
         else {
             reject({isError: true, message: videoId + ' attempted to upload but publishing is stopping'});
@@ -385,10 +375,6 @@ function performUploadingJob(jwtToken, videoId, format, resolution) {
 async function finishVideoPublish(jwtToken, videoId, format) {
     await deleteDirectoryRecursive(path.join(getVideosDirectoryPath(), videoId + '/adaptive'));
     await deleteDirectoryRecursive(path.join(getVideosDirectoryPath(), videoId + '/progressive'));
-
-    if(format === 'm3u8') {
-        await refreshM3u8MasterManifest(jwtToken, videoId);
-    }
 
     await node_setVideoPublished(jwtToken, videoId);
 

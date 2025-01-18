@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const webSocket = require('ws');
+const axios = require('axios').default;
 
 let isDeveloperMode;
 let publicDirectoryPath;
@@ -19,6 +20,8 @@ let ffmpegPath;
 
 let websocketServer;
 let websocketClient;
+
+let nodeSettings;
 
 function logDebugMessageToConsole(message, error, stackTrace) {
     const date = new Date(Date.now());
@@ -244,7 +247,7 @@ function cleanVideosDirectory() {
 }
 
 async function refreshM3u8MasterManifest(jwtToken, videoId) {
-    const { node_getSettings, node_getVideoData, node_uploadM3u8MasterManifest, node_getExternalVideosBaseUrl } = require('./node-communications');
+    const { node_getVideoData, node_uploadM3u8MasterManifest, node_getExternalVideosBaseUrl } = require('./node-communications');
     const { s3_putObjectFromData } = require('./s3-communications');
 
     const videoData = (await node_getVideoData(videoId)).videoData;
@@ -295,7 +298,7 @@ async function refreshM3u8MasterManifest(jwtToken, videoId) {
         }
     }
 
-    const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+    const nodeSettings = await getNodeSettings(jwtToken);
 
     const storageConfig = nodeSettings.storageConfig;
     const storageMode = storageConfig.storageMode;
@@ -308,7 +311,7 @@ async function refreshM3u8MasterManifest(jwtToken, videoId) {
 
         const key = 'external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-master.m3u8';
 
-        await s3_putObjectFromData(s3Config, key, Buffer.from(masterManifest));
+        await s3_putObjectFromData(s3Config, key, Buffer.from(masterManifest), 'application/vnd.apple.mpegurl');
     }
 }
 
@@ -518,6 +521,28 @@ function setWebsocketClient(wsc) {
     websocketClient = wsc;
 }
 
+function cacheM3u8Segment(segmentFileUrl) {
+    axios.get(segmentFileUrl);
+}
+
+async function getNodeSettings(jwtToken) {
+    if(nodeSettings == null) {
+        const { 
+            node_getSettings
+        } = require('./node-communications');
+
+        nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+
+        logDebugMessageToConsole('retrieved settings from MoarTube Node', null, null);
+    }
+
+    return nodeSettings;
+}
+
+function clearNodeSettingsClientCache() {
+    nodeSettings = null;
+}
+
 module.exports = {
     logDebugMessageToConsole,
     deleteDirectoryRecursive,
@@ -565,5 +590,8 @@ module.exports = {
     setWebsocketClient,
     getIsDeveloperMode,
     setIsDeveloperMode,
-    refreshM3u8MasterManifest
+    refreshM3u8MasterManifest,
+    cacheM3u8Segment,
+    getNodeSettings,
+    clearNodeSettingsClientCache
 };

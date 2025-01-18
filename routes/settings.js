@@ -109,9 +109,9 @@ router.get('/node', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
 
-        const data = await node_GET(jwtToken);
+        const nodeSettings = await node_GET(jwtToken);
 
-        res.send(data);
+        res.send({nodeSettings: nodeSettings});
     }
     catch(error) {
         logDebugMessageToConsole(null, error, new Error().stack);

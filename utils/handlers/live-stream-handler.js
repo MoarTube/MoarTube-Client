@@ -4,11 +4,12 @@ const spawn = require('child_process').spawn;
 const sharp = require('sharp');
 
 const { 
-    logDebugMessageToConsole, getVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds, deleteDirectoryRecursive
+    logDebugMessageToConsole, getVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds, deleteDirectoryRecursive,
+    cacheM3u8Segment, getNodeSettings
  } = require('../helpers');
 const { 
     node_setVideoLengths, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, node_removeAdaptiveStreamSegment, 
-    node_stopVideoStreaming, node_getExternalVideosBaseUrl, node_getSettings
+    node_stopVideoStreaming, node_getExternalVideosBaseUrl
 } = require('../node-communications');
 const { 
     s3_putObjectFromData, s3_deleteObjectWithKey
@@ -21,8 +22,9 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
     return new Promise(async function(resolve, reject) {
         logDebugMessageToConsole('starting live stream for id: ' + videoId, null, null);
 
-        const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+        const nodeSettings = await getNodeSettings(jwtToken);
         const storageConfig = nodeSettings.storageConfig;
+        const isCloudflareCdnEnabled = nodeSettings.isCloudflareCdnEnabled;
 
         await deleteDirectoryRecursive(path.join(getVideosDirectoryPath(), videoId));
         
@@ -156,7 +158,7 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
 
                                 const segmentFileName = 'segment-' + resolution + '-' + segmentCounter + '.ts';
 
-                                sendSegmentToNode(jwtToken, videoId, resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName, storageConfig);
+                                sendSegmentToNode(jwtToken, videoId, resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName, storageConfig, isCloudflareCdnEnabled, externalVideosBaseUrl);
                                 sendImagesToNode(jwtToken, videoId, segmentBuffer, storageConfig);
 
                                 if(isRecordingStreamLocally) {
@@ -262,55 +264,40 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
     });
 }
 
-function sendSegmentToNode(jwtToken, videoId, resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName, storageConfig) {
+async function sendSegmentToNode(jwtToken, videoId, resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName, storageConfig, isCloudflareCdnEnabled, externalVideosBaseUrl) {
     logDebugMessageToConsole('sending segment ' + segmentFileName + ' to node for video Id ' + videoId, null, null);
 
-    if(storageConfig.storageMode === 'filesystem') {
-        node_uploadStream(jwtToken, videoId, 'm3u8', resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-            }
-            else {
-                // do nothing
-            }
-        })
-        .catch(error => {
-            logDebugMessageToConsole(null, error, new Error().stack);
-        })
-        .finally(() => {
-            
-        });
-    }
-    else if(storageConfig.storageMode === 's3provider') {
+    // truncate the manifest file by one segment so that the segment can be cached and distributed by the CDN on the next iteration
+    if(isCloudflareCdnEnabled) {
         const lines = manifestBuffer.toString().split(/\r?\n/);
 
         if(lines.length >= 10) {
             lines.splice(lines.length - 3, 3);
-            const newContent = lines.join('\n');
-            manifestBuffer = Buffer.from(newContent);
+            const newManifest = lines.join('\n');
+            manifestBuffer = Buffer.from(newManifest);
         }
-        
+    }
+
+    if(storageConfig.storageMode === 'filesystem') {
+        await node_uploadStream(jwtToken, videoId, 'm3u8', resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName);
+    }
+    else if(storageConfig.storageMode === 's3provider') {
         const s3Config = storageConfig.s3Config;
 
-        const manifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/dynamic/manifests/manifest-' + resolution + '.m3u8';
         const segmentKey = 'external/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/' + segmentFileName;
+        const manifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/dynamic/manifests/manifest-' + resolution + '.m3u8';
         
-        s3_putObjectFromData(s3Config, manifestKey, manifestBuffer)
-        .then(response => {
-            
-        })
-        .catch(error => {
-            logDebugMessageToConsole(null, error, new Error().stack);
-        });
+        /*
+        upload segment first followed by manifest, otherwise video player may request segments that aren't available yet
+        */
+        await s3_putObjectFromData(s3Config, segmentKey, segmentBuffer, 'video/mp2t');
+        await s3_putObjectFromData(s3Config, manifestKey, manifestBuffer, 'application/vnd.apple.mpegurl');
+    }
 
-        s3_putObjectFromData(s3Config, segmentKey, segmentBuffer)
-        .then(response => {
-            
-        })
-        .catch(error => {
-            logDebugMessageToConsole(null, error, new Error().stack);
-        });
+    if(isCloudflareCdnEnabled) {
+        const segmentFileUrl = externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/' + segmentFileName;
+
+        cacheM3u8Segment(segmentFileUrl);
     }
 }
 
@@ -386,9 +373,9 @@ function sendImagesToNode(jwtToken, videoId, segmentBuffer, storageConfig) {
                             const previewImageKey = 'external/videos/' + videoId + '/images/preview.jpg';
                             const posterImageKey = 'external/videos/' + videoId + '/images/poster.jpg';
                             
-                            await s3_putObjectFromData(s3Config, thumbnailImageKey, thumbnailBuffer);
-                            await s3_putObjectFromData(s3Config, previewImageKey, previewFileBuffer);
-                            await s3_putObjectFromData(s3Config, posterImageKey, posterFileBuffer);
+                            await s3_putObjectFromData(s3Config, thumbnailImageKey, thumbnailBuffer, 'image/jpeg');
+                            await s3_putObjectFromData(s3Config, previewImageKey, previewFileBuffer, 'image/jpeg');
+                            await s3_putObjectFromData(s3Config, posterImageKey, posterFileBuffer, 'image/jpeg');
                         }
                     }
                     catch(error) {

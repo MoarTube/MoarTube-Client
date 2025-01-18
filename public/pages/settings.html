@@ -441,7 +441,7 @@ input[type="range"]:focus::-moz-range-thumb{
 								</div>
 								<div class="card-body pt-0 pb-0">
 									<div class="">
-										<a href="https://www.moartube.com/guides/how-to-enable-cloudflare-integration" target="_blank"><p class="mb-0 d-flex">Cloudflare CDN<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
+										<a href="https://www.moartube.com/guides/how-to-enable-cloudflare-cdn" target="_blank"><p class="mb-0 d-flex">Cloudflare CDN<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
 											<path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/>
 											<path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/>
 										  </svg></p></a>
@@ -450,7 +450,7 @@ input[type="range"]:focus::-moz-range-thumb{
 										<div class="row">
 											<div class="col-6">
 												<div class="form-check form-switch my-auto">
-													<input id="cloudflare-one-click-integration-checkbox" class="form-check-input" type="checkbox" onclick="toggleCloudflareIntegrationCheckbox(this)">
+													<input id="cloudflare-one-click-cdn-checkbox" class="form-check-input" type="checkbox" onclick="toggleCloudflareCdnCheckbox(this)">
 												</div>
 											</div>
 										</div>
@@ -830,7 +830,7 @@ input[type="range"]:focus::-moz-range-thumb{
 						$('#node-id-input').val(nodeSettings.nodeId);
 
 						$('#node-setting-secure-mode-checkbox').prop('checked', nodeSettings.isSecure);
-						$('#cloudflare-one-click-integration-checkbox').prop('checked', nodeSettings.isCloudflareIntegrationEnabled);
+						$('#cloudflare-one-click-cdn-checkbox').prop('checked', nodeSettings.isCloudflareCdnEnabled);
 						$('#cloudflare-turnstile-checkbox').prop('checked', nodeSettings.isCloudflareTurnstileEnabled);
 
 						if(nodeSettings.databaseConfig.databaseDialect === 'sqlite') {
@@ -1510,7 +1510,7 @@ input[type="range"]:focus::-moz-range-thumb{
 				}
 			}
 
-			function toggleCloudflareIntegrationCheckbox(checkbox) {
+			function toggleCloudflareCdnCheckbox(checkbox) {
 				const isCheckboxChecked = $(checkbox).prop('checked');
 				
 				if(isCheckboxChecked) {
@@ -1558,7 +1558,7 @@ input[type="range"]:focus::-moz-range-thumb{
 
 									Swal.fire({
 										title: 'please wait',
-										html: '...enabling Cloudflare integration...',
+										html: '...enabling Cloudflare CDN...',
 										showConfirmButton: false,
 										willOpen: () => {
 											Swal.showLoading();
@@ -1572,7 +1572,7 @@ input[type="range"]:focus::-moz-range-thumb{
 													showAlert(true, data.message);
 												}
 												else {
-													showAlert(false, 'Cloudflare Integration Enabled');
+													showAlert(false, 'Cloudflare CDN Enabled');
 												}
 											})
 											.fail(function() {
@@ -1596,7 +1596,7 @@ input[type="range"]:focus::-moz-range-thumb{
 				else {
 					Swal.fire({
 						title: 'please wait',
-						html: '...disabling Cloudflare integration...',
+						html: '...disabling Cloudflare CDN...',
 						showConfirmButton: false,
 						didOpen: () => {
 							Swal.showLoading();
@@ -1609,7 +1609,7 @@ input[type="range"]:focus::-moz-range-thumb{
 									showAlert(true, data.message);
 								}
 								else {
-									showAlert(false, 'Cloudflare Integration Disabled');
+									showAlert(false, 'Cloudflare CDN Disabled');
 								}
 							})
 							.fail(function() {
@@ -1871,12 +1871,12 @@ input[type="range"]:focus::-moz-range-thumb{
 						</div>\
 						<div class="row mb-2">\
 							<div class="">\
-								<textarea id="s3-provider-client-configuration-textarea" class="form-control" name="nodeAbout" type="text" placeholder="Paste the S3 client configuration JSON from your S3 provider here: { &quot;region&quot;: &quot;region&quot;, &quot;credentials&quot;: { &quot;accessKeyId&quot;: &quot;accessKeyId&quot;, &quot;secretAccessKey&quot;: &quot;secretAccessKey&quot; } }" rows="5" maxlength="1000" onfocus="focused(this)" onfocusout="defocused(this)"></textarea>\
+								<textarea id="s3-provider-client-configuration-textarea" class="form-control" name="nodeAbout" type="text" placeholder="Paste the S3 client configuration JSON from your S3 provider here. S3 provider configurations will vary. For example, AWS S3: { &quot;region&quot;: &quot;region&quot;, &quot;credentials&quot;: { &quot;accessKeyId&quot;: &quot;accessKeyId&quot;, &quot;secretAccessKey&quot;: &quot;secretAccessKey&quot; } }" rows="5" maxlength="1000" onfocus="focused(this)" onfocusout="defocused(this)"></textarea>\
 							</div>\
 						</div>\
 						<div class="row">\
 							<div class="input-group mb-3">\
-								<label class="custom-control-label">Configure Cloudflare DNS <i>(adds CNAME record, required if caching S3 with Cloudflare CDN)</i></label>\
+								<label class="custom-control-label">Add a CNAME record <i>(required for caching your S3 data with Cloudflare\'s CDN)</i><br>Bucket name format required: <i>externalvideos.domain.TLD</i><br>If your node\'s domain is "my-awesome-node.com", use "externalvideos.my-awesome-node.com"<br>Bucket will be created, configured, and tested if it doesn\'t already exist</label>\
 								<div class="input-group form-switch">\
 									<input id="s3-configuration-configure-dns-switch" class="form-check-input" type="checkbox" style="height: 1.10em;">\
 								</div>\

@@ -7,10 +7,10 @@ sharp.cache(false);
 
 const { 
     logDebugMessageToConsole, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodePort, detectOperatingSystem, detectSystemGpu, 
-    detectSystemCpu, getClientSettings, setClientSettings, getImagesDirectoryPath, getClientSettingsDefault
+    detectSystemCpu, getClientSettings, setClientSettings, getImagesDirectoryPath, getClientSettingsDefault, clearNodeSettingsClientCache, getNodeSettings
 } = require('../utils/helpers');
 const { 
-    node_setExternalNetwork, node_getSettings, node_getAvatar, node_setAvatar, node_getBanner, node_setBanner, node_setNodeName, node_setNodeAbout, 
+    node_setExternalNetwork, node_getAvatar, node_setAvatar, node_getBanner, node_setBanner, node_setNodeName, node_setNodeAbout, 
     node_setNodeId, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials, node_setCloudflareConfiguration, 
     node_clearCloudflareConfiguration, node_setCloudflareTurnstileConfiguration, node_CloudflareTurnstileConfigurationClear,
     node_commentsToggle, node_likesToggle, node_dislikesToggle, node_reportsToggle, node_liveChatToggle, node_databaseConfigToggle,
@@ -42,23 +42,10 @@ function client_GET() {
     return {isError: false, clientSettings: settings};
 }
 
-function node_GET(jwtToken) {
-    return new Promise(function(resolve, reject) {
-        node_getSettings(jwtToken)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                resolve({isError: false, nodeSettings: nodeResponseData.nodeSettings});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+async function node_GET(jwtToken) {
+    const nodeSettings = await getNodeSettings(jwtToken);
+
+    return nodeSettings;
 }
 
 function clientGpuAcceleration_POST(isGpuAccelerationEnabled) {
@@ -133,6 +120,8 @@ function clientEncoding_POST(videoEncoderSettings, liveEncoderSettings) {
     return {isError: false};
 }
 
+
+
 function nodeAvatar_GET() {
     return new Promise(function(resolve, reject) {
         node_getAvatar()
@@ -174,6 +163,8 @@ function nodeAvatar_POST(jwtToken, avatarFile) {
                             fs.unlinkSync(sourceFilePath);
                             fs.unlinkSync(iconDestinationFilePath);
                             fs.unlinkSync(avatarDestinationFilePath);
+
+                            clearNodeSettingsClientCache();
                             
                             resolve({isError: false});
                         }
@@ -234,6 +225,8 @@ function nodeBanner_POST(jwtToken, bannerFile) {
                         logDebugMessageToConsole('uploaded avatar to node', null, null);
                         
                         fs.unlinkSync(bannerDestinationFilePath);
+
+                        clearNodeSettingsClientCache();
                         
                         resolve({isError: false});
                     }
@@ -263,6 +256,8 @@ function nodePersonalizeNodeName_POST(jwtToken, nodeName) {
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })
@@ -282,6 +277,8 @@ function nodePersonalizeNodeAbout_POST(jwtToken, nodeAbout) {
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })
@@ -301,6 +298,8 @@ function nodePersonalizeNodeId_POST(jwtToken, nodeId) {
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })
@@ -327,6 +326,8 @@ function node_Secure_POST(jwtToken, isSecure, keyFile, certFile, caFiles) {
                     else {
                         setMoarTubeNodeHttpProtocol('https');
                         setMoarTubeNodeWebsocketProtocol('wss');
+
+                        clearNodeSettingsClientCache();
                         
                         resolve({isError: false});
                     }
@@ -350,6 +351,8 @@ function node_Secure_POST(jwtToken, isSecure, keyFile, certFile, caFiles) {
                 else {
                     setMoarTubeNodeHttpProtocol('http');
                     setMoarTubeNodeWebsocketProtocol('ws');
+
+                    clearNodeSettingsClientCache();
                     
                     resolve({isError: false});
                 }
@@ -373,6 +376,8 @@ function nodeNetworkInternal_POST(jwtToken, nodeListeningPort) {
             else {
                 setMoarTubeNodePort(nodeListeningPort);
 
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })
@@ -392,7 +397,7 @@ function nodeNetworkExternal_POST(jwtToken, publicNodeProtocol, publicNodeAddres
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
-                const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+                const nodeSettings = await getNodeSettings(jwtToken);
 
                 if(nodeSettings.storageConfig.storageMode === 's3provider') {
                     const videosData = await node_getVideoDataAll(jwtToken);
@@ -400,6 +405,8 @@ function nodeNetworkExternal_POST(jwtToken, publicNodeProtocol, publicNodeAddres
 
                     await s3_updateM3u8ManifestsWithExternalVideosBaseUrl(nodeSettings.storageConfig.s3Config, videosData, externalVideosBaseUrl);
                 }
+
+                clearNodeSettingsClientCache();
                 
                 resolve({isError: false});
             }
@@ -420,6 +427,8 @@ function nodeCloudflareConfigure_POST(jwtToken, cloudflareEmailAddress, cloudfla
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })
@@ -439,6 +448,8 @@ function nodeCloudflareTurnstileConfigure_POST(jwtToken, cloudflareTurnstileSite
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })
@@ -458,6 +469,8 @@ function nodeCloudflareTurnstileClear_POST(jwtToken) {
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })
@@ -477,6 +490,8 @@ function nodeCloudflareClear_POST(jwtToken) {
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })
@@ -496,6 +511,8 @@ function nodeDatabaseConfigToggle_POST(jwtToken, databaseConfig) {
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })
@@ -515,6 +532,8 @@ function nodeDatabaseConfigEmpty_POST(jwtToken) {
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })
@@ -536,6 +555,8 @@ function nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig) {
             resolve({isError: true, message: nodeResponseData.message});
         }
         else {
+            clearNodeSettingsClientCache();
+
             resolve({isError: false});
         }
     });
@@ -551,6 +572,8 @@ function nodeStorageConfigEmpty_POST(jwtToken) {
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })
@@ -570,6 +593,8 @@ function nodeCommentsToggle_POST(jwtToken, isCommentsEnabled) {
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })
@@ -589,6 +614,8 @@ function nodeLikesToggle_POST(jwtToken, isLikesEnabled) {
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })
@@ -608,6 +635,8 @@ function nodeDislikesToggle_POST(jwtToken, isDislikesEnabled) {
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })
@@ -627,6 +656,8 @@ function nodeReportsToggle_POST(jwtToken, isReportsEnabled) {
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })
@@ -646,6 +677,8 @@ function nodeLiveChatToggle_POST(jwtToken, isLiveChatEnabled) {
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })
@@ -665,6 +698,8 @@ function nodeAccount_POST(jwtToken, username, password) {
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearNodeSettingsClientCache();
+
                 resolve({isError: false});
             }
         })

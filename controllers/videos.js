@@ -8,13 +8,12 @@ sharp.cache(false);
 
 const { 
     logDebugMessageToConsole, deleteDirectoryRecursive, getVideosDirectoryPath, timestampToSeconds, websocketClientBroadcast, getFfmpegPath,
-    refreshM3u8MasterManifest
+    refreshM3u8MasterManifest, getNodeSettings
 } = require('../utils/helpers');
 const { 
     node_stopVideoImporting, node_doVideosSearch, node_getVideoData, node_unpublishVideo, node_stopVideoPublishing,
     node_setSourceFileExtension, node_setThumbnail, node_setPreview, node_setPoster, node_setVideoLengths, node_setVideoImported, node_getVideosTags, node_getSourceFileExtension, 
-    node_getVideosTagsAll, node_getVideoPublishes, node_setVideoData, node_deleteVideos, node_finalizeVideos, node_addVideoToIndex, node_removeVideoFromIndex, node_getVideoSources,
-    node_getSettings
+    node_getVideosTagsAll, node_getVideoPublishes, node_setVideoData, node_deleteVideos, node_finalizeVideos, node_addVideoToIndex, node_removeVideoFromIndex, node_getVideoSources
 } = require('../utils/node-communications');
 const {
     s3_putObjectFromData, s3_deleteObjectsWithPrefix, s3_deleteObjectWithKey
@@ -92,7 +91,7 @@ function import_POST(jwtToken, videoFile, videoId) {
             const posterFileBuffer = await sharp(sourceImagePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toBuffer();
             logDebugMessageToConsole('generated thumbnail, preview, and poster for video: ' + videoId, null, null);
 
-            const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+            const nodeSettings = await getNodeSettings(jwtToken);
 
             const storageConfig = nodeSettings.storageConfig;
             const storageMode = storageConfig.storageMode;
@@ -116,9 +115,9 @@ function import_POST(jwtToken, videoFile, videoId) {
                 const previewImageKey = 'external/videos/' + videoId + '/images/preview.jpg';
                 const posterImageKey = 'external/videos/' + videoId + '/images/poster.jpg';
 
-                await s3_putObjectFromData(s3Config, thumbnailImageKey, thumbnailBuffer);
-                await s3_putObjectFromData(s3Config, previewImageKey, previewFileBuffer);
-                await s3_putObjectFromData(s3Config, posterImageKey, posterFileBuffer);
+                await s3_putObjectFromData(s3Config, thumbnailImageKey, thumbnailBuffer, 'image/jpeg');
+                await s3_putObjectFromData(s3Config, previewImageKey, previewFileBuffer, 'image/jpeg');
+                await s3_putObjectFromData(s3Config, posterImageKey, posterFileBuffer, 'image/jpeg');
             }
 
             await deleteDirectoryRecursive(imagesDirectoryPath);
@@ -258,7 +257,7 @@ function videoIdPublish_POST(jwtToken, videoId, publishings) {
 
 function videoIdUnpublish_POST(jwtToken, videoId, format, resolution) {
     return new Promise(async function(resolve, reject) {
-        const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+        const nodeSettings = await getNodeSettings(jwtToken);
         const storageConfig = nodeSettings.storageConfig;
 
         await node_unpublishVideo(jwtToken, videoId, format, resolution);
@@ -396,7 +395,7 @@ function delete_POST(jwtToken, videoIds) {
             await deleteDirectoryRecursive(deletedVideoIdPath);
         }
 
-        const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+        const nodeSettings = await getNodeSettings(jwtToken);
         const storageConfig = nodeSettings.storageConfig;
 
         if(storageConfig.storageMode === 's3provider') {
@@ -488,7 +487,7 @@ function videoIdThumbnail_POST(jwtToken, videoId, thumbnailFile) {
 
             sharp(thumbnailFile.buffer).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer()
             .then(async (thumbnailBuffer) => {
-                const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+                const nodeSettings = await getNodeSettings(jwtToken);
 
                 const storageConfig = nodeSettings.storageConfig;
                 const storageMode = storageConfig.storageMode;
@@ -507,7 +506,7 @@ function videoIdThumbnail_POST(jwtToken, videoId, thumbnailFile) {
 
                     const key = 'external/videos/' + videoId + '/images/thumbnail.jpg';
 
-                    await s3_putObjectFromData(s3Config, key, thumbnailBuffer);
+                    await s3_putObjectFromData(s3Config, key, thumbnailBuffer, 'image/jpeg');
                     
                     logDebugMessageToConsole('uploaded thumbnail image to s3 for video: ' + videoId, null, null);
                 }
@@ -533,7 +532,7 @@ function videoIdPreview_POST(jwtToken, videoId, previewFile) {
 
             sharp(previewFile.buffer).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer()
             .then(async (previewFileBuffer) => {
-                const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+                const nodeSettings = await getNodeSettings(jwtToken);
 
                 const storageConfig = nodeSettings.storageConfig;
                 const storageMode = storageConfig.storageMode;
@@ -552,7 +551,7 @@ function videoIdPreview_POST(jwtToken, videoId, previewFile) {
 
                     const key = 'external/videos/' + videoId + '/images/preview.jpg';
 
-                    await s3_putObjectFromData(s3Config, key, previewFileBuffer);
+                    await s3_putObjectFromData(s3Config, key, previewFileBuffer, 'image/jpeg');
                     
                     logDebugMessageToConsole('uploaded preview image to s3 for video: ' + videoId, null, null);
                 }
@@ -578,7 +577,7 @@ function videoIdPoster_POST(jwtToken, videoId, posterFile) {
 
             sharp(posterFile.buffer).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer()
             .then(async (posterFileBuffer) => {
-                const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+                const nodeSettings = await getNodeSettings(jwtToken);
 
                 const storageConfig = nodeSettings.storageConfig;
                 const storageMode = storageConfig.storageMode;
@@ -597,7 +596,7 @@ function videoIdPoster_POST(jwtToken, videoId, posterFile) {
 
                     const key = 'external/videos/' + videoId + '/images/poster.jpg';
 
-                    await s3_putObjectFromData(s3Config, key, posterFileBuffer);
+                    await s3_putObjectFromData(s3Config, key, posterFileBuffer, 'image/jpeg');
                     
                     logDebugMessageToConsole('uploaded poster image to s3 for video: ' + videoId, null, null);
                 }

@@ -1,14 +1,13 @@
 const portscanner = require('portscanner');
 
 const { 
-    logDebugMessageToConsole, websocketClientBroadcast, refreshM3u8MasterManifest
+    logDebugMessageToConsole, websocketClientBroadcast, refreshM3u8MasterManifest, getNodeSettings
 } = require('../utils/helpers');
 const { 
     isPortValid 
 } = require('../utils/validators');
 const { 
-    node_stopVideoStreaming, node_streamVideo, node_setSourceFileExtension, node_getVideoData, node_setVideoChatSettings,
-    node_getSettings
+    node_stopVideoStreaming, node_streamVideo, node_setSourceFileExtension, node_getVideoData, node_setVideoChatSettings
  } = require('../utils/node-communications');
  const { 
     s3_deleteObjectsWithPrefix, s3_convertM3u8DynamicManifestsToStatic
@@ -84,7 +83,7 @@ function videoIdStop_POST(jwtToken, videoId) {
     return new Promise(async function(resolve, reject) {
         websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
         
-        const nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
+        const nodeSettings = await getNodeSettings(jwtToken);
         const storageConfig = nodeSettings.storageConfig;
 
         if(storageConfig.storageMode === 'filesystem') {

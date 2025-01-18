@@ -45,7 +45,7 @@ Welcome to the MoarTube Client setup guide! This document will guide you through
  - Provide links to other platforms and websites, such as social media.
  - [Dual box compatible](https://www.moartube.com/guides/how-to-dual-box); broadcast an RTMP stream with software such as OBS from a primary system over a network (WAN or LAN) to a secondary system running the MoarTube Client, separating stream broadcasting from stream processing. This is achieved without any special plugins, such as NDI.
  - [Cloudflare Turnstile](https://www.moartube.com/guides/how-to-enable-cloudflare-turnstile); next-generation bot detection and human verification without the annoyance of captcha.
- - [Cloudflare one-click integration](https://www.moartube.com/guides/how-to-enable-cloudflare-integration); easily integrate your node into the [Cloudflare Network](https://www.cloudflare.com/network/), allowing for global media delivery capabilities of your videos and live streams that rivals major platforms, all from a single node. Features automated caching strategy configuration and automated cache management, and of course the best security from the world's leading CDN.
+ - [Cloudflare CDN](https://www.moartube.com/guides/how-to-enable-cloudflare-cdn); easily integrate your node into the [Cloudflare Network](https://www.cloudflare.com/network/), allowing for global media delivery capabilities of your videos and live streams that rivals major platforms, all from a single node. Features automated caching strategy configuration and automated cache management, and of course the best security from the world's leading CDN.
 
 ![image](https://github.com/MoarTube/MoarTube-Client/assets/26640616/0d8ac95f-f68b-4e36-849e-28139b45ce50)
 

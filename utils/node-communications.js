@@ -1383,9 +1383,11 @@ function node_uploadVideo(jwtToken, videoId, format, resolution, directoryPaths)
         for (const directoryPath of directoryPaths) {
             const fileName = directoryPath.fileName;
             const filePath = directoryPath.filePath;
+            const contentType = directoryPath.contentType;
+
             const fileStream = fs.createReadStream(filePath);
             
-            formData.append('video_files', fileStream, fileName);
+            formData.append('video_files', fileStream, {filename: fileName, contentType: contentType});
         }
 
         axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/upload', formData, {

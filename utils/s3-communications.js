@@ -9,38 +9,12 @@ const {
 } = require('@aws-sdk/client-sts');
 const { 
     Upload 
-} = require("@aws-sdk/lib-storage");
+} = require('@aws-sdk/lib-storage');
 
 
 const { 
     logDebugMessageToConsole
  } = require('./helpers');
-
-function s3_putObjectsFromFilePaths(s3Config, paths) {
-    return new Promise(async function(resolve, reject) {
-        const bucket = s3Config.bucketName;
-        const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
-
-        try {
-            const s3Client = new S3Client(s3ProviderClientConfig);
-
-            const responses = [];
-            for(const path of paths) {
-                const key = path.key;
-                const fileStream = fs.createReadStream(path.filePath);
-
-                const response = await s3Client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: fileStream }));
-
-                responses.push(response);
-            }
-
-            resolve(responses);
-        }
-        catch (error) {
-            reject(error);
-        }
-    });
-}
 
 function s3_putObjectsFromFilePathsWithProgress(s3Config, jwtToken, paths, videoId, format, resolution) {
     return new Promise(async function(resolve, reject) {
@@ -66,19 +40,20 @@ function s3_putObjectsFromFilePathsWithProgress(s3Config, jwtToken, paths, video
             const responses = await Promise.all(paths.map(async (path) => {
                 const key = path.key;
                 const fileStream = fs.createReadStream(path.filePath);
+                const contentType = path.contentType;
 
                 progressMap.set(key, 0);
 
-                const upload = new Upload({client: s3Client, params: { Bucket: bucket, Key: key, Body: fileStream}});
+                const upload = new Upload({client: s3Client, params: { Bucket: bucket, Key: key, Body: fileStream, ContentType: contentType}});
 
-                upload.on("httpUploadProgress", (progress) => {
+                upload.on('httpUploadProgress', (progress) => {
                     if (progress.loaded) {
                         progressMap.set(key, progress.loaded);
 
                         const totalLoaded = Array.from(progressMap.values()).reduce((sum, loaded) => sum + loaded, 0);
                         const uploadProgress = Math.floor(((totalLoaded / overallTotal) * 100) / 2) + 50;
 
-                        websocketClientBroadcast({eventName: "echo", jwtToken, data: {eventName: "video_status", payload: {type: "publishing", videoId, format, resolution, progress: uploadProgress}}});
+                        websocketClientBroadcast({eventName: 'echo', jwtToken, data: {eventName: 'video_status', payload: {type: 'publishing', videoId, format, resolution, progress: uploadProgress}}});
                     }
                 });
 
@@ -88,13 +63,14 @@ function s3_putObjectsFromFilePathsWithProgress(s3Config, jwtToken, paths, video
             resolve(responses);
         }
         catch (error) {
-            console.error("Error during upload:", error.message);
+            logDebugMessageToConsole('Error during upload', error, null);
+
             reject(error);
         }
     });
 }
 
-function s3_putObjectFromData(s3Config, key, data) {
+function s3_putObjectFromData(s3Config, key, data, contentType) {
     return new Promise(async function(resolve, reject) {
         const bucket = s3Config.bucketName;
         const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
@@ -102,7 +78,7 @@ function s3_putObjectFromData(s3Config, key, data) {
         try {
             const s3Client = new S3Client(s3ProviderClientConfig);
 
-            const response = await s3Client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: data }));
+            const response = await s3Client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: data, ContentType: contentType }));
 
             resolve(response);
         }
@@ -191,18 +167,16 @@ function s3_convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions) 
                 let staticManifest;
                 if(!dynamicKey.includes('manifest-master.m3u8')) {
                     staticManifest = dynamicManifest.replace('#EXT-X-PLAYLIST-TYPE:EVENT', '#EXT-X-PLAYLIST-TYPE:VOD');
-                    staticManifest = staticManifest.trim() + "\n#EXT-X-ENDLIST\n";
+                    staticManifest = staticManifest.trim() + '\n#EXT-X-ENDLIST\n';
                 }
                 else {
                     staticManifest = dynamicManifest;
                 }
-                
-                // Step 4: Upload the static manifest
-                console.log(`Uploading static manifest: ${staticKey}`);
-                await s3Client.send(new PutObjectCommand({Bucket: bucketName, Key: staticKey, Body: staticManifest, ContentType: "application/vnd.apple.mpegurl"}));
-        
-                // Step 5: Delete the dynamic manifest
-                console.log(`Deleting dynamic manifest: ${dynamicKey}`);
+
+                logDebugMessageToConsole(`Uploading static manifest: ${staticKey}`, null, null);
+                await s3Client.send(new PutObjectCommand({Bucket: bucketName, Key: staticKey, Body: staticManifest, ContentType: 'application/vnd.apple.mpegurl'}));
+
+                logDebugMessageToConsole(`Deleting dynamic manifest: ${dynamicKey}`, null, null);
                 await s3Client.send(new DeleteObjectCommand({Bucket: bucketName, Key: dynamicKey}));
             }
 
@@ -247,7 +221,7 @@ function s3_updateM3u8ManifestsWithExternalVideosBaseUrl(s3Config, videosData, e
                 
                 const newManifest = oldManifest.replace(/https?:\/\/[^/]+(?=\/external)/g, externalVideosBaseUrl);
                 
-                await s3Client.send(new PutObjectCommand({Bucket: bucketName, Key: manifestKey, Body: newManifest, ContentType: "application/vnd.apple.mpegurl"}));
+                await s3Client.send(new PutObjectCommand({Bucket: bucketName, Key: manifestKey, Body: newManifest, ContentType: 'application/vnd.apple.mpegurl'}));
             }
 
             resolve();
@@ -345,12 +319,16 @@ function s3_validateS3Config(s3Config) {
             }
 
             logDebugMessageToConsole('verifying ability for MoarTube Client to put a test object into the bucket', null, null);
-            await s3Client.send(new PutObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test', Body: 'testing' }));
+            await s3Client.send(new PutObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test', Body: 'testing', ContentType: 'text/plain; charset=utf-8' }));
             logDebugMessageToConsole('MoarTube Client successfully put a test object into the bucket', null, null);
 
-            logDebugMessageToConsole('verifying ability for MoarTube Client to delete a test object from the bucket', null, null);
+            logDebugMessageToConsole('verifying ability for MoarTube Client to get the test object from the bucket', null, null);
+            await s3Client.send(new GetObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test'}));
+            logDebugMessageToConsole('MoarTube Client successfully got the test object from the bucket', null, null);
+
+            logDebugMessageToConsole('verifying ability for MoarTube Client to delete the test object from the bucket', null, null);
             await s3Client.send(new DeleteObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test' }));
-            logDebugMessageToConsole('MoarTube Client successfully deleted a test object from the bucket', null, null);
+            logDebugMessageToConsole('MoarTube Client successfully deleted the test object from the bucket', null, null);
 
             logDebugMessageToConsole('s3 provider credentials validated', null, null);
 
@@ -377,7 +355,6 @@ async function streamToString(stream) {
   }
 
 module.exports = {
-    s3_putObjectsFromFilePaths,
     s3_putObjectFromData,
     s3_putObjectsFromFilePathsWithProgress,
     s3_deleteObjectWithKey,

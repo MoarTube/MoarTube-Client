@@ -2,8 +2,8 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 
-const { root_GET, videoId_GET, delete_POST, search_GET } = require('../controllers/comments');
-const { node_isAuthenticated, node_doSignout, node_getSettings } = require('../utils/node-communications');
+const { videoId_GET, delete_POST, search_GET } = require('../controllers/comments');
+const { node_isAuthenticated, node_doSignout } = require('../utils/node-communications');
 const { logDebugMessageToConsole, getPublicDirectoryPath } = require('../utils/helpers');
 
 const router = express.Router();
@@ -20,25 +20,10 @@ router.get('/', (req, res) => {
         }
         else {
             if(nodeResponseData.isAuthenticated) {
-                node_getSettings(jwtToken)
-                .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                        
-                        node_doSignout(req, res);
-                    }
-                    else {
-                        const pagePath = path.join(getPublicDirectoryPath(), 'pages/comments.html');
-                        const fileStream = fs.createReadStream(pagePath);
-                        res.setHeader('Content-Type', 'text/html');
-                        fileStream.pipe(res);
-                    }
-                })
-                .catch(error => {
-                    logDebugMessageToConsole(null, error, new Error().stack);
-                    
-                    node_doSignout(req, res);
-                });
+                const pagePath = path.join(getPublicDirectoryPath(), 'pages/comments.html');
+                const fileStream = fs.createReadStream(pagePath);
+                res.setHeader('Content-Type', 'text/html');
+                fileStream.pipe(res);
             }
             else {
                 res.redirect('/account/signin');
