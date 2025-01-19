@@ -10,7 +10,7 @@ const {
     nodeCommentsToggle_POST, nodeDislikesToggle_POST, nodeLikesToggle_POST, nodeReportsToggle_POST, nodeLiveChatToggle_POST, nodeDatabaseConfigToggle_POST, nodeDatabaseConfigEmpty_POST,
     nodeStorageConfigToggle_POST, nodeStorageConfigEmpty_POST
  } = require('../controllers/settings');
- const { logDebugMessageToConsole, getPublicDirectoryPath, getCertificatesDirectoryPath } = require('../utils/helpers');
+ const { logDebugMessageToConsole, getPublicDirectoryPath, getCertificatesDirectoryPath, getImagesDirectoryPath } = require('../utils/helpers');
 const { node_isAuthenticated, node_doSignout } = require('../utils/node-communications');
 
 const router = express.Router();
