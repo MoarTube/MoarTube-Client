@@ -22,6 +22,7 @@ let websocketServer;
 let websocketClient;
 
 let nodeSettings;
+let externalVideosBaseUrl;
 
 function logDebugMessageToConsole(message, error, stackTrace) {
     const date = new Date(Date.now());
@@ -247,14 +248,14 @@ function cleanVideosDirectory() {
 }
 
 async function refreshM3u8MasterManifest(jwtToken, videoId) {
-    const { node_getVideoData, node_uploadM3u8MasterManifest, node_getExternalVideosBaseUrl } = require('./node-communications');
+    const { node_getVideoData, node_uploadM3u8MasterManifest } = require('./node-communications');
     const { s3_putObjectFromData } = require('./s3-communications');
 
     const videoData = (await node_getVideoData(videoId)).videoData;
     const isStreaming = videoData.isStreaming;
     const resolutions = videoData.outputs.m3u8;
 
-    const externalVideosBaseUrl = (await node_getExternalVideosBaseUrl(jwtToken)).externalVideosBaseUrl;
+    const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
 
     let manifestType;
 
@@ -533,7 +534,7 @@ async function getNodeSettings(jwtToken) {
 
         nodeSettings = (await node_getSettings(jwtToken)).nodeSettings;
 
-        logDebugMessageToConsole('retrieved settings from MoarTube Node', null, null);
+        logDebugMessageToConsole('retrieved nodeSettings from MoarTube Node', null, null);
     }
 
     return nodeSettings;
@@ -541,6 +542,24 @@ async function getNodeSettings(jwtToken) {
 
 function clearNodeSettingsClientCache() {
     nodeSettings = null;
+}
+
+async function getExternalVideosBaseUrl(jwtToken) {
+    if(externalVideosBaseUrl == null) {
+        const { 
+            node_getExternalVideosBaseUrl
+        } = require('./node-communications');
+
+        externalVideosBaseUrl = (await node_getExternalVideosBaseUrl(jwtToken)).externalVideosBaseUrl;
+
+        logDebugMessageToConsole('retrieved externalVideosBaseUrl from MoarTube Node', null, null);
+    }
+
+    return externalVideosBaseUrl;
+}
+
+function clearExternalVideosBaseUrlClientCache() {
+    externalVideosBaseUrl = null;
 }
 
 module.exports = {
@@ -593,5 +612,7 @@ module.exports = {
     refreshM3u8MasterManifest,
     cacheM3u8Segment,
     getNodeSettings,
-    clearNodeSettingsClientCache
+    clearNodeSettingsClientCache,
+    getExternalVideosBaseUrl,
+    clearExternalVideosBaseUrlClientCache
 };

@@ -4,14 +4,20 @@ const spawn = require('child_process').spawn;
 
 const { 
     logDebugMessageToConsole, deleteDirectoryRecursive, timestampToSeconds, websocketClientBroadcast, getVideosDirectoryPath, getFfmpegPath, getClientSettings,
-    refreshM3u8MasterManifest, getNodeSettings
+    refreshM3u8MasterManifest, getNodeSettings, getExternalVideosBaseUrl
  } = require('../helpers');
-const { node_setVideoPublishing, node_setVideoPublished, node_uploadVideo, node_getExternalVideosBaseUrl, node_setVideoFormatResolutionPublished
+const { 
+    node_setVideoPublishing, node_setVideoPublished, node_uploadVideo, node_setVideoFormatResolutionPublished
  } = require('../node-communications');
- const { s3_putObjectsFromFilePathsWithProgress
+ const { 
+    s3_putObjectsFromFilePathsWithProgress
  } = require('../s3-communications');
-const { getPendingPublishVideoTracker, getPendingPublishVideoTrackerQueueSize, enqueuePendingPublishVideo, dequeuePendingPublishVideo } = require('../trackers/pending-publish-video-tracker');
-const { addToPublishVideoEncodingTracker, isPublishVideoEncodingStopping } = require('../trackers/publish-video-encoding-tracker');
+const { 
+    getPendingPublishVideoTracker, getPendingPublishVideoTrackerQueueSize, enqueuePendingPublishVideo, dequeuePendingPublishVideo 
+} = require('../trackers/pending-publish-video-tracker');
+const { 
+    addToPublishVideoEncodingTracker, isPublishVideoEncodingStopping 
+} = require('../trackers/publish-video-encoding-tracker');
 
 let inProgressPublishingJobCount = 0;
 let maximumInProgressPublishingJobCount = 5;
@@ -180,7 +186,7 @@ function performEncodingJob(jwtToken, videoId, format, resolution, sourceFileExt
                 destinationFilePath = path.join(getVideosDirectoryPath(), videoId + '/progressive/ogv/' + resolution + destinationFileExtension);
             }
 
-            const externalVideosBaseUrl = (await node_getExternalVideosBaseUrl(jwtToken)).externalVideosBaseUrl;
+            const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
             
             const ffmpegArguments = generateFfmpegVideoArguments(videoId, resolution, format, sourceFilePath, destinationFilePath, sourceFileExtension, externalVideosBaseUrl);
             

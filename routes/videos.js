@@ -9,8 +9,8 @@ const {
     videoIdIndexRemove_POST, videoIdThumbnail_POST, videoIdPreview_POST, videoIdPoster_POST, videoIdSources_GET
 } = require('../controllers/videos');
 
-const { logDebugMessageToConsole, websocketClientBroadcast, getVideosDirectoryPath } = require('../utils/helpers');
-const { node_isAuthenticated, node_doSignout, node_importVideo, node_setVideoError, node_getExternalVideosBaseUrl } = require('../utils/node-communications');
+const { logDebugMessageToConsole, websocketClientBroadcast, getVideosDirectoryPath, getExternalVideosBaseUrl } = require('../utils/helpers');
+const { node_isAuthenticated, node_doSignout, node_importVideo, node_setVideoError } = require('../utils/node-communications');
 const { addVideoToImportVideoTracker, isVideoImportStopping } = require('../utils/trackers/import-video-tracker');
 
 const router = express.Router();
@@ -27,7 +27,7 @@ router.get('/', (req, res) => {
         }
         else {
             if(nodeResponseData.isAuthenticated) {
-                const externalVideosBaseUrl = (await node_getExternalVideosBaseUrl(jwtToken)).externalVideosBaseUrl;
+                const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
 
                 res.render('videos', {
                     externalVideosBaseUrl: externalVideosBaseUrl

@@ -5,11 +5,11 @@ const sharp = require('sharp');
 
 const { 
     logDebugMessageToConsole, getVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds, deleteDirectoryRecursive,
-    cacheM3u8Segment, getNodeSettings
+    cacheM3u8Segment, getNodeSettings, getExternalVideosBaseUrl
  } = require('../helpers');
 const { 
     node_setVideoLengths, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, node_removeAdaptiveStreamSegment, 
-    node_stopVideoStreaming, node_getExternalVideosBaseUrl
+    node_stopVideoStreaming
 } = require('../node-communications');
 const { 
     s3_putObjectFromData, s3_deleteObjectWithKey
@@ -36,7 +36,7 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
         const sourceFilePath = path.join(sourceDirectoryPath, '/' + videoId + '.ts');
         const manifestFileName = 'manifest-' + resolution + '.m3u8';
 
-        const externalVideosBaseUrl = (await node_getExternalVideosBaseUrl(jwtToken)).externalVideosBaseUrl;
+        const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
 
         const ffmpegArguments = generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely, externalVideosBaseUrl);
         

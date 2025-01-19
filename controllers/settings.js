@@ -7,14 +7,15 @@ sharp.cache(false);
 
 const { 
     logDebugMessageToConsole, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodePort, detectOperatingSystem, detectSystemGpu, 
-    detectSystemCpu, getClientSettings, setClientSettings, getImagesDirectoryPath, getClientSettingsDefault, clearNodeSettingsClientCache, getNodeSettings
+    detectSystemCpu, getClientSettings, setClientSettings, getImagesDirectoryPath, getClientSettingsDefault, clearNodeSettingsClientCache, getNodeSettings,
+    clearExternalVideosBaseUrlClientCache, getExternalVideosBaseUrl
 } = require('../utils/helpers');
 const { 
     node_setExternalNetwork, node_getAvatar, node_setAvatar, node_getBanner, node_setBanner, node_setNodeName, node_setNodeAbout, 
     node_setNodeId, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials, node_setCloudflareConfiguration, 
     node_clearCloudflareConfiguration, node_setCloudflareTurnstileConfiguration, node_CloudflareTurnstileConfigurationClear,
     node_commentsToggle, node_likesToggle, node_dislikesToggle, node_reportsToggle, node_liveChatToggle, node_databaseConfigToggle,
-    node_databaseConfigEmpty, node_storageConfigToggle, node_storageConfigEmpty, node_getVideoDataAll, node_getExternalVideosBaseUrl
+    node_databaseConfigEmpty, node_storageConfigToggle, node_storageConfigEmpty, node_getVideoDataAll
 } = require('../utils/node-communications');
 
 const {
@@ -397,16 +398,17 @@ function nodeNetworkExternal_POST(jwtToken, publicNodeProtocol, publicNodeAddres
                 resolve({isError: true, message: nodeResponseData.message});
             }
             else {
+                clearExternalVideosBaseUrlClientCache();
+                clearNodeSettingsClientCache();
+
                 const nodeSettings = await getNodeSettings(jwtToken);
 
                 if(nodeSettings.storageConfig.storageMode === 's3provider') {
                     const videosData = await node_getVideoDataAll(jwtToken);
-                    const externalVideosBaseUrl = (await node_getExternalVideosBaseUrl(jwtToken)).externalVideosBaseUrl;
+                    const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
 
                     await s3_updateM3u8ManifestsWithExternalVideosBaseUrl(nodeSettings.storageConfig.s3Config, videosData, externalVideosBaseUrl);
                 }
-
-                clearNodeSettingsClientCache();
                 
                 resolve({isError: false});
             }
@@ -555,7 +557,17 @@ function nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig) {
             resolve({isError: true, message: nodeResponseData.message});
         }
         else {
+            clearExternalVideosBaseUrlClientCache();
             clearNodeSettingsClientCache();
+            
+            const nodeSettings = await getNodeSettings(jwtToken);
+
+            if(nodeSettings.storageConfig.storageMode === 's3provider') {
+                const videosData = await node_getVideoDataAll(jwtToken);
+                const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
+
+                await s3_updateM3u8ManifestsWithExternalVideosBaseUrl(nodeSettings.storageConfig.s3Config, videosData, externalVideosBaseUrl);
+            }
 
             resolve({isError: false});
         }
