@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const fss = require('fs').promises;
 const webSocket = require('ws');
 const axios = require('axios').default;
 
@@ -61,14 +62,13 @@ function logDebugMessageToConsole(message, error, stackTrace) {
     */
 }
 
-function deleteDirectoryRecursive(directoryPath) {
-    return new Promise(function(resolve, reject) {
-        fs.rm(directoryPath, { recursive: true, force: true }, function(error) {
-            // do nothing, best effort
-
-            resolve();
-        });
-    });
+async function deleteDirectoryRecursive(directoryPath) {
+	try {
+		await fss.rm(directoryPath, { recursive: true, force: true });
+	}
+	catch(error) {
+		logDebugMessageToConsole('failed to delete directory path: ' + directoryPath, error, null);
+	}
 }
 
 function timestampToSeconds(timestamp) {

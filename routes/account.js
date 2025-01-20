@@ -23,10 +23,9 @@ router.get('/signin', (req, res) => {
                 res.redirect('/videos');
             }
             else {
-                const pagePath = path.join(getPublicDirectoryPath(), 'pages/signin.html');
-                const fileStream = fs.createReadStream(pagePath);
-                res.setHeader('Content-Type', 'text/html');
-                fileStream.pipe(res);
+                res.render('signin', {
+
+                });
             }
         }
     })

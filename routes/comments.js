@@ -20,10 +20,9 @@ router.get('/', (req, res) => {
         }
         else {
             if(nodeResponseData.isAuthenticated) {
-                const pagePath = path.join(getPublicDirectoryPath(), 'pages/comments.html');
-                const fileStream = fs.createReadStream(pagePath);
-                res.setHeader('Content-Type', 'text/html');
-                fileStream.pipe(res);
+                res.render('comments', {
+
+                });
             }
             else {
                 res.redirect('/account/signin');

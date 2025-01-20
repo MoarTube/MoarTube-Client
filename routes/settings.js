@@ -27,10 +27,9 @@ router.get('/', (req, res) => {
         }
         else {
             if(nodeResponseData.isAuthenticated) {
-                const pagePath = path.join(getPublicDirectoryPath(), 'pages/settings.html');
-                const fileStream = fs.createReadStream(pagePath);
-                res.setHeader('Content-Type', 'text/html');
-                fileStream.pipe(res);
+                res.render('settings', {
+
+                });
             }
             else {
                 res.redirect('/account/signin');
