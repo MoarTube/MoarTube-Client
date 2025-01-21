@@ -15,7 +15,7 @@ const {
     node_setNodeId, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials, node_setCloudflareConfiguration, 
     node_clearCloudflareConfiguration, node_setCloudflareTurnstileConfiguration, node_CloudflareTurnstileConfigurationClear,
     node_commentsToggle, node_likesToggle, node_dislikesToggle, node_reportsToggle, node_liveChatToggle, node_databaseConfigToggle,
-    node_databaseConfigEmpty, node_storageConfigToggle, node_storageConfigEmpty, node_getVideoDataAll
+    node_databaseConfigEmpty, node_storageConfigToggle, node_storageConfigEmpty, node_getVideoDataOutputs
 } = require('../utils/node-communications');
 
 const {
@@ -404,7 +404,7 @@ function nodeNetworkExternal_POST(jwtToken, publicNodeProtocol, publicNodeAddres
                 const nodeSettings = await getNodeSettings(jwtToken);
 
                 if(nodeSettings.storageConfig.storageMode === 's3provider') {
-                    const videosData = await node_getVideoDataAll(jwtToken);
+                    const videosData = await node_getVideoDataOutputs(jwtToken);
                     const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
 
                     await s3_updateM3u8ManifestsWithExternalVideosBaseUrl(nodeSettings.storageConfig.s3Config, videosData, externalVideosBaseUrl);
@@ -563,7 +563,7 @@ function nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig) {
             const nodeSettings = await getNodeSettings(jwtToken);
 
             if(nodeSettings.storageConfig.storageMode === 's3provider') {
-                const videosData = await node_getVideoDataAll(jwtToken);
+                const videosData = await node_getVideoDataOutputs(jwtToken);
                 const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
 
                 await s3_updateM3u8ManifestsWithExternalVideosBaseUrl(nodeSettings.storageConfig.s3Config, videosData, externalVideosBaseUrl);

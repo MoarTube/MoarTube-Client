@@ -1,7 +1,7 @@
 const portscanner = require('portscanner');
 
 const { 
-    logDebugMessageToConsole, websocketClientBroadcast, refreshM3u8MasterManifest, getNodeSettings
+    logDebugMessageToConsole, websocketClientBroadcast, getNodeSettings, refreshM3u8MasterManifest
 } = require('../utils/helpers');
 const { 
     isPortValid 
@@ -32,7 +32,7 @@ function start_POST(jwtToken, title, description, tags, rtmpPort, resolution, is
                 else {
                     if (portStatus === 'closed') {
                         const uuid = 'moartube';
-                        
+
                         node_streamVideo(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, resolution, videoId)
                         .then(nodeResponseData => {
                             if(nodeResponseData.isError) {
@@ -53,8 +53,6 @@ function start_POST(jwtToken, title, description, tags, rtmpPort, resolution, is
                                         resolve({isError: true, message: nodeResponseData.message});
                                     }
                                     else {
-                                        await refreshM3u8MasterManifest(jwtToken, videoId);
-
                                         const rtmpUrl = 'rtmp://' + networkAddress + ':' + rtmpPort + '/live/' + uuid;
 
                                         performStreamingJob(jwtToken, videoId, rtmpUrl, 'm3u8', resolution, isRecordingStreamRemotely, isRecordingStreamLocally);
@@ -86,18 +84,15 @@ function videoIdStop_POST(jwtToken, videoId) {
         const nodeSettings = await getNodeSettings(jwtToken);
         const storageConfig = nodeSettings.storageConfig;
 
-        if(storageConfig.storageMode === 'filesystem') {
-            // HLS live manifests are converted from dynamic to static by the node
-        }
-        else if(storageConfig.storageMode === 's3provider') {
+        if(storageConfig.storageMode === 's3provider') {
             const s3Config = storageConfig.s3Config;
 
             const videoData = (await node_getVideoData(videoId)).videoData;
             const isStreamRecordedRemotely = videoData.isStreamRecordedRemotely;
             
             if(isStreamRecordedRemotely) {
-                const resolutions = JSON.parse(videoData.outputs).m3u8;
-
+                const resolutions = videoData.outputs.m3u8;
+                
                 await s3_convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions);
             }
             else {

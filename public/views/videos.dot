@@ -791,27 +791,22 @@
 										$('#videos_table_row_' + videoId).find('td').eq(5).html('<p class="text-secondary mb-0 text-sm">' + calculateBandwidthUsage_MB(bandwidth) + '</p>');
 									}
 									
-									fetch(EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/thumbnail.jpg')
-									.then(async response => {
-										if (response.ok) {
-											return response.blob();
-										}
-										else {
-											throw new Error('could not retrieve stream thumbnail for video id: ' + videoId);
-										}
-									})
-									.then(blob => {
-										const objectURL = URL.createObjectURL(blob);
-										
-										if($('#video-thumbnail-loading-spinner-' + videoId).length) {
-											$('#video-thumbnail-loading-spinner-' + videoId).replaceWith('<img id="video-thumbnail-' + videoId + '" src="' + objectURL + '" class="avatar avatar-sm me-3 cursor-pointer" alt="avatar image">');
-										}
-										else if($('#video-thumbnail-' + videoId).length) {
+									$.ajax({type: 'GET', url: EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/thumbnail.jpg', xhrFields: { responseType: 'blob'}})
+									.done(function (data, textStatus, xhr)
+									{
+										const objectURL = URL.createObjectURL(data);
+
+										if ($('#video-thumbnail-loading-spinner-' + videoId).length) {
+											$('#video-thumbnail-loading-spinner-' + videoId).replaceWith(
+												'<img id="video-thumbnail-' + videoId + '" src="' + objectURL + '" class="avatar avatar-sm me-3 cursor-pointer" alt="avatar image">'
+											);
+										} else if ($('#video-thumbnail-' + videoId).length) {
 											$('#video-thumbnail-' + videoId).attr('src', objectURL);
 										}
 									})
-									.catch(error => {
-										console.log(error);
+									.fail(function()
+									{
+										console.error('Could not retrieve stream thumbnail for video id:', videoId, error);
 									});
 								}
 								else if(type === 'streaming_stopped') {
@@ -2381,28 +2376,31 @@
 								try {
 									const cloudflareTurnstileToken = await getCloudflareTurnstileToken();
 
-									const response = await fetch('/videos/' + videoId + '/index/add', {
-										method: 'POST',
-										headers: {
-											'Content-Type': 'application/json',
-										},
-										body: JSON.stringify({ containsAdultContent: containsAdultContent, termsOfServiceAgreed: termsOfServiceAgreed, cloudflareTurnstileToken: cloudflareTurnstileToken }),
+									const data = { containsAdultContent: containsAdultContent, termsOfServiceAgreed: termsOfServiceAgreed, cloudflareTurnstileToken: cloudflareTurnstileToken };
+
+									$.ajax({type: 'POST', url: '/videos/' + videoId + '/index/add', data: JSON.stringify(data), contentType: 'application/json; charset=utf-8'})
+									.always(function() {
+										$(checkbox).prop('disabled', false);
+									})
+									.done(function (data, textStatus, xhr) {
+										if(data.isError) {
+											showAlert(true, data.message);
+											
+											$(checkbox).prop('checked', !isIndexing);
+										}
+										else {
+											showNotification('<span class=\"alert-text\">added your video to the MoarTube Index</span>', 'alert-primary');
+											
+											revertAction = false;
+											
+											Swal.close();
+										}
+									})
+									.fail(function() {
+										$(checkbox).prop('checked', !isLikesEnabled);
+
+										showAlert(true, 'an error occurred, please try again');
 									});
-
-									const data = await response.json();
-
-									if(data.isError) {
-										showAlert(true, data.message);
-										
-										$(checkbox).prop('checked', !isIndexing);
-									}
-									else {
-										showNotification('<span class=\"alert-text\">added your video to the MoarTube Index</span>', 'alert-primary');
-										
-										revertAction = false;
-										
-										Swal.close();
-									}
 								}
 								catch(error) {
 									showAlert(true, error);
@@ -2941,34 +2939,31 @@
 			}
 
 			function getCloudflareTurnstileToken() {
-				return new Promise(function(resolve, reject) {
-					fetch('https://captcha.moartube.com/heartbeat')
-					.then(data => {
-						const captchaIframeId = Date.now();
+				return new Promise(function (resolve, reject) {
+					$.ajax({type: 'GET', url: 'https://captcha.moartube.com/heartbeat'})
+					.done(function () {
+						const captchaIframeId = `captcha-iframe-${Date.now()}`;
 
-						function processMessage (evt) {
+						function processMessage(evt) {
 							if (evt.origin === "https://captcha.moartube.com") {
-								if (window.removeEventListener) {
-									window.removeEventListener("message", processMessage, false);
-								} 
-								else {
-									window.detachEvent("onmessage", processMessage);
-								}
+								window.removeEventListener("message", processMessage);
 
 								const currentIframe = document.getElementById(captchaIframeId);
 
-								document.body.removeChild(currentIframe);
+								if (currentIframe) {
+									document.body.removeChild(currentIframe);
+								}
 
 								const token = evt.data;
 
-								if(token === 'unsupported') {
-									reject('unable to activate that feature');
+								if (token === 'unsupported') {
+									reject('Unable to activate that feature');
 								}
-								else if(token === 'timeout') {
-									reject('human verification unsuccessful, please try again');
+								else if (token === 'timeout') {
+									reject('Human verification unsuccessful, please try again');
 								}
-								else if(token === 'error') {
-									reject('human verification unsuccessful, please try again');
+								else if (token === 'error') {
+									reject('Human verification unsuccessful, please try again');
 								}
 								else {
 									resolve(token);
@@ -2976,30 +2971,24 @@
 							}
 						}
 
-						if (window.addEventListener) {
-							window.addEventListener("message", processMessage, false);
-						}
-						else {
-							window.attachEvent("onmessage", processMessage);
-						}
+						window.addEventListener("message", processMessage);
 
 						const newIframe = document.createElement('iframe');
 
 						newIframe.id = captchaIframeId;
 						newIframe.className = 'hidden-elem';
-						
 						newIframe.src = 'https://captcha.moartube.com/token/generate';
 
-						newIframe.onload = function() {
-							const iframe = document.getElementById(captchaIframeId).contentWindow;
+						newIframe.onload = function () {
+							const iframeWindow = newIframe.contentWindow;
 							
-							iframe.postMessage('get-captcha', '*');
+							iframeWindow.postMessage('get-captcha', 'https://captcha.moartube.com');
 						};
 
 						document.body.appendChild(newIframe);
 					})
-					.catch(error => {
-						reject('human verification unavailable, please try again later');
+					.fail(function () {
+						reject('Human verification unavailable, please try again later');
 					});
 				});
 			}

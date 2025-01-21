@@ -165,12 +165,12 @@ function s3_convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions) 
                 const dynamicManifest = await streamToString(response.Body);
                 
                 let staticManifest;
-                if(!dynamicKey.includes('manifest-master.m3u8')) {
-                    staticManifest = dynamicManifest.replace('#EXT-X-PLAYLIST-TYPE:EVENT', '#EXT-X-PLAYLIST-TYPE:VOD');
-                    staticManifest = staticManifest.trim() + '\n#EXT-X-ENDLIST\n';
+                if(dynamicKey.includes('manifest-master.m3u8')) {
+                    staticManifest = dynamicManifest.replace(/\/dynamic\//g, '/static/');
                 }
                 else {
-                    staticManifest = dynamicManifest;
+                    staticManifest = dynamicManifest.replace('#EXT-X-PLAYLIST-TYPE:EVENT', '#EXT-X-PLAYLIST-TYPE:VOD');
+                    staticManifest = staticManifest.trim() + '\n#EXT-X-ENDLIST\n';
                 }
 
                 logDebugMessageToConsole(`Uploading static manifest: ${staticKey}`, null, null);
@@ -199,7 +199,7 @@ function s3_updateM3u8ManifestsWithExternalVideosBaseUrl(s3Config, videosData, e
 
             for (const videoData of videosData) {
                 const videoId = videoData.video_id;
-                const outputs = JSON.parse(videoData.outputs);
+                const outputs = videoData.outputs
 
                 if(outputs.m3u8.length > 0) {
                     const masterManifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-master.m3u8';

@@ -885,20 +885,16 @@ input[type="range"]:focus::-moz-range-thumb{
 							showAlert(true, data.message);
 						}
 						else {
-							fetch('/settings/node/avatar')
-							.then(response => {
-								if (response.ok) {
-									return response.blob();
-								}
-								throw new Error('...something went wrong...');
-							})
-							.then(blob => {
-								const objectURL = URL.createObjectURL(blob);
+							$.ajax({type: 'GET', url: '/settings/node/avatar', xhrFields: { responseType: 'blob'}})
+							.done(function (data, textStatus, xhr)
+							{
+								const objectURL = URL.createObjectURL(data);
 								
 								$('.node-avatar').attr('src', objectURL);
 							})
-							.catch(error => {
-								showAlert(true, 'an error occurred, please try again');
+							.fail(function()
+							{
+								console.error('Could not retrieve stream thumbnail for video id:', videoId, error);
 							});
 						}
 					})
@@ -923,20 +919,16 @@ input[type="range"]:focus::-moz-range-thumb{
 						showAlert(true, data.message);
 					}
 					else {
-						fetch('/settings/node/banner')
-						.then(response => {
-							if (response.ok) {
-								return response.blob();
-							}
-							throw new Error('...something went wrong...');
-						})
-						.then(blob => {
-							const objectURL = URL.createObjectURL(blob);
+						$.ajax({type: 'GET', url: '/settings/node/banner', xhrFields: { responseType: 'blob'}})
+						.done(function (data, textStatus, xhr)
+						{
+							const objectURL = URL.createObjectURL(data);
 							
 							$('#node-banner').attr('src', objectURL);
 						})
-						.catch(error => {
-							showAlert(true, 'an error occurred, please try again');
+						.fail(function()
+						{
+							console.error('Could not retrieve stream thumbnail for video id:', videoId, error);
 						});
 					}
 				})

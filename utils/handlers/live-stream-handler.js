@@ -5,14 +5,14 @@ const sharp = require('sharp');
 
 const { 
     logDebugMessageToConsole, getVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds, deleteDirectoryRecursive,
-    cacheM3u8Segment, getNodeSettings, getExternalVideosBaseUrl
+    cacheM3u8Segment, getNodeSettings, getExternalVideosBaseUrl, refreshM3u8MasterManifest
  } = require('../helpers');
 const { 
     node_setVideoLengths, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, node_removeAdaptiveStreamSegment, 
     node_stopVideoStreaming
 } = require('../node-communications');
 const { 
-    s3_putObjectFromData, s3_deleteObjectWithKey
+    s3_putObjectFromData, s3_deleteObjectWithKey, s3_deleteObjectsWithPrefix
 } = require('../s3-communications');
 const { 
     addProcessToLiveStreamTracker, isLiveStreamStopping, liveStreamExists 
@@ -25,6 +25,14 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
         const nodeSettings = await getNodeSettings(jwtToken);
         const storageConfig = nodeSettings.storageConfig;
         const isCloudflareCdnEnabled = nodeSettings.isCloudflareCdnEnabled;
+
+        if(storageConfig.storageMode === 's3provider') {
+            const prefix = 'external/videos/' + videoId + '/adaptive/m3u8';
+
+            await s3_deleteObjectsWithPrefix(storageConfig.s3Config, prefix);
+        }
+        
+        await refreshM3u8MasterManifest(jwtToken, videoId);
 
         await deleteDirectoryRecursive(path.join(getVideosDirectoryPath(), videoId));
         

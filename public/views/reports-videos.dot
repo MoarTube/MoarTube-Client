@@ -567,9 +567,9 @@
 			function deleteVideo1(button) {
 				const videoId = $(button).data('videoid');
 				
-				const videoIdsJson = JSON.stringify([videoId]);
+				const videoIds = [videoId];
 				
-				$.ajax({type: 'POST', url: '/videos/delete', data: {videoIdsJson: videoIdsJson}})
+				$.ajax({type: 'POST', url: '/videos/delete', data: JSON.stringify({ videoIds: videoIds }), contentType: 'application/json; charset=utf-8'})
 				.done(function (data, textStatus, xhr) {
 					if(data.isError) {
 						showAlert(true, data.message);
@@ -586,10 +586,10 @@
 			
 			function deleteVideo2(button) {
 				const videoId = $(button).data('videoid');
+
+				const videoIds = [videoId];
 				
-				const videoIdsJson = JSON.stringify([videoId]);
-				
-				$.ajax({type: 'POST', url: '/videos/delete', data: {videoIdsJson: videoIdsJson}})
+				$.ajax({type: 'POST', url: '/videos/delete', data: JSON.stringify({ videoIds: videoIds }), contentType: 'application/json; charset=utf-8'})
 				.done(function (data, textStatus, xhr)
 				{
 					if(data.isError) {

@@ -1803,9 +1803,9 @@ function node_uploadM3u8MasterManifest(jwtToken, videoId, type, masterManifest) 
     });
 }
 
-function node_getVideoDataAll(jwtToken) {
+function node_getVideoDataOutputs(jwtToken) {
     return new Promise(function(resolve, reject) {
-        axios.get(getMoarTubeNodeUrl() + '/videos/data/all', {
+        axios.get(getMoarTubeNodeUrl() + '/videos/data/outputs', {
           headers: {
             Authorization: jwtToken
           }
@@ -1911,5 +1911,5 @@ module.exports = {
     node_getExternalVideosBaseUrl,
     node_getManifestFile,
     node_uploadM3u8MasterManifest,
-    node_getVideoDataAll
+    node_getVideoDataOutputs
 };
