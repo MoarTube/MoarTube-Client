@@ -1,65 +1,21 @@
-const { logDebugMessageToConsole } = require('../utils/helpers');
 const { node_LinksAll, node_LinksAdd, node_LinksDelete} = require('../utils/node-communications');
 
-function linksAll_GET() {
-    return new Promise(function(resolve, reject) {
-        node_LinksAll()
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                const links = nodeResponseData.links;
+async function linksAll_GET() {
+    const result = await node_LinksAll();
 
-                resolve({isError: false, links: links});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+    return result;
 }
 
-function linksAdd_POST(jwtToken, url, svgGraphic) {
-    return new Promise(function(resolve, reject) {
-        node_LinksAdd(jwtToken, url, svgGraphic)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                const link = nodeResponseData.link;
+async function linksAdd_POST(jwtToken, url, svgGraphic) {
+    const result = await node_LinksAdd(jwtToken, url, svgGraphic);
 
-                resolve({isError: false, link: link});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+    return result;
 }
 
-function linksDelete_POST(jwtToken, linkId) {
-    return new Promise(function(resolve, reject) {
-        node_LinksDelete(jwtToken, linkId)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+async function linksDelete_POST(jwtToken, linkId) {
+    const result = await node_LinksDelete(jwtToken, linkId);
+
+    return result;
 }
 
 module.exports = {

@@ -1,7 +1,5 @@
-const portscanner = require('portscanner');
-
 const { 
-    logDebugMessageToConsole, websocketClientBroadcast, getNodeSettings, refreshM3u8MasterManifest
+    logDebugMessageToConsole, websocketClientBroadcast, getNodeSettings, checkNetworkPortStatus
 } = require('../utils/helpers');
 const { 
     isPortValid 
@@ -19,157 +17,122 @@ const {
     performStreamingJob 
 } = require('../utils/handlers/live-stream-handler');
 
-function start_POST(jwtToken, title, description, tags, rtmpPort, resolution, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, videoId) {
-    return new Promise(function(resolve, reject) {
-        if(!isPortValid(rtmpPort)) {
-            resolve({isError: true, message: 'rtmpPort is not valid'});
-        }
-        else {
-            portscanner.checkPortStatus(rtmpPort, '127.0.0.1', function(error, portStatus) {
-                if (error) {
-                    resolve({isError: true, message: 'an error occurred while checking the availability of port ' + rtmpPort});
+async function start_POST(jwtToken, title, description, tags, rtmpPort, resolution, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, videoId) {
+    let result;
+
+    if(!isPortValid(rtmpPort)) {
+        result = {isError: true, message: 'rtmpPort is not valid'};
+    }
+    else {
+        const portStatus = await checkNetworkPortStatus(rtmpPort, '127.0.0.1');
+
+        if (portStatus === 'closed') {
+            const uuid = 'moartube';
+
+            const result1 = await node_streamVideo(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, resolution, videoId);
+
+            if(!result1.isError) {
+                const videoId = result1.videoId;
+
+                addLiveStreamToLiveStreamTracker(videoId);
+                
+                const result2 = await node_setSourceFileExtension(jwtToken, videoId, '.ts');
+
+                if(!result2.isError) {
+                    const rtmpUrl = 'rtmp://' + networkAddress + ':' + rtmpPort + '/live/' + uuid;
+
+                    performStreamingJob(jwtToken, videoId, rtmpUrl, 'm3u8', resolution, isRecordingStreamRemotely, isRecordingStreamLocally);
+                    
+                    result = {isError: false, rtmpUrl: rtmpUrl};
                 }
                 else {
-                    if (portStatus === 'closed') {
-                        const uuid = 'moartube';
-
-                        node_streamVideo(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, resolution, videoId)
-                        .then(nodeResponseData => {
-                            if(nodeResponseData.isError) {
-                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                                
-                                resolve({isError: true, message: nodeResponseData.message});
-                            }
-                            else {
-                                const videoId = nodeResponseData.videoId;
-
-                                addLiveStreamToLiveStreamTracker(videoId);
-                                
-                                node_setSourceFileExtension(jwtToken, videoId, '.ts')
-                                .then(async nodeResponseData => {
-                                    if(nodeResponseData.isError) {
-                                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                                        
-                                        resolve({isError: true, message: nodeResponseData.message});
-                                    }
-                                    else {
-                                        const rtmpUrl = 'rtmp://' + networkAddress + ':' + rtmpPort + '/live/' + uuid;
-
-                                        performStreamingJob(jwtToken, videoId, rtmpUrl, 'm3u8', resolution, isRecordingStreamRemotely, isRecordingStreamLocally);
-                                        
-                                        resolve({isError: false, rtmpUrl: rtmpUrl});
-                                    }
-                                })
-                                .catch(error => {
-                                    reject(error);
-                                });
-                            }
-                        })
-                        .catch(error => {
-                            reject(error);
-                        });
-                    } else {
-                        resolve({isError: true, message: 'port ' + rtmpPort + ' is not available'});
-                    }
+                    result = result2;
                 }
-            });
+            }
+            else {
+                result = result1;
+            }
         }
-    });
+        else {
+            result = {isError: true, message: 'port ' + rtmpPort + ' is not available'};
+        }
+    }
+
+    return result;
 }
 
-function videoIdStop_POST(jwtToken, videoId) {
-    return new Promise(async function(resolve, reject) {
-        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
+async function videoIdStop_POST(jwtToken, videoId) {
+    websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
+    
+    const nodeSettings = await getNodeSettings(jwtToken);
+    const storageConfig = nodeSettings.storageConfig;
+
+    if(storageConfig.storageMode === 's3provider') {
+        const s3Config = storageConfig.s3Config;
+
+        const videoData = (await node_getVideoData(videoId)).videoData;
+        const isStreamRecordedRemotely = videoData.isStreamRecordedRemotely;
         
-        const nodeSettings = await getNodeSettings(jwtToken);
-        const storageConfig = nodeSettings.storageConfig;
-
-        if(storageConfig.storageMode === 's3provider') {
-            const s3Config = storageConfig.s3Config;
-
-            const videoData = (await node_getVideoData(videoId)).videoData;
-            const isStreamRecordedRemotely = videoData.isStreamRecordedRemotely;
+        if(isStreamRecordedRemotely) {
+            const resolutions = videoData.outputs.m3u8;
             
-            if(isStreamRecordedRemotely) {
-                const resolutions = videoData.outputs.m3u8;
-                
-                await s3_convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions);
-            }
-            else {
-                const prefix = 'external/videos/' + videoId + '/adaptive/m3u8';
-
-                await s3_deleteObjectsWithPrefix(s3Config, prefix);
-            }
+            await s3_convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions);
         }
+        else {
+            const prefix = 'external/videos/' + videoId + '/adaptive/m3u8';
 
-        node_stopVideoStreaming(jwtToken, videoId)
-        .then((nodeResponseData) => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId }}});
-                
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+            await s3_deleteObjectsWithPrefix(s3Config, prefix);
+        }
+    }
+
+    const result = await node_stopVideoStreaming(jwtToken, videoId);
+
+    if(!result.isError) {
+        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId }}});
+    }
+
+    return result;
 }
 
-function videoIdRtmpInformation_GET(videoId) {
-    return new Promise(function(resolve, reject) {
-        node_getVideoData(videoId)
-        .then(nodeResponseData => {
-            const meta = nodeResponseData.videoData.meta;
+async function videoIdRtmpInformation_GET(videoId) {
+    let result = await node_getVideoData(videoId);
 
-            const netorkAddress = meta.networkAddress;
-            const rtmpPort = meta.rtmpPort;
-            const uuid = meta.uuid;
+    if(!result.isError) {
+        const meta = result.videoData.meta;
 
-            const rtmpStreamUrl = 'rtmp://' + netorkAddress + ':' + rtmpPort + '/live/' + uuid;
-            const rtmpServerUrl = 'rtmp://' + netorkAddress + ':' + rtmpPort + '/live';
-            const rtmpStreamkey = uuid;
+        const netorkAddress = meta.networkAddress;
+        const rtmpPort = meta.rtmpPort;
+        const uuid = meta.uuid;
 
-            resolve({isError: false, rtmpStreamUrl: rtmpStreamUrl, rtmpServerUrl: rtmpServerUrl, rtmpStreamkey: rtmpStreamkey});
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+        const rtmpStreamUrl = 'rtmp://' + netorkAddress + ':' + rtmpPort + '/live/' + uuid;
+        const rtmpServerUrl = 'rtmp://' + netorkAddress + ':' + rtmpPort + '/live';
+        const rtmpStreamkey = uuid;
+
+        result = {isError: false, rtmpStreamUrl: rtmpStreamUrl, rtmpServerUrl: rtmpServerUrl, rtmpStreamkey: rtmpStreamkey};
+    }
+    
+    return result;
 }
 
-function videoIdChatSettings_GET(videoId) {
-    return new Promise(function(resolve, reject) {
-        node_getVideoData(videoId)
-        .then(nodeResponseData => {
-            const meta = nodeResponseData.videoData.meta;
+async function videoIdChatSettings_GET(videoId) {
+    let result = await node_getVideoData(videoId);
+
+    if(!result.isError) {
+        const meta = result.videoData.meta;
             
-            const isChatHistoryEnabled = meta.chatSettings.isChatHistoryEnabled;
-            const chatHistoryLimit = meta.chatSettings.chatHistoryLimit;
-            
-            resolve({isError: false, isChatHistoryEnabled: isChatHistoryEnabled, chatHistoryLimit: chatHistoryLimit});
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+        const isChatHistoryEnabled = meta.chatSettings.isChatHistoryEnabled;
+        const chatHistoryLimit = meta.chatSettings.chatHistoryLimit;
+
+        result = {isError: false, isChatHistoryEnabled: isChatHistoryEnabled, chatHistoryLimit: chatHistoryLimit};
+    }
+
+    return result;
 }
 
-function videoIdChatSettings_POST(jwtToken, videoId, isChatHistoryEnabled, chatHistoryLimit) {
-    return new Promise(function(resolve, reject) {
-        node_setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled, chatHistoryLimit)
-        .then(nodeResponseData => {
-            resolve(nodeResponseData);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+async function videoIdChatSettings_POST(jwtToken, videoId, isChatHistoryEnabled, chatHistoryLimit) {
+    const result = await node_setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled, chatHistoryLimit);
+
+    return result;
 }
 
 module.exports = {

@@ -49,56 +49,44 @@ async function node_GET(jwtToken) {
     return nodeSettings;
 }
 
-function clientGpuAcceleration_POST(isGpuAccelerationEnabled) {
-    return new Promise(function(resolve, reject) {
-        const operatingSystem = detectOperatingSystem();
+async function clientGpuAcceleration_POST(isGpuAccelerationEnabled) {
+    const operatingSystem = detectOperatingSystem();
+    
+    if(operatingSystem === 'win32') {
+        const clientSettings = getClientSettings();
         
-        if(operatingSystem === 'win32') {
-            const clientSettings = getClientSettings();
-            
-            const result = {};
-            
-            if(isGpuAccelerationEnabled) {
-                detectSystemGpu()
-                .then((systemGpu) => {
-                    clientSettings.processingAgent.processingAgentType = 'gpu';
-                    clientSettings.processingAgent.processingAgentName = systemGpu.processingAgentName;
-                    clientSettings.processingAgent.processingAgentModel = systemGpu.processingAgentModel;
-                    
-                    result.isGpuAccelerationEnabled = true;
-                    result.gpuVendor = systemGpu.processingAgentName;
-                    result.gpuModel = systemGpu.processingAgentModel;
-                    
-                    setClientSettings(clientSettings);
-            
-                    resolve({isError: false, result: result });
-                })
-                .catch(error => {
-                    reject(error);
-                });
-            }
-            else {
-                detectSystemCpu()
-                .then((systemCpu) => {
-                    clientSettings.processingAgent.processingAgentType = 'cpu';
-                    clientSettings.processingAgent.processingAgentName = systemCpu.processingAgentName;
-                    clientSettings.processingAgent.processingAgentModel = systemCpu.processingAgentModel;
-                    
-                    result.isGpuAccelerationEnabled = false;
+        const result = {};
+        
+        if(isGpuAccelerationEnabled) {
+            const systemGpu = await detectSystemGpu();
 
-                    setClientSettings(clientSettings);
+            clientSettings.processingAgent.processingAgentType = 'gpu';
+            clientSettings.processingAgent.processingAgentName = systemGpu.processingAgentName;
+            clientSettings.processingAgent.processingAgentModel = systemGpu.processingAgentModel;
+
+            setClientSettings(clientSettings);
             
-                    resolve({isError: false, result: result });
-                })
-                .catch(error => {
-                    reject(error);
-                });
-            }
+            result.isGpuAccelerationEnabled = true;
+            result.gpuVendor = systemGpu.processingAgentName;
+            result.gpuModel = systemGpu.processingAgentModel;
         }
         else {
-            resolve({isError: true, message: 'this version of MoarTube Client only supports GPU acceleration on Windows platforms'});
+            const systemCpu = await detectSystemCpu();
+
+            clientSettings.processingAgent.processingAgentType = 'cpu';
+            clientSettings.processingAgent.processingAgentName = systemCpu.processingAgentName;
+            clientSettings.processingAgent.processingAgentModel = systemCpu.processingAgentModel;
+
+            setClientSettings(clientSettings);
+            
+            result.isGpuAccelerationEnabled = false;
         }
-    });
+
+        return {isError: false, result: result}
+    }
+    else {
+        return {isError: true, message: 'this version of MoarTube Client only supports GPU acceleration on Windows platforms'};
+    }
 }
 
 function clientEncodingDefault_GET() {
@@ -123,602 +111,316 @@ function clientEncoding_POST(videoEncoderSettings, liveEncoderSettings) {
 
 
 
-function nodeAvatar_GET() {
-    return new Promise(function(resolve, reject) {
-        node_getAvatar()
-        .then(nodeResponseData => {
-            resolve(nodeResponseData);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+async function nodeAvatar_GET() {
+    const result = await node_getAvatar();
+
+    return result;
 }
 
-function nodeAvatar_POST(jwtToken, avatarFile) {
-    return new Promise(function(resolve, reject) {
-        if(avatarFile != null && avatarFile.length === 1) {
-            avatarFile = avatarFile[0];
+async function nodeAvatar_POST(jwtToken, avatarFile) {
+    if(avatarFile != null && avatarFile.length === 1) {
+        avatarFile = avatarFile[0];
 
-            const imagesDirectory = getImagesDirectoryPath();
-            
-            const sourceFilePath = path.join(imagesDirectory, avatarFile.filename);
-            
-            const iconDestinationFilePath = path.join(imagesDirectory, 'icon.png');
-            const avatarDestinationFilePath = path.join(imagesDirectory, 'avatar.png');
-            
-            sharp(sourceFilePath).resize({width: 48}).resize(48, 48).png({ compressionLevel: 9 }).toFile(iconDestinationFilePath)
-            .then(() => {
-                sharp(sourceFilePath).resize({width: 128}).resize(128, 128).png({ compressionLevel: 9 }).toFile(avatarDestinationFilePath)
-                .then(() => {
-                    node_setAvatar(jwtToken, iconDestinationFilePath, avatarDestinationFilePath)
-                    .then(nodeResponseData => {
-                        if(nodeResponseData.isError) {
-                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                            
-                            resolve({isError: true, message: nodeResponseData.message});
-                        }
-                        else {
-                            logDebugMessageToConsole('uploaded avatar to node', null, null);
-                            
-                            fs.unlinkSync(sourceFilePath);
-                            fs.unlinkSync(iconDestinationFilePath);
-                            fs.unlinkSync(avatarDestinationFilePath);
-
-                            clearNodeSettingsClientCache();
-                            
-                            resolve({isError: false});
-                        }
-                    })
-                    .catch(error => {
-                        reject(error);
-                    });
-                })
-                .catch(error => {
-                    reject(error);
-                });
-            })
-            .catch(error => {
-                reject(error);
-            });
-        }
-        else {
-            resolve({isError: true, message: 'avatar file is missing'});
-        }
-    });
-}
-
-function nodeBanner_GET() {
-    return new Promise(function(resolve, reject) {
-        node_getBanner()
-        .then(nodeResponseData => {
-            resolve(nodeResponseData);
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function nodeBanner_POST(jwtToken, bannerFile) {
-    return new Promise(function(resolve, reject) {
-        if(bannerFile != null && bannerFile.length === 1) {
-            bannerFile = bannerFile[0];
-
-            const imagesDirectory = getImagesDirectoryPath();
+        const imagesDirectory = getImagesDirectoryPath();
         
-            const sourceFilePath = path.join(imagesDirectory, bannerFile.filename);
+        const sourceFilePath = path.join(imagesDirectory, avatarFile.filename);
+        
+        const iconDestinationFilePath = path.join(imagesDirectory, 'icon.png');
+        const avatarDestinationFilePath = path.join(imagesDirectory, 'avatar.png');
+        
+        await sharp(sourceFilePath).resize({width: 48}).resize(48, 48).png({ compressionLevel: 9 }).toFile(iconDestinationFilePath);
+        await sharp(sourceFilePath).resize({width: 128}).resize(128, 128).png({ compressionLevel: 9 }).toFile(avatarDestinationFilePath);
             
-            const bannerDestinationFilePath = path.join(imagesDirectory, 'banner.png');
-            
-            sharp(sourceFilePath).resize({width: 2560}).resize(2560, 424).png({ compressionLevel: 9 }).toFile(bannerDestinationFilePath)
-            .then(() => {
-                fs.unlinkSync(sourceFilePath);
-                
-                node_setBanner(jwtToken, bannerDestinationFilePath)
-                .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                        
-                        resolve({isError: true, message: nodeResponseData.message});
-                    }
-                    else {
-                        logDebugMessageToConsole('uploaded avatar to node', null, null);
-                        
-                        fs.unlinkSync(bannerDestinationFilePath);
+        const result = await node_setAvatar(jwtToken, iconDestinationFilePath, avatarDestinationFilePath);
 
-                        clearNodeSettingsClientCache();
-                        
-                        resolve({isError: false});
-                    }
-                })
-                .catch(error => {
-                    reject(error);
-                });
-                
-            })
-            .catch(error => {
-                reject(error);
-            });
-        }
-        else {
-            resolve({isError: true, message: 'banner file is missing'});
-        }
-    });
+        fs.unlinkSync(sourceFilePath);
+        fs.unlinkSync(iconDestinationFilePath);
+        fs.unlinkSync(avatarDestinationFilePath);
+
+        clearNodeSettingsClientCache();
+
+        return result;
+    }
+    else {
+        return {isError: true, message: 'avatar file is missing'};
+    }
 }
 
-function nodePersonalizeNodeName_POST(jwtToken, nodeName) {
-    return new Promise(function(resolve, reject) {
-        node_setNodeName(jwtToken, nodeName)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearNodeSettingsClientCache();
+async function nodeBanner_GET() {
+    const result = await node_getBanner();
 
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+    return result;
 }
 
-function nodePersonalizeNodeAbout_POST(jwtToken, nodeAbout) {
-    return new Promise(function(resolve, reject) {
-        node_setNodeAbout(jwtToken, nodeAbout)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearNodeSettingsClientCache();
+async function nodeBanner_POST(jwtToken, bannerFile) {
+    if(bannerFile != null && bannerFile.length === 1) {
+        bannerFile = bannerFile[0];
 
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+        const imagesDirectory = getImagesDirectoryPath();
+    
+        const sourceFilePath = path.join(imagesDirectory, bannerFile.filename);
+        
+        const bannerDestinationFilePath = path.join(imagesDirectory, 'banner.png');
+        
+        await sharp(sourceFilePath).resize({width: 2560}).resize(2560, 424).png({ compressionLevel: 9 }).toFile(bannerDestinationFilePath);
+
+        const result = await node_setBanner(jwtToken, bannerDestinationFilePath);
+        
+        fs.unlinkSync(sourceFilePath);
+        fs.unlinkSync(bannerDestinationFilePath);
+
+        clearNodeSettingsClientCache();
+        
+        return result;
+    }
+    else {
+        return {isError: true, message: 'banner file is missing'};
+    }
 }
 
-function nodePersonalizeNodeId_POST(jwtToken, nodeId) {
-    return new Promise(function(resolve, reject) {
-        node_setNodeId(jwtToken, nodeId)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearNodeSettingsClientCache();
+async function nodePersonalizeNodeName_POST(jwtToken, nodeName) {
+    const result = await node_setNodeName(jwtToken, nodeName);
 
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+    clearNodeSettingsClientCache();
+
+    return result;
 }
 
-function node_Secure_POST(jwtToken, isSecure, keyFile, certFile, caFiles) {
-    return new Promise(function(resolve, reject) {
+async function nodePersonalizeNodeAbout_POST(jwtToken, nodeAbout) {
+    const result = await node_setNodeAbout(jwtToken, nodeAbout);
+
+    clearNodeSettingsClientCache();
+
+    return result;
+}
+
+async function nodePersonalizeNodeId_POST(jwtToken, nodeId) {
+    const result = await node_setNodeId(jwtToken, nodeId);
+
+    clearNodeSettingsClientCache();
+
+    return result;
+}
+
+async function node_Secure_POST(jwtToken, isSecure, keyFile, certFile, caFiles) {
         if(isSecure) {
             if(keyFile != null && keyFile.length === 1 && certFile != null && certFile.length === 1) {
                 keyFile = keyFile[0];
                 certFile = certFile[0];
                 
-                node_setSecureConnection(jwtToken, isSecure, keyFile, certFile, caFiles)
-                .then(nodeResponseData => {
-                    if(nodeResponseData.isError) {
-                        logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                        
-                        resolve({isError: true, message: nodeResponseData.message});
-                    }
-                    else {
-                        setMoarTubeNodeHttpProtocol('https');
-                        setMoarTubeNodeWebsocketProtocol('wss');
+                const result = await node_setSecureConnection(jwtToken, isSecure, keyFile, certFile, caFiles);
 
-                        clearNodeSettingsClientCache();
-                        
-                        resolve({isError: false});
-                    }
-                })
-                .catch(error => {
-                    reject(error);
-                });
-            }
-            else {
-                resolve({isError: true, message: 'invalid parameters'});
-            }
-        }
-        else {
-            node_setSecureConnection(jwtToken, isSecure, null, null, null)
-            .then(nodeResponseData => {
-                if(nodeResponseData.isError) {
-                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                    
-                    resolve({isError: true, message: nodeResponseData.message});
-                }
-                else {
-                    setMoarTubeNodeHttpProtocol('http');
-                    setMoarTubeNodeWebsocketProtocol('ws');
+                if(!result.isError) {
+                    setMoarTubeNodeHttpProtocol('https');
+                    setMoarTubeNodeWebsocketProtocol('wss');
 
                     clearNodeSettingsClientCache();
-                    
-                    resolve({isError: false});
                 }
-            })
-            .catch(error => {
-                reject(error);
-            });
-        }
-    });
-}
 
-function nodeNetworkInternal_POST(jwtToken, nodeListeningPort) {
-    return new Promise(function(resolve, reject) {
-        node_setNetworkInternal(jwtToken, nodeListeningPort)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
+                return result;
             }
             else {
-                setMoarTubeNodePort(nodeListeningPort);
-
-                clearNodeSettingsClientCache();
-
-                resolve({isError: false});
+                return {isError: true, message: 'invalid parameters'};
             }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function nodeNetworkExternal_POST(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort) {
-    return new Promise(function(resolve, reject) {
-        node_setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort)
-        .then(async nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearExternalVideosBaseUrlClientCache();
-                clearNodeSettingsClientCache();
-
-                const nodeSettings = await getNodeSettings(jwtToken);
-
-                if(nodeSettings.storageConfig.storageMode === 's3provider') {
-                    const videosData = await node_getVideoDataOutputs(jwtToken);
-                    const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
-
-                    await s3_updateM3u8ManifestsWithExternalVideosBaseUrl(nodeSettings.storageConfig.s3Config, videosData, externalVideosBaseUrl);
-                }
-                
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function nodeCloudflareConfigure_POST(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey) {
-    return new Promise(function(resolve, reject) {
-        node_setCloudflareConfiguration(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearNodeSettingsClientCache();
-
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function nodeCloudflareTurnstileConfigure_POST(jwtToken, cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey) {
-    return new Promise(function(resolve, reject) {
-        node_setCloudflareTurnstileConfiguration(jwtToken, cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearNodeSettingsClientCache();
-
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function nodeCloudflareTurnstileClear_POST(jwtToken) {
-    return new Promise(function(resolve, reject) {
-        node_CloudflareTurnstileConfigurationClear(jwtToken)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) { 
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearNodeSettingsClientCache();
-
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function nodeCloudflareClear_POST(jwtToken) {
-    return new Promise(function(resolve, reject) {
-        node_clearCloudflareConfiguration(jwtToken)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) { 
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearNodeSettingsClientCache();
-
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function nodeDatabaseConfigToggle_POST(jwtToken, databaseConfig) {
-    return new Promise(function(resolve, reject) {
-        node_databaseConfigToggle(jwtToken, databaseConfig)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) { 
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearNodeSettingsClientCache();
-
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function nodeDatabaseConfigEmpty_POST(jwtToken) {
-    return new Promise(function(resolve, reject) {
-        node_databaseConfigEmpty(jwtToken)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) { 
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearNodeSettingsClientCache();
-
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig) {
-    return new Promise(async function(resolve, reject) {
-        if(storageConfig.storageMode === 's3provider') {
-            await s3_validateS3Config(JSON.parse(JSON.stringify(storageConfig.s3Config)));
-        }
-
-        const nodeResponseData = await node_storageConfigToggle(jwtToken, storageConfig, dnsConfig);
-
-        if(nodeResponseData.isError) {
-            resolve({isError: true, message: nodeResponseData.message});
         }
         else {
-            clearExternalVideosBaseUrlClientCache();
-            clearNodeSettingsClientCache();
-            
-            const nodeSettings = await getNodeSettings(jwtToken);
+            const result = await node_setSecureConnection(jwtToken, isSecure, null, null, null);
 
-            if(nodeSettings.storageConfig.storageMode === 's3provider') {
-                const videosData = await node_getVideoDataOutputs(jwtToken);
-                const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
+            if(!result.isError) {
+                setMoarTubeNodeHttpProtocol('http');
+                setMoarTubeNodeWebsocketProtocol('ws');
 
-                await s3_updateM3u8ManifestsWithExternalVideosBaseUrl(nodeSettings.storageConfig.s3Config, videosData, externalVideosBaseUrl);
+                clearNodeSettingsClientCache();
             }
 
-            resolve({isError: false});
+            return result;
         }
-    });
 }
 
-function nodeStorageConfigEmpty_POST(jwtToken) {
-    return new Promise(function(resolve, reject) {
-        node_storageConfigEmpty(jwtToken)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) { 
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearNodeSettingsClientCache();
+async function nodeNetworkInternal_POST(jwtToken, nodeListeningPort) {
+    const result = await node_setNetworkInternal(jwtToken, nodeListeningPort);
 
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+    if(!result.isError) {
+        setMoarTubeNodePort(nodeListeningPort);
+
+        clearNodeSettingsClientCache();
+    }
+
+    return result;
 }
 
-function nodeCommentsToggle_POST(jwtToken, isCommentsEnabled) {
-    return new Promise(function(resolve, reject) {
-        node_commentsToggle(jwtToken, isCommentsEnabled)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearNodeSettingsClientCache();
+async function nodeNetworkExternal_POST(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort) {
+    const result = await node_setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort);
 
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+    if(!result.isError) {
+        clearExternalVideosBaseUrlClientCache();
+        clearNodeSettingsClientCache();
+
+        const nodeSettings = await getNodeSettings(jwtToken);
+
+        if(nodeSettings.storageConfig.storageMode === 's3provider') {
+            const videosData = await node_getVideoDataOutputs(jwtToken);
+            const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
+
+            await s3_updateM3u8ManifestsWithExternalVideosBaseUrl(nodeSettings.storageConfig.s3Config, videosData, externalVideosBaseUrl);
+        }
+    }
+
+    return result;
 }
 
-function nodeLikesToggle_POST(jwtToken, isLikesEnabled) {
-    return new Promise(function(resolve, reject) {
-        node_likesToggle(jwtToken, isLikesEnabled)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearNodeSettingsClientCache();
+async function nodeCloudflareConfigure_POST(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey) {
+    const result = await node_setCloudflareConfiguration(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey);
 
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+    if(!result.isError) {
+        clearNodeSettingsClientCache();
+    }
+
+    return result;
 }
 
-function nodeDislikesToggle_POST(jwtToken, isDislikesEnabled) {
-    return new Promise(function(resolve, reject) {
-        node_dislikesToggle(jwtToken, isDislikesEnabled)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearNodeSettingsClientCache();
+async function nodeCloudflareTurnstileConfigure_POST(jwtToken, cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey) {
+    const result = await node_setCloudflareTurnstileConfiguration(jwtToken, cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey);
 
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+    if(!result.isError) {
+        clearNodeSettingsClientCache();
+    }
+
+    return result;
 }
 
-function nodeReportsToggle_POST(jwtToken, isReportsEnabled) {
-    return new Promise(function(resolve, reject) {
-        node_reportsToggle(jwtToken, isReportsEnabled)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearNodeSettingsClientCache();
+async function nodeCloudflareTurnstileClear_POST(jwtToken) {
+    const result = await node_CloudflareTurnstileConfigurationClear(jwtToken);
+    
+    if(!result.isError) {
+        clearNodeSettingsClientCache();
+    }
 
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+    return result;
 }
 
-function nodeLiveChatToggle_POST(jwtToken, isLiveChatEnabled) {
-    return new Promise(function(resolve, reject) {
-        node_liveChatToggle(jwtToken, isLiveChatEnabled)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearNodeSettingsClientCache();
+async function nodeCloudflareClear_POST(jwtToken) {
+    const result = await node_clearCloudflareConfiguration(jwtToken);
 
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+    if(!result.isError) {
+        clearNodeSettingsClientCache();
+    }
+
+    return result;
 }
 
-function nodeAccount_POST(jwtToken, username, password) {
-    return new Promise(function(resolve, reject) {
-        node_setAccountCredentials(jwtToken, username, password)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                clearNodeSettingsClientCache();
+async function nodeDatabaseConfigToggle_POST(jwtToken, databaseConfig) {
+    const result = await node_databaseConfigToggle(jwtToken, databaseConfig);
 
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+    if(!result.isError) {
+        clearNodeSettingsClientCache();
+    }
+
+    return result;
+}
+
+async function nodeDatabaseConfigEmpty_POST(jwtToken) {
+    const result = await node_databaseConfigEmpty(jwtToken);
+
+    if(!result.isError) {
+        clearNodeSettingsClientCache();
+    }
+
+    return result;
+}
+
+async function nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig) {
+    if(storageConfig.storageMode === 's3provider') {
+        await s3_validateS3Config(JSON.parse(JSON.stringify(storageConfig.s3Config)));
+    }
+
+    const result = await node_storageConfigToggle(jwtToken, storageConfig, dnsConfig);
+
+    if(!result.isError) {
+        clearExternalVideosBaseUrlClientCache();
+        clearNodeSettingsClientCache();
+        
+        const nodeSettings = await getNodeSettings(jwtToken);
+
+        if(nodeSettings.storageConfig.storageMode === 's3provider') {
+            const videosData = await node_getVideoDataOutputs(jwtToken);
+            const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
+
+            await s3_updateM3u8ManifestsWithExternalVideosBaseUrl(nodeSettings.storageConfig.s3Config, videosData, externalVideosBaseUrl);
+        }
+    }
+
+    return result;
+}
+
+async function nodeStorageConfigEmpty_POST(jwtToken) {
+    const result = await node_storageConfigEmpty(jwtToken);
+
+    if(!result.isError) {
+        clearNodeSettingsClientCache();
+    }
+
+    return result;
+}
+
+async function nodeCommentsToggle_POST(jwtToken, isCommentsEnabled) {
+    const result = await node_commentsToggle(jwtToken, isCommentsEnabled);
+
+    if(!result.isError) {
+        clearNodeSettingsClientCache();
+    }
+
+    return result;
+}
+
+async function nodeLikesToggle_POST(jwtToken, isLikesEnabled) {
+    const result = await node_likesToggle(jwtToken, isLikesEnabled);
+
+    if(!result.isError) {
+        clearNodeSettingsClientCache();
+    }
+
+    return result;
+}
+
+async function nodeDislikesToggle_POST(jwtToken, isDislikesEnabled) {
+    const result = await node_dislikesToggle(jwtToken, isDislikesEnabled);
+
+    if(!result.isError) {
+        clearNodeSettingsClientCache();
+    }
+
+    return result;
+}
+
+async function nodeReportsToggle_POST(jwtToken, isReportsEnabled) {
+    const result = await node_reportsToggle(jwtToken, isReportsEnabled);
+
+    if(!result.isError) {
+        clearNodeSettingsClientCache();
+    }
+
+    return result;
+}
+
+async function nodeLiveChatToggle_POST(jwtToken, isLiveChatEnabled) {
+    const result = await node_liveChatToggle(jwtToken, isLiveChatEnabled);
+
+    if(!result.isError) {
+        clearNodeSettingsClientCache();
+    }
+
+    return result;
+}
+
+async function nodeAccount_POST(jwtToken, username, password) {
+    const result = await node_setAccountCredentials(jwtToken, username, password);
+
+    if(!result.isError) {
+        clearNodeSettingsClientCache();
+    }
+
+    return result;
 }
 
 module.exports = {

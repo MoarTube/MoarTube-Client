@@ -1,103 +1,34 @@
 const { logDebugMessageToConsole } = require('../utils/helpers');
 const { node_getVideoReportsArchive, node_archiveVideoReport, node_removeVideoReport, node_removeVideoReportArchive, node_getVideoReports } = require('../utils/node-communications');
 
-function all_GET(jwtToken) {
-    return new Promise(function(resolve, reject) {
-        node_getVideoReports(jwtToken)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                const reports = nodeResponseData.reports;
-                
-                resolve({isError: false, reports: reports});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+async function all_GET(jwtToken) {
+    const result = await node_getVideoReports(jwtToken);
+
+    return result;
 }
 
-function archiveAll_GET(jwtToken) {
-    return new Promise(function(resolve, reject) {
-        node_getVideoReportsArchive(jwtToken)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                const reports = nodeResponseData.reports;
-                
-                resolve({isError: false, reports: reports});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+async function archiveAll_GET(jwtToken) {
+    const result = await node_getVideoReportsArchive(jwtToken);
+
+    return result;
 }
 
-function archive_POST(jwtToken, reportId) {
-    return new Promise(function(resolve, reject) {
-        node_archiveVideoReport(jwtToken, reportId)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+async function archive_POST(jwtToken, reportId) {
+    const result = await node_archiveVideoReport(jwtToken, reportId);
+
+    return result;
 }
 
-function delete_POST(jwtToken, reportId) {
-    return new Promise(function(resolve, reject) {
-        node_removeVideoReport(jwtToken, reportId)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+async function delete_POST(jwtToken, reportId) {
+    const result = await node_removeVideoReport(jwtToken, reportId);
+
+    return result;
 }
 
-function archiveDelete_POST(jwtToken, archiveId) {
-    return new Promise(function(resolve, reject) {
-        node_removeVideoReportArchive(jwtToken, archiveId)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+async function archiveDelete_POST(jwtToken, archiveId) {
+    const result = await node_removeVideoReportArchive(jwtToken, archiveId);
+
+    return result;
 }
 
 module.exports = {

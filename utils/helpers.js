@@ -562,6 +562,20 @@ function clearExternalVideosBaseUrlClientCache() {
     externalVideosBaseUrl = null;
 }
 
+function checkNetworkPortStatus(port, host) {
+    return new Promise((resolve, reject) => {
+        const portscanner = require('portscanner');
+
+        portscanner.checkPortStatus(port, host, (error, portStatus) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(portStatus);
+            }
+        });
+    });
+}
+
 module.exports = {
     logDebugMessageToConsole,
     deleteDirectoryRecursive,
@@ -614,5 +628,6 @@ module.exports = {
     getNodeSettings,
     clearNodeSettingsClientCache,
     getExternalVideosBaseUrl,
-    clearExternalVideosBaseUrlClientCache
+    clearExternalVideosBaseUrlClientCache,
+    checkNetworkPortStatus
 };

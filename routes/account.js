@@ -8,32 +8,26 @@ const { logDebugMessageToConsole, getPublicDirectoryPath } = require('../utils/h
 
 const router = express.Router();
 
-router.get('/signin', (req, res) => {
-    const jwtToken = req.session.jwtToken;
-    
-    node_isAuthenticated(jwtToken)
-    .then(nodeResponseData => {
-        if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-            
-            res.send(nodeResponseData.message);
+router.get('/signin', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+
+        const isAuthenticated = (await node_isAuthenticated(jwtToken)).isAuthenticated;
+
+        if(isAuthenticated) {
+            res.redirect('/videos');
         }
         else {
-            if(nodeResponseData.isAuthenticated) {
-                res.redirect('/videos');
-            }
-            else {
-                res.render('signin', {
+            res.render('signin', {
 
-                });
-            }
+            });
         }
-    })
-    .catch(error => {
+    }
+    catch(error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
-    });
+    }
 });
 
 router.post('/signin', async (req, res) => {
@@ -62,7 +56,12 @@ router.post('/signin', async (req, res) => {
 });
 
 router.get('/signout', (req, res) => {
-    signOut_GET(req, res);
+    try {
+        signOut_GET(req, res);
+    }
+    catch(error) {
+        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+    }  
 });
 
 module.exports = router;
