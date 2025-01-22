@@ -6,25 +6,27 @@ const { logDebugMessageToConsole } = require('../utils/helpers');
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
-    const jwtToken = req.session.jwtToken;
-    
-    node_isAuthenticated(jwtToken)
-    .then(nodeResponseData => {
-        if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-            
-            res.send(nodeResponseData.message);
+router.get('/', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+        
+        const response = await node_isAuthenticated(jwtToken);
+
+        if (response.isError) {
+            res.send(response.message);
+        }
+        else if (response.isAuthenticated) {
+            res.redirect('/videos');
         }
         else {
-            if(nodeResponseData.isAuthenticated) {
-                res.redirect('/videos');
-            }
-            else {
-                res.redirect('/account/signin');
-            }
+            res.redirect('/account/signin');
         }
-    });
+    }
+    catch (error) {
+        logDebugMessageToConsole('Error during authentication', error, new Error().stack);
+
+        res.status(500).send('An error occurred while processing your request.');
+    }
 });
 
 router.get('/network', (req, res) => {

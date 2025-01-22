@@ -1,10 +1,8 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 
 const { signIn_POST, signOut_GET} = require('../controllers/account');
 const { node_isAuthenticated } = require('../utils/node-communications');
-const { logDebugMessageToConsole, getPublicDirectoryPath } = require('../utils/helpers');
+const { logDebugMessageToConsole } = require('../utils/helpers');
 
 const router = express.Router();
 
@@ -18,9 +16,7 @@ router.get('/signin', async (req, res) => {
             res.redirect('/videos');
         }
         else {
-            res.render('signin', {
-
-            });
+            res.render('signin', {});
         }
     }
     catch(error) {

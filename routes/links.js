@@ -1,39 +1,34 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 
 const { linksAll_GET, linksAdd_POST, linksDelete_POST } = require('../controllers/links');
 const { node_isAuthenticated, node_doSignout } = require('../utils/node-communications');
-const { logDebugMessageToConsole, getPublicDirectoryPath } = require('../utils/helpers');
+const { logDebugMessageToConsole } = require('../utils/helpers');
 
 const router = express.Router();
 
 router.get('/', async (req, res) => {
-    const jwtToken = req.session.jwtToken;
-    
-    node_isAuthenticated(jwtToken)
-    .then(nodeResponseData => {
-        if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
+    try {
+        const jwtToken = req.session.jwtToken;
+
+        const response = await node_isAuthenticated(jwtToken);
+
+        if (response.isError) {
+            logDebugMessageToConsole(response.message, null, new Error().stack);
 
             node_doSignout(req, res);
         }
-        else {
-            if(nodeResponseData.isAuthenticated) {
-                res.render('links', {
-
-                });
-            }
-            else {
-                res.redirect('/account/signin');
-            }
+        else if (response.isAuthenticated) {
+            res.render('links', {});
         }
-    })
-    .catch(error => {
+        else {
+            res.redirect('/account/signin');
+        }
+    }
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-        
+
         node_doSignout(req, res);
-    });
+    }
 });
 
 router.get('/all', async (req, res) => {

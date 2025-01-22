@@ -1,5 +1,4 @@
 const express = require('express');
-const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 
@@ -10,37 +9,34 @@ const {
     nodeCommentsToggle_POST, nodeDislikesToggle_POST, nodeLikesToggle_POST, nodeReportsToggle_POST, nodeLiveChatToggle_POST, nodeDatabaseConfigToggle_POST, nodeDatabaseConfigEmpty_POST,
     nodeStorageConfigToggle_POST, nodeStorageConfigEmpty_POST
  } = require('../controllers/settings');
- const { logDebugMessageToConsole, getPublicDirectoryPath, getCertificatesDirectoryPath, getImagesDirectoryPath } = require('../utils/helpers');
+ const { logDebugMessageToConsole, getCertificatesDirectoryPath, getImagesDirectoryPath } = require('../utils/helpers');
 const { node_isAuthenticated, node_doSignout } = require('../utils/node-communications');
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
-    const jwtToken = req.session.jwtToken;
-    
-    node_isAuthenticated(jwtToken)
-    .then(nodeResponseData => {
-        if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
+router.get('/', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+
+        const response = await node_isAuthenticated(jwtToken);
+
+        if (response.isError) {
+            logDebugMessageToConsole(response.message, null, new Error().stack);
 
             node_doSignout(req, res);
         }
-        else {
-            if(nodeResponseData.isAuthenticated) {
-                res.render('settings', {
-
-                });
-            }
-            else {
-                res.redirect('/account/signin');
-            }
+        else if (response.isAuthenticated) {
+            res.render('settings', {});
         }
-    })
-    .catch(error => {
+        else {
+            res.redirect('/account/signin');
+        }
+    }
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-        
+
         node_doSignout(req, res);
-    });
+    }
 });
 
 router.get('/client', (req, res) => {
@@ -99,10 +95,6 @@ router.post('/client/encoding', (req, res) => {
         res.send({isError: true, message: 'error communicating with the MoarTube node'});
     }
 });
-
-
-
-
 
 router.get('/node', async (req, res) => {
     try {

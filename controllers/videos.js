@@ -2,7 +2,6 @@ const path = require('path');
 const fs = require('fs');
 const spawnSync = require('child_process').spawnSync;
 const sharp = require('sharp');
-const multer = require('multer');
 
 sharp.cache(false);
 
@@ -22,621 +21,475 @@ const {
     enqueuePendingPublishVideo 
 } = require('../utils/trackers/pending-publish-video-tracker');
 
-function search_GET(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
-    return new Promise(function(resolve, reject) {
-        node_doVideosSearch(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                resolve({isError: false, searchResults: nodeResponseData.searchResults});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+async function search_GET(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
+    const response = await node_doVideosSearch(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp);
+
+    return response;
 }
 
-function import_POST(jwtToken, videoFile, videoId) {
-    return new Promise(async function(resolve, reject) {
-        if(videoFile != null && videoFile.length === 1) {
-            videoFile = videoFile[0];
+async function import_POST(jwtToken, videoFile, videoId) {
+    let result;
 
-            const videoFilePath = videoFile.path;
-            const mimetype = videoFile.mimetype;
+    if(videoFile != null && videoFile.length === 1) {
+        videoFile = videoFile[0];
 
-            let sourceFileExtension;
-            if(mimetype === 'video/mp4') {
-                sourceFileExtension = '.mp4';
-            }
-            else if(mimetype === 'video/webm') {
-                sourceFileExtension = '.webm';
-            }
-            else {
-                throw new Error('unexpected source file: ' + sourceFileExtension);
-            }
+        const videoFilePath = videoFile.path;
+        const mimetype = videoFile.mimetype;
 
-            const result = spawnSync(getFfmpegPath(), ['-i', videoFilePath], { encoding: 'utf-8' });
-            
-            const durationIndex = result.stderr.indexOf('Duration: ');
-            const lengthTimestamp = result.stderr.substr(durationIndex + 10, 11);
-            const lengthSeconds = timestampToSeconds(lengthTimestamp);
-            const imageExtractionTimestamp = Math.floor(lengthSeconds * 0.25);
-
-            logDebugMessageToConsole('uploading video length to node for video: ' + videoId, null, null);
-            await node_setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp);
-            logDebugMessageToConsole('uploaded video length to node for video: ' + videoId, null, null);
-
-            logDebugMessageToConsole('setting source file extension for video: ' + videoId, null, null);
-            await node_setSourceFileExtension(jwtToken, videoId, sourceFileExtension);
-            logDebugMessageToConsole('set source file extension for video: ' + videoId, null, null);
-            
-            logDebugMessageToConsole('generating images for video: ' + videoId, null, null);
-                            
-            const imagesDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/images');
-            
-            fs.mkdirSync(imagesDirectoryPath, { recursive: true });
-
-            const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
-            
-            spawnSync(getFfmpegPath(), ['-ss', imageExtractionTimestamp, '-i', videoFilePath, sourceImagePath]);
-
-            logDebugMessageToConsole('generating thumbnail, preview, and poster for video: ' + videoId, null, null);
-            const thumbnailBuffer = await sharp(sourceImagePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer();
-            const previewFileBuffer = await sharp(sourceImagePath).resize({width: 512}).resize(512, 288).jpeg({quality : 90}).toBuffer();
-            const posterFileBuffer = await sharp(sourceImagePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toBuffer();
-            logDebugMessageToConsole('generated thumbnail, preview, and poster for video: ' + videoId, null, null);
-
-            const nodeSettings = await getNodeSettings(jwtToken);
-
-            const storageConfig = nodeSettings.storageConfig;
-            const storageMode = storageConfig.storageMode;
-
-            logDebugMessageToConsole('uploading thumbnail, preview, and poster for video: ' + videoId, null, null);
-
-            if(storageMode === 'filesystem') {
-                await node_setThumbnail(jwtToken, videoId, thumbnailBuffer);
-                logDebugMessageToConsole('uploaded thumbnail to node for video: ' + videoId, null, null);
-
-                await node_setPreview(jwtToken, videoId, previewFileBuffer);
-                logDebugMessageToConsole('uploaded preview to node for video: ' + videoId, null, null);
-
-                await node_setPoster(jwtToken, videoId, posterFileBuffer);
-                logDebugMessageToConsole('uploaded poster to node for video: ' + videoId, null, null);
-            }
-            else if(storageMode === 's3provider') {
-                const s3Config = storageConfig.s3Config;
-
-                const thumbnailImageKey = 'external/videos/' + videoId + '/images/thumbnail.jpg';
-                const previewImageKey = 'external/videos/' + videoId + '/images/preview.jpg';
-                const posterImageKey = 'external/videos/' + videoId + '/images/poster.jpg';
-
-                await s3_putObjectFromData(s3Config, thumbnailImageKey, thumbnailBuffer, 'image/jpeg');
-                await s3_putObjectFromData(s3Config, previewImageKey, previewFileBuffer, 'image/jpeg');
-                await s3_putObjectFromData(s3Config, posterImageKey, posterFileBuffer, 'image/jpeg');
-            }
-
-            await deleteDirectoryRecursive(imagesDirectoryPath);
-
-            await node_setVideoImported(jwtToken, videoId);
-
-            logDebugMessageToConsole('flagging video as imported to node for video: ' + videoId, null, null);
-            
-            websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'imported', videoId: videoId, lengthTimestamp: lengthTimestamp }}});
-            
-            resolve({isError: false});
+        let sourceFileExtension;
+        if(mimetype === 'video/mp4') {
+            sourceFileExtension = '.mp4';
+        }
+        else if(mimetype === 'video/webm') {
+            sourceFileExtension = '.webm';
         }
         else {
-            resolve({isError: true, message: 'video file is missing'});
+            throw new Error('unexpected source file: ' + sourceFileExtension);
         }
-    });
-}
 
-function videoIdImportingStop_POST(jwtToken, videoId) {
-    return new Promise(function(resolve, reject) {
-        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing_stopping', videoId: videoId }}});
+        const output = spawnSync(getFfmpegPath(), ['-i', videoFilePath], { encoding: 'utf-8' });
         
-        node_stopVideoImporting(jwtToken, videoId)
-        .then((nodeResponseData) => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing_stopped', videoId: videoId }}});
-                
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
+        const durationIndex = output.stderr.indexOf('Duration: ');
+        const lengthTimestamp = output.stderr.substr(durationIndex + 10, 11);
+        const lengthSeconds = timestampToSeconds(lengthTimestamp);
+        const imageExtractionTimestamp = Math.floor(lengthSeconds * 0.25);
 
-function videoIdPublishingStop_POST(jwtToken, videoId) {
-    return new Promise(function(resolve, reject) {
-        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing_stopping', videoId: videoId }}});
+        logDebugMessageToConsole('uploading video length to node for video: ' + videoId, null, null);
+        await node_setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp);
+        logDebugMessageToConsole('uploaded video length to node for video: ' + videoId, null, null);
+
+        logDebugMessageToConsole('setting source file extension for video: ' + videoId, null, null);
+        await node_setSourceFileExtension(jwtToken, videoId, sourceFileExtension);
+        logDebugMessageToConsole('set source file extension for video: ' + videoId, null, null);
         
-        node_stopVideoPublishing(jwtToken, videoId)
-        .then((nodeResponseData) => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing_stopped', videoId: videoId }}});
+        logDebugMessageToConsole('generating images for video: ' + videoId, null, null);
+                        
+        const imagesDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/images');
         
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
+        fs.mkdirSync(imagesDirectoryPath, { recursive: true });
 
-function videoIdPublish_POST(jwtToken, videoId, publishings) {
-    return new Promise(function(resolve, reject) {
-        publishings = JSON.parse(publishings);
+        const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
+        
+        spawnSync(getFfmpegPath(), ['-ss', imageExtractionTimestamp, '-i', videoFilePath, sourceImagePath]);
 
-        node_getVideoData(videoId)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                const isLive = nodeResponseData.videoData.isLive;
-                const isStreaming = nodeResponseData.videoData.isStreaming;
-                const isFinalized = nodeResponseData.videoData.isFinalized;
-                
-                if(isLive && isStreaming) {
-                    resolve({isError: true, message: 'this video is currently streaming'});
-                }
-                else if(isFinalized) {
-                    resolve({isError: true, message: 'this video was finalized; no further publishings are possible'});
-                }
-                else {
-                    node_getSourceFileExtension(jwtToken, videoId)
-                    .then(nodeResponseData => {
-                        if(nodeResponseData.isError) {
-                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                            
-                            resolve({isError: true, message: nodeResponseData.message});
-                        }
-                        else {
-                            const sourceFileExtension = nodeResponseData.sourceFileExtension;
-                            
-                            const sourceFilePath = path.join(getVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
+        logDebugMessageToConsole('generating thumbnail, preview, and poster for video: ' + videoId, null, null);
+        const thumbnailBuffer = await sharp(sourceImagePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer();
+        const previewFileBuffer = await sharp(sourceImagePath).resize({width: 512}).resize(512, 288).jpeg({quality : 90}).toBuffer();
+        const posterFileBuffer = await sharp(sourceImagePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toBuffer();
+        logDebugMessageToConsole('generated thumbnail, preview, and poster for video: ' + videoId, null, null);
 
-                            if(fs.existsSync(sourceFilePath)) {
-                                for(const publishing of publishings) {
-                                    const format = publishing.format;
-                                    const resolution = publishing.resolution;
-
-                                    enqueuePendingPublishVideo({
-                                        jwtToken: jwtToken,
-                                        videoId: videoId,
-                                        format: format,
-                                        resolution: resolution,
-                                        sourceFileExtension: sourceFileExtension,
-                                        idleInterval: setInterval(function() {
-                                            websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing', videoId: videoId, format: format, resolution: resolution, progress: 0 }}});
-                                        }, 1000)
-                                    });
-                                }
-                                
-                                resolve({isError: false});
-                            }
-                            else {
-                                if(isLive) {
-                                    resolve({isError: true, message: 'a recording of this stream does not exist<br>record your streams locally for later publishing'});
-                                }
-                                else {
-                                    resolve({isError: true, message: 'a source for this video does not exist'});
-                                }
-                            }
-                        }
-                    });
-                }
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
-
-function videoIdUnpublish_POST(jwtToken, videoId, format, resolution) {
-    return new Promise(async function(resolve, reject) {
         const nodeSettings = await getNodeSettings(jwtToken);
+
         const storageConfig = nodeSettings.storageConfig;
+        const storageMode = storageConfig.storageMode;
 
-        await node_unpublishVideo(jwtToken, videoId, format, resolution);
+        logDebugMessageToConsole('uploading thumbnail, preview, and poster for video: ' + videoId, null, null);
 
-        if(storageConfig.storageMode === 's3provider') {
+        if(storageMode === 'filesystem') {
+            await node_setThumbnail(jwtToken, videoId, thumbnailBuffer);
+            logDebugMessageToConsole('uploaded thumbnail to node for video: ' + videoId, null, null);
+
+            await node_setPreview(jwtToken, videoId, previewFileBuffer);
+            logDebugMessageToConsole('uploaded preview to node for video: ' + videoId, null, null);
+
+            await node_setPoster(jwtToken, videoId, posterFileBuffer);
+            logDebugMessageToConsole('uploaded poster to node for video: ' + videoId, null, null);
+        }
+        else if(storageMode === 's3provider') {
             const s3Config = storageConfig.s3Config;
 
-            if(format === 'm3u8') {
-                const segmentsPrefix = 'external/videos/' + videoId + '/adaptive/m3u8/' + resolution;
-                const manifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-' + resolution + '.m3u8';
+            const thumbnailImageKey = 'external/videos/' + videoId + '/images/thumbnail.jpg';
+            const previewImageKey = 'external/videos/' + videoId + '/images/preview.jpg';
+            const posterImageKey = 'external/videos/' + videoId + '/images/poster.jpg';
 
-                await s3_deleteObjectsWithPrefix(s3Config, segmentsPrefix);
-                await s3_deleteObjectWithKey(s3Config, manifestKey);
+            await s3_putObjectFromData(s3Config, thumbnailImageKey, thumbnailBuffer, 'image/jpeg');
+            await s3_putObjectFromData(s3Config, previewImageKey, previewFileBuffer, 'image/jpeg');
+            await s3_putObjectFromData(s3Config, posterImageKey, posterFileBuffer, 'image/jpeg');
+        }
+
+        await deleteDirectoryRecursive(imagesDirectoryPath);
+
+        await node_setVideoImported(jwtToken, videoId);
+
+        logDebugMessageToConsole('flagging video as imported to node for video: ' + videoId, null, null);
+        
+        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'imported', videoId: videoId, lengthTimestamp: lengthTimestamp }}});
+        
+        result = {isError: false};
+    }
+    else {
+        result = {isError: true, message: 'video file is missing'};
+    }
+
+    return result;
+}
+
+async function videoIdImportingStop_POST(jwtToken, videoId) {
+    websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing_stopping', videoId: videoId }}});
+
+    const response = await node_stopVideoImporting(jwtToken, videoId);
+
+    if(!response.isError) {
+        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing_stopped', videoId: videoId }}});
+    }
+
+    return response;
+}
+
+async function videoIdPublishingStop_POST(jwtToken, videoId) {
+    websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing_stopping', videoId: videoId }}});
+    
+    const response = await node_stopVideoPublishing(jwtToken, videoId);
+
+    if(!response.isError) {
+        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing_stopped', videoId: videoId }}});
+    }
+
+    return response;
+}
+
+async function videoIdPublish_POST(jwtToken, videoId, publishings) {
+    let result;
+
+    publishings = JSON.parse(publishings);
+
+    const response1 = await node_getVideoData(videoId);
+
+    if(!response1.isError) {
+        const isLive = response1.videoData.isLive;
+        const isStreaming = response1.videoData.isStreaming;
+        const isFinalized = response1.videoData.isFinalized;
+        
+        if(isLive && isStreaming) {
+            result = {isError: true, message: 'this video is currently streaming'};
+        }
+        else if(isFinalized) {
+            result = {isError: true, message: 'this video was finalized; no further publishings are possible'};
+        }
+        else {
+            const response2 = await node_getSourceFileExtension(jwtToken, videoId);
+
+            if(!response2.isError) {
+                const sourceFileExtension = response2.sourceFileExtension;
+                
+                const sourceFilePath = path.join(getVideosDirectoryPath(), videoId + '/source/' + videoId + sourceFileExtension);
+
+                if(fs.existsSync(sourceFilePath)) {
+                    for(const publishing of publishings) {
+                        const format = publishing.format;
+                        const resolution = publishing.resolution;
+
+                        enqueuePendingPublishVideo({
+                            jwtToken: jwtToken,
+                            videoId: videoId,
+                            format: format,
+                            resolution: resolution,
+                            sourceFileExtension: sourceFileExtension,
+                            idleInterval: setInterval(function() {
+                                websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'publishing', videoId: videoId, format: format, resolution: resolution, progress: 0 }}});
+                            }, 1000)
+                        });
+                    }
+                    
+                    result = {isError: false};
+                }
+                else {
+                    if(isLive) {
+                        result = {isError: true, message: 'a recording of this stream does not exist<br>record your streams locally for later publishing'};
+                    }
+                    else {
+                        result = {isError: true, message: 'a source for this video does not exist'};
+                    }
+                }
             }
-            else if(format === 'mp4' || format === 'webm' || format === 'ogv') {
-                const key = 'external/videos/' + videoId + '/progressive/' + format + '/' + resolution + '.' + format;
-
-                await s3_deleteObjectWithKey(s3Config, key);
+            else {
+                result = response2;
             }
         }
+    }
+    else {
+        result = response1;
+    }
+
+    return result;
+}
+
+async function videoIdUnpublish_POST(jwtToken, videoId, format, resolution) {
+    const nodeSettings = await getNodeSettings(jwtToken);
+    const storageConfig = nodeSettings.storageConfig;
+
+    await node_unpublishVideo(jwtToken, videoId, format, resolution);
+
+    if(storageConfig.storageMode === 's3provider') {
+        const s3Config = storageConfig.s3Config;
 
         if(format === 'm3u8') {
-            await refreshM3u8MasterManifest(jwtToken, videoId);
+            const segmentsPrefix = 'external/videos/' + videoId + '/adaptive/m3u8/' + resolution;
+            const manifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-' + resolution + '.m3u8';
+
+            await s3_deleteObjectsWithPrefix(s3Config, segmentsPrefix);
+            await s3_deleteObjectWithKey(s3Config, manifestKey);
         }
+        else if(format === 'mp4' || format === 'webm' || format === 'ogv') {
+            const key = 'external/videos/' + videoId + '/progressive/' + format + '/' + resolution + '.' + format;
 
-        resolve({isError: false});
-    });
+            await s3_deleteObjectWithKey(s3Config, key);
+        }
+    }
+
+    if(format === 'm3u8') {
+        await refreshM3u8MasterManifest(jwtToken, videoId);
+    }
+
+    return {isError: false};
 }
 
-function tags_GET(jwtToken) {
-    return new Promise(function(resolve, reject) {
-        node_getVideosTags(jwtToken)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                resolve({isError: false, tags: nodeResponseData.tags});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+async function tags_GET(jwtToken) {
+    const response = await node_getVideosTags(jwtToken);
+
+    return response;
 }
 
-function tagsAll_GET(jwtToken) {
-    return new Promise(function(resolve, reject) {
-        node_getVideosTagsAll(jwtToken)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                resolve({isError: false, tags: nodeResponseData.tags});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+async function tagsAll_GET(jwtToken) {
+    const response = await node_getVideosTagsAll(jwtToken);
+
+    return response;
 }
 
-function videoIdPublishes_GET(jwtToken, videoId) {
-    return new Promise(function(resolve, reject) {
-        node_getVideoPublishes(jwtToken, videoId)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                resolve({isError: false, publishes: nodeResponseData.publishes});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+async function videoIdPublishes_GET(jwtToken, videoId) {
+    const response = await node_getVideoPublishes(jwtToken, videoId);
+
+    return response;
 }
 
-function videoIdData_GET(videoId) {
-    return new Promise(function(resolve, reject) {
-        node_getVideoData(videoId)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                resolve({isError: false, videoData: nodeResponseData.videoData});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+async function videoIdData_GET(videoId) {
+    const response = await node_getVideoData(videoId);
+
+    return response;
 }
 
-function videoIdData_POST(jwtToken, videoId, title, description, tags) {
-    return new Promise(function(resolve, reject) {
-        node_setVideoData(jwtToken, videoId, title, description, tags)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                resolve({isError: false, videoData: nodeResponseData.videoData});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+async function videoIdData_POST(jwtToken, videoId, title, description, tags) {
+    const response = await node_setVideoData(jwtToken, videoId, title, description, tags);
+
+    return response;
 }
 
-function delete_POST(jwtToken, videoIds) {
-    return new Promise(async function(resolve, reject) {
-        const nodeResponseData = await node_deleteVideos(jwtToken, videoIds);
+async function delete_POST(jwtToken, videoIds) {
+    const nodeResponseData = await node_deleteVideos(jwtToken, videoIds);
 
-        const deletedVideoIds = nodeResponseData.deletedVideoIds;
-        const nonDeletedVideoIds = nodeResponseData.nonDeletedVideoIds;
+    const deletedVideoIds = nodeResponseData.deletedVideoIds;
+    const nonDeletedVideoIds = nodeResponseData.nonDeletedVideoIds;
 
-        for(const deletedVideoId of deletedVideoIds) {
-            const deletedVideoIdPath = path.join(getVideosDirectoryPath(), deletedVideoId);
+    for(const deletedVideoId of deletedVideoIds) {
+        const deletedVideoIdPath = path.join(getVideosDirectoryPath(), deletedVideoId);
+        
+        await deleteDirectoryRecursive(deletedVideoIdPath);
+    }
+
+    const nodeSettings = await getNodeSettings(jwtToken);
+    const storageConfig = nodeSettings.storageConfig;
+
+    if(storageConfig.storageMode === 's3provider') {
+        const s3Config = storageConfig.s3Config;
+
+        for(const videoId of videoIds) {
+            const videoPrefix = 'external/videos/' + videoId;
+
+            await s3_deleteObjectsWithPrefix(s3Config, videoPrefix);
+        }
+    }
+
+    return {isError: false, deletedVideoIds: deletedVideoIds, nonDeletedVideoIds: nonDeletedVideoIds};
+}
+
+async function finalize_POST(jwtToken, videoIds) {
+    let result;
+
+    const response = await node_finalizeVideos(jwtToken, videoIds);
+
+    if(!response.isError) {
+        const finalizedVideoIds = response.finalizedVideoIds;
+        const nonFinalizedVideoIds = response.nonFinalizedVideoIds;
+        
+        for(const finalizedVideoId of finalizedVideoIds) {
+            const videoDirectory = path.join(getVideosDirectoryPath(), finalizedVideoId);
             
-            await deleteDirectoryRecursive(deletedVideoIdPath);
+            await deleteDirectoryRecursive(videoDirectory);
+            
+            websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'finalized', videoId: finalizedVideoId }}});
         }
+        
+        result = {isError: false, finalizedVideoIds: finalizedVideoIds, nonFinalizedVideoIds: nonFinalizedVideoIds};
+    }
+    else {
+        result = response;
+    }
 
+    return result;
+}
+
+async function videoIdIndexAdd_POST(jwtToken, videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken) {
+    const response = await node_addVideoToIndex(jwtToken, videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken);
+
+    return response;
+}
+
+async function videoIdIndexRemove_POST(jwtToken, videoId, cloudflareTurnstileToken) {
+    const response = await node_removeVideoFromIndex(jwtToken, videoId, cloudflareTurnstileToken);
+
+    return response;
+}
+
+async function videoIdThumbnail_POST(jwtToken, videoId, thumbnailFile) {
+    let result;
+
+    if (thumbnailFile != null && thumbnailFile.length === 1) {
+        thumbnailFile = thumbnailFile[0];
+
+        const thumbnailBuffer = await sharp(thumbnailFile.buffer).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer();
+        
         const nodeSettings = await getNodeSettings(jwtToken);
-        const storageConfig = nodeSettings.storageConfig;
 
-        if(storageConfig.storageMode === 's3provider') {
+        const storageConfig = nodeSettings.storageConfig;
+        const storageMode = storageConfig.storageMode;
+
+        if(storageMode === 'filesystem') {
+            logDebugMessageToConsole('uploading thumbnail image to node for video: ' + videoId, null, null);
+
+            await node_setThumbnail(jwtToken, videoId, thumbnailBuffer);
+
+            logDebugMessageToConsole('uploaded thumbnail image to node for video: ' + videoId, null, null);
+        }
+        else if(storageMode === 's3provider') {
+            logDebugMessageToConsole('uploading thumbnail image to s3 for video: ' + videoId, null, null);
+
             const s3Config = storageConfig.s3Config;
 
-            for(const videoId of videoIds) {
-                const videoPrefix = 'external/videos/' + videoId;
+            const key = 'external/videos/' + videoId + '/images/thumbnail.jpg';
 
-                await s3_deleteObjectsWithPrefix(s3Config, videoPrefix);
-            }
+            await s3_putObjectFromData(s3Config, key, thumbnailBuffer, 'image/jpeg');
+            
+            logDebugMessageToConsole('uploaded thumbnail image to s3 for video: ' + videoId, null, null);
+        }
+        else {
+            throw new Error('videoIdThumbnail_POST received invalid storageMode: ' + storageMode);
         }
 
-        resolve({isError: false, deletedVideoIds: deletedVideoIds, nonDeletedVideoIds: nonDeletedVideoIds});
-    });
+        result = { isError: false };
+    }
+    else {
+        result = { isError: true, message: 'thumbnail file is missing' };
+    }
+
+    return result;
 }
 
-function finalize_POST(jwtToken, videoIds) {
-    return new Promise(function(resolve, reject) {
-        node_finalizeVideos(jwtToken, videoIds)
-        .then(async nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                const finalizedVideoIds = nodeResponseData.finalizedVideoIds;
-                const nonFinalizedVideoIds = nodeResponseData.nonFinalizedVideoIds;
-                
-                for(const finalizedVideoId of finalizedVideoIds) {
-                    const videoDirectory = path.join(getVideosDirectoryPath(), finalizedVideoId);
-                    
-                    await deleteDirectoryRecursive(videoDirectory);
-                    
-                    websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'finalized', videoId: finalizedVideoId }}});
-                }
-                
-                resolve({isError: false, finalizedVideoIds: finalizedVideoIds, nonFinalizedVideoIds: nonFinalizedVideoIds});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
+async function videoIdPreview_POST(jwtToken, videoId, previewFile) {
+    let result;
 
-function videoIdIndexAdd_POST(jwtToken, videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken) {
-    return new Promise(function(resolve, reject) {
-        node_addVideoToIndex(jwtToken, videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
+    if (previewFile != null && previewFile.length === 1) {
+        previewFile = previewFile[0];
 
-function videoIdIndexRemove_POST(jwtToken, videoId, cloudflareTurnstileToken) {
-    return new Promise(function(resolve, reject) {
-        node_removeVideoFromIndex(jwtToken, videoId, cloudflareTurnstileToken)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                resolve({isError: false});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
-}
+        const previewFileBuffer = await sharp(previewFile.buffer).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer();
 
-function videoIdThumbnail_POST(jwtToken, videoId, thumbnailFile) {
-    return new Promise(function (resolve, reject) {
-        if (thumbnailFile != null && thumbnailFile.length === 1) {
-            thumbnailFile = thumbnailFile[0];
+        const nodeSettings = await getNodeSettings(jwtToken);
 
-            sharp(thumbnailFile.buffer).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer()
-            .then(async (thumbnailBuffer) => {
-                const nodeSettings = await getNodeSettings(jwtToken);
+        const storageConfig = nodeSettings.storageConfig;
+        const storageMode = storageConfig.storageMode;
 
-                const storageConfig = nodeSettings.storageConfig;
-                const storageMode = storageConfig.storageMode;
+        if(storageMode === 'filesystem') {
+            logDebugMessageToConsole('uploading preview image to node for video: ' + videoId, null, null);
 
-                if(storageMode === 'filesystem') {
-                    logDebugMessageToConsole('uploading thumbnail image to node for video: ' + videoId, null, null);
+            await node_setPreview(jwtToken, videoId, previewFileBuffer);
 
-                    await node_setThumbnail(jwtToken, videoId, thumbnailBuffer);
-
-                    logDebugMessageToConsole('uploaded thumbnail image to node for video: ' + videoId, null, null);
-                }
-                else if(storageMode === 's3provider') {
-                    logDebugMessageToConsole('uploading thumbnail image to s3 for video: ' + videoId, null, null);
-
-                    const s3Config = storageConfig.s3Config;
-
-                    const key = 'external/videos/' + videoId + '/images/thumbnail.jpg';
-
-                    await s3_putObjectFromData(s3Config, key, thumbnailBuffer, 'image/jpeg');
-                    
-                    logDebugMessageToConsole('uploaded thumbnail image to s3 for video: ' + videoId, null, null);
-                }
-                else {
-                    throw new Error('videoIdThumbnail_POST received invalid storageMode: ' + storageMode);
-                }
-
-                resolve({ isError: false });
-            })
-            .catch((error) => {
-                reject(error);
-            });
-        } else {
-            resolve({ isError: true, message: 'thumbnail file is missing' });
+            logDebugMessageToConsole('uploaded preview image to node for video: ' + videoId, null, null);
         }
-    });
-}
+        else if(storageMode === 's3provider') {
+            logDebugMessageToConsole('uploading preview image to s3 for video: ' + videoId, null, null);
 
-function videoIdPreview_POST(jwtToken, videoId, previewFile) {
-    return new Promise(function (resolve, reject) {
-        if (previewFile != null && previewFile.length === 1) {
-            previewFile = previewFile[0];
+            const s3Config = storageConfig.s3Config;
 
-            sharp(previewFile.buffer).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer()
-            .then(async (previewFileBuffer) => {
-                const nodeSettings = await getNodeSettings(jwtToken);
+            const key = 'external/videos/' + videoId + '/images/preview.jpg';
 
-                const storageConfig = nodeSettings.storageConfig;
-                const storageMode = storageConfig.storageMode;
-
-                if(storageMode === 'filesystem') {
-                    logDebugMessageToConsole('uploading preview image to node for video: ' + videoId, null, null);
-
-                    await node_setPreview(jwtToken, videoId, previewFileBuffer);
-
-                    logDebugMessageToConsole('uploaded preview image to node for video: ' + videoId, null, null);
-                }
-                else if(storageMode === 's3provider') {
-                    logDebugMessageToConsole('uploading preview image to s3 for video: ' + videoId, null, null);
-
-                    const s3Config = storageConfig.s3Config;
-
-                    const key = 'external/videos/' + videoId + '/images/preview.jpg';
-
-                    await s3_putObjectFromData(s3Config, key, previewFileBuffer, 'image/jpeg');
-                    
-                    logDebugMessageToConsole('uploaded preview image to s3 for video: ' + videoId, null, null);
-                }
-                else {
-                    throw new Error('videoIdPreview_POST received invalid storageMode: ' + storageMode);
-                }
-
-                resolve({ isError: false });
-            })
-            .catch((error) => {
-                reject(error);
-            });
-        } else {
-            resolve({ isError: true, message: 'preview file is missing' });
+            await s3_putObjectFromData(s3Config, key, previewFileBuffer, 'image/jpeg');
+            
+            logDebugMessageToConsole('uploaded preview image to s3 for video: ' + videoId, null, null);
         }
-    });
-}
-
-function videoIdPoster_POST(jwtToken, videoId, posterFile) {
-    return new Promise(function (resolve, reject) {
-        if (posterFile != null && posterFile.length === 1) {
-            posterFile = posterFile[0];
-
-            sharp(posterFile.buffer).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer()
-            .then(async (posterFileBuffer) => {
-                const nodeSettings = await getNodeSettings(jwtToken);
-
-                const storageConfig = nodeSettings.storageConfig;
-                const storageMode = storageConfig.storageMode;
-
-                if(storageMode === 'filesystem') {
-                    logDebugMessageToConsole('uploading poster image to node for video: ' + videoId, null, null);
-
-                    await node_setPoster(jwtToken, videoId, posterFileBuffer);
-
-                    logDebugMessageToConsole('uploaded poster image to node for video: ' + videoId, null, null);
-                }
-                else if(storageMode === 's3provider') {
-                    logDebugMessageToConsole('uploading poster image to s3 for video: ' + videoId, null, null);
-
-                    const s3Config = storageConfig.s3Config;
-
-                    const key = 'external/videos/' + videoId + '/images/poster.jpg';
-
-                    await s3_putObjectFromData(s3Config, key, posterFileBuffer, 'image/jpeg');
-                    
-                    logDebugMessageToConsole('uploaded poster image to s3 for video: ' + videoId, null, null);
-                }
-                else {
-                    throw new Error('videoIdPoster_POST received invalid storageMode: ' + storageMode);
-                }
-
-                resolve({ isError: false });
-            })
-            .catch((error) => {
-                reject(error);
-            });
-        } else {
-            resolve({ isError: true, message: 'poster file is missing' });
+        else {
+            throw new Error('videoIdPreview_POST received invalid storageMode: ' + storageMode);
         }
-    });
+
+        result = { isError: false };
+    }
+    else {
+        result = { isError: true, message: 'preview file is missing' };
+    }
+
+    return result;
 }
 
-function videoIdSources_GET(videoId) {
-    return new Promise(function(resolve, reject) {
-        node_getVideoSources(videoId)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                resolve({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                const video = nodeResponseData.video;
+async function videoIdPoster_POST(jwtToken, videoId, posterFile) {
+    let result;
 
-                const adaptiveSources = video.adaptiveSources;
-                const progressiveSources = video.progressiveSources;
+    if (posterFile != null && posterFile.length === 1) {
+        posterFile = posterFile[0];
 
-                resolve({isError: false, sources: { adaptiveSources: adaptiveSources, progressiveSources: progressiveSources }});
-            }
-        })
-        .catch(error => {
-            reject(error);
-        });
-    });
+        const posterFileBuffer = await sharp(posterFile.buffer).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer();
+
+        const nodeSettings = await getNodeSettings(jwtToken);
+
+        const storageConfig = nodeSettings.storageConfig;
+        const storageMode = storageConfig.storageMode;
+
+        if(storageMode === 'filesystem') {
+            logDebugMessageToConsole('uploading poster image to node for video: ' + videoId, null, null);
+
+            await node_setPoster(jwtToken, videoId, posterFileBuffer);
+
+            logDebugMessageToConsole('uploaded poster image to node for video: ' + videoId, null, null);
+        }
+        else if(storageMode === 's3provider') {
+            logDebugMessageToConsole('uploading poster image to s3 for video: ' + videoId, null, null);
+
+            const s3Config = storageConfig.s3Config;
+
+            const key = 'external/videos/' + videoId + '/images/poster.jpg';
+
+            await s3_putObjectFromData(s3Config, key, posterFileBuffer, 'image/jpeg');
+            
+            logDebugMessageToConsole('uploaded poster image to s3 for video: ' + videoId, null, null);
+        }
+        else {
+            throw new Error('videoIdPoster_POST received invalid storageMode: ' + storageMode);
+        }
+
+        result = { isError: false };
+    } 
+    else {
+        result = { isError: true, message: 'poster file is missing' };
+    }
+
+    return result;
+}
+
+async function videoIdSources_GET(videoId) {
+    let result;
+
+    const response = await node_getVideoSources(videoId);
+
+    if(!response.isError) {
+        const video = response.video;
+
+        const adaptiveSources = video.adaptiveSources;
+        const progressiveSources = video.progressiveSources;
+
+        result  = {isError: false, sources: { adaptiveSources: adaptiveSources, progressiveSources: progressiveSources }};
+    }
+    else {
+        result = response;
+    }
+
+    return result;
 }
 
 module.exports = {

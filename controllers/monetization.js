@@ -1,21 +1,21 @@
 const { node_MonetizationAll, node_MonetizationAdd, node_MonetizationDelete } = require('../utils/node-communications');
 
 async function monetizationAll_GET() {
-    const result = await node_MonetizationAll();
+    const response = await node_MonetizationAll();
 
-    return result;
+    return response;
 }
 
 async function monetizationAdd_POST(jwtToken, walletAddress, chain, currency) {
-    const result = await node_MonetizationAdd(jwtToken, walletAddress, chain, currency);
+    const response = await node_MonetizationAdd(jwtToken, walletAddress, chain, currency);
 
-    return result;
+    return response;
 }
 
 async function monetizationDelete_POST(jwtToken, cryptoWalletAddressId) {
-    const result = await node_MonetizationDelete(jwtToken, cryptoWalletAddressId);
+    const response = await node_MonetizationDelete(jwtToken, cryptoWalletAddressId);
 
-    return result;
+    return response;
 }
 
 module.exports = {

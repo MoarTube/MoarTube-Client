@@ -6,7 +6,7 @@ const packageJson = require('../package.json');
 sharp.cache(false);
 
 const { 
-    logDebugMessageToConsole, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodePort, detectOperatingSystem, detectSystemGpu, 
+    setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodePort, detectOperatingSystem, detectSystemGpu, 
     detectSystemCpu, getClientSettings, setClientSettings, getImagesDirectoryPath, getClientSettingsDefault, clearNodeSettingsClientCache, getNodeSettings,
     clearExternalVideosBaseUrlClientCache, getExternalVideosBaseUrl
 } = require('../utils/helpers');
@@ -44,9 +44,9 @@ function client_GET() {
 }
 
 async function node_GET(jwtToken) {
-    const nodeSettings = await getNodeSettings(jwtToken);
+    const response = await getNodeSettings(jwtToken);
 
-    return nodeSettings;
+    return response;
 }
 
 async function clientGpuAcceleration_POST(isGpuAccelerationEnabled) {
@@ -112,12 +112,14 @@ function clientEncoding_POST(videoEncoderSettings, liveEncoderSettings) {
 
 
 async function nodeAvatar_GET() {
-    const result = await node_getAvatar();
+    const response = await node_getAvatar();
 
-    return result;
+    return response;
 }
 
 async function nodeAvatar_POST(jwtToken, avatarFile) {
+    let result;
+
     if(avatarFile != null && avatarFile.length === 1) {
         avatarFile = avatarFile[0];
 
@@ -131,7 +133,7 @@ async function nodeAvatar_POST(jwtToken, avatarFile) {
         await sharp(sourceFilePath).resize({width: 48}).resize(48, 48).png({ compressionLevel: 9 }).toFile(iconDestinationFilePath);
         await sharp(sourceFilePath).resize({width: 128}).resize(128, 128).png({ compressionLevel: 9 }).toFile(avatarDestinationFilePath);
             
-        const result = await node_setAvatar(jwtToken, iconDestinationFilePath, avatarDestinationFilePath);
+        const response = await node_setAvatar(jwtToken, iconDestinationFilePath, avatarDestinationFilePath);
 
         fs.unlinkSync(sourceFilePath);
         fs.unlinkSync(iconDestinationFilePath);
@@ -139,20 +141,24 @@ async function nodeAvatar_POST(jwtToken, avatarFile) {
 
         clearNodeSettingsClientCache();
 
-        return result;
+        result = response;
     }
     else {
-        return {isError: true, message: 'avatar file is missing'};
+        result = {isError: true, message: 'avatar file is missing'};
     }
-}
-
-async function nodeBanner_GET() {
-    const result = await node_getBanner();
 
     return result;
 }
 
+async function nodeBanner_GET() {
+    const response = await node_getBanner();
+
+    return response;
+}
+
 async function nodeBanner_POST(jwtToken, bannerFile) {
+    let result;
+
     if(bannerFile != null && bannerFile.length === 1) {
         bannerFile = bannerFile[0];
 
@@ -164,95 +170,101 @@ async function nodeBanner_POST(jwtToken, bannerFile) {
         
         await sharp(sourceFilePath).resize({width: 2560}).resize(2560, 424).png({ compressionLevel: 9 }).toFile(bannerDestinationFilePath);
 
-        const result = await node_setBanner(jwtToken, bannerDestinationFilePath);
+        const response = await node_setBanner(jwtToken, bannerDestinationFilePath);
         
         fs.unlinkSync(sourceFilePath);
         fs.unlinkSync(bannerDestinationFilePath);
 
         clearNodeSettingsClientCache();
         
-        return result;
+        result = response;
     }
     else {
-        return {isError: true, message: 'banner file is missing'};
+        result = {isError: true, message: 'banner file is missing'};
     }
+
+    return result;
 }
 
 async function nodePersonalizeNodeName_POST(jwtToken, nodeName) {
-    const result = await node_setNodeName(jwtToken, nodeName);
+    const response = await node_setNodeName(jwtToken, nodeName);
 
     clearNodeSettingsClientCache();
 
-    return result;
+    return response;
 }
 
 async function nodePersonalizeNodeAbout_POST(jwtToken, nodeAbout) {
-    const result = await node_setNodeAbout(jwtToken, nodeAbout);
+    const response = await node_setNodeAbout(jwtToken, nodeAbout);
 
     clearNodeSettingsClientCache();
 
-    return result;
+    return response;
 }
 
 async function nodePersonalizeNodeId_POST(jwtToken, nodeId) {
-    const result = await node_setNodeId(jwtToken, nodeId);
+    const response = await node_setNodeId(jwtToken, nodeId);
 
     clearNodeSettingsClientCache();
 
-    return result;
+    return response;
 }
 
 async function node_Secure_POST(jwtToken, isSecure, keyFile, certFile, caFiles) {
-        if(isSecure) {
-            if(keyFile != null && keyFile.length === 1 && certFile != null && certFile.length === 1) {
-                keyFile = keyFile[0];
-                certFile = certFile[0];
-                
-                const result = await node_setSecureConnection(jwtToken, isSecure, keyFile, certFile, caFiles);
+    let result;
 
-                if(!result.isError) {
-                    setMoarTubeNodeHttpProtocol('https');
-                    setMoarTubeNodeWebsocketProtocol('wss');
+    if(isSecure) {
+        if(keyFile != null && keyFile.length === 1 && certFile != null && certFile.length === 1) {
+            keyFile = keyFile[0];
+            certFile = certFile[0];
+            
+            const response = await node_setSecureConnection(jwtToken, isSecure, keyFile, certFile, caFiles);
 
-                    clearNodeSettingsClientCache();
-                }
-
-                return result;
-            }
-            else {
-                return {isError: true, message: 'invalid parameters'};
-            }
-        }
-        else {
-            const result = await node_setSecureConnection(jwtToken, isSecure, null, null, null);
-
-            if(!result.isError) {
-                setMoarTubeNodeHttpProtocol('http');
-                setMoarTubeNodeWebsocketProtocol('ws');
+            if(!response.isError) {
+                setMoarTubeNodeHttpProtocol('https');
+                setMoarTubeNodeWebsocketProtocol('wss');
 
                 clearNodeSettingsClientCache();
             }
 
-            return result;
+            result = response;
         }
+        else {
+            result = {isError: true, message: 'invalid parameters'};
+        }
+    }
+    else {
+        const response = await node_setSecureConnection(jwtToken, isSecure, null, null, null);
+
+        if(!response.isError) {
+            setMoarTubeNodeHttpProtocol('http');
+            setMoarTubeNodeWebsocketProtocol('ws');
+
+            clearNodeSettingsClientCache();
+        }
+
+        result = response;
+    }
+
+    return result;
 }
 
 async function nodeNetworkInternal_POST(jwtToken, nodeListeningPort) {
-    const result = await node_setNetworkInternal(jwtToken, nodeListeningPort);
+    const response = await node_setNetworkInternal(jwtToken, nodeListeningPort);
 
-    if(!result.isError) {
+    if(!response.isError) {
         setMoarTubeNodePort(nodeListeningPort);
 
         clearNodeSettingsClientCache();
     }
 
-    return result;
+    return response;
 }
 
 async function nodeNetworkExternal_POST(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort) {
-    const result = await node_setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort);
+    const response = await node_setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort);
 
-    if(!result.isError) {
+    if(!response.isError) {
         clearExternalVideosBaseUrlClientCache();
         clearNodeSettingsClientCache();
 
@@ -266,67 +278,67 @@ async function nodeNetworkExternal_POST(jwtToken, publicNodeProtocol, publicNode
         }
     }
 
-    return result;
+    return response;
 }
 
 async function nodeCloudflareConfigure_POST(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey) {
-    const result = await node_setCloudflareConfiguration(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey);
+    const response = await node_setCloudflareConfiguration(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey);
 
-    if(!result.isError) {
+    if(!response.isError) {
         clearNodeSettingsClientCache();
     }
 
-    return result;
+    return response;
 }
 
 async function nodeCloudflareTurnstileConfigure_POST(jwtToken, cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey) {
-    const result = await node_setCloudflareTurnstileConfiguration(jwtToken, cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey);
+    const response = await node_setCloudflareTurnstileConfiguration(jwtToken, cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey);
 
-    if(!result.isError) {
+    if(!response.isError) {
         clearNodeSettingsClientCache();
     }
 
-    return result;
+    return response;
 }
 
 async function nodeCloudflareTurnstileClear_POST(jwtToken) {
-    const result = await node_CloudflareTurnstileConfigurationClear(jwtToken);
+    const response = await node_CloudflareTurnstileConfigurationClear(jwtToken);
     
-    if(!result.isError) {
+    if(!response.isError) {
         clearNodeSettingsClientCache();
     }
 
-    return result;
+    return response;
 }
 
 async function nodeCloudflareClear_POST(jwtToken) {
-    const result = await node_clearCloudflareConfiguration(jwtToken);
+    const response = await node_clearCloudflareConfiguration(jwtToken);
 
-    if(!result.isError) {
+    if(!response.isError) {
         clearNodeSettingsClientCache();
     }
 
-    return result;
+    return response;
 }
 
 async function nodeDatabaseConfigToggle_POST(jwtToken, databaseConfig) {
-    const result = await node_databaseConfigToggle(jwtToken, databaseConfig);
+    const response = await node_databaseConfigToggle(jwtToken, databaseConfig);
 
-    if(!result.isError) {
+    if(!response.isError) {
         clearNodeSettingsClientCache();
     }
 
-    return result;
+    return response;
 }
 
 async function nodeDatabaseConfigEmpty_POST(jwtToken) {
-    const result = await node_databaseConfigEmpty(jwtToken);
+    const response = await node_databaseConfigEmpty(jwtToken);
 
-    if(!result.isError) {
+    if(!response.isError) {
         clearNodeSettingsClientCache();
     }
 
-    return result;
+    return response;
 }
 
 async function nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig) {
@@ -334,9 +346,9 @@ async function nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig) 
         await s3_validateS3Config(JSON.parse(JSON.stringify(storageConfig.s3Config)));
     }
 
-    const result = await node_storageConfigToggle(jwtToken, storageConfig, dnsConfig);
+    const response = await node_storageConfigToggle(jwtToken, storageConfig, dnsConfig);
 
-    if(!result.isError) {
+    if(!response.isError) {
         clearExternalVideosBaseUrlClientCache();
         clearNodeSettingsClientCache();
         
@@ -350,77 +362,77 @@ async function nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig) 
         }
     }
 
-    return result;
+    return response;
 }
 
 async function nodeStorageConfigEmpty_POST(jwtToken) {
-    const result = await node_storageConfigEmpty(jwtToken);
+    const response = await node_storageConfigEmpty(jwtToken);
 
-    if(!result.isError) {
+    if(!response.isError) {
         clearNodeSettingsClientCache();
     }
 
-    return result;
+    return response;
 }
 
 async function nodeCommentsToggle_POST(jwtToken, isCommentsEnabled) {
-    const result = await node_commentsToggle(jwtToken, isCommentsEnabled);
+    const response = await node_commentsToggle(jwtToken, isCommentsEnabled);
 
-    if(!result.isError) {
+    if(!response.isError) {
         clearNodeSettingsClientCache();
     }
 
-    return result;
+    return response;
 }
 
 async function nodeLikesToggle_POST(jwtToken, isLikesEnabled) {
-    const result = await node_likesToggle(jwtToken, isLikesEnabled);
+    const response = await node_likesToggle(jwtToken, isLikesEnabled);
 
-    if(!result.isError) {
+    if(!response.isError) {
         clearNodeSettingsClientCache();
     }
 
-    return result;
+    return response;
 }
 
 async function nodeDislikesToggle_POST(jwtToken, isDislikesEnabled) {
-    const result = await node_dislikesToggle(jwtToken, isDislikesEnabled);
+    const response = await node_dislikesToggle(jwtToken, isDislikesEnabled);
 
-    if(!result.isError) {
+    if(!response.isError) {
         clearNodeSettingsClientCache();
     }
 
-    return result;
+    return response;
 }
 
 async function nodeReportsToggle_POST(jwtToken, isReportsEnabled) {
-    const result = await node_reportsToggle(jwtToken, isReportsEnabled);
+    const response = await node_reportsToggle(jwtToken, isReportsEnabled);
 
-    if(!result.isError) {
+    if(!response.isError) {
         clearNodeSettingsClientCache();
     }
 
-    return result;
+    return response;
 }
 
 async function nodeLiveChatToggle_POST(jwtToken, isLiveChatEnabled) {
-    const result = await node_liveChatToggle(jwtToken, isLiveChatEnabled);
+    const response = await node_liveChatToggle(jwtToken, isLiveChatEnabled);
 
-    if(!result.isError) {
+    if(!response.isError) {
         clearNodeSettingsClientCache();
     }
 
-    return result;
+    return response;
 }
 
 async function nodeAccount_POST(jwtToken, username, password) {
-    const result = await node_setAccountCredentials(jwtToken, username, password);
+    const response = await node_setAccountCredentials(jwtToken, username, password);
 
-    if(!result.isError) {
+    if(!response.isError) {
         clearNodeSettingsClientCache();
     }
 
-    return result;
+    return response;
 }
 
 module.exports = {

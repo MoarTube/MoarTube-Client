@@ -1,5 +1,5 @@
 const { 
-    logDebugMessageToConsole, websocketClientBroadcast, getNodeSettings, checkNetworkPortStatus
+    websocketClientBroadcast, getNodeSettings, checkNetworkPortStatus
 } = require('../utils/helpers');
 const { 
     isPortValid 
@@ -29,28 +29,28 @@ async function start_POST(jwtToken, title, description, tags, rtmpPort, resoluti
         if (portStatus === 'closed') {
             const uuid = 'moartube';
 
-            const result1 = await node_streamVideo(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, resolution, videoId);
+            const response1 = await node_streamVideo(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, resolution, videoId);
 
-            if(!result1.isError) {
-                const videoId = result1.videoId;
+            if(!response1.isError) {
+                const videoId = response1.videoId;
 
                 addLiveStreamToLiveStreamTracker(videoId);
                 
-                const result2 = await node_setSourceFileExtension(jwtToken, videoId, '.ts');
+                const response2 = await node_setSourceFileExtension(jwtToken, videoId, '.ts');
 
-                if(!result2.isError) {
+                if(!response2.isError) {
                     const rtmpUrl = 'rtmp://' + networkAddress + ':' + rtmpPort + '/live/' + uuid;
 
-                    performStreamingJob(jwtToken, videoId, rtmpUrl, 'm3u8', resolution, isRecordingStreamRemotely, isRecordingStreamLocally);
+                    await performStreamingJob(jwtToken, videoId, rtmpUrl, 'm3u8', resolution, isRecordingStreamRemotely, isRecordingStreamLocally);
                     
                     result = {isError: false, rtmpUrl: rtmpUrl};
                 }
                 else {
-                    result = result2;
+                    result = response2;
                 }
             }
             else {
-                result = result1;
+                result = response1;
             }
         }
         else {
@@ -85,20 +85,22 @@ async function videoIdStop_POST(jwtToken, videoId) {
         }
     }
 
-    const result = await node_stopVideoStreaming(jwtToken, videoId);
+    const response = await node_stopVideoStreaming(jwtToken, videoId);
 
-    if(!result.isError) {
+    if(!response.isError) {
         websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId }}});
     }
 
-    return result;
+    return response;
 }
 
 async function videoIdRtmpInformation_GET(videoId) {
-    let result = await node_getVideoData(videoId);
+    let result;
 
-    if(!result.isError) {
-        const meta = result.videoData.meta;
+    let response = await node_getVideoData(videoId);
+
+    if(!response.isError) {
+        const meta = response.videoData.meta;
 
         const netorkAddress = meta.networkAddress;
         const rtmpPort = meta.rtmpPort;
@@ -110,29 +112,37 @@ async function videoIdRtmpInformation_GET(videoId) {
 
         result = {isError: false, rtmpStreamUrl: rtmpStreamUrl, rtmpServerUrl: rtmpServerUrl, rtmpStreamkey: rtmpStreamkey};
     }
+    else {
+        result = response;
+    }
     
     return result;
 }
 
 async function videoIdChatSettings_GET(videoId) {
-    let result = await node_getVideoData(videoId);
+    let result;
 
-    if(!result.isError) {
-        const meta = result.videoData.meta;
+    let response = await node_getVideoData(videoId);
+
+    if(!response.isError) {
+        const meta = response.videoData.meta;
             
         const isChatHistoryEnabled = meta.chatSettings.isChatHistoryEnabled;
         const chatHistoryLimit = meta.chatSettings.chatHistoryLimit;
 
         result = {isError: false, isChatHistoryEnabled: isChatHistoryEnabled, chatHistoryLimit: chatHistoryLimit};
     }
+    else {
+        result = response;
+    }
 
     return result;
 }
 
 async function videoIdChatSettings_POST(jwtToken, videoId, isChatHistoryEnabled, chatHistoryLimit) {
-    const result = await node_setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled, chatHistoryLimit);
+    const response = await node_setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled, chatHistoryLimit);
 
-    return result;
+    return response;
 }
 
 module.exports = {

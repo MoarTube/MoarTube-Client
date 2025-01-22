@@ -1,358 +1,292 @@
 const fs = require('fs');
-const { 
+const {
     S3Client, PutObjectCommand, ListBucketsCommand, DeleteObjectCommand, DeleteObjectsCommand, ListObjectsV2Command,
     GetObjectCommand, CreateBucketCommand, PutBucketOwnershipControlsCommand, PutBucketCorsCommand, PutBucketPolicyCommand,
     PutPublicAccessBlockCommand
 } = require('@aws-sdk/client-s3');
-const { 
-    STSClient, GetCallerIdentityCommand 
+const {
+    STSClient, GetCallerIdentityCommand
 } = require('@aws-sdk/client-sts');
-const { 
-    Upload 
+const {
+    Upload
 } = require('@aws-sdk/lib-storage');
 
 
-const { 
+const {
     logDebugMessageToConsole
- } = require('./helpers');
+} = require('./helpers');
 
-function s3_putObjectsFromFilePathsWithProgress(s3Config, jwtToken, paths, videoId, format, resolution) {
-    return new Promise(async function(resolve, reject) {
-        const bucket = s3Config.bucketName;
-        const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
+async function s3_putObjectsFromFilePathsWithProgress(s3Config, jwtToken, paths, videoId, format, resolution) {
+    const {
+        websocketClientBroadcast
+    } = require('../utils/helpers');
 
-        const { 
-            websocketClientBroadcast
-        } = require('../utils/helpers');
+    const bucket = s3Config.bucketName;
+    const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
 
-        const s3Client = new S3Client(s3ProviderClientConfig);
+    const s3Client = new S3Client(s3ProviderClientConfig);
 
-        try {
-            const overallTotal = await paths.reduce(async (accPromise, path) => {
-                const acc = await accPromise;
-                const stats = await fs.promises.stat(path.filePath);
+    const overallTotal = await paths.reduce(async (accPromise, path) => {
+        const acc = await accPromise;
+        const stats = await fs.promises.stat(path.filePath);
 
-                return acc + stats.size;
-            }, Promise.resolve(0));
+        return acc + stats.size;
+    }, Promise.resolve(0));
 
-            const progressMap = new Map();
+    const progressMap = new Map();
 
-            const responses = await Promise.all(paths.map(async (path) => {
-                const key = path.key;
-                const fileStream = fs.createReadStream(path.filePath);
-                const contentType = path.contentType;
+    const responses = await Promise.all(paths.map(async (path) => {
+        const key = path.key;
+        const fileStream = fs.createReadStream(path.filePath);
+        const contentType = path.contentType;
 
-                progressMap.set(key, 0);
+        progressMap.set(key, 0);
 
-                const upload = new Upload({client: s3Client, params: { Bucket: bucket, Key: key, Body: fileStream, ContentType: contentType}});
+        const upload = new Upload({ client: s3Client, params: { Bucket: bucket, Key: key, Body: fileStream, ContentType: contentType } });
 
-                upload.on('httpUploadProgress', (progress) => {
-                    if (progress.loaded) {
-                        progressMap.set(key, progress.loaded);
+        upload.on('httpUploadProgress', (progress) => {
+            if (progress.loaded) {
+                progressMap.set(key, progress.loaded);
 
-                        const totalLoaded = Array.from(progressMap.values()).reduce((sum, loaded) => sum + loaded, 0);
-                        const uploadProgress = Math.floor(((totalLoaded / overallTotal) * 100) / 2) + 50;
+                const totalLoaded = Array.from(progressMap.values()).reduce((sum, loaded) => sum + loaded, 0);
+                const uploadProgress = Math.floor(((totalLoaded / overallTotal) * 100) / 2) + 50;
 
-                        websocketClientBroadcast({eventName: 'echo', jwtToken, data: {eventName: 'video_status', payload: {type: 'publishing', videoId, format, resolution, progress: uploadProgress}}});
-                    }
-                });
+                websocketClientBroadcast({ eventName: 'echo', jwtToken, data: { eventName: 'video_status', payload: { type: 'publishing', videoId, format, resolution, progress: uploadProgress } } });
+            }
+        });
 
-                return upload.done();
-            }));
+        return upload.done();
+    }));
 
-            resolve(responses);
-        }
-        catch (error) {
-            logDebugMessageToConsole('Error during upload', error, null);
-
-            reject(error);
-        }
-    });
+    return Promise.allSettled(responses);
 }
 
-function s3_putObjectFromData(s3Config, key, data, contentType) {
-    return new Promise(async function(resolve, reject) {
-        const bucket = s3Config.bucketName;
-        const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
+async function s3_putObjectFromData(s3Config, key, data, contentType) {
+    const bucket = s3Config.bucketName;
+    const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
 
-        try {
-            const s3Client = new S3Client(s3ProviderClientConfig);
+    const s3Client = new S3Client(s3ProviderClientConfig);
 
-            const response = await s3Client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: data, ContentType: contentType }));
-
-            resolve(response);
-        }
-        catch (error) {
-            reject(error);
-        }
-    });
+    await s3Client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: data, ContentType: contentType }));
 }
 
-function s3_deleteObjectWithKey(s3Config, key) {
-    return new Promise(async function(resolve, reject) {
-        const bucket = s3Config.bucketName;
-        const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
+async function s3_deleteObjectWithKey(s3Config, key) {
+    const bucket = s3Config.bucketName;
+    const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
 
-        try {
-            const s3Client = new S3Client(s3ProviderClientConfig);
+    const s3Client = new S3Client(s3ProviderClientConfig);
 
-            const response = await s3Client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
-
-            resolve(response);
-        }
-        catch (error) {
-            reject(error);
-        }
-    });
+    await s3Client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
 }
 
-function s3_deleteObjectsWithPrefix(s3Config, prefix) {
-    return new Promise(async function(resolve, reject) {
-        const bucketName = s3Config.bucketName;
-        const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
+async function s3_deleteObjectsWithPrefix(s3Config, prefix) {
+    const bucketName = s3Config.bucketName;
+    const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
 
-        try {
-            const s3Client = new S3Client(s3ProviderClientConfig);
+    const s3Client = new S3Client(s3ProviderClientConfig);
 
-            let isTruncated = true;
-            let continuationToken = null;
-            while (isTruncated) {
-                const listResponse = await s3Client.send(new ListObjectsV2Command({Bucket: bucketName, Prefix: prefix, ContinuationToken: continuationToken}));
+    let isTruncated = true;
+    let continuationToken = null;
+    while (isTruncated) {
+        const listResponse = await s3Client.send(new ListObjectsV2Command({ Bucket: bucketName, Prefix: prefix, ContinuationToken: continuationToken }));
 
-                let objectsToDelete;
-                if(listResponse.Contents != null) {
-                    objectsToDelete = listResponse.Contents.map((object) => ({Key: object.Key}));
-                }
-
-                if (objectsToDelete != null) {
-                    await s3Client.send(new DeleteObjectsCommand({Bucket: bucketName, Delete: { Objects: objectsToDelete}}));
-                }
-
-                isTruncated = listResponse.IsTruncated;
-                continuationToken = listResponse.NextContinuationToken;
-            }
-
-            resolve();
+        let objectsToDelete;
+        if (listResponse.Contents != null) {
+            objectsToDelete = listResponse.Contents.map((object) => ({ Key: object.Key }));
         }
-        catch(error) {
-            reject(error);
+
+        if (objectsToDelete != null) {
+            await s3Client.send(new DeleteObjectsCommand({ Bucket: bucketName, Delete: { Objects: objectsToDelete } }));
         }
-    });
+
+        isTruncated = listResponse.IsTruncated;
+        continuationToken = listResponse.NextContinuationToken;
+    }
 }
 
-function s3_convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions) {
-    return new Promise(async function(resolve, reject) {
-        const bucketName = s3Config.bucketName;
-        const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
+async function s3_convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions) {
+    const bucketName = s3Config.bucketName;
+    const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
 
-        try {
-            const s3Client = new S3Client(s3ProviderClientConfig);
+    const s3Client = new S3Client(s3ProviderClientConfig);
 
-            for (const resolution of resolutions) {
-                const dynamicMasterManifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/dynamic/manifests/manifest-master.m3u8';
-                const staticMasterManifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-master.m3u8';
+    for (const resolution of resolutions) {
+        const dynamicMasterManifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/dynamic/manifests/manifest-master.m3u8';
+        const staticMasterManifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-master.m3u8';
 
-                const dynamicManifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/dynamic/manifests/manifest-' + resolution + '.m3u8';
-                const staticManifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-' + resolution + '.m3u8';
-        
-                await performConversion(dynamicMasterManifestKey, staticMasterManifestKey);
-                await performConversion(dynamicManifestKey, staticManifestKey);
-            }
+        const dynamicManifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/dynamic/manifests/manifest-' + resolution + '.m3u8';
+        const staticManifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-' + resolution + '.m3u8';
 
-            async function performConversion(dynamicKey, staticKey) {
-                const response = await s3Client.send(new GetObjectCommand({Bucket: bucketName, Key: dynamicKey}));
+        await performConversion(dynamicMasterManifestKey, staticMasterManifestKey);
+        await performConversion(dynamicManifestKey, staticManifestKey);
+    }
 
-                const dynamicManifest = await streamToString(response.Body);
-                
-                let staticManifest;
-                if(dynamicKey.includes('manifest-master.m3u8')) {
-                    staticManifest = dynamicManifest.replace(/\/dynamic\//g, '/static/');
-                }
-                else {
-                    staticManifest = dynamicManifest.replace('#EXT-X-PLAYLIST-TYPE:EVENT', '#EXT-X-PLAYLIST-TYPE:VOD');
-                    staticManifest = staticManifest.trim() + '\n#EXT-X-ENDLIST\n';
-                }
+    async function performConversion(dynamicKey, staticKey) {
+        const response = await s3Client.send(new GetObjectCommand({ Bucket: bucketName, Key: dynamicKey }));
 
-                logDebugMessageToConsole(`Uploading static manifest: ${staticKey}`, null, null);
-                await s3Client.send(new PutObjectCommand({Bucket: bucketName, Key: staticKey, Body: staticManifest, ContentType: 'application/vnd.apple.mpegurl'}));
+        const dynamicManifest = await streamToString(response.Body);
 
-                logDebugMessageToConsole(`Deleting dynamic manifest: ${dynamicKey}`, null, null);
-                await s3Client.send(new DeleteObjectCommand({Bucket: bucketName, Key: dynamicKey}));
-            }
-
-            resolve();
+        let staticManifest;
+        if (dynamicKey.includes('manifest-master.m3u8')) {
+            staticManifest = dynamicManifest.replace(/\/dynamic\//g, '/static/');
         }
-        catch(error) {
-            reject(error);
+        else {
+            staticManifest = dynamicManifest.replace('#EXT-X-PLAYLIST-TYPE:EVENT', '#EXT-X-PLAYLIST-TYPE:VOD');
+            staticManifest = staticManifest.trim() + '\n#EXT-X-ENDLIST\n';
         }
-        
-    });
+
+        logDebugMessageToConsole(`Uploading static manifest: ${staticKey}`, null, null);
+        await s3Client.send(new PutObjectCommand({ Bucket: bucketName, Key: staticKey, Body: staticManifest, ContentType: 'application/vnd.apple.mpegurl' }));
+
+        logDebugMessageToConsole(`Deleting dynamic manifest: ${dynamicKey}`, null, null);
+        await s3Client.send(new DeleteObjectCommand({ Bucket: bucketName, Key: dynamicKey }));
+    }
 }
 
-function s3_updateM3u8ManifestsWithExternalVideosBaseUrl(s3Config, videosData, externalVideosBaseUrl) {
-    return new Promise(async function(resolve, reject) {
-        const bucketName = s3Config.bucketName;
-        const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
+async function s3_updateM3u8ManifestsWithExternalVideosBaseUrl(s3Config, videosData, externalVideosBaseUrl) {
+    const bucketName = s3Config.bucketName;
+    const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
 
-        try {
-            const s3Client = new S3Client(s3ProviderClientConfig);
+    const s3Client = new S3Client(s3ProviderClientConfig);
 
-            for (const videoData of videosData) {
-                const videoId = videoData.video_id;
-                const outputs = videoData.outputs
+    for (const videoData of videosData) {
+        const videoId = videoData.video_id;
+        const outputs = videoData.outputs
 
-                if(outputs.m3u8.length > 0) {
-                    const masterManifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-master.m3u8';
+        if (outputs.m3u8.length > 0) {
+            const masterManifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-master.m3u8';
 
-                    await performUpdate(masterManifestKey);
+            await performUpdate(masterManifestKey);
 
-                    for(const resolution of outputs.m3u8) {
-                        const manifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-' + resolution + '.m3u8';
+            for (const resolution of outputs.m3u8) {
+                const manifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-' + resolution + '.m3u8';
 
-                        await performUpdate(manifestKey);
-                    }
-                }
+                await performUpdate(manifestKey);
             }
-
-            async function performUpdate(manifestKey) {
-                const response = await s3Client.send(new GetObjectCommand({Bucket: bucketName, Key: manifestKey}));
-
-                const oldManifest = await streamToString(response.Body);
-                
-                const newManifest = oldManifest.replace(/https?:\/\/[^/]+(?=\/external)/g, externalVideosBaseUrl);
-                
-                await s3Client.send(new PutObjectCommand({Bucket: bucketName, Key: manifestKey, Body: newManifest, ContentType: 'application/vnd.apple.mpegurl'}));
-            }
-
-            resolve();
         }
-        catch(error) {
-            reject(error);
-        }
-    });
+    }
+
+    async function performUpdate(manifestKey) {
+        const response = await s3Client.send(new GetObjectCommand({ Bucket: bucketName, Key: manifestKey }));
+
+        const oldManifest = await streamToString(response.Body);
+
+        const newManifest = oldManifest.replace(/https?:\/\/[^/]+(?=\/external)/g, externalVideosBaseUrl);
+
+        await s3Client.send(new PutObjectCommand({ Bucket: bucketName, Key: manifestKey, Body: newManifest, ContentType: 'application/vnd.apple.mpegurl' }));
+    }
 }
 
-function s3_validateS3Config(s3Config) {
-    return new Promise(async function(resolve, reject) {
-        const bucketName = s3Config.bucketName;
-        const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
+async function s3_validateS3Config(s3Config) {
+    const bucketName = s3Config.bucketName;
+    const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
 
-        try {
-            logDebugMessageToConsole('validating the s3 provider configuration', null, null);
+    logDebugMessageToConsole('validating the s3 provider configuration', null, null);
 
-            logDebugMessageToConsole('determining if bucket exists: ' + bucketName, null, null);
+    logDebugMessageToConsole('determining if bucket exists: ' + bucketName, null, null);
 
-            const s3Client = new S3Client(s3ProviderClientConfig);
+    const s3Client = new S3Client(s3ProviderClientConfig);
 
-            const buckets = (await s3Client.send(new ListBucketsCommand({}))).Buckets;
+    const buckets = (await s3Client.send(new ListBucketsCommand({}))).Buckets;
 
-            let bucketExists = false;
-            for(const bucket of buckets) {
-                if(bucket.Name === bucketName) {
-                    bucketExists = true;
-                    break;
+    let bucketExists = false;
+    for (const bucket of buckets) {
+        if (bucket.Name === bucketName) {
+            bucketExists = true;
+            break;
+        }
+    }
+
+    if (bucketExists) {
+        logDebugMessageToConsole('bucket exists', null, null);
+    }
+    else {
+        logDebugMessageToConsole('bucket does not exist', null, null);
+
+        logDebugMessageToConsole('creating bucket: ' + bucketName, null, null);
+        await s3Client.send(new CreateBucketCommand({ Bucket: bucketName }));
+
+        logDebugMessageToConsole('configuring bucket for public access', null, null);
+        const publicAccessBlockConfig = {
+            BlockPublicAcls: false,
+            IgnorePublicAcls: false,
+            BlockPublicPolicy: false,
+            RestrictPublicBuckets: false
+        };
+        await s3Client.send(new PutPublicAccessBlockCommand({ Bucket: bucketName, PublicAccessBlockConfiguration: publicAccessBlockConfig }));
+
+        logDebugMessageToConsole('disabling bucket ACLs', null, null);
+        await s3Client.send(new PutBucketOwnershipControlsCommand({ Bucket: bucketName, OwnershipControls: { Rules: [{ ObjectOwnership: "BucketOwnerEnforced" }] } }));
+
+        logDebugMessageToConsole('retrieving principal ARN', null, null);
+        const stsClient = new STSClient(s3ProviderClientConfig);
+        const principalArn = (await stsClient.send(new GetCallerIdentityCommand({}))).Arn;
+
+        logDebugMessageToConsole('applying bucket policy', null, null);
+        const bucketPolicy = {
+            Version: "2012-10-17",
+            Id: "Policy1551408741789",
+            Statement: [
+                {
+                    Sid: "Stmt1551408240542",
+                    Effect: "Allow",
+                    Principal: "*",
+                    Action: "s3:GetObject",
+                    Resource: `arn:aws:s3:::${bucketName}/*`
+                },
+                {
+                    Sid: "Stmt1551408506061",
+                    Effect: "Allow",
+                    Principal: {
+                        AWS: principalArn
+                    },
+                    Action: "s3:DeleteObject",
+                    Resource: `arn:aws:s3:::${bucketName}/*`
+                },
+                {
+                    Sid: "Stmt1551408740505",
+                    Effect: "Allow",
+                    Principal: {
+                        AWS: principalArn
+                    },
+                    Action: "s3:PutObject",
+                    Resource: `arn:aws:s3:::${bucketName}/*`
                 }
-            }
+            ]
+        };
+        await s3Client.send(new PutBucketPolicyCommand({ Bucket: bucketName, Policy: JSON.stringify(bucketPolicy) }));
 
-            if(bucketExists) {
-                logDebugMessageToConsole('bucket exists', null, null);
-            }
-            else {
-                logDebugMessageToConsole('bucket does not exist', null, null);
+        logDebugMessageToConsole('configuring bucket Cross-origin resource sharing (CORS)', null, null);
+        const corsRules = [{ AllowedHeaders: ['*'], AllowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'HEAD'], AllowedOrigins: ['*'], ExposeHeaders: [] }];
+        await s3Client.send(new PutBucketCorsCommand({ Bucket: bucketName, CORSConfiguration: { CORSRules: corsRules } }));
+    }
 
-                logDebugMessageToConsole('creating bucket: ' + bucketName, null, null);
-                await s3Client.send(new CreateBucketCommand({ Bucket: bucketName }));
+    logDebugMessageToConsole('verifying ability for MoarTube Client to put a test object into the bucket', null, null);
+    await s3Client.send(new PutObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test', Body: 'testing', ContentType: 'text/plain; charset=utf-8' }));
+    logDebugMessageToConsole('MoarTube Client successfully put a test object into the bucket', null, null);
 
-                logDebugMessageToConsole('configuring bucket for public access', null, null);
-                const publicAccessBlockConfig = {
-                    BlockPublicAcls: false,
-                    IgnorePublicAcls: false,
-                    BlockPublicPolicy: false,
-                    RestrictPublicBuckets: false
-                };
-                await s3Client.send(new PutPublicAccessBlockCommand({Bucket: bucketName, PublicAccessBlockConfiguration: publicAccessBlockConfig}));
+    logDebugMessageToConsole('verifying ability for MoarTube Client to get the test object from the bucket', null, null);
+    await s3Client.send(new GetObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test' }));
+    logDebugMessageToConsole('MoarTube Client successfully got the test object from the bucket', null, null);
 
-                logDebugMessageToConsole('disabling bucket ACLs', null, null);
-                await s3Client.send(new PutBucketOwnershipControlsCommand({Bucket: bucketName, OwnershipControls: {Rules: [{ ObjectOwnership: "BucketOwnerEnforced" }]}}));
+    logDebugMessageToConsole('verifying ability for MoarTube Client to delete the test object from the bucket', null, null);
+    await s3Client.send(new DeleteObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test' }));
+    logDebugMessageToConsole('MoarTube Client successfully deleted the test object from the bucket', null, null);
 
-                logDebugMessageToConsole('retrieving principal ARN', null, null);
-                const stsClient = new STSClient(s3ProviderClientConfig);
-                const principalArn = (await stsClient.send(new GetCallerIdentityCommand({}))).Arn;
+    logDebugMessageToConsole('s3 provider credentials validated', null, null);
 
-                logDebugMessageToConsole('applying bucket policy', null, null);
-                const bucketPolicy = {
-                    Version: "2012-10-17",
-                    Id: "Policy1551408741789",
-                    Statement: [
-                        {
-                            Sid: "Stmt1551408240542",
-                            Effect: "Allow",
-                            Principal: "*",
-                            Action: "s3:GetObject",
-                            Resource: `arn:aws:s3:::${bucketName}/*`
-                        },
-                        {
-                            Sid: "Stmt1551408506061",
-                            Effect: "Allow",
-                            Principal: {
-                                AWS: principalArn
-                            },
-                            Action: "s3:DeleteObject",
-                            Resource: `arn:aws:s3:::${bucketName}/*`
-                        },
-                        {
-                            Sid: "Stmt1551408740505",
-                            Effect: "Allow",
-                            Principal: {
-                                AWS: principalArn
-                            },
-                            Action: "s3:PutObject",
-                            Resource: `arn:aws:s3:::${bucketName}/*`
-                        }
-                    ]
-                };
-                await s3Client.send(new PutBucketPolicyCommand({Bucket: bucketName, Policy: JSON.stringify(bucketPolicy)}));
-
-                logDebugMessageToConsole('configuring bucket Cross-origin resource sharing (CORS)', null, null);
-                const corsRules = [{AllowedHeaders: ['*'], AllowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'HEAD'], AllowedOrigins: ['*'], ExposeHeaders: []}];
-                await s3Client.send(new PutBucketCorsCommand({Bucket: bucketName, CORSConfiguration: { CORSRules: corsRules }}));
-            }
-
-            logDebugMessageToConsole('verifying ability for MoarTube Client to put a test object into the bucket', null, null);
-            await s3Client.send(new PutObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test', Body: 'testing', ContentType: 'text/plain; charset=utf-8' }));
-            logDebugMessageToConsole('MoarTube Client successfully put a test object into the bucket', null, null);
-
-            logDebugMessageToConsole('verifying ability for MoarTube Client to get the test object from the bucket', null, null);
-            await s3Client.send(new GetObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test'}));
-            logDebugMessageToConsole('MoarTube Client successfully got the test object from the bucket', null, null);
-
-            logDebugMessageToConsole('verifying ability for MoarTube Client to delete the test object from the bucket', null, null);
-            await s3Client.send(new DeleteObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test' }));
-            logDebugMessageToConsole('MoarTube Client successfully deleted the test object from the bucket', null, null);
-
-            logDebugMessageToConsole('s3 provider credentials validated', null, null);
-
-            resolve({isError: false});
-        }
-        catch (error) {
-            const message = 'an error occured while validating the S3 provider configuration';
-
-            logDebugMessageToConsole(message, error, null);
-
-            reject(message);
-        }
-    });
+    return { isError: false };
 }
 
 async function streamToString(stream) {
     return new Promise((resolve, reject) => {
-      const chunks = [];
+        const chunks = [];
 
-      stream.on("data", (chunk) => chunks.push(chunk));
-      stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
-      stream.on("error", reject);
+        stream.on("data", (chunk) => chunks.push(chunk));
+        stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
+        stream.on("error", reject);
     });
-  }
+}
 
 module.exports = {
     s3_putObjectFromData,

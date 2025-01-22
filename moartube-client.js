@@ -47,12 +47,12 @@ async function startClient() {
         This is benign, also reportedly does not occur on Unix-based systems, though unconfirmed.
         */
 		if(!error.stack.includes('Error: write EOF')) {
-			logDebugMessageToConsole(null, error, error.stackTrace);
+			logDebugMessageToConsole(null, error, new Error().stack);
 		}
 	});
 
 	process.on('unhandledRejection', (reason, promise) => {
-		logDebugMessageToConsole(null, reason, reason.stack);
+		logDebugMessageToConsole(null, reason, new Error().stack);
 	});
 
 	logDebugMessageToConsole('starting MoarTube Client', null, null);

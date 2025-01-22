@@ -11,6 +11,8 @@ const { stoppingPublishVideoEncoding, stoppedPublishVideoEncoding } = require('.
 const { stopPendingPublishVideo } = require('../utils/trackers/pending-publish-video-tracker');
 
 async function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe) {
+    let result;
+
     logDebugMessageToConsole('attempting user sign in with HTTP...', null, null);
     
     try {
@@ -18,9 +20,9 @@ async function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort,
 
         logDebugMessageToConsole('user signing in with HTTP available', null, null);
 
-        const result = await performSignIn('http', 'ws', moarTubeNodeIp, moarTubeNodePort);
+        const response = await performSignIn('http', 'ws', moarTubeNodeIp, moarTubeNodePort);
 
-        return result;
+        result = response;
     }
     catch (error) {
         logDebugMessageToConsole('attempting user sign in with HTTPS...', null, null);
@@ -30,13 +32,16 @@ async function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort,
 
             logDebugMessageToConsole('user signing in with HTTPS available', null, null);
 
-            const result = await performSignIn('https', 'wss', moarTubeNodeIp, moarTubeNodePort);
+            const response = await performSignIn('https', 'wss', moarTubeNodeIp, moarTubeNodePort);
 
-            return result;
+            result = response;
         }
         catch (error) {
             throw error; 
         }
+    }
+    finally {
+        return result;
     }
     
     async function performSignIn(moarTubeNodeHttpProtocol, moarTubeNodeWebsocketProtocol, moarTubeNodeIp, moarTubeNodePort) {

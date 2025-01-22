@@ -15,34 +15,33 @@ const { addVideoToImportVideoTracker, isVideoImportStopping } = require('../util
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
-    const jwtToken = req.session.jwtToken;
-    
-    node_isAuthenticated(jwtToken)
-    .then(async nodeResponseData => {
-        if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-            
+router.get('/', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+
+        const response = await node_isAuthenticated(jwtToken);
+
+        if (response.isError) {
+            logDebugMessageToConsole(response.message, null, new Error().stack);
+
             node_doSignout(req, res);
         }
-        else {
-            if(nodeResponseData.isAuthenticated) {
-                const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
+        else if (response.isAuthenticated) {
+            const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
 
-                res.render('videos', {
-                    externalVideosBaseUrl: externalVideosBaseUrl
-                });
-            }
-            else {
-                res.redirect('/account/signin');
-            }
+            res.render('videos', {
+                externalVideosBaseUrl: externalVideosBaseUrl
+            });
         }
-    })
-    .catch(error => {
+        else {
+            res.redirect('/account/signin');
+        }
+    }
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-        
+
         node_doSignout(req, res);
-    });
+    }
 });
 
 router.get('/search', async (req, res) => {

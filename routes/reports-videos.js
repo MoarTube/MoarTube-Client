@@ -1,39 +1,34 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 
 const { all_GET, archiveAll_GET, archive_POST, delete_POST, archiveDelete_POST } = require('../controllers/reports-videos');
-const { logDebugMessageToConsole, getPublicDirectoryPath } = require('../utils/helpers');
+const { logDebugMessageToConsole } = require('../utils/helpers');
 const { node_isAuthenticated, node_doSignout } = require('../utils/node-communications');
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
-    const jwtToken = req.session.jwtToken;
-    
-    node_isAuthenticated(jwtToken)
-    .then(nodeResponseData => {
-        if(nodeResponseData.isError) {
-            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-            
+router.get('/', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+
+        const response = await node_isAuthenticated(jwtToken);
+
+        if (response.isError) {
+            logDebugMessageToConsole(response.message, null, new Error().stack);
+
             node_doSignout(req, res);
         }
-        else {
-            if(nodeResponseData.isAuthenticated) {
-                res.render('reports-videos', {
-
-                });
-            }
-            else {
-                res.redirect('/account/signin');
-            }
+        else if (response.isAuthenticated) {
+            res.render('reports-videos', {});
         }
-    })
-    .catch(error => {
+        else {
+            res.redirect('/account/signin');
+        }
+    }
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-        
+
         node_doSignout(req, res);
-    });
+    }
 });
 
 router.get('/all', async (req, res) => {

@@ -1,33 +1,33 @@
 const { node_getCommentReports, node_getCommentReportsArchive, node_archiveCommentReport, node_removeCommentReport, node_removeCommentReportArchive } = require('../utils/node-communications');
 
 async function all_GET(jwtToken) {
-    const result = await node_getCommentReports(jwtToken);
+    const response = await node_getCommentReports(jwtToken);
 
-    return result;
+    return response;
 }
 
 async function archiveAll_GET(jwtToken) {
-    const result = await node_getCommentReportsArchive(jwtToken);
+    const response = await node_getCommentReportsArchive(jwtToken);
 
-    return result;
+    return response;
 }
 
 async function archive_POST(jwtToken, reportId) {
-    const result = await node_archiveCommentReport(jwtToken, reportId);
+    const response = await node_archiveCommentReport(jwtToken, reportId);
 
-    return result;
+    return response;
 }
 
 async function delete_POST(jwtToken, reportId) {
-    const result = await node_removeCommentReport(jwtToken, reportId);
+    const response = await node_removeCommentReport(jwtToken, reportId);
 
-    return result;
+    return response;
 }
 
 async function archiveDelete_POST(jwtToken, archiveId) {
-    const result = await node_removeCommentReportArchive(jwtToken, archiveId);
+    const response = await node_removeCommentReportArchive(jwtToken, archiveId);
 
-    return result;
+    return response;
 }
 
 module.exports = {

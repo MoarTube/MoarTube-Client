@@ -1,34 +1,33 @@
-const { logDebugMessageToConsole } = require('../utils/helpers');
 const { node_getVideoReportsArchive, node_archiveVideoReport, node_removeVideoReport, node_removeVideoReportArchive, node_getVideoReports } = require('../utils/node-communications');
 
 async function all_GET(jwtToken) {
-    const result = await node_getVideoReports(jwtToken);
+    const response = await node_getVideoReports(jwtToken);
 
-    return result;
+    return response;
 }
 
 async function archiveAll_GET(jwtToken) {
-    const result = await node_getVideoReportsArchive(jwtToken);
+    const response = await node_getVideoReportsArchive(jwtToken);
 
-    return result;
+    return response;
 }
 
 async function archive_POST(jwtToken, reportId) {
-    const result = await node_archiveVideoReport(jwtToken, reportId);
+    const response = await node_archiveVideoReport(jwtToken, reportId);
 
-    return result;
+    return response;
 }
 
 async function delete_POST(jwtToken, reportId) {
-    const result = await node_removeVideoReport(jwtToken, reportId);
+    const response = await node_removeVideoReport(jwtToken, reportId);
 
-    return result;
+    return response;
 }
 
 async function archiveDelete_POST(jwtToken, archiveId) {
-    const result = await node_removeVideoReportArchive(jwtToken, archiveId);
+    const response = await node_removeVideoReportArchive(jwtToken, archiveId);
 
-    return result;
+    return response;
 }
 
 module.exports = {

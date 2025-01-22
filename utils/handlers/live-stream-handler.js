@@ -3,71 +3,70 @@ const path = require('path');
 const spawn = require('child_process').spawn;
 const sharp = require('sharp');
 
-const { 
+const {
     logDebugMessageToConsole, getVideosDirectoryPath, websocketClientBroadcast, getFfmpegPath, getClientSettings, timestampToSeconds, deleteDirectoryRecursive,
     cacheM3u8Segment, getNodeSettings, getExternalVideosBaseUrl, refreshM3u8MasterManifest
- } = require('../helpers');
-const { 
-    node_setVideoLengths, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, node_removeAdaptiveStreamSegment, 
+} = require('../helpers');
+const {
+    node_setVideoLengths, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, node_removeAdaptiveStreamSegment,
     node_stopVideoStreaming
 } = require('../node-communications');
-const { 
+const {
     s3_putObjectFromData, s3_deleteObjectWithKey, s3_deleteObjectsWithPrefix
 } = require('../s3-communications');
-const { 
-    addProcessToLiveStreamTracker, isLiveStreamStopping, liveStreamExists 
+const {
+    addProcessToLiveStreamTracker, isLiveStreamStopping, liveStreamExists
 } = require('../trackers/live-stream-tracker');
 
-function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isRecordingStreamRemotely, isRecordingStreamLocally) {
-    return new Promise(async function(resolve, reject) {
-        logDebugMessageToConsole('starting live stream for id: ' + videoId, null, null);
+async function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isRecordingStreamRemotely, isRecordingStreamLocally) {
+    logDebugMessageToConsole('starting live stream for id: ' + videoId, null, null);
 
-        const nodeSettings = await getNodeSettings(jwtToken);
-        const storageConfig = nodeSettings.storageConfig;
-        const isCloudflareCdnEnabled = nodeSettings.isCloudflareCdnEnabled;
+    const nodeSettings = await getNodeSettings(jwtToken);
+    const storageConfig = nodeSettings.storageConfig;
+    const isCloudflareCdnEnabled = nodeSettings.isCloudflareCdnEnabled;
 
-        if(storageConfig.storageMode === 's3provider') {
-            const prefix = 'external/videos/' + videoId + '/adaptive/m3u8';
+    if (storageConfig.storageMode === 's3provider') {
+        const prefix = 'external/videos/' + videoId + '/adaptive/m3u8';
 
-            await s3_deleteObjectsWithPrefix(storageConfig.s3Config, prefix);
-        }
-        
-        await refreshM3u8MasterManifest(jwtToken, videoId);
+        await s3_deleteObjectsWithPrefix(storageConfig.s3Config, prefix);
+    }
 
-        await deleteDirectoryRecursive(path.join(getVideosDirectoryPath(), videoId));
-        
-        fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/source'), { recursive: true });
-        fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/images'), { recursive: true });
-        fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/adaptive'), { recursive: true });
-        
-        const sourceDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/source');
-        const sourceFilePath = path.join(sourceDirectoryPath, '/' + videoId + '.ts');
-        const manifestFileName = 'manifest-' + resolution + '.m3u8';
+    await refreshM3u8MasterManifest(jwtToken, videoId);
 
-        const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
+    await deleteDirectoryRecursive(path.join(getVideosDirectoryPath(), videoId));
 
-        const ffmpegArguments = generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely, externalVideosBaseUrl);
-        
-        let process = spawn(getFfmpegPath(), ffmpegArguments);
+    fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/source'), { recursive: true });
+    fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/images'), { recursive: true });
+    fs.mkdirSync(path.join(getVideosDirectoryPath(), videoId + '/adaptive'), { recursive: true });
 
-        addProcessToLiveStreamTracker(videoId, process);
-        
-        let lengthSeconds = 0;
-        let lengthTimestamp = '';
+    const sourceDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/source');
+    const sourceFilePath = path.join(sourceDirectoryPath, '/' + videoId + '.ts');
+    const manifestFileName = 'manifest-' + resolution + '.m3u8';
 
-        process.stderr.on('data', function (data) {
-            if(!isLiveStreamStopping(videoId)) {
-                const stderrTemp = Buffer.from(data).toString();
-                logDebugMessageToConsole(stderrTemp, null, null);
-                
-                if(stderrTemp.indexOf('time=') != -1) {
-                    let index = stderrTemp.indexOf('time=');
-                    lengthTimestamp = stderrTemp.substr(index + 5, 11);
-                    lengthSeconds = timestampToSeconds(lengthTimestamp);
-                    
-                    node_setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp)
+    const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
+
+    const ffmpegArguments = generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely, externalVideosBaseUrl);
+
+    let process = spawn(getFfmpegPath(), ffmpegArguments);
+
+    addProcessToLiveStreamTracker(videoId, process);
+
+    let lengthSeconds = 0;
+    let lengthTimestamp = '';
+
+    process.stderr.on('data', function (data) {
+        if (!isLiveStreamStopping(videoId)) {
+            const stderrTemp = Buffer.from(data).toString();
+            logDebugMessageToConsole(stderrTemp, null, null);
+
+            if (stderrTemp.indexOf('time=') != -1) {
+                let index = stderrTemp.indexOf('time=');
+                lengthTimestamp = stderrTemp.substr(index + 5, 11);
+                lengthSeconds = timestampToSeconds(lengthTimestamp);
+
+                node_setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp)
                     .then(nodeResponseData => {
-                        if(nodeResponseData.isError) {
+                        if (nodeResponseData.isError) {
                             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                         }
                         else {
@@ -77,112 +76,112 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
                     .catch(error => {
                         logDebugMessageToConsole(null, error, new Error().stack);
                     });
-                }
             }
-        });
+        }
+    });
 
-        let accumulatedBuffer = Buffer.alloc(0);
-        const segmentRegex = /(.*\/)(.*\.ts)$/;
-        let nextExpectedSegmentIndex = 0;
-        let endOfValidManifestPattern = Buffer.from(`segment-${resolution}-${nextExpectedSegmentIndex}.ts\n`);
-        let endOfValidManifestPatternLength = endOfValidManifestPattern.length;
+    let accumulatedBuffer = Buffer.alloc(0);
+    const segmentRegex = /(.*\/)(.*\.ts)$/;
+    let nextExpectedSegmentIndex = 0;
+    let endOfValidManifestPattern = Buffer.from(`segment-${resolution}-${nextExpectedSegmentIndex}.ts\n`);
+    let endOfValidManifestPatternLength = endOfValidManifestPattern.length;
 
-        process.stdout.on('data', (data) => {
-            if(!isLiveStreamStopping(videoId)) {
-                accumulatedBuffer = Buffer.concat([accumulatedBuffer, data]);
+    process.stdout.on('data', (data) => {
+        if (!isLiveStreamStopping(videoId)) {
+            accumulatedBuffer = Buffer.concat([accumulatedBuffer, data]);
 
-                /*
-                The end of an HLS manifest is indicated by a newline character.
-                Preceding that newline character is the latest expected segment manifest entry.
-                By looking for the pattern ".ts\n" at the end of the latest data packet, we can detect the end of the manifest.
-                This detection will also indicate the accumulation of the video data for the latest expected segment manifest entry.
-                This is because ffmpeg outputs the segment data first, followed by the manifest data.
-                Using the #EXTM3U section of the manifest reveals the partitioning location between the latest expected segment data and the manifest data.
+            /*
+            The end of an HLS manifest is indicated by a newline character.
+            Preceding that newline character is the latest expected segment manifest entry.
+            By looking for the pattern ".ts\n" at the end of the latest data packet, we can detect the end of the manifest.
+            This detection will also indicate the accumulation of the video data for the latest expected segment manifest entry.
+            This is because ffmpeg outputs the segment data first, followed by the manifest data.
+            Using the #EXTM3U section of the manifest reveals the partitioning location between the latest expected segment data and the manifest data.
 
-                Note:
-                1) Since stdout is a data stream, the last data packet may contain both video data for the latest expected segment and manifest data.
-                2) A data packet may end with the pattern ".ts\n" but instead be a false positive for detecting the end of the manifest if that data packet 
-                happened to be mid-manifest ending with that pattern. Validation is performed to guard against this rare edge case.
-                */
+            Note:
+            1) Since stdout is a data stream, the last data packet may contain both video data for the latest expected segment and manifest data.
+            2) A data packet may end with the pattern ".ts\n" but instead be a false positive for detecting the end of the manifest if that data packet 
+            happened to be mid-manifest ending with that pattern. Validation is performed to guard against this rare edge case.
+            */
 
-                // end of manifest detection
-                if (data[data.length - 4] === 0x2E && // .
-                    data[data.length - 3] === 0x74 && // t
-                    data[data.length - 2] === 0x73 && // s
-                    data[data.length - 1] === 0x0A) { // \n
-                    const manifestIndex = accumulatedBuffer.indexOf('#EXTM3U');
-                    const startingSegmentIndex = accumulatedBuffer.indexOf('#EXT-X-MEDIA-SEQUENCE');
+            // end of manifest detection
+            if (data[data.length - 4] === 0x2E && // .
+                data[data.length - 3] === 0x74 && // t
+                data[data.length - 2] === 0x73 && // s
+                data[data.length - 1] === 0x0A) { // \n
+                const manifestIndex = accumulatedBuffer.indexOf('#EXTM3U');
+                const startingSegmentIndex = accumulatedBuffer.indexOf('#EXT-X-MEDIA-SEQUENCE');
 
-                    if(manifestIndex !== -1 && startingSegmentIndex !== -1) {
-                        let manifestBuffer = accumulatedBuffer.slice(manifestIndex);
-                        const segmentBuffer = accumulatedBuffer.slice(0, manifestIndex);
+                if (manifestIndex !== -1 && startingSegmentIndex !== -1) {
+                    let manifestBuffer = accumulatedBuffer.slice(manifestIndex);
+                    const segmentBuffer = accumulatedBuffer.slice(0, manifestIndex);
 
-                        const manifestLines = manifestBuffer.toString().split('\n');
+                    const manifestLines = manifestBuffer.toString().split('\n');
 
-                        let segmentCounter = -1;
-                        for(const manifestLine of manifestLines) {
-                            if(manifestLine.includes('#EXT-X-MEDIA-SEQUENCE')) {
-                                segmentCounter = parseInt(manifestLine.split(':')[1], 10);
+                    let segmentCounter = -1;
+                    for (const manifestLine of manifestLines) {
+                        if (manifestLine.includes('#EXT-X-MEDIA-SEQUENCE')) {
+                            segmentCounter = parseInt(manifestLine.split(':')[1], 10);
 
-                                break;
-                            }
+                            break;
                         }
+                    }
 
-                        if(segmentCounter >= 0) {
-                            /*
-                            hls_segment_filename cannot be used to configure segment naming when piping ffmpeg to stdout.
-                            Setting hls_segment_filename activates file system storage instead for some stupid reason.
-                            Manifest file must therefore be post-processed to configure segment naming.
-                            We can't just generate an entire manifest because we can't anticipate ffmpeg's calculation of segment length (#EXTINF).
-                            */
-                            let updatedManifestLines = manifestLines.map(line => {
-                                if (segmentRegex.test(line.trim())) {
-                                    const match = line.trim().match(segmentRegex);
-                                    const segmentPath = match[1];
-                                    const newSegmentName = `segment-${resolution}-${segmentCounter}.ts`;
-                                    const newSegmentPath = `${segmentPath}${newSegmentName}`;
+                    if (segmentCounter >= 0) {
+                        /*
+                        hls_segment_filename cannot be used to configure segment naming when piping ffmpeg to stdout.
+                        Setting hls_segment_filename activates file system storage instead for some stupid reason.
+                        Manifest file must therefore be post-processed to configure segment naming.
+                        We can't just generate an entire manifest because we can't anticipate ffmpeg's calculation of segment length (#EXTINF).
+                        */
+                        let updatedManifestLines = manifestLines.map(line => {
+                            if (segmentRegex.test(line.trim())) {
+                                const match = line.trim().match(segmentRegex);
+                                const segmentPath = match[1];
+                                const newSegmentName = `segment-${resolution}-${segmentCounter}.ts`;
+                                const newSegmentPath = `${segmentPath}${newSegmentName}`;
 
-                                    segmentCounter++;
+                                segmentCounter++;
 
-                                    return newSegmentPath;
-                                }
+                                return newSegmentPath;
+                            }
 
-                                return line;
-                            });
+                            return line;
+                        });
 
-                            manifestBuffer = Buffer.from(updatedManifestLines.join('\n'));
+                        manifestBuffer = Buffer.from(updatedManifestLines.join('\n'));
 
-                            const endOfValidManifestPatternIndex = manifestBuffer.indexOf(endOfValidManifestPattern);
+                        const endOfValidManifestPatternIndex = manifestBuffer.indexOf(endOfValidManifestPattern);
 
-                            // validate end of manifest detection by detecting for the expected segment in its expected position
-                            if(endOfValidManifestPatternIndex !== -1 && ((manifestBuffer.length - endOfValidManifestPatternLength) === endOfValidManifestPatternIndex)) {
-                                accumulatedBuffer = Buffer.alloc(0);
+                        // validate end of manifest detection by detecting for the expected segment in its expected position
+                        if (endOfValidManifestPatternIndex !== -1 && ((manifestBuffer.length - endOfValidManifestPatternLength) === endOfValidManifestPatternIndex)) {
+                            accumulatedBuffer = Buffer.alloc(0);
 
-                                nextExpectedSegmentIndex = segmentCounter;
-                                endOfValidManifestPattern = Buffer.from(`segment-${resolution}-${nextExpectedSegmentIndex}.ts\n`);
-                                endOfValidManifestPatternLength = endOfValidManifestPattern.length;
+                            nextExpectedSegmentIndex = segmentCounter;
+                            endOfValidManifestPattern = Buffer.from(`segment-${resolution}-${nextExpectedSegmentIndex}.ts\n`);
+                            endOfValidManifestPatternLength = endOfValidManifestPattern.length;
 
-                                segmentCounter--;
+                            segmentCounter--;
 
-                                const segmentFileName = 'segment-' + resolution + '-' + segmentCounter + '.ts';
+                            const segmentFileName = 'segment-' + resolution + '-' + segmentCounter + '.ts';
 
-                                sendSegmentToNode(jwtToken, videoId, resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName, storageConfig, isCloudflareCdnEnabled, externalVideosBaseUrl);
-                                sendImagesToNode(jwtToken, videoId, segmentBuffer, storageConfig);
+                            sendSegmentToNode(jwtToken, videoId, resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName, storageConfig, isCloudflareCdnEnabled, externalVideosBaseUrl);
+                            sendImagesToNode(jwtToken, videoId, segmentBuffer, storageConfig);
 
-                                if(isRecordingStreamLocally) {
-                                    fs.writeFileSync(sourceFilePath, segmentBuffer, { flag: 'a' });
-                                }
+                            if (isRecordingStreamLocally) {
+                                fs.writeFileSync(sourceFilePath, segmentBuffer, { flag: 'a' });
+                            }
 
-                                if(!isRecordingStreamRemotely) {
-                                    const segmentIndexToRemove = segmentCounter - 20;
-                                    
-                                    if(segmentIndexToRemove >= 0) {
-                                        const segmentName = 'segment-' + resolution + '-' + segmentIndexToRemove + '.ts';
+                            if (!isRecordingStreamRemotely) {
+                                const segmentIndexToRemove = segmentCounter - 20;
 
-                                        if(storageConfig.storageMode === 'filesystem') {
-                                            node_removeAdaptiveStreamSegment(jwtToken, videoId, format, resolution, segmentName)
+                                if (segmentIndexToRemove >= 0) {
+                                    const segmentName = 'segment-' + resolution + '-' + segmentIndexToRemove + '.ts';
+
+                                    if (storageConfig.storageMode === 'filesystem') {
+                                        node_removeAdaptiveStreamSegment(jwtToken, videoId, format, resolution, segmentName)
                                             .then(nodeResponseData => {
-                                                if(nodeResponseData.isError) {
+                                                if (nodeResponseData.isError) {
                                                     logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                                 }
                                                 else {
@@ -192,83 +191,80 @@ function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolution, isR
                                             .catch(error => {
                                                 logDebugMessageToConsole(null, error, new Error().stack);
                                             });
-                                        }
-                                        else if(storageConfig.storageMode === 's3provider') {
-                                            const s3Config = storageConfig.s3Config;
+                                    }
+                                    else if (storageConfig.storageMode === 's3provider') {
+                                        const s3Config = storageConfig.s3Config;
 
-                                            const segmentKey = 'external/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/' + segmentName;
+                                        const segmentKey = 'external/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/' + segmentName;
 
-                                            s3_deleteObjectWithKey(s3Config, segmentKey)
+                                        s3_deleteObjectWithKey(s3Config, segmentKey)
                                             .then(response => {
                                                 logDebugMessageToConsole('s3 removed segment ' + segmentName, null, null);
                                             })
                                             .catch(error => {
                                                 logDebugMessageToConsole(null, error, new Error().stack);
                                             });
-                                        }
                                     }
                                 }
+                            }
 
-                                node_getVideoBandwidth(jwtToken, videoId)
+                            node_getVideoBandwidth(jwtToken, videoId)
                                 .then(nodeResponseData => {
-                                    if(nodeResponseData.isError) {
+                                    if (nodeResponseData.isError) {
                                         logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                                     }
                                     else {
                                         const bandwidth = nodeResponseData.bandwidth;
-                                        
-                                        websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: {type: 'streaming', videoId: videoId, lengthTimestamp: lengthTimestamp, bandwidth: bandwidth}}});
+
+                                        websocketClientBroadcast({ eventName: 'echo', jwtToken: jwtToken, data: { eventName: 'video_status', payload: { type: 'streaming', videoId: videoId, lengthTimestamp: lengthTimestamp, bandwidth: bandwidth } } });
                                     }
                                 })
                                 .catch(error => {
                                     logDebugMessageToConsole(null, error, new Error().stack);
                                 });
-                            }
                         }
                     }
                 }
             }
-        });
+        }
+    });
 
-        process.on('spawn', function (code) {
-            logDebugMessageToConsole('performStreamingJob ffmpeg process spawned with arguments: ' + ffmpegArguments, null, null);
-        });
-        
-        process.on('exit', function (code) {
-            logDebugMessageToConsole('performStreamingJob live stream process exited with exit code: ' + code, null, null);
-            
-            if(liveStreamExists(videoId)) {
-                logDebugMessageToConsole('performStreamingJob checking if live stream process was interrupted by MoarTube Client...', null, null);
-                
-                if(!isLiveStreamStopping(videoId)) {
-                    logDebugMessageToConsole('performStreamingJob determined live stream process was not interrupted by MoarTube Client', null, null);
-                    
-                    websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId }}});
-                    
-                    node_stopVideoStreaming(jwtToken, videoId)
+    process.on('spawn', function (code) {
+        logDebugMessageToConsole('performStreamingJob ffmpeg process spawned with arguments: ' + ffmpegArguments, null, null);
+    });
+
+    process.on('exit', function (code) {
+        logDebugMessageToConsole('performStreamingJob live stream process exited with exit code: ' + code, null, null);
+
+        if (liveStreamExists(videoId)) {
+            logDebugMessageToConsole('performStreamingJob checking if live stream process was interrupted by MoarTube Client...', null, null);
+
+            if (!isLiveStreamStopping(videoId)) {
+                logDebugMessageToConsole('performStreamingJob determined live stream process was not interrupted by MoarTube Client', null, null);
+
+                websocketClientBroadcast({ eventName: 'echo', jwtToken: jwtToken, data: { eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId } } });
+
+                node_stopVideoStreaming(jwtToken, videoId)
                     .then((nodeResponseData) => {
-                        if(nodeResponseData.isError) {
+                        if (nodeResponseData.isError) {
                             logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
                         }
                         else {
-                            websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId }}});
+                            websocketClientBroadcast({ eventName: 'echo', jwtToken: jwtToken, data: { eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId } } });
                         }
                     })
                     .catch(error => {
                         logDebugMessageToConsole(null, error, new Error().stack);
                     });
-                }
-                else {
-                    logDebugMessageToConsole('performStreamingJob determined live stream process was interrupted by MoarTube Client', null, null);
-                }
             }
-        });
-        
-        process.on('error', function (code) {
-            logDebugMessageToConsole('performEncodingJob errored with error code: ' + code, null, null);
-        });
-        
-        resolve({isError: false});
+            else {
+                logDebugMessageToConsole('performStreamingJob determined live stream process was interrupted by MoarTube Client', null, null);
+            }
+        }
+    });
+
+    process.on('error', function (code) {
+        logDebugMessageToConsole('performEncodingJob errored with error code: ' + code, null, null);
     });
 }
 
@@ -276,25 +272,25 @@ async function sendSegmentToNode(jwtToken, videoId, resolution, manifestBuffer, 
     logDebugMessageToConsole('sending segment ' + segmentFileName + ' to node for video Id ' + videoId, null, null);
 
     // truncate the manifest file by one segment so that the segment can be cached and distributed by the CDN on the next iteration
-    if(isCloudflareCdnEnabled) {
+    if (isCloudflareCdnEnabled) {
         const lines = manifestBuffer.toString().split(/\r?\n/);
 
-        if(lines.length >= 10) {
+        if (lines.length >= 10) {
             lines.splice(lines.length - 3, 3);
             const newManifest = lines.join('\n');
             manifestBuffer = Buffer.from(newManifest);
         }
     }
 
-    if(storageConfig.storageMode === 'filesystem') {
+    if (storageConfig.storageMode === 'filesystem') {
         await node_uploadStream(jwtToken, videoId, 'm3u8', resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName);
     }
-    else if(storageConfig.storageMode === 's3provider') {
+    else if (storageConfig.storageMode === 's3provider') {
         const s3Config = storageConfig.s3Config;
 
         const segmentKey = 'external/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/' + segmentFileName;
         const manifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/dynamic/manifests/manifest-' + resolution + '.m3u8';
-        
+
         /*
         upload segment first followed by manifest, otherwise video player may request segments that aren't available yet
         */
@@ -302,7 +298,7 @@ async function sendSegmentToNode(jwtToken, videoId, resolution, manifestBuffer, 
         await s3_putObjectFromData(s3Config, manifestKey, manifestBuffer, 'application/vnd.apple.mpegurl');
     }
 
-    if(isCloudflareCdnEnabled) {
+    if (isCloudflareCdnEnabled) {
         const segmentFileUrl = externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/m3u8/' + resolution + '/segments/' + segmentFileName;
 
         cacheM3u8Segment(segmentFileUrl);
@@ -315,12 +311,12 @@ let uploadingPoster = false;
 let lastVideoImagesUpdateTimestamp = 0;
 function sendImagesToNode(jwtToken, videoId, segmentBuffer, storageConfig) {
     // Update thumbnail, preview, and poster every 10 seconds.
-    if(!uploadingThumbnail && !uploadingPreview && !uploadingPoster && (Date.now() - lastVideoImagesUpdateTimestamp > 10000)) {
+    if (!uploadingThumbnail && !uploadingPreview && !uploadingPoster && (Date.now() - lastVideoImagesUpdateTimestamp > 10000)) {
         lastVideoImagesUpdateTimestamp = Date.now();
 
         const imagesDirectoryPath = path.join(getVideosDirectoryPath(), videoId, '/images');
         const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
-        
+
         let process = spawn(getFfmpegPath(), ['-i', 'pipe:0', '-ss', '0.5', '-q', '18', '-frames:v', '1', '-y', sourceImagePath]);
 
         /*
@@ -339,16 +335,16 @@ function sendImagesToNode(jwtToken, videoId, segmentBuffer, storageConfig) {
         process.on('error', function (code) {
             logDebugMessageToConsole('live source image generating errorred with error code: ' + code, null, null);
         });
-        
+
         process.on('spawn', function (code) {
             logDebugMessageToConsole('live source image generating ffmpeg process spawned', null, null);
         });
-        
+
         process.on('exit', async function (code) {
             logDebugMessageToConsole('live source image generating ffmpeg process exited with exit code: ' + code, null, null);
 
-            if(code === 0) {
-                if(fs.existsSync(sourceImagePath)) {
+            if (code === 0) {
+                if (fs.existsSync(sourceImagePath)) {
                     logDebugMessageToConsole('generated live source image for video: ' + videoId, null, null);
 
                     try {
@@ -357,36 +353,36 @@ function sendImagesToNode(jwtToken, videoId, segmentBuffer, storageConfig) {
                         uploadingPoster = true;
 
                         logDebugMessageToConsole('generating live thumbnail, preview, and poster for video: ' + videoId, null, null);
-                        const thumbnailBuffer = await sharp(sourceImagePath).resize({width: 100}).resize(100, 100).jpeg({quality : 90}).toBuffer();
-                        const previewFileBuffer = await sharp(sourceImagePath).resize({width: 512}).resize(512, 288).jpeg({quality : 90}).toBuffer();
-                        const posterFileBuffer = await sharp(sourceImagePath).resize({width: 1280}).resize(1280, 720).jpeg({quality : 90}).toBuffer();
+                        const thumbnailBuffer = await sharp(sourceImagePath).resize({ width: 100 }).resize(100, 100).jpeg({ quality: 90 }).toBuffer();
+                        const previewFileBuffer = await sharp(sourceImagePath).resize({ width: 512 }).resize(512, 288).jpeg({ quality: 90 }).toBuffer();
+                        const posterFileBuffer = await sharp(sourceImagePath).resize({ width: 1280 }).resize(1280, 720).jpeg({ quality: 90 }).toBuffer();
                         logDebugMessageToConsole('generated live thumbnail, preview, and poster for video: ' + videoId, null, null);
 
                         const storageMode = storageConfig.storageMode;
 
-                        if(storageMode === 'filesystem') {
+                        if (storageMode === 'filesystem') {
                             await node_setThumbnail(jwtToken, videoId, thumbnailBuffer);
                             logDebugMessageToConsole('uploaded thumbnail to node for video: ' + videoId, null, null);
-            
+
                             await node_setPreview(jwtToken, videoId, previewFileBuffer);
                             logDebugMessageToConsole('uploaded preview to node for video: ' + videoId, null, null);
-            
+
                             await node_setPoster(jwtToken, videoId, posterFileBuffer);
                             logDebugMessageToConsole('uploaded poster to node for video: ' + videoId, null, null);
                         }
-                        else if(storageMode === 's3provider') {
+                        else if (storageMode === 's3provider') {
                             const s3Config = storageConfig.s3Config;
-            
+
                             const thumbnailImageKey = 'external/videos/' + videoId + '/images/thumbnail.jpg';
                             const previewImageKey = 'external/videos/' + videoId + '/images/preview.jpg';
                             const posterImageKey = 'external/videos/' + videoId + '/images/poster.jpg';
-                            
+
                             await s3_putObjectFromData(s3Config, thumbnailImageKey, thumbnailBuffer, 'image/jpeg');
                             await s3_putObjectFromData(s3Config, previewImageKey, previewFileBuffer, 'image/jpeg');
                             await s3_putObjectFromData(s3Config, posterImageKey, posterFileBuffer, 'image/jpeg');
                         }
                     }
-                    catch(error) {
+                    catch (error) {
                         logDebugMessageToConsole('failed to handle live thumbnail, preview, and poster for video: ' + videoId, error, null);
                     }
                     finally {
@@ -416,7 +412,7 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
     //let bufsize;
 
     const clientSettings = getClientSettings();
-    
+
     /*
     if(resolution === '2160p') {
         width = '3840';
@@ -447,8 +443,8 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
         height = '240';
     }
     */
-   
-    if(format === 'm3u8') {
+
+    if (format === 'm3u8') {
         bitrate = clientSettings.liveEncoderSettings.hls[resolution + '-bitrate'] + 'k';
         gop = clientSettings.liveEncoderSettings.hls.gop;
         framerate = clientSettings.liveEncoderSettings.hls.framerate;
@@ -489,11 +485,11 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
         }
     }
     */
-    
+
     let ffmpegArguments = [];
 
-    if(clientSettings.processingAgent.processingAgentType === 'cpu') {
-        if(format === 'm3u8') {
+    if (clientSettings.processingAgent.processingAgentType === 'cpu') {
+        if (format === 'm3u8') {
             ffmpegArguments = [
                 '-listen', '1',
                 '-timeout', '10000',
@@ -504,39 +500,39 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                 '-g', gop,
                 '-r', framerate,
                 '-c:a', 'aac',
-                '-f', 'hls', 
+                '-f', 'hls',
                 '-hls_time', segmentLength, '-hls_list_size', '20',
                 '-hls_base_url', `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
-                '-hls_playlist_type', 'event', 
+                '-hls_playlist_type', 'event',
                 'pipe:1'
             ];
         }
     }
-    else if(clientSettings.processingAgent.processingAgentType === 'gpu') {
-        if(clientSettings.processingAgent.processingAgentName === 'NVIDIA') {
-            if(format === 'm3u8') {
+    else if (clientSettings.processingAgent.processingAgentType === 'gpu') {
+        if (clientSettings.processingAgent.processingAgentName === 'NVIDIA') {
+            if (format === 'm3u8') {
                 ffmpegArguments = [
                     '-listen', '1',
                     '-timeout', '10000',
                     '-hwaccel', 'cuvid',
                     '-hwaccel_output_format', 'cuda',
                     '-f', 'flv',
-                    '-i', rtmpUrl, 
+                    '-i', rtmpUrl,
                     '-c:v', 'h264_nvenc', '-b:v', bitrate,
                     '-sc_threshold', '0',
                     '-g', gop,
                     '-r', framerate,
                     '-c:a', 'aac',
-                    '-f', 'hls', 
+                    '-f', 'hls',
                     '-hls_time', segmentLength, '-hls_list_size', '20',
                     '-hls_base_url', `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
-                    '-hls_playlist_type', 'event', 
+                    '-hls_playlist_type', 'event',
                     'pipe:1'
                 ];
             }
         }
-        else if(clientSettings.processingAgent.processingAgentName === 'AMD') {
-            if(format === 'm3u8') {
+        else if (clientSettings.processingAgent.processingAgentName === 'AMD') {
+            if (format === 'm3u8') {
                 ffmpegArguments = [
                     '-listen', '1',
                     '-timeout', '10000',
@@ -549,26 +545,26 @@ function generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRec
                     '-g', gop,
                     '-r', framerate,
                     '-c:a', 'aac',
-                    '-f', 'hls', 
+                    '-f', 'hls',
                     '-hls_time', segmentLength, '-hls_list_size', '20',
                     '-hls_base_url', `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
-                    '-hls_playlist_type', 'event', 
+                    '-hls_playlist_type', 'event',
                     'pipe:1'
                 ];
             }
         }
     }
-    
+
     /*
     hls_list_size will automatically be be 0 (no size limit) if hls_playlist_type is configured for event, thus recording remotely.
     hls_playlist_type is removed if not recording remotely so that hls_list_size can take precedence.
     */
-    
-    if(!isRecordingStreamRemotely) {
+
+    if (!isRecordingStreamRemotely) {
         ffmpegArguments.splice(ffmpegArguments.indexOf('-hls_playlist_type'), 1);
         ffmpegArguments.splice(ffmpegArguments.indexOf('event'), 1);
     }
-    
+
     return ffmpegArguments;
 }
 

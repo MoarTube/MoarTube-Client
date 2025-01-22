@@ -88,63 +88,47 @@ function detectOperatingSystem() {
     return platform;
 }
 
-function detectSystemGpu() {
-    return new Promise(function(resolve, reject) {
-        const systemInformation = require('systeminformation');
-        
-        systemInformation.graphics()
-        .then(function(data) {
-            let processingAgentName = '';
-            let processingAgentModel = '';
+async function detectSystemGpu() {
+    const systemInformation = require('systeminformation');
+    
+    const graphics = await systemInformation.graphics();
+
+    let processingAgentName = '';
+    let processingAgentModel = '';
+
+    for(const controller of graphics.controllers) {
+        if(controller.vendor.toLowerCase().includes('nvidia')) {
+            processingAgentName = 'NVIDIA';
+            processingAgentModel = controller.model.replace(/^.*\bNVIDIA\s*/, '');
             
-            data.controllers.forEach(function(controller) {
-                if(controller.vendor.toLowerCase().includes('nvidia')) {
-                    processingAgentName = 'NVIDIA';
-                    processingAgentModel = controller.model.replace(/^.*\bNVIDIA\s*/, '');
-                    
-                    return;
-                }
-                else if(controller.vendor.toLowerCase().includes('amd') || controller.vendor.toLowerCase().includes('advanced micro devices')) {
-                    processingAgentName = 'AMD';
-                    processingAgentModel = controller.model.replace(/^.*\bAMD\s*/, '');
-                    
-                    return;
-                }
-                else {
-                    processingAgentName = 'none';
-                    processingAgentModel = 'none';
-                    
-                    return;
-                }
-            });
+            break;
+        }
+        else if(controller.vendor.toLowerCase().includes('amd') || controller.vendor.toLowerCase().includes('advanced micro devices')) {
+            processingAgentName = 'AMD';
+            processingAgentModel = controller.model.replace(/^.*\bAMD\s*/, '');
             
-            resolve({processingAgentName: processingAgentName, processingAgentModel: processingAgentModel});
-        })
-        .catch(function(error) {
-            logDebugMessageToConsole(null, error, new Error().stack);
+            break;
+        }
+        else {
+            processingAgentName = 'none';
+            processingAgentModel = 'none';
             
-            reject(error);
-        });
-    });
+            break;
+        }
+    }
+    
+    return { processingAgentName: processingAgentName, processingAgentModel: processingAgentModel };
 }
 
-function detectSystemCpu() {
-    return new Promise(function(resolve, reject) {
-        const systemInformation = require('systeminformation');
-        
-        systemInformation.cpu()
-        .then(function(data) {
-            const processingAgentName = data.manufacturer;
-            const processingAgentModel = data.brand;
-            
-            resolve({processingAgentName: processingAgentName, processingAgentModel: processingAgentModel});
-        })
-        .catch(function(error) {
-            logDebugMessageToConsole(null, error, new Error().stack);
-            
-            reject(error);
-        });
-    });
+async function detectSystemCpu() {
+    const systemInformation = require('systeminformation');
+    
+    const cpu = await systemInformation.cpu();
+
+    const processingAgentName = cpu.manufacturer;
+    const processingAgentModel = cpu.brand;
+    
+    return { processingAgentName: processingAgentName, processingAgentModel: processingAgentModel };
 }
 
 function getNetworkAddresses() {
@@ -175,76 +159,42 @@ function getNetworkAddresses() {
     return networkAddresses;
 }
 
-function performEncodingDecodingAssessment() {
-    return new Promise(async function(resolve, reject) {
-        logDebugMessageToConsole('assessing system encoding/decoding capabilities', null, null);
-        
-        try {
-            const systemCpu = await detectSystemCpu();
-            const systemGpu = await detectSystemGpu();
-            
-            logDebugMessageToConsole('CPU detected: ' + systemCpu.processingAgentName + ' ' + systemCpu.processingAgentModel, null, null);
-            logDebugMessageToConsole('GPU detected: ' + systemGpu.processingAgentName + ' ' + systemGpu.processingAgentModel, null, null);
-            
-            resolve();
-        }
-        catch(error) {
-            logDebugMessageToConsole(null, error, new Error().stack);
-            
-            process.exit();
-        }
-    });
+async function performEncodingDecodingAssessment() {
+    logDebugMessageToConsole('assessing system encoding/decoding capabilities', null, null);
+
+    const systemCpu = await detectSystemCpu();
+    const systemGpu = await detectSystemGpu();
+    
+    logDebugMessageToConsole('CPU detected: ' + systemCpu.processingAgentName + ' ' + systemCpu.processingAgentModel, null, null);
+    logDebugMessageToConsole('GPU detected: ' + systemGpu.processingAgentName + ' ' + systemGpu.processingAgentModel, null, null);
 }
 
-function cleanVideosDirectory() {
-    return new Promise(function(resolve, reject) {
-        logDebugMessageToConsole('cleaning imported video directories', null, null);
-        
-        if(fs.existsSync(getVideosDirectoryPath())) {
-            fs.readdir(getVideosDirectoryPath(), function(error, videoDirectories) {
-                if (error) {
-                    reject(error);
-                }
-                else {
-                    if(videoDirectories.length === 0) {
-                        resolve();
-                    }
-                    else {
-                        for(const videoDirectory of videoDirectories) {
-                            const videoDirectoryPath = path.join(getVideosDirectoryPath(), videoDirectory);
-                            
-                            if(fs.existsSync(videoDirectoryPath)) {
-                                if (fs.statSync(videoDirectoryPath).isDirectory()) {
-                                    fs.readdir(videoDirectoryPath, async function(error, directories) {
-                                        if (error) {
-                                            reject(error);
-                                        }
-                                        else {
-                                            for(const directory of directories) {
-                                                if(directory !== 'source') {
-                                                    const directoryPath = path.join(videoDirectoryPath, directory);
-                                                    
-                                                    await deleteDirectoryRecursive(directoryPath);
-                                                }
-                                            }
-                                            
-                                            resolve();
-                                        }
-                                    });
-                                }
-                            }
-                            else {
-                                reject('expected path does not exist: ' + videoDirectoryPath);
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        else {
-            reject('expected path does not exist: ' + getVideosDirectoryPath());
-        }
+async function cleanVideosDirectory() {
+    logDebugMessageToConsole('cleaning imported video directories', null, null);
+
+    const videosDirectoryPath = getVideosDirectoryPath();
+    await fss.access(videosDirectoryPath).catch(() => {
+        throw new Error(`expected path does not exist: ${videosDirectoryPath}`);
     });
+
+    const videoDirectories = await fss.readdir(videosDirectoryPath);
+    for (const videoDirectory of videoDirectories) {
+        const videoDirectoryPath = path.join(videosDirectoryPath, videoDirectory);
+
+        const stat = await fss.stat(videoDirectoryPath);
+        if (!stat.isDirectory()) {
+            throw new Error(`expected path is not a directory: ${videoDirectoryPath}`);
+        }
+
+        const directories = await fss.readdir(videoDirectoryPath);
+        for (const directory of directories) {
+            if (directory !== 'source') {
+                const directoryPath = path.join(videoDirectoryPath, directory);
+
+                await deleteDirectoryRecursive(directoryPath);
+            }
+        }
+    }
 }
 
 async function refreshM3u8MasterManifest(jwtToken, videoId) {
@@ -562,18 +512,12 @@ function clearExternalVideosBaseUrlClientCache() {
     externalVideosBaseUrl = null;
 }
 
-function checkNetworkPortStatus(port, host) {
-    return new Promise((resolve, reject) => {
-        const portscanner = require('portscanner');
+async function checkNetworkPortStatus(port, host) {
+    const portscanner = require('portscanner');
 
-        portscanner.checkPortStatus(port, host, (error, portStatus) => {
-            if (error) {
-                reject(error);
-            } else {
-                resolve(portStatus);
-            }
-        });
-    });
+    const portStatus = await portscanner.checkPortStatus(port, host);
+
+    return portStatus;
 }
 
 module.exports = {

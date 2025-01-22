@@ -1,21 +1,21 @@
 const { node_LinksAll, node_LinksAdd, node_LinksDelete} = require('../utils/node-communications');
 
 async function linksAll_GET() {
-    const result = await node_LinksAll();
+    const response = await node_LinksAll();
 
-    return result;
+    return response;
 }
 
 async function linksAdd_POST(jwtToken, url, svgGraphic) {
-    const result = await node_LinksAdd(jwtToken, url, svgGraphic);
+    const response = await node_LinksAdd(jwtToken, url, svgGraphic);
 
-    return result;
+    return response;
 }
 
 async function linksDelete_POST(jwtToken, linkId) {
-    const result = await node_LinksDelete(jwtToken, linkId);
+    const response = await node_LinksDelete(jwtToken, linkId);
 
-    return result;
+    return response;
 }
 
 module.exports = {
