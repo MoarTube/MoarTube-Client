@@ -9,20 +9,20 @@ const webSocket = require('ws');
 const crypto = require('crypto');
 const engine = require('express-dot-engine');
 
-const { 
+const {
 	logDebugMessageToConsole, performEncodingDecodingAssessment, cleanVideosDirectory, getPublicDirectoryPath, getDataDirectoryPath,
-    getMoarTubeClientPort, setPublicDirectoryPath, setDataDirectoryPath, setCertificatesDirectoryPath,
-    setVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getClientSettings,
+	getMoarTubeClientPort, setPublicDirectoryPath, setDataDirectoryPath, setCertificatesDirectoryPath,
+	setVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getClientSettings,
 	getCertificatesDirectoryPath, getVideosDirectoryPath, setImagesDirectoryPath, getImagesDirectoryPath,
 	getIsDeveloperMode, setIsDeveloperMode, getViewsDirectoryPath, setViewsDirectoryPath
 } = require('./utils/helpers');
 
-const { 
-	startVideoPublishInterval 
+const {
+	startVideoPublishInterval
 } = require('./utils/handlers/video-publish-handler');
 
 const {
-	node_isAuthenticated 
+	node_isAuthenticated
 } = require('./utils/node-communications');
 
 const homeRoutes = require('./routes/home');
@@ -42,11 +42,11 @@ startClient();
 async function startClient() {
 	process.on('uncaughtException', (error) => {
 		/*
-        ffmpeg utilizes trailer information to detect the end (end of file, EOF) of piped input to stdin.
-        This will trigger an uncaught exception (Error: write EOF) due to live mpeg-ts segments not having a trailer, thus no EOF indication.
-        This is benign, also reportedly does not occur on Unix-based systems, though unconfirmed.
-        */
-		if(!error.stack.includes('Error: write EOF')) {
+		ffmpeg utilizes trailer information to detect the end (end of file, EOF) of piped input to stdin.
+		This will trigger an uncaught exception (Error: write EOF) due to live mpeg-ts segments not having a trailer, thus no EOF indication.
+		This is benign, also reportedly does not occur on Unix-based systems, though unconfirmed.
+		*/
+		if (!error.stack.includes('Error: write EOF')) {
 			logDebugMessageToConsole(null, error, new Error().stack);
 		}
 	});
@@ -62,34 +62,34 @@ async function startClient() {
 	setFfmpegPath(ffmpegPath);
 
 	cleanVideosDirectory();
-	
+
 	performEncodingDecodingAssessment();
 
 	startVideoPublishInterval();
-	
+
 	const app = express();
-	
+
 	app.enable('trust proxy');
 
 	app.use('/javascript', express.static(path.join(getPublicDirectoryPath(), 'javascript')));
 	app.use('/css', express.static(path.join(getPublicDirectoryPath(), 'css')));
 	app.use('/images', express.static(path.join(getPublicDirectoryPath(), 'images')));
 	app.use('/fonts', express.static(path.join(getPublicDirectoryPath(), 'fonts')));
-	
+
 	const sessionMiddleware = expressSession({
 		name: crypto.randomBytes(64).toString('hex'),
 		secret: crypto.randomBytes(64).toString('hex'),
 		resave: false,
 		saveUninitialized: true
 	});
-	
+
 	app.use(sessionMiddleware);
-	
+
 	app.use(bodyParser.urlencoded({ extended: false }));
 	app.use(bodyParser.json());
 
 	app.engine('dot', engine.__express);
-	
+
 	app.set('views', getViewsDirectoryPath());
 	app.set('view engine', 'dot');
 
@@ -108,13 +108,13 @@ async function startClient() {
 	const httpServer = http.createServer(app);
 
 	httpServer.requestTimeout = 0; // needed for long duration requests (streaming, large uploads)
-	
-	httpServer.listen(getMoarTubeClientPort(), function() {
+
+	httpServer.listen(getMoarTubeClientPort(), function () {
 		logDebugMessageToConsole('MoarTube Client is listening on port ' + getMoarTubeClientPort(), null, null);
 
-		const websocketServer = new webSocket.Server({ 
-			noServer: true, 
-			perMessageDeflate: false 
+		const websocketServer = new webSocket.Server({
+			noServer: true,
+			perMessageDeflate: false
 		});
 
 		setWebsocketServer(websocketServer);
@@ -126,27 +126,27 @@ async function startClient() {
 				logDebugMessageToConsole('browser websocket client disconnected', null, null);
 			});
 		});
-		
+
 		httpServer.on('upgrade', function upgrade(req, socket, head) {
 			websocketServer.handleUpgrade(req, socket, head, function done(ws) {
 				sessionMiddleware(req, {}, () => {
 					node_isAuthenticated(req.session.jwtToken)
-					.then(nodeResponseData => {
-						if(nodeResponseData.isError) {
-							logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-						}
-						else {
-							if(nodeResponseData.isAuthenticated) {
-								websocketServer.emit('connection', ws, req);
+						.then(nodeResponseData => {
+							if (nodeResponseData.isError) {
+								logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
 							}
 							else {
-								ws.close();
+								if (nodeResponseData.isAuthenticated) {
+									websocketServer.emit('connection', ws, req);
+								}
+								else {
+									ws.close();
+								}
 							}
-						}
-					})
-					.catch(error => {
-						logDebugMessageToConsole(null, error, new Error().stack);
-					});
+						})
+						.catch(error => {
+							logDebugMessageToConsole(null, error, new Error().stack);
+						});
 				});
 			});
 		});
@@ -166,8 +166,8 @@ function loadConfig() {
 	const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config_test.json'), 'utf8'));
 
 	setIsDeveloperMode(config.isDeveloperMode);
-	
-	if(getIsDeveloperMode()) {
+
+	if (getIsDeveloperMode()) {
 		setDataDirectoryPath(path.join(__dirname, 'data'));
 	}
 	else {
@@ -185,35 +185,35 @@ function loadConfig() {
 	fs.mkdirSync(getVideosDirectoryPath(), { recursive: true });
 	fs.mkdirSync(getImagesDirectoryPath(), { recursive: true });
 
-    if (!fs.existsSync(path.join(getDataDirectoryPath(), '_client_settings.json'))) {
+	if (!fs.existsSync(path.join(getDataDirectoryPath(), '_client_settings.json'))) {
 		const clientSettings = {
-            "clientListeningPort":8080,
-			"processingAgent":{
-				"processingAgentType":"cpu",
-				"processingAgentName":"",
-				"processingAgentModel":""
+			"clientListeningPort": 8080,
+			"processingAgent": {
+				"processingAgentType": "cpu",
+				"processingAgentName": "",
+				"processingAgentModel": ""
 			},
 			// bitrate units are in kilobytes per second
 			"videoEncoderSettings": {
-				"hls": { 
+				"hls": {
 					"2160p-bitrate": 15000, "1440p-bitrate": 12000, "1080p-bitrate": 10000, "720p-bitrate": 8000, "480p-bitrate": 5000, "360p-bitrate": 4000, "240p-bitrate": 3000,
 					"framerate": 30, "segmentLength": 6, "gop": 180
 				},
-				"mp4": { 
+				"mp4": {
 					"2160p-bitrate": 15000, "1440p-bitrate": 12000, "1080p-bitrate": 10000, "720p-bitrate": 8000, "480p-bitrate": 5000, "360p-bitrate": 4000, "240p-bitrate": 3000,
 					"framerate": 30, "gop": 60
 				},
-				"webm": { 
+				"webm": {
 					"2160p-bitrate": 15000, "1440p-bitrate": 12000, "1080p-bitrate": 10000, "720p-bitrate": 8000, "480p-bitrate": 5000, "360p-bitrate": 4000, "240p-bitrate": 3000,
 					"framerate": 30, "gop": 60
 				},
-				"ogv": { 
+				"ogv": {
 					"2160p-bitrate": 15000, "1440p-bitrate": 12000, "1080p-bitrate": 10000, "720p-bitrate": 8000, "480p-bitrate": 5000, "360p-bitrate": 4000, "240p-bitrate": 3000,
 					"framerate": 30, "gop": 60
 				}
 			},
 			"liveEncoderSettings": {
-				"hls": { 
+				"hls": {
 					"2160p-bitrate": 10000, "1440p-bitrate": 10000, "1080p-bitrate": 8000, "720p-bitrate": 6000, "480p-bitrate": 5000, "360p-bitrate": 4000, "240p-bitrate": 3000,
 					"framerate": 30, "segmentLength": 3, "gop": 90
 				}

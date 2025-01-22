@@ -44,17 +44,17 @@ router.get('/search', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
 router.get('/:videoId', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const videoId = req.params.videoId;
         const timestamp = Date.now();
         const type = 'before';
@@ -64,10 +64,10 @@ router.get('/:videoId', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
@@ -78,15 +78,15 @@ router.post('/delete', async (req, res) => {
         const videoId = req.body.videoId;
         const commentId = req.body.commentId;
         const timestamp = req.body.timestamp;
-        
+
         const data = await delete_POST(jwtToken, videoId, commentId, timestamp);
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-    
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 

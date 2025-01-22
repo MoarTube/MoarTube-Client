@@ -37,17 +37,17 @@ router.get('/all', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-    
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
 router.post('/add', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const walletAddress = req.body.walletAddress;
         const chain = req.body.chain;
         const currency = req.body.currency;
@@ -56,27 +56,27 @@ router.post('/add', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
 router.post('/delete', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const cryptoWalletAddressId = req.body.cryptoWalletAddressId;
 
         const data = await monetizationDelete_POST(jwtToken, cryptoWalletAddressId);
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 

@@ -1,4 +1,4 @@
-const { 
+const {
     websocketServerBroadcast
 } = require('../helpers');
 
@@ -9,23 +9,23 @@ function getPublishVideoEncodingTracker() {
 }
 
 function addToPublishVideoEncodingTracker(videoId) {
-    PUBLISH_VIDEO_ENCODING_TRACKER[videoId] = {stopping: false};
+    PUBLISH_VIDEO_ENCODING_TRACKER[videoId] = { stopping: false };
 }
 
 function isPublishVideoEncodingStopping(videoId) {
-    if(PublishVideoEncodingExists(videoId)) {
+    if (PublishVideoEncodingExists(videoId)) {
         return PUBLISH_VIDEO_ENCODING_TRACKER[videoId].stopping;
     }
 }
 
 function stoppingPublishVideoEncoding(videoId) {
-    if(PublishVideoEncodingExists(videoId)) {
+    if (PublishVideoEncodingExists(videoId)) {
         PUBLISH_VIDEO_ENCODING_TRACKER[videoId].stopping = true;
     }
 }
 
 function stoppedPublishVideoEncoding(videoId, data) {
-    if(PublishVideoEncodingExists(videoId)) {
+    if (PublishVideoEncodingExists(videoId)) {
         websocketServerBroadcast(data);
     }
 }

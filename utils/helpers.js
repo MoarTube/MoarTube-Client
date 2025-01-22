@@ -34,26 +34,26 @@ function logDebugMessageToConsole(message, error, stackTrace) {
     const minutes = ('0' + date.getMinutes()).slice(-2);
     const seconds = ('0' + date.getSeconds()).slice(-2);
     const humanReadableTimestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-    
+
     let errorMessage = '<message: ' + message + ', date: ' + humanReadableTimestamp + '>';
 
-    if(error != null) {
-        if(error.stack != null) {
+    if (error != null) {
+        if (error.stack != null) {
             errorMessage += '\n' + error.stack;
         }
-        else if(error.stackTrace != null) {
+        else if (error.stackTrace != null) {
             errorMessage += '\n' + error.stackTrace;
         }
     }
 
-    if(stackTrace != null) {
+    if (stackTrace != null) {
         errorMessage += '\n' + stackTrace;
     }
-    
+
     console.log(errorMessage);
 
     errorMessage += '\n';
-    
+
     /*
     if(isLoggingToFile) {
         const logFilePath = path.join(__dirname, '/_node_log.txt');
@@ -63,12 +63,12 @@ function logDebugMessageToConsole(message, error, stackTrace) {
 }
 
 async function deleteDirectoryRecursive(directoryPath) {
-	try {
-		await fss.rm(directoryPath, { recursive: true, force: true });
-	}
-	catch(error) {
-		logDebugMessageToConsole('failed to delete directory path: ' + directoryPath, error, null);
-	}
+    try {
+        await fss.rm(directoryPath, { recursive: true, force: true });
+    }
+    catch (error) {
+        logDebugMessageToConsole('failed to delete directory path: ' + directoryPath, error, null);
+    }
 }
 
 function timestampToSeconds(timestamp) {
@@ -82,80 +82,80 @@ function timestampToSeconds(timestamp) {
 
 function detectOperatingSystem() {
     const os = require('os');
-    
+
     const platform = os.platform();
-    
+
     return platform;
 }
 
 async function detectSystemGpu() {
     const systemInformation = require('systeminformation');
-    
+
     const graphics = await systemInformation.graphics();
 
     let processingAgentName = '';
     let processingAgentModel = '';
 
-    for(const controller of graphics.controllers) {
-        if(controller.vendor.toLowerCase().includes('nvidia')) {
+    for (const controller of graphics.controllers) {
+        if (controller.vendor.toLowerCase().includes('nvidia')) {
             processingAgentName = 'NVIDIA';
             processingAgentModel = controller.model.replace(/^.*\bNVIDIA\s*/, '');
-            
+
             break;
         }
-        else if(controller.vendor.toLowerCase().includes('amd') || controller.vendor.toLowerCase().includes('advanced micro devices')) {
+        else if (controller.vendor.toLowerCase().includes('amd') || controller.vendor.toLowerCase().includes('advanced micro devices')) {
             processingAgentName = 'AMD';
             processingAgentModel = controller.model.replace(/^.*\bAMD\s*/, '');
-            
+
             break;
         }
         else {
             processingAgentName = 'none';
             processingAgentModel = 'none';
-            
+
             break;
         }
     }
-    
+
     return { processingAgentName: processingAgentName, processingAgentModel: processingAgentModel };
 }
 
 async function detectSystemCpu() {
     const systemInformation = require('systeminformation');
-    
+
     const cpu = await systemInformation.cpu();
 
     const processingAgentName = cpu.manufacturer;
     const processingAgentModel = cpu.brand;
-    
+
     return { processingAgentName: processingAgentName, processingAgentModel: processingAgentModel };
 }
 
 function getNetworkAddresses() {
     const os = require('os');
-    
+
     const networkInterfaces = os.networkInterfaces();
 
     const ipv4Addresses = ['127.0.0.1'];
     const ipv6Addresses = ['::1'];
-    
-    for(const networkInterfaceKey of Object.keys(networkInterfaces)) {
+
+    for (const networkInterfaceKey of Object.keys(networkInterfaces)) {
         const networkInterface = networkInterfaces[networkInterfaceKey];
-        
-        for(const networkInterfaceElement of networkInterface) {
+
+        for (const networkInterfaceElement of networkInterface) {
             const networkAddress = networkInterfaceElement.address;
 
-            if(networkInterfaceElement.family === 'IPv4' && networkAddress !== '127.0.0.1') {
+            if (networkInterfaceElement.family === 'IPv4' && networkAddress !== '127.0.0.1') {
                 ipv4Addresses.push(networkAddress);
             }
-            else if(networkInterfaceElement.family === 'IPv6' && networkAddress !== '::1') {
+            else if (networkInterfaceElement.family === 'IPv6' && networkAddress !== '::1') {
                 ipv6Addresses.push(networkAddress);
             }
         }
     }
 
     const networkAddresses = ipv4Addresses.concat(ipv6Addresses);
-    
+
     return networkAddresses;
 }
 
@@ -164,7 +164,7 @@ async function performEncodingDecodingAssessment() {
 
     const systemCpu = await detectSystemCpu();
     const systemGpu = await detectSystemGpu();
-    
+
     logDebugMessageToConsole('CPU detected: ' + systemCpu.processingAgentName + ' ' + systemCpu.processingAgentModel, null, null);
     logDebugMessageToConsole('GPU detected: ' + systemGpu.processingAgentName + ' ' + systemGpu.processingAgentModel, null, null);
 }
@@ -209,7 +209,7 @@ async function refreshM3u8MasterManifest(jwtToken, videoId) {
 
     let manifestType;
 
-    if(isStreaming) {
+    if (isStreaming) {
         manifestType = 'dynamic';
     }
     else {
@@ -218,32 +218,32 @@ async function refreshM3u8MasterManifest(jwtToken, videoId) {
 
     let masterManifest = '#EXTM3U\n#EXT-X-VERSION:3\n';
 
-    for(const resolution of resolutions) {
-        if(resolution === '240p') {
+    for (const resolution of resolutions) {
+        if (resolution === '240p') {
             masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=250000,RESOLUTION=426x240\n';
             masterManifest += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-240p.m3u8\n';
         }
-        else if(resolution === '360p') {
+        else if (resolution === '360p') {
             masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=640x360\n';
             masterManifest += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-360p.m3u8\n';
         }
-        else if(resolution === '480p') {
+        else if (resolution === '480p') {
             masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=854x480\n';
             masterManifest += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-480p.m3u8\n';
         }
-        else if(resolution === '720p') {
+        else if (resolution === '720p') {
             masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1280x720\n';
             masterManifest += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-720p.m3u8\n';
         }
-        else if(resolution === '1080p') {
+        else if (resolution === '1080p') {
             masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=6000000,RESOLUTION=1920x1080\n';
             masterManifest += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-1080p.m3u8\n';
         }
-        else if(resolution === '1440p') {
+        else if (resolution === '1440p') {
             masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=8000000,RESOLUTION=2560x1440\n';
             masterManifest += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-1440p.m3u8\n';
         }
-        else if(resolution === '2160p') {
+        else if (resolution === '2160p') {
             masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=16000000,RESOLUTION=3840x2160\n'
             masterManifest += externalVideosBaseUrl + '/external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-2160p.m3u8\n';
         }
@@ -254,10 +254,10 @@ async function refreshM3u8MasterManifest(jwtToken, videoId) {
     const storageConfig = nodeSettings.storageConfig;
     const storageMode = storageConfig.storageMode;
 
-    if(storageMode === 'filesystem') {
+    if (storageMode === 'filesystem') {
         await node_uploadM3u8MasterManifest(jwtToken, videoId, manifestType, masterManifest);
     }
-    else if(storageMode === 's3provider') {
+    else if (storageMode === 's3provider') {
         const s3Config = storageConfig.s3Config;
 
         const key = 'external/videos/' + videoId + '/adaptive/m3u8/' + manifestType + '/manifests/manifest-master.m3u8';
@@ -267,11 +267,11 @@ async function refreshM3u8MasterManifest(jwtToken, videoId) {
 }
 
 function setFfmpegPath(value) {
-    if(fs.existsSync(value)) {
+    if (fs.existsSync(value)) {
         ffmpegPath = value;
 
         const execSync = require('child_process').execSync;
-        
+
         logDebugMessageToConsole('using ffmpeg at path: ' + ffmpegPath, null, null);
 
         logDebugMessageToConsole(execSync(getFfmpegPath() + ' -version').toString(), null, null);
@@ -286,7 +286,7 @@ function getFfmpegPath() {
 }
 
 function websocketClientBroadcast(message) {
-    if(websocketClient != null) {
+    if (websocketClient != null) {
         websocketClient.send(JSON.stringify(message));
     }
 }
@@ -362,15 +362,15 @@ function getIsDeveloperMode() {
 }
 
 function getClientSettings() {
-	const clientSettings = JSON.parse(fs.readFileSync(path.join(getDataDirectoryPath(), '_client_settings.json'), 'utf8'));
+    const clientSettings = JSON.parse(fs.readFileSync(path.join(getDataDirectoryPath(), '_client_settings.json'), 'utf8'));
 
-	return clientSettings;
+    return clientSettings;
 }
 
 function getClientSettingsDefault() {
-	const clientSettingsDefault = JSON.parse(fs.readFileSync(path.join(getDataDirectoryPath(), '_client_settings_default.json'), 'utf8'));
+    const clientSettingsDefault = JSON.parse(fs.readFileSync(path.join(getDataDirectoryPath(), '_client_settings_default.json'), 'utf8'));
 
-	return clientSettingsDefault;
+    return clientSettingsDefault;
 }
 
 function getWebsocketServer() {
@@ -420,7 +420,7 @@ function setImagesDirectoryPath(path) {
 
 function setMoarTubeClientPort(port) {
     logDebugMessageToConsole('configured MoarTube Client to use port: ' + port, null, null);
-    
+
     moartubeClientPort = port;
 }
 
@@ -457,7 +457,7 @@ function setClientSettings(clientSettings) {
 
     logDebugMessageToConsole('configured MoarTube Client to use client settings: ' + clientSettingsString, null, null);
 
-	fs.writeFileSync(path.join(getDataDirectoryPath(), '_client_settings.json'), clientSettingsString);
+    fs.writeFileSync(path.join(getDataDirectoryPath(), '_client_settings.json'), clientSettingsString);
 }
 
 function setWebsocketServer(wss) {
@@ -477,8 +477,8 @@ function cacheM3u8Segment(segmentFileUrl) {
 }
 
 async function getNodeSettings(jwtToken) {
-    if(nodeSettings == null) {
-        const { 
+    if (nodeSettings == null) {
+        const {
             node_getSettings
         } = require('./node-communications');
 
@@ -495,8 +495,8 @@ function clearNodeSettingsClientCache() {
 }
 
 async function getExternalVideosBaseUrl(jwtToken) {
-    if(externalVideosBaseUrl == null) {
-        const { 
+    if (externalVideosBaseUrl == null) {
+        const {
             node_getExternalVideosBaseUrl
         } = require('./node-communications');
 

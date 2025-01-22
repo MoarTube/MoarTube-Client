@@ -37,17 +37,17 @@ router.get('/all', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-    
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
 router.post('/add', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const url = req.body.url;
         const svgGraphic = req.body.svgGraphic;
 
@@ -55,27 +55,27 @@ router.post('/add', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-    
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
 router.post('/delete', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const linkId = req.body.linkId;
 
         const data = await linksDelete_POST(jwtToken, linkId);
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-        
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 

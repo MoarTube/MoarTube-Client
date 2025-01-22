@@ -1,6 +1,6 @@
 const express = require('express');
 
-const {  network_GET } = require('../controllers/home');
+const { network_GET } = require('../controllers/home');
 const { node_isAuthenticated } = require('../utils/node-communications');
 const { logDebugMessageToConsole } = require('../utils/helpers');
 
@@ -9,7 +9,7 @@ const router = express.Router();
 router.get('/', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const response = await node_isAuthenticated(jwtToken);
 
         if (response.isError) {
@@ -35,10 +35,10 @@ router.get('/network', (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-    
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 

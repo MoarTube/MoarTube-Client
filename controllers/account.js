@@ -1,7 +1,7 @@
 const webSocket = require('ws');
 
-const { 
-    logDebugMessageToConsole, getMoarTubeNodeWebsocketUrl, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodeIp, 
+const {
+    logDebugMessageToConsole, getMoarTubeNodeWebsocketUrl, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodeIp,
     setMoarTubeNodePort, setWebsocketClient, websocketServerBroadcast
 } = require('../utils/helpers');
 const { node_doHeartBeat, node_doSignin, node_doSignout } = require('../utils/node-communications');
@@ -14,7 +14,7 @@ async function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort,
     let result;
 
     logDebugMessageToConsole('attempting user sign in with HTTP...', null, null);
-    
+
     try {
         await node_doHeartBeat('http', moarTubeNodeIp, moarTubeNodePort);
 
@@ -37,33 +37,33 @@ async function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort,
             result = response;
         }
         catch (error) {
-            throw error; 
+            throw error;
         }
     }
     finally {
         return result;
     }
-    
+
     async function performSignIn(moarTubeNodeHttpProtocol, moarTubeNodeWebsocketProtocol, moarTubeNodeIp, moarTubeNodePort) {
         setMoarTubeNodeHttpProtocol(moarTubeNodeHttpProtocol);
         setMoarTubeNodeWebsocketProtocol(moarTubeNodeWebsocketProtocol);
 
         setMoarTubeNodeIp(moarTubeNodeIp);
         setMoarTubeNodePort(moarTubeNodePort);
-        
+
         const nodeResponseData = await node_doSignin(username, password, moarTubeNodeHttpProtocol, moarTubeNodeIp, moarTubeNodePort, rememberMe);
-        
-        if(nodeResponseData.isError) {
-            return {isError: true, message: nodeResponseData.message};
+
+        if (nodeResponseData.isError) {
+            return { isError: true, message: nodeResponseData.message };
         }
         else {
-            if(nodeResponseData.isAuthenticated) {
+            if (nodeResponseData.isAuthenticated) {
                 const jwtToken = nodeResponseData.token;
 
                 let pingIntervalTimer;
                 let pingTimeoutTimer;
 
-                let connectWebsocketClient = function() {
+                let connectWebsocketClient = function () {
                     try {
                         const websocketClient = new webSocket(getMoarTubeNodeWebsocketUrl());
 
@@ -71,12 +71,12 @@ async function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort,
 
                         websocketClient.on('open', () => {
                             logDebugMessageToConsole('MoarTube Client websocket connected to node: ' + getMoarTubeNodeWebsocketUrl(), null, null);
-                            
-                            websocketClient.send(JSON.stringify({eventName: 'register', socketType: 'moartube_client', jwtToken: jwtToken}));
 
-                            pingIntervalTimer = setInterval(function() {
-                                if(pingTimeoutTimer == null) {
-                                    pingTimeoutTimer = setTimeout(function() {
+                            websocketClient.send(JSON.stringify({ eventName: 'register', socketType: 'moartube_client', jwtToken: jwtToken }));
+
+                            pingIntervalTimer = setInterval(function () {
+                                if (pingTimeoutTimer == null) {
+                                    pingTimeoutTimer = setTimeout(function () {
                                         logDebugMessageToConsole('terminating likely dead MoarTube Client websocket connection to node: ' + getMoarTubeNodeWebsocketUrl(), null, null);
 
                                         clearInterval(pingIntervalTimer);
@@ -84,55 +84,55 @@ async function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort,
                                     }, 3000);
 
                                     //logDebugMessageToConsole('sending ping to node: ' + getMoarTubeNodeWebsocketUrl(), null, null);
-                                    
-                                    websocketClient.send(JSON.stringify({eventName: 'ping', jwtToken: jwtToken}));
+
+                                    websocketClient.send(JSON.stringify({ eventName: 'ping', jwtToken: jwtToken }));
                                 }
                             }, 1000);
                         });
-                        
+
                         websocketClient.on('message', (message) => {
                             const parsedMessage = JSON.parse(message);
-                            
-                            if(parsedMessage.eventName === 'pong') {
+
+                            if (parsedMessage.eventName === 'pong') {
                                 //logDebugMessageToConsole('received pong from node: ' + getMoarTubeNodeWebsocketUrl(), null, null);
 
                                 clearTimeout(pingTimeoutTimer);
                                 pingTimeoutTimer = null;
                             }
-                            else if(parsedMessage.eventName === 'registered') {
+                            else if (parsedMessage.eventName === 'registered') {
                                 logDebugMessageToConsole('MoarTube Client registered websocket with node: ' + getMoarTubeNodeWebsocketUrl(), null, null);
                             }
-                            else if(parsedMessage.eventName === 'echo') {
-                                if(parsedMessage.data.eventName === 'video_status') {
-                                    if(parsedMessage.data.payload.type === 'importing_stopping') {
+                            else if (parsedMessage.eventName === 'echo') {
+                                if (parsedMessage.data.eventName === 'video_status') {
+                                    if (parsedMessage.data.payload.type === 'importing_stopping') {
                                         stoppingVideoImport(parsedMessage.data.payload.videoId);
                                     }
-                                    else if(parsedMessage.data.payload.type === 'importing_stopped') {
+                                    else if (parsedMessage.data.payload.type === 'importing_stopped') {
                                         stoppedVideoImport(parsedMessage.data.payload.videoId, parsedMessage.data);
                                     }
-                                    else if(parsedMessage.data.payload.type === 'publishing_stopping') {
+                                    else if (parsedMessage.data.payload.type === 'publishing_stopping') {
                                         stoppingPublishVideoEncoding(parsedMessage.data.payload.videoId);
                                     }
-                                    else if(parsedMessage.data.payload.type === 'publishing_stopped') {
+                                    else if (parsedMessage.data.payload.type === 'publishing_stopped') {
                                         stopPendingPublishVideo(parsedMessage.data.payload.videoId);
                                         stoppedPublishVideoEncoding(parsedMessage.data.payload.videoId, parsedMessage.data);
                                     }
-                                    else if(parsedMessage.data.payload.type === 'streaming_stopping') {
+                                    else if (parsedMessage.data.payload.type === 'streaming_stopping') {
                                         stoppingLiveStream(parsedMessage.data.payload.videoId);
                                     }
-                                    else if(parsedMessage.data.payload.type === 'streaming_stopped') {
+                                    else if (parsedMessage.data.payload.type === 'streaming_stopped') {
                                         stoppedLiveStream(parsedMessage.data.payload.videoId, parsedMessage.data);
                                     }
                                     else {
                                         websocketServerBroadcast(parsedMessage.data);
                                     }
                                 }
-                                else if(parsedMessage.data.eventName === 'video_data') {
+                                else if (parsedMessage.data.eventName === 'video_data') {
                                     websocketServerBroadcast(parsedMessage.data);
                                 }
                             }
                         });
-                        
+
                         websocketClient.on('close', () => {
                             logDebugMessageToConsole('MoarTube Client websocket disconnected from node <' + getMoarTubeNodeWebsocketUrl() + '>', null, null);
 
@@ -142,17 +142,17 @@ async function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort,
                             setTimeout(connectWebsocketClient, 1000);
                         });
                     }
-                    catch(error) {
+                    catch (error) {
                         logDebugMessageToConsole(null, error, new Error().stack);
                     }
                 };
-                
+
                 connectWebsocketClient();
 
-                return {isError: false, isAuthenticated: true, redirectUrl: '/videos', jwtToken: jwtToken};
+                return { isError: false, isAuthenticated: true, redirectUrl: '/videos', jwtToken: jwtToken };
             }
             else {
-                return {isError: false, isAuthenticated: false};
+                return { isError: false, isAuthenticated: false };
             }
         }
     }

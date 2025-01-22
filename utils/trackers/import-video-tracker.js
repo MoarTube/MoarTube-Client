@@ -1,4 +1,4 @@
-const { 
+const {
     websocketServerBroadcast
 } = require('../helpers');
 
@@ -9,27 +9,27 @@ function getImportVideoTracker() {
 }
 
 function addVideoToImportVideoTracker(videoId, req) {
-    IMPORT_VIDEO_TRACKER[videoId] = {req: req, stopping: false};
+    IMPORT_VIDEO_TRACKER[videoId] = { req: req, stopping: false };
 }
 
 function isVideoImportStopping(videoId) {
-    if(videoImportExists(videoId)) {
+    if (videoImportExists(videoId)) {
         return IMPORT_VIDEO_TRACKER[videoId].stopping;
     }
 }
 
 function stoppingVideoImport(videoId) {
-    if(videoImportExists(videoId)) {
+    if (videoImportExists(videoId)) {
         IMPORT_VIDEO_TRACKER[videoId].stopping = true;
     }
 }
 
 function stoppedVideoImport(videoId, data) {
-    if(videoImportExists(videoId)) {
+    if (videoImportExists(videoId)) {
         IMPORT_VIDEO_TRACKER[videoId].req.destroy();
-            
+
         //delete IMPORT_VIDEO_TRACKER[videoId];
-        
+
         websocketServerBroadcast(data);
     }
 }

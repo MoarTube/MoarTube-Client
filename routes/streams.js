@@ -8,7 +8,7 @@ const router = express.Router();
 router.post('/start', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const title = req.body.title;
         const description = req.body.description;
         const tags = req.body.tags;
@@ -23,27 +23,27 @@ router.post('/start', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
 router.post('/:videoId/stop', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const videoId = req.params.videoId;
 
         const data = await videoIdStop_POST(jwtToken, videoId);
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-    
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
@@ -55,10 +55,10 @@ router.get('/:videoId/rtmp/information', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-    
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
@@ -70,10 +70,10 @@ router.get('/:videoId/chat/settings', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
@@ -89,10 +89,10 @@ router.post('/:videoId/chat/settings', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-        
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 

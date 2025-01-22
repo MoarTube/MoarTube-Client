@@ -1,4 +1,4 @@
-const { 
+const {
     websocketServerBroadcast
 } = require('../helpers');
 
@@ -9,17 +9,17 @@ function getLiveStreamTracker() {
 }
 
 function addLiveStreamToLiveStreamTracker(videoId) {
-    LIVE_STREAM_TRACKER[videoId] = {process: null, stopping: false};
+    LIVE_STREAM_TRACKER[videoId] = { process: null, stopping: false };
 }
 
 function addProcessToLiveStreamTracker(videoId, process) {
-    if(liveStreamExists(videoId)) {
+    if (liveStreamExists(videoId)) {
         LIVE_STREAM_TRACKER[videoId].process = process;
     }
 }
 
 function isLiveStreamStopping(videoId) {
-    if(liveStreamExists(videoId)) {
+    if (liveStreamExists(videoId)) {
         return LIVE_STREAM_TRACKER[videoId].stopping;
     }
     else {
@@ -28,19 +28,19 @@ function isLiveStreamStopping(videoId) {
 }
 
 function stoppingLiveStream(videoId) {
-    if(liveStreamExists(videoId)) {
+    if (liveStreamExists(videoId)) {
         LIVE_STREAM_TRACKER[videoId].stopping = true;
     }
 }
 
 function stoppedLiveStream(videoId, data) {
-    if(liveStreamExists(videoId)) {
+    if (liveStreamExists(videoId)) {
         const process = LIVE_STREAM_TRACKER[videoId].process;
 
         process.kill(); // no point in being graceful about it; just kill it
-            
+
         //delete LIVE_STREAM_TRACKER[videoId];
-        
+
         websocketServerBroadcast(data);
     }
 }

@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 
-const { 
+const {
     search_GET, import_POST, videoIdImportingStop_POST, videoIdPublishingStop_POST, videoIdPublish_POST, videoIdUnpublish_POST,
     tags_GET, tagsAll_GET, videoIdPublishes_GET, videoIdData_GET, videoIdData_POST, delete_POST, finalize_POST, videoIdIndexAdd_POST,
     videoIdIndexRemove_POST, videoIdThumbnail_POST, videoIdPreview_POST, videoIdPoster_POST, videoIdSources_GET
@@ -47,7 +47,7 @@ router.get('/', async (req, res) => {
 router.get('/search', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const searchTerm = req.query.searchTerm;
         const sortTerm = req.query.sortTerm;
         const tagTerm = req.query.tagTerm;
@@ -58,10 +58,10 @@ router.get('/search', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-        
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
@@ -69,192 +69,192 @@ router.post('/import', (req, res) => {
     const jwtToken = req.session.jwtToken;
 
     logDebugMessageToConsole('attempting to import video file into the client file system', null, null);
-    
+
     const totalFileSize = parseInt(req.headers['content-length']);
-    
-    if(totalFileSize > 0) {
+
+    if (totalFileSize > 0) {
         logDebugMessageToConsole('importing video into the client file system: ' + totalFileSize + ' bytes', null, null);
-        
+
         const title = req.query.title;
         const description = req.query.description;
         const tags = req.query.tags;
-        
+
         logDebugMessageToConsole('requesting video id for imported video....', null, null);
 
         node_importVideo(jwtToken, title, description, tags)
-        .then(nodeResponseData => {
-            if(nodeResponseData.isError) {
-                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                
-                res.send({isError: true, message: nodeResponseData.message});
-            }
-            else {
-                const videoId = nodeResponseData.videoId;
-                
-                logDebugMessageToConsole('imported video file assigned video id: ' + videoId, null, null);
+            .then(nodeResponseData => {
+                if (nodeResponseData.isError) {
+                    logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
 
-                addVideoToImportVideoTracker(videoId, req);
-                
-                let lastImportingTime = 0;
-                let receivedFileSize = 0;
+                    res.send({ isError: true, message: nodeResponseData.message });
+                }
+                else {
+                    const videoId = nodeResponseData.videoId;
 
-                req.on('data', function(chunk) {
-                    if(!isVideoImportStopping(videoId)) {
-                        receivedFileSize += chunk.length;
-                        
-                        const importProgress = Math.floor((receivedFileSize / totalFileSize) * 100);
-                        
-                        const currentTime = Date.now();
-                        
-                        if(currentTime - lastImportingTime >= 100) {
-                            lastImportingTime = currentTime;
-                            
-                            websocketClientBroadcast({eventName: 'echo', jwtToken: jwtToken, data: {eventName: 'video_status', payload: { type: 'importing', videoId: videoId, progress: importProgress }}});
+                    logDebugMessageToConsole('imported video file assigned video id: ' + videoId, null, null);
+
+                    addVideoToImportVideoTracker(videoId, req);
+
+                    let lastImportingTime = 0;
+                    let receivedFileSize = 0;
+
+                    req.on('data', function (chunk) {
+                        if (!isVideoImportStopping(videoId)) {
+                            receivedFileSize += chunk.length;
+
+                            const importProgress = Math.floor((receivedFileSize / totalFileSize) * 100);
+
+                            const currentTime = Date.now();
+
+                            if (currentTime - lastImportingTime >= 100) {
+                                lastImportingTime = currentTime;
+
+                                websocketClientBroadcast({ eventName: 'echo', jwtToken: jwtToken, data: { eventName: 'video_status', payload: { type: 'importing', videoId: videoId, progress: importProgress } } });
+                            }
                         }
-                    }
-                });
-                
-                multer({
-                    storage: multer.diskStorage({
-                        destination: function (req, file, cb) {
-                            const sourceDirectoryPath =  path.join(getVideosDirectoryPath(), videoId + '/source');
-                            
-                            fs.mkdirSync(sourceDirectoryPath, { recursive: true });
-                            
-                            fs.access(sourceDirectoryPath, fs.constants.F_OK, function(error) {
-                                if(error) {
-                                    cb(new Error('file upload error'), null);
+                    });
+
+                    multer({
+                        storage: multer.diskStorage({
+                            destination: function (req, file, cb) {
+                                const sourceDirectoryPath = path.join(getVideosDirectoryPath(), videoId + '/source');
+
+                                fs.mkdirSync(sourceDirectoryPath, { recursive: true });
+
+                                fs.access(sourceDirectoryPath, fs.constants.F_OK, function (error) {
+                                    if (error) {
+                                        cb(new Error('file upload error'), null);
+                                    }
+                                    else {
+                                        cb(null, sourceDirectoryPath);
+                                    }
+                                });
+                            },
+                            filename: function (req, file, cb) {
+                                let extension;
+
+                                if (file.mimetype === 'video/mp4') {
+                                    extension = '.mp4';
                                 }
-                                else {
-                                    cb(null, sourceDirectoryPath);
+                                else if (file.mimetype === 'video/webm') {
+                                    extension = '.webm';
                                 }
-                            });
-                        },
-                        filename: function (req, file, cb) {
-                            let extension;
-                            
-                            if(file.mimetype === 'video/mp4') {
-                                extension = '.mp4';
-                            }
-                            else if(file.mimetype === 'video/webm') {
-                                extension = '.webm';
-                            }
-                            
-                            const fileName = videoId + extension;
-                            
-                            logDebugMessageToConsole('imported video file and assigned temporary file name: ' + fileName, null, null);
-                            
-                            cb(null, fileName);
-                        }
-                    })
-                }).fields([{ name: 'video_file', maxCount: 1 }])
-                (req, res, async function(error) {
-                    if(error) {
-                        logDebugMessageToConsole(nodeResponseData.message, error, new Error().stack);
-                        
-                        node_setVideoError(jwtToken, videoId)
-                        .then(nodeResponseData => {
-                            if(nodeResponseData.isError) {
-                                logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
-                                
-                                res.send({isError: true, message: nodeResponseData.message});
-                            }
-                            else {
-                                res.send({isError: true, message: 'error communicating with the MoarTube node'});
+
+                                const fileName = videoId + extension;
+
+                                logDebugMessageToConsole('imported video file and assigned temporary file name: ' + fileName, null, null);
+
+                                cb(null, fileName);
                             }
                         })
-                        .catch(error => {
-                            logDebugMessageToConsole(null, error, new Error().stack);
-                            
-                            res.send({isError: true, message: 'error communicating with the MoarTube node'});
+                    }).fields([{ name: 'video_file', maxCount: 1 }])
+                        (req, res, async function (error) {
+                            if (error) {
+                                logDebugMessageToConsole(nodeResponseData.message, error, new Error().stack);
+
+                                node_setVideoError(jwtToken, videoId)
+                                    .then(nodeResponseData => {
+                                        if (nodeResponseData.isError) {
+                                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
+
+                                            res.send({ isError: true, message: nodeResponseData.message });
+                                        }
+                                        else {
+                                            res.send({ isError: true, message: 'error communicating with the MoarTube node' });
+                                        }
+                                    })
+                                    .catch(error => {
+                                        logDebugMessageToConsole(null, error, new Error().stack);
+
+                                        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
+                                    });
+                            }
+                            else {
+                                try {
+                                    const videoFile = req.files['video_file'];
+
+                                    const data = await import_POST(jwtToken, videoFile, videoId);
+
+                                    res.send(data);
+                                }
+                                catch (error) {
+                                    logDebugMessageToConsole(null, error, new Error().stack);
+
+                                    res.send({ isError: true, message: 'error communicating with the MoarTube node' });
+                                }
+                            }
                         });
-                    }
-                    else {
-                        try {
-                            const videoFile = req.files['video_file'];
+                }
+            })
+            .catch(error => {
+                logDebugMessageToConsole(null, error, new Error().stack);
 
-                            const data = await import_POST(jwtToken, videoFile, videoId);
-
-                            res.send(data);
-                        }
-                        catch(error) {
-                            logDebugMessageToConsole(null, error, new Error().stack);
-
-                            res.send({isError: true, message: 'error communicating with the MoarTube node'});
-                        }
-                    }
-                });
-            }
-        })
-        .catch(error => {
-            logDebugMessageToConsole(null, error, new Error().stack);
-            
-            res.send({isError: true, message: 'error communicating with the MoarTube node'});
-        });
+                res.send({ isError: true, message: 'error communicating with the MoarTube node' });
+            });
     }
     else {
         logDebugMessageToConsole('expected totalFileSize of non-zero but got zero', null, null);
-        
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
 router.post('/:videoId/importing/stop', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const videoId = req.params.videoId;
 
         const data = await videoIdImportingStop_POST(jwtToken, videoId);
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
 router.post('/:videoId/publishing/stop', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const videoId = req.params.videoId;
 
         const data = await videoIdPublishingStop_POST(jwtToken, videoId);
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-        
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
 router.post('/:videoId/publish', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const videoId = req.params.videoId;
         const publishings = req.body.publishings;
-        
+
         const data = await videoIdPublish_POST(jwtToken, videoId, publishings);
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
 router.post('/:videoId/unpublish', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const videoId = req.params.videoId;
         const format = req.body.format;
         const resolution = req.body.resolution;
@@ -263,10 +263,10 @@ router.post('/:videoId/unpublish', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
@@ -278,10 +278,10 @@ router.get('/tags', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
@@ -293,10 +293,10 @@ router.get('/tags/all', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
@@ -310,10 +310,10 @@ router.get('/:videoId/publishes', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
@@ -325,17 +325,17 @@ router.get('/:videoId/data', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
 router.post('/:videoId/data', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const videoId = req.params.videoId;
         const title = req.body.title;
         const description = req.body.description;
@@ -345,51 +345,51 @@ router.post('/:videoId/data', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
 router.post('/delete', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const videoIds = req.body.videoIds;
 
         const data = await delete_POST(jwtToken, videoIds);
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-        
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
 router.post('/finalize', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const videoIds = req.body.videoIds;
 
         const data = await finalize_POST(jwtToken, videoIds);
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
-        
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
 router.post('/:videoId/index/add', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const videoId = req.params.videoId;
         const containsAdultContent = req.body.containsAdultContent;
         const termsOfServiceAgreed = req.body.termsOfServiceAgreed;
@@ -399,17 +399,17 @@ router.post('/:videoId/index/add', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
 router.post('/:videoId/index/remove', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        
+
         const videoId = req.params.videoId;
         const cloudflareTurnstileToken = req.body.cloudflareTurnstileToken;
 
@@ -417,10 +417,10 @@ router.post('/:videoId/index/remove', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
@@ -432,89 +432,89 @@ router.post('/:videoId/images/thumbnail', (req, res) => {
     multer({
         storage: multer.memoryStorage(),
     }).fields([{ name: 'thumbnail_file', maxCount: 1 }])
-    (req, res, async function (error) {
-        if (error) {
-            logDebugMessageToConsole(null, error, new Error().stack);
-
-            res.send({ isError: true, message: 'error communicating with the MoarTube node' });
-        } 
-        else {
-            try {
-                const thumbnailFile = req.files['thumbnail_file'];
-
-                const data = await videoIdThumbnail_POST(jwtToken, videoId, thumbnailFile);
-
-                res.send(data);
-            }
-            catch (error) {
+        (req, res, async function (error) {
+            if (error) {
                 logDebugMessageToConsole(null, error, new Error().stack);
 
                 res.send({ isError: true, message: 'error communicating with the MoarTube node' });
             }
-        }
-    });
+            else {
+                try {
+                    const thumbnailFile = req.files['thumbnail_file'];
+
+                    const data = await videoIdThumbnail_POST(jwtToken, videoId, thumbnailFile);
+
+                    res.send(data);
+                }
+                catch (error) {
+                    logDebugMessageToConsole(null, error, new Error().stack);
+
+                    res.send({ isError: true, message: 'error communicating with the MoarTube node' });
+                }
+            }
+        });
 });
 
 router.post('/:videoId/images/preview', (req, res) => {
     const jwtToken = req.session.jwtToken;
-    
+
     const videoId = req.params.videoId;
 
     multer({
         storage: multer.memoryStorage(),
     }).fields([{ name: 'preview_file', maxCount: 1 }])
-    (req, res, async function (error) {
-        if (error) {
-            logDebugMessageToConsole(null, error, new Error().stack);
-
-            res.send({ isError: true, message: 'error communicating with the MoarTube node' });
-        } 
-        else {
-            try {
-                const previewFile = req.files['preview_file'];
-
-                const data = await videoIdPreview_POST(jwtToken, videoId, previewFile);
-
-                res.send(data);
-            }
-            catch (error) {
+        (req, res, async function (error) {
+            if (error) {
                 logDebugMessageToConsole(null, error, new Error().stack);
-                
+
                 res.send({ isError: true, message: 'error communicating with the MoarTube node' });
             }
-        }
-    });
+            else {
+                try {
+                    const previewFile = req.files['preview_file'];
+
+                    const data = await videoIdPreview_POST(jwtToken, videoId, previewFile);
+
+                    res.send(data);
+                }
+                catch (error) {
+                    logDebugMessageToConsole(null, error, new Error().stack);
+
+                    res.send({ isError: true, message: 'error communicating with the MoarTube node' });
+                }
+            }
+        });
 });
 
 router.post('/:videoId/images/poster', (req, res) => {
     const jwtToken = req.session.jwtToken;
-    
+
     const videoId = req.params.videoId;
 
     multer({
         storage: multer.memoryStorage(),
     }).fields([{ name: 'poster_file', maxCount: 1 }])
-    (req, res, async function (error) {
-        if (error) {
-            logDebugMessageToConsole(null, error, new Error().stack);
-
-            res.send({ isError: true, message: 'error communicating with the MoarTube node' });
-        } 
-        else {
-            try {
-                const posterFile = req.files['poster_file'];
-
-                const data = await videoIdPoster_POST(jwtToken, videoId, posterFile);
-
-                res.send(data);
-            }
-            catch (error) {
+        (req, res, async function (error) {
+            if (error) {
                 logDebugMessageToConsole(null, error, new Error().stack);
-                
+
                 res.send({ isError: true, message: 'error communicating with the MoarTube node' });
             }
-        }
-    });
+            else {
+                try {
+                    const posterFile = req.files['poster_file'];
+
+                    const data = await videoIdPoster_POST(jwtToken, videoId, posterFile);
+
+                    res.send(data);
+                }
+                catch (error) {
+                    logDebugMessageToConsole(null, error, new Error().stack);
+
+                    res.send({ isError: true, message: 'error communicating with the MoarTube node' });
+                }
+            }
+        });
 });
 
 router.get('/:videoId/sources', async (req, res) => {
@@ -525,10 +525,10 @@ router.get('/:videoId/sources', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 

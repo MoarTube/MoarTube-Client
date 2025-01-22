@@ -1,4 +1,4 @@
-const { node_LinksAll, node_LinksAdd, node_LinksDelete} = require('../utils/node-communications');
+const { node_LinksAll, node_LinksAdd, node_LinksDelete } = require('../utils/node-communications');
 
 async function linksAll_GET() {
     const response = await node_LinksAll();

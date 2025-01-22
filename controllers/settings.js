@@ -5,14 +5,14 @@ const packageJson = require('../package.json');
 
 sharp.cache(false);
 
-const { 
-    setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodePort, detectOperatingSystem, detectSystemGpu, 
+const {
+    setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodePort, detectOperatingSystem, detectSystemGpu,
     detectSystemCpu, getClientSettings, setClientSettings, getImagesDirectoryPath, getClientSettingsDefault, clearNodeSettingsClientCache, getNodeSettings,
     clearExternalVideosBaseUrlClientCache, getExternalVideosBaseUrl
 } = require('../utils/helpers');
-const { 
-    node_setExternalNetwork, node_getAvatar, node_setAvatar, node_getBanner, node_setBanner, node_setNodeName, node_setNodeAbout, 
-    node_setNodeId, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials, node_setCloudflareConfiguration, 
+const {
+    node_setExternalNetwork, node_getAvatar, node_setAvatar, node_getBanner, node_setBanner, node_setNodeName, node_setNodeAbout,
+    node_setNodeId, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials, node_setCloudflareConfiguration,
     node_clearCloudflareConfiguration, node_setCloudflareTurnstileConfiguration, node_CloudflareTurnstileConfigurationClear,
     node_commentsToggle, node_likesToggle, node_dislikesToggle, node_reportsToggle, node_liveChatToggle, node_databaseConfigToggle,
     node_databaseConfigEmpty, node_storageConfigToggle, node_storageConfigEmpty, node_getVideoDataOutputs
@@ -26,12 +26,12 @@ function client_GET() {
     const settings = {
         isGpuAccelerationEnabled: false
     };
-    
+
     const clientSettings = getClientSettings();
 
     settings.version = packageJson.version;
-    
-    if(clientSettings.processingAgent.processingAgentType === 'gpu') {
+
+    if (clientSettings.processingAgent.processingAgentType === 'gpu') {
         settings.isGpuAccelerationEnabled = true;
         settings.gpuVendor = clientSettings.processingAgent.processingAgentName;
         settings.gpuModel = clientSettings.processingAgent.processingAgentModel;
@@ -40,7 +40,7 @@ function client_GET() {
     settings.videoEncoderSettings = clientSettings.videoEncoderSettings;
     settings.liveEncoderSettings = clientSettings.liveEncoderSettings;
 
-    return {isError: false, clientSettings: settings};
+    return { isError: false, clientSettings: settings };
 }
 
 async function node_GET(jwtToken) {
@@ -51,13 +51,13 @@ async function node_GET(jwtToken) {
 
 async function clientGpuAcceleration_POST(isGpuAccelerationEnabled) {
     const operatingSystem = detectOperatingSystem();
-    
-    if(operatingSystem === 'win32') {
+
+    if (operatingSystem === 'win32') {
         const clientSettings = getClientSettings();
-        
+
         const result = {};
-        
-        if(isGpuAccelerationEnabled) {
+
+        if (isGpuAccelerationEnabled) {
             const systemGpu = await detectSystemGpu();
 
             clientSettings.processingAgent.processingAgentType = 'gpu';
@@ -65,7 +65,7 @@ async function clientGpuAcceleration_POST(isGpuAccelerationEnabled) {
             clientSettings.processingAgent.processingAgentModel = systemGpu.processingAgentModel;
 
             setClientSettings(clientSettings);
-            
+
             result.isGpuAccelerationEnabled = true;
             result.gpuVendor = systemGpu.processingAgentName;
             result.gpuModel = systemGpu.processingAgentModel;
@@ -78,14 +78,14 @@ async function clientGpuAcceleration_POST(isGpuAccelerationEnabled) {
             clientSettings.processingAgent.processingAgentModel = systemCpu.processingAgentModel;
 
             setClientSettings(clientSettings);
-            
+
             result.isGpuAccelerationEnabled = false;
         }
 
-        return {isError: false, result: result}
+        return { isError: false, result: result }
     }
     else {
-        return {isError: true, message: 'this version of MoarTube Client only supports GPU acceleration on Windows platforms'};
+        return { isError: true, message: 'this version of MoarTube Client only supports GPU acceleration on Windows platforms' };
     }
 }
 
@@ -95,7 +95,7 @@ function clientEncodingDefault_GET() {
     const videoEncoderSettings = clientSettingsDefault.videoEncoderSettings;
     const liveEncoderSettings = clientSettingsDefault.liveEncoderSettings;
 
-    return {isError: false, videoEncoderSettings: videoEncoderSettings, liveEncoderSettings: liveEncoderSettings};
+    return { isError: false, videoEncoderSettings: videoEncoderSettings, liveEncoderSettings: liveEncoderSettings };
 }
 
 function clientEncoding_POST(videoEncoderSettings, liveEncoderSettings) {
@@ -106,7 +106,7 @@ function clientEncoding_POST(videoEncoderSettings, liveEncoderSettings) {
 
     setClientSettings(clientSettings);
 
-    return {isError: false};
+    return { isError: false };
 }
 
 
@@ -120,19 +120,19 @@ async function nodeAvatar_GET() {
 async function nodeAvatar_POST(jwtToken, avatarFile) {
     let result;
 
-    if(avatarFile != null && avatarFile.length === 1) {
+    if (avatarFile != null && avatarFile.length === 1) {
         avatarFile = avatarFile[0];
 
         const imagesDirectory = getImagesDirectoryPath();
-        
+
         const sourceFilePath = path.join(imagesDirectory, avatarFile.filename);
-        
+
         const iconDestinationFilePath = path.join(imagesDirectory, 'icon.png');
         const avatarDestinationFilePath = path.join(imagesDirectory, 'avatar.png');
-        
-        await sharp(sourceFilePath).resize({width: 48}).resize(48, 48).png({ compressionLevel: 9 }).toFile(iconDestinationFilePath);
-        await sharp(sourceFilePath).resize({width: 128}).resize(128, 128).png({ compressionLevel: 9 }).toFile(avatarDestinationFilePath);
-            
+
+        await sharp(sourceFilePath).resize({ width: 48 }).resize(48, 48).png({ compressionLevel: 9 }).toFile(iconDestinationFilePath);
+        await sharp(sourceFilePath).resize({ width: 128 }).resize(128, 128).png({ compressionLevel: 9 }).toFile(avatarDestinationFilePath);
+
         const response = await node_setAvatar(jwtToken, iconDestinationFilePath, avatarDestinationFilePath);
 
         fs.unlinkSync(sourceFilePath);
@@ -144,7 +144,7 @@ async function nodeAvatar_POST(jwtToken, avatarFile) {
         result = response;
     }
     else {
-        result = {isError: true, message: 'avatar file is missing'};
+        result = { isError: true, message: 'avatar file is missing' };
     }
 
     return result;
@@ -159,28 +159,28 @@ async function nodeBanner_GET() {
 async function nodeBanner_POST(jwtToken, bannerFile) {
     let result;
 
-    if(bannerFile != null && bannerFile.length === 1) {
+    if (bannerFile != null && bannerFile.length === 1) {
         bannerFile = bannerFile[0];
 
         const imagesDirectory = getImagesDirectoryPath();
-    
+
         const sourceFilePath = path.join(imagesDirectory, bannerFile.filename);
-        
+
         const bannerDestinationFilePath = path.join(imagesDirectory, 'banner.png');
-        
-        await sharp(sourceFilePath).resize({width: 2560}).resize(2560, 424).png({ compressionLevel: 9 }).toFile(bannerDestinationFilePath);
+
+        await sharp(sourceFilePath).resize({ width: 2560 }).resize(2560, 424).png({ compressionLevel: 9 }).toFile(bannerDestinationFilePath);
 
         const response = await node_setBanner(jwtToken, bannerDestinationFilePath);
-        
+
         fs.unlinkSync(sourceFilePath);
         fs.unlinkSync(bannerDestinationFilePath);
 
         clearNodeSettingsClientCache();
-        
+
         result = response;
     }
     else {
-        result = {isError: true, message: 'banner file is missing'};
+        result = { isError: true, message: 'banner file is missing' };
     }
 
     return result;
@@ -213,14 +213,14 @@ async function nodePersonalizeNodeId_POST(jwtToken, nodeId) {
 async function node_Secure_POST(jwtToken, isSecure, keyFile, certFile, caFiles) {
     let result;
 
-    if(isSecure) {
-        if(keyFile != null && keyFile.length === 1 && certFile != null && certFile.length === 1) {
+    if (isSecure) {
+        if (keyFile != null && keyFile.length === 1 && certFile != null && certFile.length === 1) {
             keyFile = keyFile[0];
             certFile = certFile[0];
-            
+
             const response = await node_setSecureConnection(jwtToken, isSecure, keyFile, certFile, caFiles);
 
-            if(!response.isError) {
+            if (!response.isError) {
                 setMoarTubeNodeHttpProtocol('https');
                 setMoarTubeNodeWebsocketProtocol('wss');
 
@@ -230,13 +230,13 @@ async function node_Secure_POST(jwtToken, isSecure, keyFile, certFile, caFiles) 
             result = response;
         }
         else {
-            result = {isError: true, message: 'invalid parameters'};
+            result = { isError: true, message: 'invalid parameters' };
         }
     }
     else {
         const response = await node_setSecureConnection(jwtToken, isSecure, null, null, null);
 
-        if(!response.isError) {
+        if (!response.isError) {
             setMoarTubeNodeHttpProtocol('http');
             setMoarTubeNodeWebsocketProtocol('ws');
 
@@ -252,7 +252,7 @@ async function node_Secure_POST(jwtToken, isSecure, keyFile, certFile, caFiles) 
 async function nodeNetworkInternal_POST(jwtToken, nodeListeningPort) {
     const response = await node_setNetworkInternal(jwtToken, nodeListeningPort);
 
-    if(!response.isError) {
+    if (!response.isError) {
         setMoarTubeNodePort(nodeListeningPort);
 
         clearNodeSettingsClientCache();
@@ -264,13 +264,13 @@ async function nodeNetworkInternal_POST(jwtToken, nodeListeningPort) {
 async function nodeNetworkExternal_POST(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort) {
     const response = await node_setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort);
 
-    if(!response.isError) {
+    if (!response.isError) {
         clearExternalVideosBaseUrlClientCache();
         clearNodeSettingsClientCache();
 
         const nodeSettings = await getNodeSettings(jwtToken);
 
-        if(nodeSettings.storageConfig.storageMode === 's3provider') {
+        if (nodeSettings.storageConfig.storageMode === 's3provider') {
             const videosData = await node_getVideoDataOutputs(jwtToken);
             const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
 
@@ -284,7 +284,7 @@ async function nodeNetworkExternal_POST(jwtToken, publicNodeProtocol, publicNode
 async function nodeCloudflareConfigure_POST(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey) {
     const response = await node_setCloudflareConfiguration(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey);
 
-    if(!response.isError) {
+    if (!response.isError) {
         clearNodeSettingsClientCache();
     }
 
@@ -294,7 +294,7 @@ async function nodeCloudflareConfigure_POST(jwtToken, cloudflareEmailAddress, cl
 async function nodeCloudflareTurnstileConfigure_POST(jwtToken, cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey) {
     const response = await node_setCloudflareTurnstileConfiguration(jwtToken, cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey);
 
-    if(!response.isError) {
+    if (!response.isError) {
         clearNodeSettingsClientCache();
     }
 
@@ -303,8 +303,8 @@ async function nodeCloudflareTurnstileConfigure_POST(jwtToken, cloudflareTurnsti
 
 async function nodeCloudflareTurnstileClear_POST(jwtToken) {
     const response = await node_CloudflareTurnstileConfigurationClear(jwtToken);
-    
-    if(!response.isError) {
+
+    if (!response.isError) {
         clearNodeSettingsClientCache();
     }
 
@@ -314,7 +314,7 @@ async function nodeCloudflareTurnstileClear_POST(jwtToken) {
 async function nodeCloudflareClear_POST(jwtToken) {
     const response = await node_clearCloudflareConfiguration(jwtToken);
 
-    if(!response.isError) {
+    if (!response.isError) {
         clearNodeSettingsClientCache();
     }
 
@@ -324,7 +324,7 @@ async function nodeCloudflareClear_POST(jwtToken) {
 async function nodeDatabaseConfigToggle_POST(jwtToken, databaseConfig) {
     const response = await node_databaseConfigToggle(jwtToken, databaseConfig);
 
-    if(!response.isError) {
+    if (!response.isError) {
         clearNodeSettingsClientCache();
     }
 
@@ -334,7 +334,7 @@ async function nodeDatabaseConfigToggle_POST(jwtToken, databaseConfig) {
 async function nodeDatabaseConfigEmpty_POST(jwtToken) {
     const response = await node_databaseConfigEmpty(jwtToken);
 
-    if(!response.isError) {
+    if (!response.isError) {
         clearNodeSettingsClientCache();
     }
 
@@ -342,19 +342,19 @@ async function nodeDatabaseConfigEmpty_POST(jwtToken) {
 }
 
 async function nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig) {
-    if(storageConfig.storageMode === 's3provider') {
+    if (storageConfig.storageMode === 's3provider') {
         await s3_validateS3Config(JSON.parse(JSON.stringify(storageConfig.s3Config)));
     }
 
     const response = await node_storageConfigToggle(jwtToken, storageConfig, dnsConfig);
 
-    if(!response.isError) {
+    if (!response.isError) {
         clearExternalVideosBaseUrlClientCache();
         clearNodeSettingsClientCache();
-        
+
         const nodeSettings = await getNodeSettings(jwtToken);
 
-        if(nodeSettings.storageConfig.storageMode === 's3provider') {
+        if (nodeSettings.storageConfig.storageMode === 's3provider') {
             const videosData = await node_getVideoDataOutputs(jwtToken);
             const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
 
@@ -368,7 +368,7 @@ async function nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig) 
 async function nodeStorageConfigEmpty_POST(jwtToken) {
     const response = await node_storageConfigEmpty(jwtToken);
 
-    if(!response.isError) {
+    if (!response.isError) {
         clearNodeSettingsClientCache();
     }
 
@@ -378,7 +378,7 @@ async function nodeStorageConfigEmpty_POST(jwtToken) {
 async function nodeCommentsToggle_POST(jwtToken, isCommentsEnabled) {
     const response = await node_commentsToggle(jwtToken, isCommentsEnabled);
 
-    if(!response.isError) {
+    if (!response.isError) {
         clearNodeSettingsClientCache();
     }
 
@@ -388,7 +388,7 @@ async function nodeCommentsToggle_POST(jwtToken, isCommentsEnabled) {
 async function nodeLikesToggle_POST(jwtToken, isLikesEnabled) {
     const response = await node_likesToggle(jwtToken, isLikesEnabled);
 
-    if(!response.isError) {
+    if (!response.isError) {
         clearNodeSettingsClientCache();
     }
 
@@ -398,7 +398,7 @@ async function nodeLikesToggle_POST(jwtToken, isLikesEnabled) {
 async function nodeDislikesToggle_POST(jwtToken, isDislikesEnabled) {
     const response = await node_dislikesToggle(jwtToken, isDislikesEnabled);
 
-    if(!response.isError) {
+    if (!response.isError) {
         clearNodeSettingsClientCache();
     }
 
@@ -408,7 +408,7 @@ async function nodeDislikesToggle_POST(jwtToken, isDislikesEnabled) {
 async function nodeReportsToggle_POST(jwtToken, isReportsEnabled) {
     const response = await node_reportsToggle(jwtToken, isReportsEnabled);
 
-    if(!response.isError) {
+    if (!response.isError) {
         clearNodeSettingsClientCache();
     }
 
@@ -418,7 +418,7 @@ async function nodeReportsToggle_POST(jwtToken, isReportsEnabled) {
 async function nodeLiveChatToggle_POST(jwtToken, isLiveChatEnabled) {
     const response = await node_liveChatToggle(jwtToken, isLiveChatEnabled);
 
-    if(!response.isError) {
+    if (!response.isError) {
         clearNodeSettingsClientCache();
     }
 
@@ -428,7 +428,7 @@ async function nodeLiveChatToggle_POST(jwtToken, isLiveChatEnabled) {
 async function nodeAccount_POST(jwtToken, username, password) {
     const response = await node_setAccountCredentials(jwtToken, username, password);
 
-    if(!response.isError) {
+    if (!response.isError) {
         clearNodeSettingsClientCache();
     }
 

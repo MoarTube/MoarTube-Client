@@ -1,6 +1,6 @@
 const express = require('express');
 
-const { signIn_POST, signOut_GET} = require('../controllers/account');
+const { signIn_POST, signOut_GET } = require('../controllers/account');
 const { node_isAuthenticated } = require('../utils/node-communications');
 const { logDebugMessageToConsole } = require('../utils/helpers');
 
@@ -12,17 +12,17 @@ router.get('/signin', async (req, res) => {
 
         const isAuthenticated = (await node_isAuthenticated(jwtToken)).isAuthenticated;
 
-        if(isAuthenticated) {
+        if (isAuthenticated) {
             res.redirect('/videos');
         }
         else {
             res.render('signin', {});
         }
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
@@ -36,7 +36,7 @@ router.post('/signin', async (req, res) => {
 
         const data = await signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe);
 
-        if(!data.isError && data.isAuthenticated) {
+        if (!data.isError && data.isAuthenticated) {
             req.session.jwtToken = data.jwtToken;
 
             delete data.jwtToken;
@@ -44,10 +44,10 @@ router.post('/signin', async (req, res) => {
 
         res.send(data);
     }
-    catch(error) {
+    catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);
 
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
     }
 });
 
@@ -55,9 +55,9 @@ router.get('/signout', (req, res) => {
     try {
         signOut_GET(req, res);
     }
-    catch(error) {
-        res.send({isError: true, message: 'error communicating with the MoarTube node'});
-    }  
+    catch (error) {
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
+    }
 });
 
 module.exports = router;
