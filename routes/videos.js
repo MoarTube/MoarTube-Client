@@ -27,9 +27,16 @@ router.get('/', async (req, res) => {
             node_doSignout(req, res);
         }
         else if (response.isAuthenticated) {
+            const { node_GET } = require('../controllers/settings');
+            const { newContentCounts_GET } = require('../controllers/node');
+
+            const nodeSettings = await node_GET(jwtToken);
+            const newContentCounts = (await newContentCounts_GET(jwtToken)).newContentCounts;
             const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
 
             res.render('videos', {
+                nodeSettings: nodeSettings,
+                newContentCounts: newContentCounts,
                 externalVideosBaseUrl: externalVideosBaseUrl
             });
         }

@@ -18,7 +18,19 @@ router.get('/', async (req, res) => {
             node_doSignout(req, res);
         }
         else if (response.isAuthenticated) {
-            res.render('monetization', {});
+            const { node_GET } = require('../controllers/settings');
+            const { newContentCounts_GET } = require('../controllers/node');
+            const { monetizationAll_GET } = require('../controllers/monetization');
+
+            const nodeSettings = await node_GET(jwtToken);
+            const newContentCounts = (await newContentCounts_GET(jwtToken)).newContentCounts;
+            const cryptoWalletAddresses = (await monetizationAll_GET()).cryptoWalletAddresses;
+
+            res.render('monetization', {
+                nodeSettings: nodeSettings,
+                newContentCounts: newContentCounts,
+                cryptoWalletAddresses: cryptoWalletAddresses,
+            });
         }
         else {
             res.redirect('/account/signin');

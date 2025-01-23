@@ -18,7 +18,21 @@ router.get('/', async (req, res) => {
             node_doSignout(req, res);
         }
         else if (response.isAuthenticated) {
-            res.render('reports-comments', {});
+            const { node_GET } = require('../controllers/settings');
+            const { newContentCounts_GET } = require('../controllers/node');
+            const { all_GET, archiveAll_GET } = require('../controllers/reports-comments');
+
+            const nodeSettings = await node_GET(jwtToken);
+            const newContentCounts = (await newContentCounts_GET(jwtToken)).newContentCounts;
+            const commentReports = (await all_GET(jwtToken)).reports;
+            const commentReportsArchive = (await archiveAll_GET(jwtToken)).reports;
+
+            res.render('reports-comments', {
+                nodeSettings: nodeSettings,
+                newContentCounts: newContentCounts,
+                commentReports: commentReports,
+                commentReportsArchive: commentReportsArchive,
+            });
         }
         else {
             res.redirect('/account/signin');

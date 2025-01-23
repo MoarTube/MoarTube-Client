@@ -18,7 +18,21 @@ router.get('/', async (req, res) => {
             node_doSignout(req, res);
         }
         else if (response.isAuthenticated) {
-            res.render('reports-videos', {});
+            const { node_GET } = require('../controllers/settings');
+            const { newContentCounts_GET } = require('../controllers/node');
+            const { all_GET, archiveAll_GET } = require('../controllers/reports-videos');
+
+            const nodeSettings = await node_GET(jwtToken);
+            const newContentCounts = (await newContentCounts_GET(jwtToken)).newContentCounts;
+            const videoReports = (await all_GET(jwtToken)).reports;
+            const videoReportsArchive = (await archiveAll_GET(jwtToken)).reports;
+
+            res.render('reports-videos', {
+                nodeSettings: nodeSettings,
+                newContentCounts: newContentCounts,
+                videoReports: videoReports,
+                videoReportsArchive: videoReportsArchive,
+            });
         }
         else {
             res.redirect('/account/signin');

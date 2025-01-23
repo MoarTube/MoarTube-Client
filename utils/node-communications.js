@@ -117,6 +117,12 @@ async function node_getVideoData(videoId) {
     return response.data;
 }
 
+async function node_getVideoDataAll(videoId) {
+    const response = await axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/data/all');
+
+    return response.data;
+}
+
 async function node_setThumbnail(jwtToken, videoId, thumbnailBuffer) {
     const formData = new FormData();
     formData.append('thumbnailFile', thumbnailBuffer, 'thumbnail.jpg');
@@ -1091,16 +1097,6 @@ async function node_uploadM3u8MasterManifest(jwtToken, videoId, type, masterMani
     return response.data;
 }
 
-async function node_getVideoDataOutputs(jwtToken) {
-    const response = await axios.get(getMoarTubeNodeUrl() + '/videos/data/outputs', {
-        headers: {
-            Authorization: jwtToken
-        }
-    });
-
-    return response.data;
-}
-
 module.exports = {
     node_isAuthenticated,
     node_doHeartBeat,
@@ -1114,6 +1110,7 @@ module.exports = {
     node_setPreview,
     node_setPoster,
     node_getVideoData,
+    node_getVideoDataAll,
     node_unpublishVideo,
     node_stopVideoPublishing,
     node_stopVideoStreaming,
@@ -1190,6 +1187,5 @@ module.exports = {
     node_storageConfigEmpty,
     node_getExternalVideosBaseUrl,
     node_getManifestFile,
-    node_uploadM3u8MasterManifest,
-    node_getVideoDataOutputs
+    node_uploadM3u8MasterManifest
 };

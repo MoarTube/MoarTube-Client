@@ -1,5 +1,4 @@
 const express = require('express');
-const fs = require('fs');
 const multer = require('multer');
 
 const {
@@ -26,7 +25,17 @@ router.get('/', async (req, res) => {
             node_doSignout(req, res);
         }
         else if (response.isAuthenticated) {
-            res.render('settings', {});
+            const { newContentCounts_GET } = require('../controllers/node');
+
+            const clientSettings = client_GET().clientSettings;
+            const nodeSettings = await node_GET(jwtToken);
+            const newContentCounts = (await newContentCounts_GET(jwtToken)).newContentCounts;
+
+            res.render('settings', {
+                clientSettings: clientSettings,
+                nodeSettings: nodeSettings,
+                newContentCounts: newContentCounts
+            });
         }
         else {
             res.redirect('/account/signin');

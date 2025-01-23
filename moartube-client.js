@@ -11,8 +11,8 @@ const engine = require('express-dot-engine');
 
 const {
 	logDebugMessageToConsole, performEncodingDecodingAssessment, cleanVideosDirectory, getPublicDirectoryPath, getDataDirectoryPath,
-	getMoarTubeClientPort, setPublicDirectoryPath, setDataDirectoryPath, setVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, 
-	setWebsocketServer, getClientSettings, getVideosDirectoryPath, getIsDeveloperMode, setIsDeveloperMode, getViewsDirectoryPath, 
+	getMoarTubeClientPort, setPublicDirectoryPath, setDataDirectoryPath, setVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort,
+	setWebsocketServer, getClientSettings, getVideosDirectoryPath, getIsDeveloperMode, setIsDeveloperMode, getViewsDirectoryPath,
 	setViewsDirectoryPath
 } = require('./utils/helpers');
 

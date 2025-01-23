@@ -151,9 +151,10 @@ async function s3_updateM3u8ManifestsWithExternalVideosBaseUrl(s3Config, videosD
 
     for (const videoData of videosData) {
         const videoId = videoData.videoId;
-        const outputs = videoData.outputs
+        const outputs = videoData.outputs;
+        const isPublished = videoData.isPublished;
 
-        if (outputs.m3u8.length > 0) {
+        if (isPublished && outputs.m3u8.length > 0) {
             const masterManifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-master.m3u8';
 
             await performUpdate(masterManifestKey);
@@ -176,8 +177,8 @@ async function s3_updateM3u8ManifestsWithExternalVideosBaseUrl(s3Config, videosD
 
             await s3Client.send(new PutObjectCommand({ Bucket: bucketName, Key: manifestKey, Body: newManifest, ContentType: 'application/vnd.apple.mpegurl' }));
         }
-        catch(error) {
-
+        catch (error) {
+            // do nothing
         }
     }
 }

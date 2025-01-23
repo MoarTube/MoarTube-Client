@@ -18,7 +18,19 @@ router.get('/', async (req, res) => {
             node_doSignout(req, res);
         }
         else if (response.isAuthenticated) {
-            res.render('links', {});
+            const { node_GET } = require('../controllers/settings');
+            const { newContentCounts_GET } = require('../controllers/node');
+            const { linksAll_GET } = require('../controllers/links');
+
+            const nodeSettings = await node_GET(jwtToken);
+            const newContentCounts = (await newContentCounts_GET(jwtToken)).newContentCounts;
+            const links = (await linksAll_GET()).links;
+
+            res.render('links', {
+                nodeSettings: nodeSettings,
+                newContentCounts: newContentCounts,
+                links: links,
+            });
         }
         else {
             res.redirect('/account/signin');

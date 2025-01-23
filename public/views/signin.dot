@@ -1,119 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<title>MoarTube - SignIn</title>
-		<link rel="icon" type="image/x-icon" href="/images/favicon.ico">
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-		<script src="/javascript/jquery-3.6.4.min.js"></script>
-		<link id="pagestyle" href="/css/soft-ui-dashboard-1.1.0.min.css" rel="stylesheet">
-	</head>
-	<body>
-		<a class="navbar-brand" href="http://www.moartube.com" target="_blank" style="position: absolute; left: 12px; top: 9px; z-index: 2;">
-			<svg viewBox="169.022 81.466 89.186 20.228" xmlns="http://www.w3.org/2000/svg" style="width: 90px; height: 20px;">
+
+<head>
+	<title>MoarTube - SignIn</title>
+	<link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<script src="/javascript/jquery-3.6.4.min.js"></script>
+	<link id="pagestyle" href="/css/soft-ui-dashboard-1.1.0.min.css" rel="stylesheet">
+</head>
+
+<body>
+	<a class="navbar-brand" href="http://www.moartube.com" target="_blank"
+		style="position: absolute; left: 12px; top: 9px; z-index: 2;">
+		<svg viewBox="169.022 81.466 89.186 20.228" xmlns="http://www.w3.org/2000/svg"
+			style="width: 90px; height: 20px;">
 			<g transform="matrix(1, 0, 0, 1, 169.021713, 81.694077)">
-			<path d="M27.9727 3.12324C27.6435 1.89323 26.6768 0.926623 25.4468 0.597366C23.2197 2.24288e-07 14.285 0 14.285 0C14.285 0 5.35042 2.24288e-07 3.12323 0.597366C1.89323 0.926623 0.926623 1.89323 0.597366 3.12324C2.24288e-07 5.35042 0 10 0 10C0 10 2.24288e-07 14.6496 0.597366 16.8768C0.926623 18.1068 1.89323 19.0734 3.12323 19.4026C5.35042 20 14.285 20 14.285 20C14.285 20 23.2197 20 25.4468 19.4026C26.6768 19.0734 27.6435 18.1068 27.9727 16.8768C28.5701 14.6496 28.5701 10 28.5701 10C28.5701 10 28.5677 5.35042 27.9727 3.12324Z" fill="#cb0c9f"></path>
-			<path d="M 14.425 14.285 L 21.848 10 L 14.425 5.715 L 14.425 14.285 Z" fill="white"></path>
-			<path d="M 8.425 14.285 L 15.848 10 L 8.425 5.715 L 8.425 14.285 Z" fill="white"></path>
+				<path
+					d="M27.9727 3.12324C27.6435 1.89323 26.6768 0.926623 25.4468 0.597366C23.2197 2.24288e-07 14.285 0 14.285 0C14.285 0 5.35042 2.24288e-07 3.12323 0.597366C1.89323 0.926623 0.926623 1.89323 0.597366 3.12324C2.24288e-07 5.35042 0 10 0 10C0 10 2.24288e-07 14.6496 0.597366 16.8768C0.926623 18.1068 1.89323 19.0734 3.12323 19.4026C5.35042 20 14.285 20 14.285 20C14.285 20 23.2197 20 25.4468 19.4026C26.6768 19.0734 27.6435 18.1068 27.9727 16.8768C28.5701 14.6496 28.5701 10 28.5701 10C28.5701 10 28.5677 5.35042 27.9727 3.12324Z"
+					fill="#cb0c9f"></path>
+				<path d="M 14.425 14.285 L 21.848 10 L 14.425 5.715 L 14.425 14.285 Z" fill="white"></path>
+				<path d="M 8.425 14.285 L 15.848 10 L 8.425 5.715 L 8.425 14.285 Z" fill="white"></path>
 			</g>
-			<path d="M 204.012 71.432 L 204.012 60.552 L 207.3 60.552 L 209.274 67.973 L 211.226 60.552 L 214.522 60.552 L 214.522 71.432 L 212.481 71.432 L 212.481 62.867 L 210.321 71.432 L 208.206 71.432 L 206.053 62.867 L 206.053 71.432 Z M 215.202 67.38 Q 215.202 66.341 215.714 65.368 Q 216.226 64.396 217.165 63.884 Q 218.104 63.372 219.262 63.372 Q 221.05 63.372 222.193 64.533 Q 223.336 65.695 223.336 67.469 Q 223.336 69.257 222.182 70.434 Q 221.028 71.61 219.276 71.61 Q 218.193 71.61 217.209 71.12 Q 216.226 70.63 215.714 69.684 Q 215.202 68.738 215.202 67.38 Z M 217.339 67.491 Q 217.339 68.664 217.896 69.287 Q 218.453 69.911 219.269 69.911 Q 220.085 69.911 220.638 69.287 Q 221.191 68.664 221.191 67.476 Q 221.191 66.318 220.638 65.695 Q 220.085 65.071 219.269 65.071 Q 218.453 65.071 217.896 65.695 Q 217.339 66.318 217.339 67.491 Z M 225.529 65.955 L 223.636 65.613 Q 223.955 64.47 224.735 63.921 Q 225.514 63.372 227.05 63.372 Q 228.446 63.372 229.128 63.702 Q 229.811 64.032 230.09 64.541 Q 230.368 65.049 230.368 66.407 L 230.346 68.842 Q 230.346 69.881 230.446 70.374 Q 230.546 70.868 230.821 71.432 L 228.757 71.432 Q 228.676 71.224 228.557 70.816 Q 228.505 70.63 228.483 70.571 Q 227.948 71.091 227.34 71.35 Q 226.731 71.61 226.041 71.61 Q 224.824 71.61 224.122 70.95 Q 223.421 70.289 223.421 69.28 Q 223.421 68.612 223.74 68.088 Q 224.059 67.565 224.634 67.287 Q 225.21 67.009 226.293 66.801 Q 227.755 66.526 228.319 66.289 L 228.319 66.081 Q 228.319 65.48 228.023 65.224 Q 227.726 64.968 226.902 64.968 Q 226.345 64.968 226.033 65.186 Q 225.722 65.405 225.529 65.955 Z M 228.319 67.647 Q 227.919 67.78 227.05 67.966 Q 226.182 68.152 225.915 68.33 Q 225.507 68.619 225.507 69.064 Q 225.507 69.502 225.833 69.821 Q 226.16 70.141 226.664 70.141 Q 227.228 70.141 227.741 69.769 Q 228.119 69.487 228.238 69.079 Q 228.319 68.812 228.319 68.062 Z M 233.418 71.432 L 231.333 71.432 L 231.333 63.55 L 233.27 63.55 L 233.27 64.671 Q 233.767 63.877 234.164 63.624 Q 234.561 63.372 235.066 63.372 Q 235.779 63.372 236.439 63.765 L 235.793 65.584 Q 235.266 65.242 234.814 65.242 Q 234.376 65.242 234.071 65.483 Q 233.767 65.725 233.593 66.355 Q 233.418 66.986 233.418 68.998 Z M 238.801 71.432 L 238.801 62.392 L 235.572 62.392 L 235.572 60.552 L 244.219 60.552 L 244.219 62.392 L 240.998 62.392 L 240.998 71.432 Z M 248.679 71.432 L 248.679 70.252 Q 248.249 70.883 247.547 71.246 Q 246.846 71.61 246.067 71.61 Q 245.272 71.61 244.642 71.261 Q 244.011 70.912 243.729 70.282 Q 243.447 69.651 243.447 68.537 L 243.447 63.55 L 245.532 63.55 L 245.532 67.172 Q 245.532 68.834 245.647 69.209 Q 245.762 69.584 246.067 69.803 Q 246.371 70.022 246.838 70.022 Q 247.373 70.022 247.796 69.729 Q 248.219 69.436 248.375 69.001 Q 248.531 68.567 248.531 66.875 L 248.531 63.55 L 250.616 63.55 L 250.616 71.432 Z M 251.685 71.432 L 251.685 60.552 L 253.77 60.552 L 253.77 64.47 Q 254.735 63.372 256.056 63.372 Q 257.496 63.372 258.439 64.415 Q 259.381 65.457 259.381 67.409 Q 259.381 69.428 258.42 70.519 Q 257.459 71.61 256.086 71.61 Q 255.411 71.61 254.754 71.272 Q 254.097 70.935 253.622 70.274 L 253.622 71.432 Z M 253.755 67.32 Q 253.755 68.545 254.141 69.131 Q 254.683 69.962 255.581 69.962 Q 256.271 69.962 256.758 69.372 Q 257.244 68.782 257.244 67.513 Q 257.244 66.162 256.754 65.565 Q 256.264 64.968 255.5 64.968 Q 254.75 64.968 254.253 65.55 Q 253.755 66.133 253.755 67.32 Z M 264.621 68.923 L 266.699 69.272 Q 266.298 70.415 265.434 71.013 Q 264.569 71.61 263.27 71.61 Q 261.214 71.61 260.227 70.267 Q 259.448 69.191 259.448 67.55 Q 259.448 65.591 260.472 64.481 Q 261.496 63.372 263.062 63.372 Q 264.821 63.372 265.838 64.533 Q 266.855 65.695 266.81 68.092 L 261.585 68.092 Q 261.608 69.02 262.09 69.536 Q 262.572 70.052 263.292 70.052 Q 263.782 70.052 264.116 69.784 Q 264.45 69.517 264.621 68.923 Z M 264.74 66.816 Q 264.717 65.91 264.272 65.439 Q 263.827 64.968 263.188 64.968 Q 262.506 64.968 262.06 65.465 Q 261.615 65.962 261.622 66.816 Z" transform="matrix(0.915771, 0, 0, 1.777663, 13.868996, -26.174692)" style="white-space: pre;"></path>
-			</svg>
-		</a>
-		<main class="main-content mt-0">
-			<section>
-				<div class="page-header min-vh-100">
-					<div class="container">
-						<div class="row">
-							<div class="col-xl-4 col-lg-5 col-md-7 d-flex flex-column mx-lg-0 mx-auto">
-								<div class="card card-plain">
-									<div class="card-header pb-0 text-start">
-										<div style="display:flex;">
-											<h4 class="font-weight-bolder">Sign In</h4>
-											<a href="https://www.moartube.com/guides/how-to-sign-in" target="_blank"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
-												<path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"></path>
-												<path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"></path>
-											  </svg></a>
+			<path
+				d="M 204.012 71.432 L 204.012 60.552 L 207.3 60.552 L 209.274 67.973 L 211.226 60.552 L 214.522 60.552 L 214.522 71.432 L 212.481 71.432 L 212.481 62.867 L 210.321 71.432 L 208.206 71.432 L 206.053 62.867 L 206.053 71.432 Z M 215.202 67.38 Q 215.202 66.341 215.714 65.368 Q 216.226 64.396 217.165 63.884 Q 218.104 63.372 219.262 63.372 Q 221.05 63.372 222.193 64.533 Q 223.336 65.695 223.336 67.469 Q 223.336 69.257 222.182 70.434 Q 221.028 71.61 219.276 71.61 Q 218.193 71.61 217.209 71.12 Q 216.226 70.63 215.714 69.684 Q 215.202 68.738 215.202 67.38 Z M 217.339 67.491 Q 217.339 68.664 217.896 69.287 Q 218.453 69.911 219.269 69.911 Q 220.085 69.911 220.638 69.287 Q 221.191 68.664 221.191 67.476 Q 221.191 66.318 220.638 65.695 Q 220.085 65.071 219.269 65.071 Q 218.453 65.071 217.896 65.695 Q 217.339 66.318 217.339 67.491 Z M 225.529 65.955 L 223.636 65.613 Q 223.955 64.47 224.735 63.921 Q 225.514 63.372 227.05 63.372 Q 228.446 63.372 229.128 63.702 Q 229.811 64.032 230.09 64.541 Q 230.368 65.049 230.368 66.407 L 230.346 68.842 Q 230.346 69.881 230.446 70.374 Q 230.546 70.868 230.821 71.432 L 228.757 71.432 Q 228.676 71.224 228.557 70.816 Q 228.505 70.63 228.483 70.571 Q 227.948 71.091 227.34 71.35 Q 226.731 71.61 226.041 71.61 Q 224.824 71.61 224.122 70.95 Q 223.421 70.289 223.421 69.28 Q 223.421 68.612 223.74 68.088 Q 224.059 67.565 224.634 67.287 Q 225.21 67.009 226.293 66.801 Q 227.755 66.526 228.319 66.289 L 228.319 66.081 Q 228.319 65.48 228.023 65.224 Q 227.726 64.968 226.902 64.968 Q 226.345 64.968 226.033 65.186 Q 225.722 65.405 225.529 65.955 Z M 228.319 67.647 Q 227.919 67.78 227.05 67.966 Q 226.182 68.152 225.915 68.33 Q 225.507 68.619 225.507 69.064 Q 225.507 69.502 225.833 69.821 Q 226.16 70.141 226.664 70.141 Q 227.228 70.141 227.741 69.769 Q 228.119 69.487 228.238 69.079 Q 228.319 68.812 228.319 68.062 Z M 233.418 71.432 L 231.333 71.432 L 231.333 63.55 L 233.27 63.55 L 233.27 64.671 Q 233.767 63.877 234.164 63.624 Q 234.561 63.372 235.066 63.372 Q 235.779 63.372 236.439 63.765 L 235.793 65.584 Q 235.266 65.242 234.814 65.242 Q 234.376 65.242 234.071 65.483 Q 233.767 65.725 233.593 66.355 Q 233.418 66.986 233.418 68.998 Z M 238.801 71.432 L 238.801 62.392 L 235.572 62.392 L 235.572 60.552 L 244.219 60.552 L 244.219 62.392 L 240.998 62.392 L 240.998 71.432 Z M 248.679 71.432 L 248.679 70.252 Q 248.249 70.883 247.547 71.246 Q 246.846 71.61 246.067 71.61 Q 245.272 71.61 244.642 71.261 Q 244.011 70.912 243.729 70.282 Q 243.447 69.651 243.447 68.537 L 243.447 63.55 L 245.532 63.55 L 245.532 67.172 Q 245.532 68.834 245.647 69.209 Q 245.762 69.584 246.067 69.803 Q 246.371 70.022 246.838 70.022 Q 247.373 70.022 247.796 69.729 Q 248.219 69.436 248.375 69.001 Q 248.531 68.567 248.531 66.875 L 248.531 63.55 L 250.616 63.55 L 250.616 71.432 Z M 251.685 71.432 L 251.685 60.552 L 253.77 60.552 L 253.77 64.47 Q 254.735 63.372 256.056 63.372 Q 257.496 63.372 258.439 64.415 Q 259.381 65.457 259.381 67.409 Q 259.381 69.428 258.42 70.519 Q 257.459 71.61 256.086 71.61 Q 255.411 71.61 254.754 71.272 Q 254.097 70.935 253.622 70.274 L 253.622 71.432 Z M 253.755 67.32 Q 253.755 68.545 254.141 69.131 Q 254.683 69.962 255.581 69.962 Q 256.271 69.962 256.758 69.372 Q 257.244 68.782 257.244 67.513 Q 257.244 66.162 256.754 65.565 Q 256.264 64.968 255.5 64.968 Q 254.75 64.968 254.253 65.55 Q 253.755 66.133 253.755 67.32 Z M 264.621 68.923 L 266.699 69.272 Q 266.298 70.415 265.434 71.013 Q 264.569 71.61 263.27 71.61 Q 261.214 71.61 260.227 70.267 Q 259.448 69.191 259.448 67.55 Q 259.448 65.591 260.472 64.481 Q 261.496 63.372 263.062 63.372 Q 264.821 63.372 265.838 64.533 Q 266.855 65.695 266.81 68.092 L 261.585 68.092 Q 261.608 69.02 262.09 69.536 Q 262.572 70.052 263.292 70.052 Q 263.782 70.052 264.116 69.784 Q 264.45 69.517 264.621 68.923 Z M 264.74 66.816 Q 264.717 65.91 264.272 65.439 Q 263.827 64.968 263.188 64.968 Q 262.506 64.968 262.06 65.465 Q 261.615 65.962 261.622 66.816 Z"
+				transform="matrix(0.915771, 0, 0, 1.777663, 13.868996, -26.174692)" style="white-space: pre;"></path>
+		</svg>
+	</a>
+	<main class="main-content mt-0">
+		<section>
+			<div class="page-header min-vh-100">
+				<div class="container">
+					<div class="row">
+						<div class="col-xl-4 col-lg-5 col-md-7 d-flex flex-column mx-lg-0 mx-auto">
+							<div class="card card-plain">
+								<div class="card-header pb-0 text-start">
+									<div style="display:flex;">
+										<h4 class="font-weight-bolder">Sign In</h4>
+										<a href="https://www.moartube.com/guides/how-to-sign-in" target="_blank"><svg
+												xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+												fill="currentColor" class="bi bi-box-arrow-up-right ps-1"
+												viewBox="0 0 16 16">
+												<path fill-rule="evenodd"
+													d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5">
+												</path>
+												<path fill-rule="evenodd"
+													d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z">
+												</path>
+											</svg></a>
+									</div>
+									<p class="mb-0">Enter your node credentials to sign in</p>
+								</div>
+								<div class="card-body">
+									<form id="sign-in-form" role="form" method="POST" action="/account/signin">
+										<div class="mb-3">
+											<input type="text" class="form-control form-control-lg"
+												placeholder="Username" name="username" value="">
 										</div>
-										<p class="mb-0">Enter your node credentials to sign in</p>
-									</div>
-									<div class="card-body">
-										<form id="sign-in-form" role="form" method="POST" action="/account/signin">
-											<div class="mb-3">
-												<input type="text" class="form-control form-control-lg" placeholder="Username" name="username" value="">
-											</div>
-											<div class="mb-3">
-												<input type="password" class="form-control form-control-lg" placeholder="Password" name="password" value="">
-											</div>
-											<div class="mb-3">
-												<input type="text" class="form-control form-control-lg" placeholder="ip address" name="moarTubeNodeIp" value="">
-											</div>
-											<div class="mb-3">
-												<input type="text" class="form-control form-control-lg" placeholder="port" name="moarTubeNodePort" value="">
-											</div>
-											<div class="form-check form-switch">
-												<input class="form-check-input" type="checkbox" id="rememberMe" name="rememberMe" checked>
-												<label class="form-check-label" for="rememberMe">Remember me</label>
-											</div>
-											<div class="text-center">
-												<button id="sign-in-button" type="submit" class="btn btn-lg bg-gradient-primary btn-lg w-100 mt-4 mb-0">Sign in</button>
-											</div>
-										</form>
-									</div>
+										<div class="mb-3">
+											<input type="password" class="form-control form-control-lg"
+												placeholder="Password" name="password" value="">
+										</div>
+										<div class="mb-3">
+											<input type="text" class="form-control form-control-lg"
+												placeholder="ip address" name="moarTubeNodeIp" value="">
+										</div>
+										<div class="mb-3">
+											<input type="text" class="form-control form-control-lg" placeholder="port"
+												name="moarTubeNodePort" value="">
+										</div>
+										<div class="form-check form-switch">
+											<input class="form-check-input" type="checkbox" id="rememberMe"
+												name="rememberMe" checked>
+											<label class="form-check-label" for="rememberMe">Remember me</label>
+										</div>
+										<div class="text-center">
+											<button id="sign-in-button" type="submit"
+												class="btn btn-lg bg-gradient-primary btn-lg w-100 mt-4 mb-0">Sign
+												in</button>
+										</div>
+									</form>
 								</div>
 							</div>
-							<div class="col-6 d-lg-flex d-none h-100 my-auto pe-0 position-absolute top-0 end-0 text-center justify-content-center flex-column">
-								<div class="position-relative bg-gradient-primary h-100 m-3 px-7 border-radius-lg d-flex flex-column align-items-center justify-content-center">
-									<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" fill="currentColor" class="bi bi-fast-forward-fill" viewBox="0 0 16 16" style="color: white;">
-									  <path d="M7.596 7.304a.802.802 0 0 1 0 1.392l-6.363 3.692C.713 12.69 0 12.345 0 11.692V4.308c0-.653.713-.998 1.233-.696l6.363 3.692Z"></path>
-									  <path d="M15.596 7.304a.802.802 0 0 1 0 1.392l-6.363 3.692C8.713 12.69 8 12.345 8 11.692V4.308c0-.653.713-.998 1.233-.696l6.363 3.692Z"></path>
-									</svg>
-									<h4 class="mt-2 text-white font-weight-bolder">"Moar is Always Better"</h4>
-									<i><p class="text-white">Your node. Your rules.</p></i>
-								</div>
+						</div>
+						<div
+							class="col-6 d-lg-flex d-none h-100 my-auto pe-0 position-absolute top-0 end-0 text-center justify-content-center flex-column">
+							<div
+								class="position-relative bg-gradient-primary h-100 m-3 px-7 border-radius-lg d-flex flex-column align-items-center justify-content-center">
+								<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" fill="currentColor"
+									class="bi bi-fast-forward-fill" viewBox="0 0 16 16" style="color: white;">
+									<path
+										d="M7.596 7.304a.802.802 0 0 1 0 1.392l-6.363 3.692C.713 12.69 0 12.345 0 11.692V4.308c0-.653.713-.998 1.233-.696l6.363 3.692Z">
+									</path>
+									<path
+										d="M15.596 7.304a.802.802 0 0 1 0 1.392l-6.363 3.692C8.713 12.69 8 12.345 8 11.692V4.308c0-.653.713-.998 1.233-.696l6.363 3.692Z">
+									</path>
+								</svg>
+								<h4 class="mt-2 text-white font-weight-bolder">"Moar is Always Better"</h4>
+								<i>
+									<p class="text-white">Your node. Your rules.</p>
+								</i>
 							</div>
 						</div>
 					</div>
 				</div>
-			</section>
-		</main>
-		
-		<script src="/javascript/sweetalert-11.0.11.min.js"></script>
-		
-		<script>
-			$(document).ready(function() {
-				$("#sign-in-form").submit(function(event) {
-					event.preventDefault();
+			</div>
+		</section>
+	</main>
 
-					let form = $(this);
+	<script src="/javascript/sweetalert-11.0.11.min.js"></script>
 
-					let url = form.attr('action');
+	<script>
+		$(document).ready(function () {
+			$("#sign-in-form").submit(function (event) {
+				event.preventDefault();
 
-					let username = form.find('input[name="username"]').val();
-					let password = form.find('input[name="password"]').val();
-					let moarTubeNodeIp = form.find('input[name="moarTubeNodeIp"]').val();
-					let moarTubeNodePort = form.find('input[name="moarTubeNodePort"]').val();
-					let rememberMe = form.find('input[name="rememberMe"]').prop('checked');
+				let form = $(this);
 
-					disableInputs();
-					
-					performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe)
+				let url = form.attr('action');
+
+				let username = form.find('input[name="username"]').val();
+				let password = form.find('input[name="password"]').val();
+				let moarTubeNodeIp = form.find('input[name="moarTubeNodeIp"]').val();
+				let moarTubeNodePort = form.find('input[name="moarTubeNodePort"]').val();
+				let rememberMe = form.find('input[name="rememberMe"]').prop('checked');
+
+				disableInputs();
+
+				performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe)
 					.then(response => {
 						let loginOutcome = handleloginResponse(response);
-						
-						if(loginOutcome.isLoggedIn) {
+
+						if (loginOutcome.isLoggedIn) {
 							$('#sign-in-button').text('...redirecting...');
 
 							window.location.href = loginOutcome.redirectUrl;
 						}
 						else {
-							if(loginOutcome.reason === 'error') {
+							if (loginOutcome.reason === 'error') {
 								Swal.fire({
 									icon: 'error',
 									title: 'hmmm',
 									html: response.message
 								});
 							}
-							else if(loginOutcome.reason === 'password') {
+							else if (loginOutcome.reason === 'password') {
 								Swal.fire({
 									icon: 'error',
 									html: 'username/password not correct'
@@ -132,61 +163,62 @@
 
 						enableInputs();
 					});
-				});
+			});
 
-				function disableInputs() {
-					$('#sign-in-button').text('...signing in...');
+			function disableInputs() {
+				$('#sign-in-button').text('...signing in...');
 
-					$('input').prop('disabled', true);
-					$('button').prop('disabled', true);
-				}
+				$('input').prop('disabled', true);
+				$('button').prop('disabled', true);
+			}
 
-				function enableInputs() {
-					$('#sign-in-button').text('sign in');
+			function enableInputs() {
+				$('#sign-in-button').text('sign in');
 
-					$('input').prop('disabled', false);
-					$('button').prop('disabled', false);
-				}
-				
-				function performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe) {
-					return new Promise(function(resolve, reject) {
-						if(username != '' && password != '' && moarTubeNodeIp != '' && moarTubeNodePort != '') {
-							$.post({url: url, data: JSON.stringify({username: username, password: password, moarTubeNodeIp: moarTubeNodeIp, moarTubeNodePort: moarTubeNodePort, rememberMe: rememberMe}), contentType: 'application/json; charset=utf-8'})
-							.done(function(response) {
+				$('input').prop('disabled', false);
+				$('button').prop('disabled', false);
+			}
+
+			function performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe) {
+				return new Promise(function (resolve, reject) {
+					if (username != '' && password != '' && moarTubeNodeIp != '' && moarTubeNodePort != '') {
+						$.post({ url: url, data: JSON.stringify({ username: username, password: password, moarTubeNodeIp: moarTubeNodeIp, moarTubeNodePort: moarTubeNodePort, rememberMe: rememberMe }), contentType: 'application/json; charset=utf-8' })
+							.done(function (response) {
 								resolve(response);
 							})
-							.fail(function() {
+							.fail(function () {
 								reject('...something went wrong...');
 							});
-						}
-						else {
-							reject('please fill out all input fields');
-						}
-					});
-				}
-				
-				function handleloginResponse(response) {
-					let result = {};
-					
-					if(response.isError) {
-						result.isLoggedIn = false;
-						result.reason = 'error';
 					}
 					else {
-						if(response.isAuthenticated) {
-							result.isLoggedIn = true;
-							result.redirectUrl = response.redirectUrl;
-						}
-						else {
-							result.isLoggedIn = false;
-							result.reason = 'password';
-						}
+						reject('please fill out all input fields');
 					}
-					
-					return result;
-				}
-			});
-		</script>
+				});
+			}
 
-	</body>
+			function handleloginResponse(response) {
+				let result = {};
+
+				if (response.isError) {
+					result.isLoggedIn = false;
+					result.reason = 'error';
+				}
+				else {
+					if (response.isAuthenticated) {
+						result.isLoggedIn = true;
+						result.redirectUrl = response.redirectUrl;
+					}
+					else {
+						result.isLoggedIn = false;
+						result.reason = 'password';
+					}
+				}
+
+				return result;
+			}
+		});
+	</script>
+
+</body>
+
 </html>
