@@ -34,7 +34,7 @@ async function node_isAuthenticated(jwtToken) {
 async function node_doHeartBeat(moarTubeNodeHttpProtocol, moarTubeNodeIp, moarTubeNodePort) {
     const response = await axios.get(moarTubeNodeHttpProtocol + '://' + moarTubeNodeIp + ':' + moarTubeNodePort + '/status/heartbeat');
 
-    return response;
+    return response.data;
 }
 
 async function node_doSignin(username, password, moarTubeNodeHttpProtocol, moarTubeNodeIp, moarTubeNodePort, rememberMe) {
@@ -47,7 +47,7 @@ async function node_doSignin(username, password, moarTubeNodeHttpProtocol, moarT
         rememberMe: rememberMe
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getSettings(jwtToken) {
@@ -57,7 +57,7 @@ async function node_getSettings(jwtToken) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getAvatar() {
@@ -65,7 +65,7 @@ async function node_getAvatar() {
         responseType: 'stream'
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort) {
@@ -79,7 +79,7 @@ async function node_setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeA
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_stopVideoImporting(jwtToken, videoId) {
@@ -91,7 +91,7 @@ async function node_stopVideoImporting(jwtToken, videoId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_doVideosSearch(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
@@ -108,13 +108,13 @@ async function node_doVideosSearch(jwtToken, searchTerm, sortTerm, tagTerm, tagL
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getVideoData(videoId) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/data');
 
-    return response;
+    return response.data;
 }
 
 async function node_setThumbnail(jwtToken, videoId, thumbnailBuffer) {
@@ -128,7 +128,7 @@ async function node_setThumbnail(jwtToken, videoId, thumbnailBuffer) {
         headers: headers
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setPreview(jwtToken, videoId, previewBuffer) {
@@ -142,7 +142,7 @@ async function node_setPreview(jwtToken, videoId, previewBuffer) {
         headers: headers
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setPoster(jwtToken, videoId, posterBuffer) {
@@ -156,7 +156,7 @@ async function node_setPoster(jwtToken, videoId, posterBuffer) {
         headers: headers
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_unpublishVideo(jwtToken, videoId, format, resolution) {
@@ -169,7 +169,7 @@ async function node_unpublishVideo(jwtToken, videoId, format, resolution) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_stopVideoPublishing(jwtToken, videoId) {
@@ -181,7 +181,7 @@ async function node_stopVideoPublishing(jwtToken, videoId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_stopVideoStreaming(jwtToken, videoId) {
@@ -193,7 +193,7 @@ async function node_stopVideoStreaming(jwtToken, videoId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_importVideo(jwtToken, title, description, tags) {
@@ -207,7 +207,7 @@ async function node_importVideo(jwtToken, title, description, tags) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setVideoError(jwtToken, videoId) {
@@ -219,7 +219,7 @@ async function node_setVideoError(jwtToken, videoId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setSourceFileExtension(jwtToken, videoId, sourceFileExtension) {
@@ -231,7 +231,7 @@ async function node_setSourceFileExtension(jwtToken, videoId, sourceFileExtensio
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp) {
@@ -244,7 +244,7 @@ async function node_setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTime
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setVideoImported(jwtToken, videoId) {
@@ -256,7 +256,7 @@ async function node_setVideoImported(jwtToken, videoId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setVideoPublishing(jwtToken, videoId) {
@@ -268,7 +268,7 @@ async function node_setVideoPublishing(jwtToken, videoId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setVideoPublished(jwtToken, videoId) {
@@ -280,7 +280,7 @@ async function node_setVideoPublished(jwtToken, videoId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setVideoFormatResolutionPublished(jwtToken, videoId, format, resolution) {
@@ -290,7 +290,7 @@ async function node_setVideoFormatResolutionPublished(jwtToken, videoId, format,
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getVideoComments(jwtToken, videoId, timestamp, type, sort) {
@@ -305,7 +305,7 @@ async function node_getVideoComments(jwtToken, videoId, timestamp, type, sort) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_searchComments(jwtToken, videoId, searchTerm, limit, timestamp) {
@@ -321,7 +321,7 @@ async function node_searchComments(jwtToken, videoId, searchTerm, limit, timesta
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getVideosTags(jwtToken) {
@@ -331,7 +331,7 @@ async function node_getVideosTags(jwtToken) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getVideoReports(jwtToken) {
@@ -341,7 +341,7 @@ async function node_getVideoReports(jwtToken) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getVideoReportsArchive(jwtToken) {
@@ -351,7 +351,7 @@ async function node_getVideoReportsArchive(jwtToken) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_streamVideo(jwtToken, title, description, tags, rtmpPort, uuid, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, resolution, videoId) {
@@ -372,7 +372,7 @@ async function node_streamVideo(jwtToken, title, description, tags, rtmpPort, uu
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getSourceFileExtension(jwtToken, videoId) {
@@ -382,7 +382,7 @@ async function node_getSourceFileExtension(jwtToken, videoId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getVideosTagsAll(jwtToken) {
@@ -392,7 +392,7 @@ async function node_getVideosTagsAll(jwtToken) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_doVideosSearchAll(searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
@@ -406,7 +406,7 @@ async function node_doVideosSearchAll(searchTerm, sortTerm, tagTerm, tagLimit, t
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getNewContentCounts(jwtToken) {
@@ -416,7 +416,7 @@ async function node_getNewContentCounts(jwtToken) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setContentChecked(jwtToken, contentType) {
@@ -428,7 +428,7 @@ async function node_setContentChecked(jwtToken, contentType) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_archiveVideoReport(jwtToken, reportId) {
@@ -440,7 +440,7 @@ async function node_archiveVideoReport(jwtToken, reportId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_removeVideoReport(jwtToken, reportId) {
@@ -450,7 +450,7 @@ async function node_removeVideoReport(jwtToken, reportId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_removeVideoReportArchive(jwtToken, archiveId) {
@@ -460,7 +460,7 @@ async function node_removeVideoReportArchive(jwtToken, archiveId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getCommentReports(jwtToken) {
@@ -470,7 +470,7 @@ async function node_getCommentReports(jwtToken) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getCommentReportsArchive(jwtToken) {
@@ -480,7 +480,7 @@ async function node_getCommentReportsArchive(jwtToken) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_archiveCommentReport(jwtToken, reportId) {
@@ -492,7 +492,7 @@ async function node_archiveCommentReport(jwtToken, reportId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_removeCommentReport(jwtToken, reportId) {
@@ -502,7 +502,7 @@ async function node_removeCommentReport(jwtToken, reportId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_removeCommentReportArchive(jwtToken, archiveId) {
@@ -512,7 +512,7 @@ async function node_removeCommentReportArchive(jwtToken, archiveId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_removeComment(jwtToken, videoId, commentId, timestamp) {
@@ -525,7 +525,7 @@ async function node_removeComment(jwtToken, videoId, commentId, timestamp) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getVideoPublishes(jwtToken, videoId) {
@@ -535,7 +535,7 @@ async function node_getVideoPublishes(jwtToken, videoId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setVideoData(jwtToken, videoId, title, description, tags) {
@@ -549,7 +549,7 @@ async function node_setVideoData(jwtToken, videoId, title, description, tags) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_deleteVideos(jwtToken, videoIds) {
@@ -561,7 +561,7 @@ async function node_deleteVideos(jwtToken, videoIds) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_finalizeVideos(jwtToken, videoIds) {
@@ -573,7 +573,7 @@ async function node_finalizeVideos(jwtToken, videoIds) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_addVideoToIndex(jwtToken, videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken) {
@@ -587,7 +587,7 @@ async function node_addVideoToIndex(jwtToken, videoId, containsAdultContent, ter
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_removeVideoFromIndex(jwtToken, videoId, cloudflareTurnstileToken) {
@@ -599,7 +599,7 @@ async function node_removeVideoFromIndex(jwtToken, videoId, cloudflareTurnstileT
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getVideoAlias(jwtToken, videoId) {
@@ -609,16 +609,13 @@ async function node_getVideoAlias(jwtToken, videoId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
-async function node_setAvatar(jwtToken, iconPath, avatarPath) {
-    const iconFileStream = fs.createReadStream(iconPath);
-    const avatarFileStream = fs.createReadStream(avatarPath);
-
+async function node_setAvatar(jwtToken, iconBuffer, avatarBuffer) {
     const formData = new FormData();
-    formData.append('iconFile', iconFileStream, 'icon.png');
-    formData.append('avatarFile', avatarFileStream, 'avatar.png');
+    formData.append('iconFile', iconBuffer, 'icon.png');
+    formData.append('avatarFile', avatarBuffer, 'avatar.png');
 
     const headers = formData.getHeaders();
     headers.Authorization = jwtToken;
@@ -627,7 +624,7 @@ async function node_setAvatar(jwtToken, iconPath, avatarPath) {
         headers: headers
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getBanner(jwtToken) {
@@ -638,14 +635,12 @@ async function node_getBanner(jwtToken) {
         responseType: 'stream'
     });
 
-    return response;
+    return response.data;
 }
 
-async function node_setBanner(jwtToken, bannerPath) {
-    const bannerFileStream = fs.createReadStream(bannerPath);
-
+async function node_setBanner(jwtToken, bannerBuffer) {
     const formData = new FormData();
-    formData.append('bannerFile', bannerFileStream, 'banner.png');
+    formData.append('bannerFile', bannerBuffer, 'banner.png');
 
     const headers = formData.getHeaders();
     headers.Authorization = jwtToken;
@@ -654,7 +649,7 @@ async function node_setBanner(jwtToken, bannerPath) {
         headers: headers
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setNodeName(jwtToken, nodeName) {
@@ -666,7 +661,7 @@ async function node_setNodeName(jwtToken, nodeName) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setNodeAbout(jwtToken, nodeAbout) {
@@ -678,7 +673,7 @@ async function node_setNodeAbout(jwtToken, nodeAbout) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setNodeId(jwtToken, nodeId) {
@@ -690,27 +685,23 @@ async function node_setNodeId(jwtToken, nodeId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setSecureConnection(jwtToken, isSecure, keyFile, certFile, caFiles) {
     const formData = new FormData();
 
     if (keyFile != null) {
-        const keyFileStream = fs.createReadStream(keyFile.path);
-        formData.append('keyFile', keyFileStream, 'private_key.pem');
+        formData.append('keyFile', keyFile.buffer, 'private_key.pem');
     }
 
     if (certFile != null) {
-        const certFileStream = fs.createReadStream(certFile.path);
-        formData.append('certFile', certFileStream, 'certificate.pem');
+        formData.append('certFile', certFile.buffer, 'certificate.pem');
     }
 
     if (caFiles != null) {
         for (const caFile of caFiles) {
-            const caFileStream = fs.createReadStream(caFile.path);
-
-            formData.append('caFiles', caFileStream, caFile.filename);
+            formData.append('caFiles', caFile.buffer, caFile.filename);
         }
     }
 
@@ -721,7 +712,7 @@ async function node_setSecureConnection(jwtToken, isSecure, keyFile, certFile, c
         headers: headers
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setNetworkInternal(jwtToken, listeningNodePort) {
@@ -733,7 +724,7 @@ async function node_setNetworkInternal(jwtToken, listeningNodePort) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setCloudflareConfiguration(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey) {
@@ -747,7 +738,7 @@ async function node_setCloudflareConfiguration(jwtToken, cloudflareEmailAddress,
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setCloudflareTurnstileConfiguration(jwtToken, cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey) {
@@ -760,7 +751,7 @@ async function node_setCloudflareTurnstileConfiguration(jwtToken, cloudflareTurn
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_CloudflareTurnstileConfigurationClear(jwtToken) {
@@ -770,7 +761,7 @@ async function node_CloudflareTurnstileConfigurationClear(jwtToken) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_clearCloudflareConfiguration(jwtToken) {
@@ -780,7 +771,7 @@ async function node_clearCloudflareConfiguration(jwtToken) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_databaseConfigToggle(jwtToken, databaseConfig) {
@@ -792,7 +783,7 @@ async function node_databaseConfigToggle(jwtToken, databaseConfig) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_databaseConfigEmpty(jwtToken) {
@@ -802,7 +793,7 @@ async function node_databaseConfigEmpty(jwtToken) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_storageConfigToggle(jwtToken, storageConfig, dnsConfig) {
@@ -815,7 +806,7 @@ async function node_storageConfigToggle(jwtToken, storageConfig, dnsConfig) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_storageConfigEmpty(jwtToken) {
@@ -825,7 +816,7 @@ async function node_storageConfigEmpty(jwtToken) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setAccountCredentials(jwtToken, username, password) {
@@ -838,7 +829,7 @@ async function node_setAccountCredentials(jwtToken, username, password) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_uploadVideo(jwtToken, videoId, format, resolution, directoryPaths) {
@@ -864,7 +855,7 @@ async function node_uploadVideo(jwtToken, videoId, format, resolution, directory
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled, chatHistoryLimit) {
@@ -877,7 +868,7 @@ async function node_setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getVideoBandwidth(jwtToken, videoId) {
@@ -887,7 +878,7 @@ async function node_getVideoBandwidth(jwtToken, videoId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getStreamMeta(jwtToken, videoId) {
@@ -897,13 +888,13 @@ async function node_getStreamMeta(jwtToken, videoId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getVideoSources(videoId) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/watch');
 
-    return response;
+    return response.data;
 }
 
 const httpAgent = new http.Agent({ keepAlive: true, keepAliveMsecs: 10000 });
@@ -934,7 +925,7 @@ async function node_uploadStream(jwtToken, videoId, format, resolution, manifest
         httpsAgent: httpsAgent
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_removeAdaptiveStreamSegment(jwtToken, videoId, format, resolution, segmentName) {
@@ -946,13 +937,13 @@ async function node_removeAdaptiveStreamSegment(jwtToken, videoId, format, resol
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_MonetizationAll() {
     const response = await axios.get(getMoarTubeNodeUrl() + '/monetization/all');
 
-    return response;
+    return response.data;
 }
 
 async function node_MonetizationAdd(jwtToken, walletAddress, chain, currency) {
@@ -966,7 +957,7 @@ async function node_MonetizationAdd(jwtToken, walletAddress, chain, currency) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_MonetizationDelete(jwtToken, cryptoWalletAddressId) {
@@ -978,13 +969,13 @@ async function node_MonetizationDelete(jwtToken, cryptoWalletAddressId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_LinksAll() {
     const response = await axios.get(getMoarTubeNodeUrl() + '/links/all');
 
-    return response;
+    return response.data;
 }
 
 async function node_LinksAdd(jwtToken, url, svgGraphic) {
@@ -997,7 +988,7 @@ async function node_LinksAdd(jwtToken, url, svgGraphic) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_LinksDelete(jwtToken, linkId) {
@@ -1009,7 +1000,7 @@ async function node_LinksDelete(jwtToken, linkId) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_commentsToggle(jwtToken, isCommentsEnabled) {
@@ -1021,7 +1012,7 @@ async function node_commentsToggle(jwtToken, isCommentsEnabled) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_likesToggle(jwtToken, isLikesEnabled) {
@@ -1033,7 +1024,7 @@ async function node_likesToggle(jwtToken, isLikesEnabled) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_dislikesToggle(jwtToken, isDislikesEnabled) {
@@ -1045,7 +1036,7 @@ async function node_dislikesToggle(jwtToken, isDislikesEnabled) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_reportsToggle(jwtToken, isReportsEnabled) {
@@ -1057,7 +1048,7 @@ async function node_reportsToggle(jwtToken, isReportsEnabled) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_liveChatToggle(jwtToken, isLiveChatEnabled) {
@@ -1069,7 +1060,7 @@ async function node_liveChatToggle(jwtToken, isLiveChatEnabled) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getExternalVideosBaseUrl(jwtToken) {
@@ -1079,13 +1070,13 @@ async function node_getExternalVideosBaseUrl(jwtToken) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getManifestFile(videoId, format, type, manifestName) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/external/videos/' + videoId + '/adaptive/' + format + '/' + type + '/manifests/' + manifestName);
 
-    return response;
+    return response.data;
 }
 
 async function node_uploadM3u8MasterManifest(jwtToken, videoId, type, masterManifest) {
@@ -1097,7 +1088,7 @@ async function node_uploadM3u8MasterManifest(jwtToken, videoId, type, masterMani
         }
     });
 
-    return response;
+    return response.data;
 }
 
 async function node_getVideoDataOutputs(jwtToken) {
@@ -1107,7 +1098,7 @@ async function node_getVideoDataOutputs(jwtToken) {
         }
     });
 
-    return response;
+    return response.data;
 }
 
 module.exports = {

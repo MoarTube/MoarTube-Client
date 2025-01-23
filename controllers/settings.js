@@ -1,5 +1,3 @@
-const path = require('path');
-const fs = require('fs');
 const sharp = require('sharp');
 const packageJson = require('../package.json');
 
@@ -7,7 +5,7 @@ sharp.cache(false);
 
 const {
     setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodePort, detectOperatingSystem, detectSystemGpu,
-    detectSystemCpu, getClientSettings, setClientSettings, getImagesDirectoryPath, getClientSettingsDefault, clearNodeSettingsClientCache, getNodeSettings,
+    detectSystemCpu, getClientSettings, setClientSettings, getClientSettingsDefault, clearNodeSettingsClientCache, getNodeSettings,
     clearExternalVideosBaseUrlClientCache, getExternalVideosBaseUrl
 } = require('../utils/helpers');
 const {
@@ -123,21 +121,10 @@ async function nodeAvatar_POST(jwtToken, avatarFile) {
     if (avatarFile != null && avatarFile.length === 1) {
         avatarFile = avatarFile[0];
 
-        const imagesDirectory = getImagesDirectoryPath();
+        const iconBuffer = await sharp(avatarFile.buffer).resize({ width: 48 }).resize(48, 48).png({ compressionLevel: 9 }).toBuffer();
+        const avatarBuffer = await sharp(avatarFile.buffer).resize({ width: 128 }).resize(128, 128).png({ compressionLevel: 9 }).toBuffer();
 
-        const sourceFilePath = path.join(imagesDirectory, avatarFile.filename);
-
-        const iconDestinationFilePath = path.join(imagesDirectory, 'icon.png');
-        const avatarDestinationFilePath = path.join(imagesDirectory, 'avatar.png');
-
-        await sharp(sourceFilePath).resize({ width: 48 }).resize(48, 48).png({ compressionLevel: 9 }).toFile(iconDestinationFilePath);
-        await sharp(sourceFilePath).resize({ width: 128 }).resize(128, 128).png({ compressionLevel: 9 }).toFile(avatarDestinationFilePath);
-
-        const response = await node_setAvatar(jwtToken, iconDestinationFilePath, avatarDestinationFilePath);
-
-        fs.unlinkSync(sourceFilePath);
-        fs.unlinkSync(iconDestinationFilePath);
-        fs.unlinkSync(avatarDestinationFilePath);
+        const response = await node_setAvatar(jwtToken, iconBuffer, avatarBuffer);
 
         clearNodeSettingsClientCache();
 
@@ -162,18 +149,9 @@ async function nodeBanner_POST(jwtToken, bannerFile) {
     if (bannerFile != null && bannerFile.length === 1) {
         bannerFile = bannerFile[0];
 
-        const imagesDirectory = getImagesDirectoryPath();
+        const bannerBuffer = await sharp(bannerFile.buffer).resize({ width: 2560 }).resize(2560, 424).png({ compressionLevel: 9 }).toBuffer();
 
-        const sourceFilePath = path.join(imagesDirectory, bannerFile.filename);
-
-        const bannerDestinationFilePath = path.join(imagesDirectory, 'banner.png');
-
-        await sharp(sourceFilePath).resize({ width: 2560 }).resize(2560, 424).png({ compressionLevel: 9 }).toFile(bannerDestinationFilePath);
-
-        const response = await node_setBanner(jwtToken, bannerDestinationFilePath);
-
-        fs.unlinkSync(sourceFilePath);
-        fs.unlinkSync(bannerDestinationFilePath);
+        const response = await node_setBanner(jwtToken, bannerBuffer);
 
         clearNodeSettingsClientCache();
 

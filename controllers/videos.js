@@ -27,7 +27,7 @@ async function search_GET(jwtToken, searchTerm, sortTerm, tagTerm, tagLimit, tim
     return response;
 }
 
-async function import_POST(jwtToken, videoFile, videoId) {
+async function import_POST(jwtToken, videoId, videoFile) {
     let result;
 
     if (videoFile != null && videoFile.length === 1) {

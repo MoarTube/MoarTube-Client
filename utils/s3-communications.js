@@ -150,7 +150,7 @@ async function s3_updateM3u8ManifestsWithExternalVideosBaseUrl(s3Config, videosD
     const s3Client = new S3Client(s3ProviderClientConfig);
 
     for (const videoData of videosData) {
-        const videoId = videoData.video_id;
+        const videoId = videoData.videoId;
         const outputs = videoData.outputs
 
         if (outputs.m3u8.length > 0) {
@@ -167,13 +167,18 @@ async function s3_updateM3u8ManifestsWithExternalVideosBaseUrl(s3Config, videosD
     }
 
     async function performUpdate(manifestKey) {
-        const response = await s3Client.send(new GetObjectCommand({ Bucket: bucketName, Key: manifestKey }));
+        try {
+            const response = await s3Client.send(new GetObjectCommand({ Bucket: bucketName, Key: manifestKey }));
 
-        const oldManifest = await streamToString(response.Body);
+            const oldManifest = await streamToString(response.Body);
 
-        const newManifest = oldManifest.replace(/https?:\/\/[^/]+(?=\/external)/g, externalVideosBaseUrl);
+            const newManifest = oldManifest.replace(/https?:\/\/[^/]+(?=\/external)/g, externalVideosBaseUrl);
 
-        await s3Client.send(new PutObjectCommand({ Bucket: bucketName, Key: manifestKey, Body: newManifest, ContentType: 'application/vnd.apple.mpegurl' }));
+            await s3Client.send(new PutObjectCommand({ Bucket: bucketName, Key: manifestKey, Body: newManifest, ContentType: 'application/vnd.apple.mpegurl' }));
+        }
+        catch(error) {
+
+        }
     }
 }
 

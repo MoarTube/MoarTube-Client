@@ -11,10 +11,9 @@ const engine = require('express-dot-engine');
 
 const {
 	logDebugMessageToConsole, performEncodingDecodingAssessment, cleanVideosDirectory, getPublicDirectoryPath, getDataDirectoryPath,
-	getMoarTubeClientPort, setPublicDirectoryPath, setDataDirectoryPath, setCertificatesDirectoryPath,
-	setVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, setWebsocketServer, getClientSettings,
-	getCertificatesDirectoryPath, getVideosDirectoryPath, setImagesDirectoryPath, getImagesDirectoryPath,
-	getIsDeveloperMode, setIsDeveloperMode, getViewsDirectoryPath, setViewsDirectoryPath
+	getMoarTubeClientPort, setPublicDirectoryPath, setDataDirectoryPath, setVideosDirectoryPath, setFfmpegPath, setMoarTubeClientPort, 
+	setWebsocketServer, getClientSettings, getVideosDirectoryPath, getIsDeveloperMode, setIsDeveloperMode, getViewsDirectoryPath, 
+	setViewsDirectoryPath
 } = require('./utils/helpers');
 
 const {
@@ -176,14 +175,10 @@ function loadConfig() {
 
 	setPublicDirectoryPath(path.join(__dirname, 'public'));
 	setViewsDirectoryPath(path.join(getPublicDirectoryPath(), 'views'));
-	setCertificatesDirectoryPath(path.join(getDataDirectoryPath(), 'certificates'));
-	setVideosDirectoryPath(path.join(getDataDirectoryPath(), 'media/videos'));
-	setImagesDirectoryPath(path.join(getDataDirectoryPath(), 'images'));
+	setVideosDirectoryPath(path.join(getDataDirectoryPath(), 'media', 'videos'));
 
 	fs.mkdirSync(getDataDirectoryPath(), { recursive: true });
-	fs.mkdirSync(getCertificatesDirectoryPath(), { recursive: true });
 	fs.mkdirSync(getVideosDirectoryPath(), { recursive: true });
-	fs.mkdirSync(getImagesDirectoryPath(), { recursive: true });
 
 	if (!fs.existsSync(path.join(getDataDirectoryPath(), '_client_settings.json'))) {
 		const clientSettings = {

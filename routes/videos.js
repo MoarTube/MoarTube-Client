@@ -173,7 +173,7 @@ router.post('/import', (req, res) => {
                                 try {
                                     const videoFile = req.files['video_file'];
 
-                                    const data = await import_POST(jwtToken, videoFile, videoId);
+                                    const data = await import_POST(jwtToken, videoId, videoFile);
 
                                     res.send(data);
                                 }

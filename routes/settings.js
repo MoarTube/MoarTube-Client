@@ -9,7 +9,7 @@ const {
     nodeCommentsToggle_POST, nodeDislikesToggle_POST, nodeLikesToggle_POST, nodeReportsToggle_POST, nodeLiveChatToggle_POST, nodeDatabaseConfigToggle_POST, nodeDatabaseConfigEmpty_POST,
     nodeStorageConfigToggle_POST, nodeStorageConfigEmpty_POST
 } = require('../controllers/settings');
-const { logDebugMessageToConsole, getCertificatesDirectoryPath, getImagesDirectoryPath } = require('../utils/helpers');
+const { logDebugMessageToConsole } = require('../utils/helpers');
 const { node_isAuthenticated, node_doSignout } = require('../utils/node-communications');
 
 const router = express.Router();
@@ -130,34 +130,7 @@ router.post('/node/avatar', (req, res) => {
     const jwtToken = req.session.jwtToken;
 
     multer({
-        storage: multer.diskStorage({
-            destination: function (req, file, cb) {
-                const filePath = getImagesDirectoryPath();
-
-                fs.access(filePath, fs.constants.F_OK, function (error) {
-                    if (error) {
-                        cb(new Error('file upload error'), null);
-                    }
-                    else {
-                        cb(null, filePath);
-                    }
-                });
-            },
-            filename: function (req, file, cb) {
-                let extension;
-
-                if (file.mimetype === 'image/png') {
-                    extension = '.png';
-                }
-                else if (file.mimetype === 'image/jpeg') {
-                    extension = '.jpg';
-                }
-
-                const fileName = Date.now() + extension;
-
-                cb(null, fileName);
-            }
-        })
+        storage: multer.memoryStorage(),
     }).fields([{ name: 'avatar_file', maxCount: 1 }])
         (req, res, async function (error) {
             if (error) {
@@ -201,34 +174,7 @@ router.post('/node/banner', (req, res) => {
     const jwtToken = req.session.jwtToken;
 
     multer({
-        storage: multer.diskStorage({
-            destination: function (req, file, cb) {
-                const filePath = getImagesDirectoryPath();
-
-                fs.access(filePath, fs.constants.F_OK, function (error) {
-                    if (error) {
-                        cb(new Error('file upload error'), null);
-                    }
-                    else {
-                        cb(null, filePath);
-                    }
-                });
-            },
-            filename: function (req, file, cb) {
-                let extension;
-
-                if (file.mimetype === 'image/png') {
-                    extension = '.png';
-                }
-                else if (file.mimetype === 'image/jpeg') {
-                    extension = '.jpg';
-                }
-
-                const fileName = Date.now() + extension;
-
-                cb(null, fileName);
-            }
-        })
+        storage: multer.memoryStorage(),
     }).fields([{ name: 'banner_file', maxCount: 1 }])
         (req, res, async function (error) {
             if (error) {
@@ -311,35 +257,7 @@ router.post('/node/secure', async (req, res) => {
 
     if (isSecure) {
         multer({
-            fileFilter: function (req, file, cb) {
-                cb(null, true);
-            },
-            storage: multer.diskStorage({
-                destination: function (req, file, cb) {
-                    fs.access(getCertificatesDirectoryPath(), fs.constants.F_OK, function (error) {
-                        if (error) {
-                            cb(new Error('file upload error'), null);
-                        }
-                        else {
-                            cb(null, getCertificatesDirectoryPath());
-                        }
-                    });
-                },
-                filename: function (req, file, cb) {
-                    if (file.fieldname === 'keyFile') {
-                        cb(null, 'private_key.pem');
-                    }
-                    else if (file.fieldname === 'certFile') {
-                        cb(null, 'certificate.pem');
-                    }
-                    else if (file.fieldname === 'caFiles') {
-                        cb(null, file.originalname);
-                    }
-                    else {
-                        cb(new Error('invalid field name in POST /settings/node/secure:' + file.fieldname), null);
-                    }
-                }
-            })
+            storage: multer.memoryStorage(),
         }).fields([{ name: 'keyFile', maxCount: 1 }, { name: 'certFile', maxCount: 1 }, { name: 'caFiles', maxCount: 10 }])
             (req, res, async function (error) {
                 if (error) {

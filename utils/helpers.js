@@ -8,9 +8,7 @@ let isDeveloperMode;
 let publicDirectoryPath;
 let viewsDirectoryPath;
 let dataDirectoryPath;
-let certificatesDirectoryPath;
 let videosDirectoryPath;
-let imagesDirectoryPath;
 let moartubeClientPort;
 let moartubeNodeIp;
 let moartubeNodePort;
@@ -317,16 +315,8 @@ function getDataDirectoryPath() {
     return dataDirectoryPath;
 }
 
-function getCertificatesDirectoryPath() {
-    return certificatesDirectoryPath;
-}
-
 function getVideosDirectoryPath() {
     return videosDirectoryPath;
-}
-
-function getImagesDirectoryPath() {
-    return imagesDirectoryPath;
 }
 
 function getMoarTubeClientPort() {
@@ -400,22 +390,10 @@ function setDataDirectoryPath(path) {
     dataDirectoryPath = path;
 }
 
-function setCertificatesDirectoryPath(path) {
-    logDebugMessageToConsole('configured MoarTube Client to use certificates directory path: ' + path, null, null);
-
-    certificatesDirectoryPath = path;
-}
-
 function setVideosDirectoryPath(path) {
     logDebugMessageToConsole('configured MoarTube Client to use videos directory path: ' + path, null, null);
 
     videosDirectoryPath = path;
-}
-
-function setImagesDirectoryPath(path) {
-    logDebugMessageToConsole('configured MoarTube Client to use images directory path: ' + path, null, null);
-
-    imagesDirectoryPath = path;
 }
 
 function setMoarTubeClientPort(port) {
@@ -535,9 +513,7 @@ module.exports = {
     getPublicDirectoryPath,
     getViewsDirectoryPath,
     getDataDirectoryPath,
-    getCertificatesDirectoryPath,
     getVideosDirectoryPath,
-    getImagesDirectoryPath,
     getMoarTubeClientPort,
     getMoarTubeNodeIp,
     getMoarTubeNodePort,
@@ -553,9 +529,7 @@ module.exports = {
     setPublicDirectoryPath,
     setViewsDirectoryPath,
     setDataDirectoryPath,
-    setCertificatesDirectoryPath,
     setVideosDirectoryPath,
-    setImagesDirectoryPath,
     setMoarTubeClientPort,
     setMoarTubeNodeIp,
     setMoarTubeNodePort,
