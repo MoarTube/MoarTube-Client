@@ -2048,15 +2048,20 @@
 						const isConfiguringDnsCname = $('#s3-configuration-configure-dns-switch').is(':checked');
 
 						if (bucketName !== '' && s3ProviderClientConfig !== '') {
-							s3ProviderClientConfig = s3ProviderClientConfig.replace(/\s+/g, ' ').trim();
+							// replace single quotes around keys and values with double quotes
+							s3ProviderClientConfig = s3ProviderClientConfig.replace(/'([^']*?)'/g, '"$1"');
 
-							s3ProviderClientConfig = s3ProviderClientConfig.replace(/'/g, '"');
+							// add quotes around unquoted keys
+							s3ProviderClientConfig = s3ProviderClientConfig.replace(/(?<=^|{|,)\s*([a-zA-Z0-9_]+)\s*:/g, '"$1":');
 
-							s3ProviderClientConfig = s3ProviderClientConfig.replace(/([a-zA-Z0-9_]+):/g, '"$1":');
-
+							// remove trailing commas before closing brackets
 							s3ProviderClientConfig = s3ProviderClientConfig.replace(/,\s*([}\]])/g, '$1');
 
+							// remove trailing commas at the end of the JSON string
 							s3ProviderClientConfig = s3ProviderClientConfig.replace(/,\s*$/, '');
+
+							// trim leading and trailing spaces
+							s3ProviderClientConfig = s3ProviderClientConfig.trim();
 
 							if (isConfiguringDnsCname) {
 								const cloudflareEmailAddress = $('#s3-configuration-cloudflare-email-address-input').val();

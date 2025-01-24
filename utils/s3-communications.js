@@ -182,6 +182,11 @@ async function s3_updateM3u8ManifestsWithExternalVideosBaseUrl(s3Config, videosD
     }
 }
 
+/*
+Provisioning an S3 bucket is highly dependent on the S3 provider in terms of their adherence to the AWS S3 specification.
+Not all features are universally supported, hence some fail-safe logic.
+The implementation attempts to be agnostic of all S3 providers.
+*/
 async function s3_validateS3Config(s3Config) {
     const bucketName = s3Config.bucketName;
     const s3ProviderClientConfig = s3Config.s3ProviderClientConfig;
@@ -210,60 +215,113 @@ async function s3_validateS3Config(s3Config) {
 
         logDebugMessageToConsole('creating bucket: ' + bucketName, null, null);
         await s3Client.send(new CreateBucketCommand({ Bucket: bucketName }));
+        logDebugMessageToConsole('successfully created bucket: ' + bucketName, null, null);
 
-        logDebugMessageToConsole('configuring bucket for public access', null, null);
-        const publicAccessBlockConfig = {
-            BlockPublicAcls: false,
-            IgnorePublicAcls: false,
-            BlockPublicPolicy: false,
-            RestrictPublicBuckets: false
-        };
-        await s3Client.send(new PutPublicAccessBlockCommand({ Bucket: bucketName, PublicAccessBlockConfiguration: publicAccessBlockConfig }));
+        try {
+            logDebugMessageToConsole('configuring bucket for public access', null, null);
+            const publicAccessBlockConfig = {
+                BlockPublicAcls: false,
+                IgnorePublicAcls: false,
+                BlockPublicPolicy: false,
+                RestrictPublicBuckets: false
+            };
+            await s3Client.send(new PutPublicAccessBlockCommand({ Bucket: bucketName, PublicAccessBlockConfiguration: publicAccessBlockConfig }));
+            logDebugMessageToConsole('successfully configured bucket for public access', null, null);
+        }
+        catch(error) {
+            logDebugMessageToConsole('failed to configure bucket for public access', null, null);
+        }
 
-        logDebugMessageToConsole('disabling bucket ACLs', null, null);
-        await s3Client.send(new PutBucketOwnershipControlsCommand({ Bucket: bucketName, OwnershipControls: { Rules: [{ ObjectOwnership: "BucketOwnerEnforced" }] } }));
+        try {
+            logDebugMessageToConsole('disabling bucket ACLs', null, null);
+            await s3Client.send(new PutBucketOwnershipControlsCommand({ Bucket: bucketName, OwnershipControls: { Rules: [{ ObjectOwnership: "BucketOwnerEnforced" }] } }));
+            logDebugMessageToConsole('successfully disabled bucket ACLs', null, null);
+        }
+        catch(error) {
+            logDebugMessageToConsole('failed to disable bucket ACLs', null, null);
+        }
 
-        logDebugMessageToConsole('retrieving principal ARN', null, null);
-        const stsClient = new STSClient(s3ProviderClientConfig);
-        const principalArn = (await stsClient.send(new GetCallerIdentityCommand({}))).Arn;
+        let bucketPolicy;
 
-        logDebugMessageToConsole('applying bucket policy', null, null);
-        const bucketPolicy = {
-            Version: "2012-10-17",
-            Id: "Policy1551408741789",
-            Statement: [
-                {
-                    Sid: "Stmt1551408240542",
-                    Effect: "Allow",
-                    Principal: "*",
-                    Action: "s3:GetObject",
-                    Resource: `arn:aws:s3:::${bucketName}/*`
-                },
-                {
-                    Sid: "Stmt1551408506061",
-                    Effect: "Allow",
-                    Principal: {
-                        AWS: principalArn
+        try {
+            logDebugMessageToConsole('retrieving principal ARN', null, null);
+            const stsClient = new STSClient(s3ProviderClientConfig);
+            const principalArn = (await stsClient.send(new GetCallerIdentityCommand({}))).Arn;
+            logDebugMessageToConsole('successfully retrieved principal ARN', null, null);
+
+            logDebugMessageToConsole('using restrictive AWS bucket policy', null, null);
+
+            bucketPolicy = {
+                Version: "2012-10-17",
+                Id: "Policy1551408741789",
+                Statement: [
+                    {
+                        Sid: "PublicGetObject",
+                        Effect: "Allow",
+                        Principal: "*",
+                        Action: "s3:GetObject",
+                        Resource: `arn:aws:s3:::${bucketName}/*`
                     },
-                    Action: "s3:DeleteObject",
-                    Resource: `arn:aws:s3:::${bucketName}/*`
-                },
-                {
-                    Sid: "Stmt1551408740505",
-                    Effect: "Allow",
-                    Principal: {
-                        AWS: principalArn
+                    {
+                        Sid: "PrivateDeleteObject",
+                        Effect: "Allow",
+                        Principal: {
+                            AWS: principalArn
+                        },
+                        Action: "s3:DeleteObject",
+                        Resource: `arn:aws:s3:::${bucketName}/*`
                     },
-                    Action: "s3:PutObject",
-                    Resource: `arn:aws:s3:::${bucketName}/*`
-                }
-            ]
-        };
-        await s3Client.send(new PutBucketPolicyCommand({ Bucket: bucketName, Policy: JSON.stringify(bucketPolicy) }));
+                    {
+                        Sid: "PrivatePutObject",
+                        Effect: "Allow",
+                        Principal: {
+                            AWS: principalArn
+                        },
+                        Action: "s3:PutObject",
+                        Resource: `arn:aws:s3:::${bucketName}/*`
+                    }
+                ]
+            };
+        }
+        catch(error) {
+            logDebugMessageToConsole('failed to retrieve principal ARN', null, null);
+            logDebugMessageToConsole('defaulting to permissive bucket policy', null, null);
 
-        logDebugMessageToConsole('configuring bucket Cross-origin resource sharing (CORS)', null, null);
-        const corsRules = [{ AllowedHeaders: ['*'], AllowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'HEAD'], AllowedOrigins: ['*'], ExposeHeaders: [] }];
-        await s3Client.send(new PutBucketCorsCommand({ Bucket: bucketName, CORSConfiguration: { CORSRules: corsRules } }));
+            bucketPolicy = {
+                Version: "2012-10-17",
+                Id: "Policy1551408741789",
+                Statement: [
+                    {
+                        Sid: "PublicFullAccess",
+                        Effect: "Allow",
+                        Principal: "*",
+                        Action: [
+                            "s3:GetObject"
+                        ],
+                        Resource: `arn:aws:s3:::${bucketName}/*`
+                    }
+                ]
+            };
+        }
+
+        try {
+            logDebugMessageToConsole('applying bucket policy', null, null);
+            await s3Client.send(new PutBucketPolicyCommand({ Bucket: bucketName, Policy: JSON.stringify(bucketPolicy) }));
+            logDebugMessageToConsole('successfully applied bucket policy', null, null);
+        }
+        catch(error) {
+            logDebugMessageToConsole('failed to apply bucket policy', null, null);
+        }
+
+        try {
+            logDebugMessageToConsole('configuring bucket Cross-origin resource sharing (CORS)', null, null);
+            const corsRules = [{ AllowedHeaders: ['*'], AllowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'HEAD'], AllowedOrigins: ['*'], ExposeHeaders: [] }];
+            await s3Client.send(new PutBucketCorsCommand({ Bucket: bucketName, CORSConfiguration: { CORSRules: corsRules } }));
+            logDebugMessageToConsole('successfully configured bucket Cross-origin resource sharing (CORS)', null, null);
+        }
+        catch(error) {
+            logDebugMessageToConsole('failed to configure bucket Cross-origin resource sharing (CORS)', null, null);
+        }
     }
 
     logDebugMessageToConsole('verifying ability for MoarTube Client to put a test object into the bucket', null, null);
