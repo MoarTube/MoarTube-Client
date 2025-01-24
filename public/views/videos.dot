@@ -686,7 +686,7 @@
 					};
 
 					ws.onmessage = (message) => {
-						const data = JSON.parse(message.data);
+						const data = JSON.parse(message.data.toString());
 
 						if (data.eventName === 'video_status') {
 							const type = data.payload.type;

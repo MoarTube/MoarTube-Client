@@ -1,4 +1,7 @@
-const { node_getVideoReportsArchive, node_archiveVideoReport, node_removeVideoReport, node_removeVideoReportArchive, node_getVideoReports } = require('../utils/node-communications');
+const { 
+    node_getVideoReportsArchive, node_archiveVideoReport, node_removeVideoReport, 
+    node_removeVideoReportArchive, node_getVideoReports 
+} = require('../utils/node-communications');
 
 async function all_GET(jwtToken) {
     const response = await node_getVideoReports(jwtToken);

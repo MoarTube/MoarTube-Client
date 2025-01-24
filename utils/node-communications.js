@@ -4,7 +4,9 @@ const FormData = require('form-data');
 const http = require('http');
 const https = require('https');
 
-const { getMoarTubeNodeUrl } = require('./helpers');
+const { 
+    getMoarTubeNodeUrl 
+} = require('./helpers');
 
 async function node_doSignout(req, res) {
     delete req.session.jwtToken;

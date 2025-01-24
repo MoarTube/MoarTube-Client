@@ -1,7 +1,11 @@
 const express = require('express');
 
-const { search_GET, newContentCounts_GET, contentChecked_POST } = require('../controllers/node');
-const { logDebugMessageToConsole } = require('../utils/helpers');
+const { 
+    search_GET, newContentCounts_GET, contentChecked_POST 
+} = require('../controllers/node');
+const { 
+    logDebugMessageToConsole 
+} = require('../utils/helpers');
 
 const router = express.Router();
 

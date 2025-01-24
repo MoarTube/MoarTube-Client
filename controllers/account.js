@@ -4,11 +4,21 @@ const {
     logDebugMessageToConsole, getMoarTubeNodeWebsocketUrl, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodeIp,
     setMoarTubeNodePort, setWebsocketClient, websocketServerBroadcast
 } = require('../utils/helpers');
-const { node_doHeartBeat, node_doSignin, node_doSignout } = require('../utils/node-communications');
-const { stoppingVideoImport, stoppedVideoImport } = require('../utils/trackers/import-video-tracker');
-const { stoppingLiveStream, stoppedLiveStream } = require('../utils/trackers/live-stream-tracker');
-const { stoppingPublishVideoEncoding, stoppedPublishVideoEncoding } = require('../utils/trackers/publish-video-encoding-tracker');
-const { stopPendingPublishVideo } = require('../utils/trackers/pending-publish-video-tracker');
+const { 
+    node_doHeartBeat, node_doSignin, node_doSignout 
+} = require('../utils/node-communications');
+const { 
+    stoppingVideoImport, stoppedVideoImport 
+} = require('../utils/trackers/import-video-tracker');
+const { 
+    stoppingLiveStream, stoppedLiveStream 
+} = require('../utils/trackers/live-stream-tracker');
+const { 
+    stoppingPublishVideoEncoding, stoppedPublishVideoEncoding 
+} = require('../utils/trackers/publish-video-encoding-tracker');
+const { 
+    stopPendingPublishVideo 
+} = require('../utils/trackers/pending-publish-video-tracker');
 
 async function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe) {
     let result;
@@ -91,7 +101,7 @@ async function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort,
                         });
 
                         websocketClient.on('message', (message) => {
-                            const parsedMessage = JSON.parse(message);
+                            const parsedMessage = JSON.parse(message.toString());
 
                             if (parsedMessage.eventName === 'pong') {
                                 //logDebugMessageToConsole('received pong from node: ' + getMoarTubeNodeWebsocketUrl(), null, null);

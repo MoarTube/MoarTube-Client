@@ -8,8 +8,12 @@ const {
     nodeCommentsToggle_POST, nodeDislikesToggle_POST, nodeLikesToggle_POST, nodeReportsToggle_POST, nodeLiveChatToggle_POST, nodeDatabaseConfigToggle_POST, nodeDatabaseConfigEmpty_POST,
     nodeStorageConfigToggle_POST, nodeStorageConfigEmpty_POST
 } = require('../controllers/settings');
-const { logDebugMessageToConsole } = require('../utils/helpers');
-const { node_isAuthenticated, node_doSignout } = require('../utils/node-communications');
+const { 
+    logDebugMessageToConsole 
+} = require('../utils/helpers');
+const { 
+    node_isAuthenticated, node_doSignout 
+} = require('../utils/node-communications');
 
 const router = express.Router();
 

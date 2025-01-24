@@ -1,8 +1,14 @@
 const express = require('express');
 
-const { network_GET } = require('../controllers/home');
-const { node_isAuthenticated } = require('../utils/node-communications');
-const { logDebugMessageToConsole } = require('../utils/helpers');
+const { 
+    network_GET 
+} = require('../controllers/home');
+const { 
+    node_isAuthenticated 
+} = require('../utils/node-communications');
+const { 
+    logDebugMessageToConsole 
+} = require('../utils/helpers');
 
 const router = express.Router();
 

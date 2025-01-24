@@ -1,8 +1,14 @@
 const express = require('express');
 
-const { all_GET, archiveAll_GET, archive_POST, delete_POST, archiveDelete_POST } = require('../controllers/reports-videos');
-const { logDebugMessageToConsole } = require('../utils/helpers');
-const { node_isAuthenticated, node_doSignout } = require('../utils/node-communications');
+const { 
+    all_GET, archiveAll_GET, archive_POST, delete_POST, archiveDelete_POST 
+} = require('../controllers/reports-videos');
+const { 
+    logDebugMessageToConsole 
+} = require('../utils/helpers');
+const { 
+    node_isAuthenticated, node_doSignout 
+} = require('../utils/node-communications');
 
 const router = express.Router();
 

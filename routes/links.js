@@ -1,8 +1,14 @@
 const express = require('express');
 
-const { linksAll_GET, linksAdd_POST, linksDelete_POST } = require('../controllers/links');
-const { node_isAuthenticated, node_doSignout } = require('../utils/node-communications');
-const { logDebugMessageToConsole } = require('../utils/helpers');
+const { 
+    linksAll_GET, linksAdd_POST, linksDelete_POST 
+} = require('../controllers/links');
+const { 
+    node_isAuthenticated, node_doSignout 
+} = require('../utils/node-communications');
+const { 
+    logDebugMessageToConsole 
+} = require('../utils/helpers');
 
 const router = express.Router();
 

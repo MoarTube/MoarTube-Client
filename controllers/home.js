@@ -1,4 +1,6 @@
-const { getNetworkAddresses } = require('../utils/helpers');
+const { 
+    getNetworkAddresses 
+} = require('../utils/helpers');
 
 function network_GET() {
     const networkAddresses = getNetworkAddresses();

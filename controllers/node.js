@@ -1,4 +1,6 @@
-const { node_doVideosSearchAll, node_getNewContentCounts, node_setContentChecked } = require('../utils/node-communications');
+const { 
+    node_doVideosSearchAll, node_getNewContentCounts, node_setContentChecked 
+} = require('../utils/node-communications');
 
 async function search_GET(searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
     const response = await node_doVideosSearchAll(searchTerm, sortTerm, tagTerm, tagLimit, timestamp);

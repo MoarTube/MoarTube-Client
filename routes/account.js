@@ -1,8 +1,14 @@
 const express = require('express');
 
-const { signIn_POST, signOut_GET } = require('../controllers/account');
-const { node_isAuthenticated } = require('../utils/node-communications');
-const { logDebugMessageToConsole } = require('../utils/helpers');
+const { 
+    signIn_POST, signOut_GET 
+} = require('../controllers/account');
+const { 
+    node_isAuthenticated 
+} = require('../utils/node-communications');
+const { 
+    logDebugMessageToConsole 
+} = require('../utils/helpers');
 
 const router = express.Router();
 

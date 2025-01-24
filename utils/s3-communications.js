@@ -1,4 +1,5 @@
 const fs = require('fs');
+
 const {
     S3Client, PutObjectCommand, ListBucketsCommand, DeleteObjectCommand, DeleteObjectsCommand, ListObjectsV2Command,
     GetObjectCommand, CreateBucketCommand, PutBucketOwnershipControlsCommand, PutBucketCorsCommand, PutBucketPolicyCommand,
@@ -10,8 +11,6 @@ const {
 const {
     Upload
 } = require('@aws-sdk/lib-storage');
-
-
 const {
     logDebugMessageToConsole
 } = require('./helpers');

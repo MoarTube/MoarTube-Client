@@ -1,4 +1,6 @@
-const { node_MonetizationAll, node_MonetizationAdd, node_MonetizationDelete } = require('../utils/node-communications');
+const { 
+    node_MonetizationAll, node_MonetizationAdd, node_MonetizationDelete 
+} = require('../utils/node-communications');
 
 async function monetizationAll_GET() {
     const response = await node_MonetizationAll();

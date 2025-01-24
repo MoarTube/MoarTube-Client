@@ -1,4 +1,7 @@
-const { node_getCommentReports, node_getCommentReportsArchive, node_archiveCommentReport, node_removeCommentReport, node_removeCommentReportArchive } = require('../utils/node-communications');
+const { 
+    node_getCommentReports, node_getCommentReportsArchive, node_archiveCommentReport, node_removeCommentReport, 
+    node_removeCommentReportArchive 
+} = require('../utils/node-communications');
 
 async function all_GET(jwtToken) {
     const response = await node_getCommentReports(jwtToken);

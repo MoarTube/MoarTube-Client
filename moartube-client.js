@@ -4,10 +4,11 @@ const expressSession = require('express-session');
 const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
-const ffmpegPath = require('ffmpeg-static').replace('app.asar', 'app.asar.unpacked');
 const webSocket = require('ws');
 const crypto = require('crypto');
 const engine = require('express-dot-engine');
+
+const ffmpegPath = String(require('ffmpeg-static')).replace('app.asar', 'app.asar.unpacked');
 
 const {
 	logDebugMessageToConsole, performEncodingDecodingAssessment, cleanVideosDirectory, getPublicDirectoryPath, getDataDirectoryPath,
@@ -15,11 +16,9 @@ const {
 	setWebsocketServer, getClientSettings, getVideosDirectoryPath, getIsDeveloperMode, setIsDeveloperMode, getViewsDirectoryPath,
 	setViewsDirectoryPath
 } = require('./utils/helpers');
-
 const {
 	startVideoPublishInterval
 } = require('./utils/handlers/video-publish-handler');
-
 const {
 	node_isAuthenticated
 } = require('./utils/node-communications');

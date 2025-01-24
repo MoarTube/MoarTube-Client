@@ -1,4 +1,6 @@
-const { node_getVideoComments, node_removeComment, node_searchComments } = require('../utils/node-communications');
+const { 
+    node_getVideoComments, node_removeComment, node_searchComments 
+} = require('../utils/node-communications');
 
 async function search_GET(jwtToken, videoId, searchTerm, limit, timestamp) {
     const response = await node_searchComments(jwtToken, videoId, searchTerm, limit, timestamp);

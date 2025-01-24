@@ -1,8 +1,14 @@
 const express = require('express');
 
-const { monetizationAll_GET, monetizationAdd_POST, monetizationDelete_POST } = require('../controllers/monetization');
-const { logDebugMessageToConsole } = require('../utils/helpers');
-const { node_isAuthenticated, node_doSignout } = require('../utils/node-communications');
+const { 
+    monetizationAll_GET, monetizationAdd_POST, monetizationDelete_POST 
+} = require('../controllers/monetization');
+const { 
+    logDebugMessageToConsole 
+} = require('../utils/helpers');
+const { 
+    node_isAuthenticated, node_doSignout 
+} = require('../utils/node-communications');
 
 const router = express.Router();
 

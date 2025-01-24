@@ -1,8 +1,14 @@
 const express = require('express');
 
-const { videoId_GET, delete_POST, search_GET } = require('../controllers/comments');
-const { node_isAuthenticated, node_doSignout } = require('../utils/node-communications');
-const { logDebugMessageToConsole } = require('../utils/helpers');
+const { 
+    videoId_GET, delete_POST, search_GET 
+} = require('../controllers/comments');
+const { 
+    node_isAuthenticated, node_doSignout 
+} = require('../utils/node-communications');
+const { 
+    logDebugMessageToConsole 
+} = require('../utils/helpers');
 
 const router = express.Router();
 
