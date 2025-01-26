@@ -1,7 +1,7 @@
 <img src="https://github.com/MoarTube/MoarTube-Client/assets/26640616/539be602-3608-428d-b6d6-34aec9b4a05d" alt="logo" width="200"/>
 
-# 🎬 **MoarTube-Client**
-The **MoarTube Client** is the essential tool for managing your [MoarTube Node](https://github.com/MoarTube/MoarTube-Node). Designed as a cross-platform, terminal-based Node.js Express application, it simplifies managing your node's videos and live streams to the point where it's as easy as reading this sentence.
+# **MoarTube-Client**
+The **MoarTube Client** is the tool for managing your [MoarTube Node](https://github.com/MoarTube/MoarTube-Node). Designed as a cross-platform, terminal-based Node.js Express application, it facilitates managing your node's videos and live streams.
 
 [TL;DR: Watch the Quickstart Video](https://www.moartube.com/guides/moartube-quick-start)
 
