@@ -7,7 +7,7 @@ The **MoarTube Client** is the tool for managing your [MoarTube Node](https://gi
 [TL;DR: Watch the Quickstart Video](https://www.moartube.com/guides/moartube-quick-start)
 
 # 🚀 **How to Get Started**
-Welcome to the **MoarTube Client setup guide**! Follow this guide to explore the different setup methods and get your MoarTube Client up and running in no time. Don’t worry—MoarTube is so user-friendly that you’ll be done in minutes.
+Welcome to the **MoarTube Client setup guide**! Follow this guide to explore the different setup methods and get your MoarTube Client up and running in no time. Don’t worry—MoarTube is designed to be so easy to set up and use, you’ll be done in minutes.
 
 Once you’re ready, make sure to check out the [MoarTube Node](https://github.com/MoarTube/MoarTube-Node) if you haven’t already.
 
