@@ -161,7 +161,7 @@ function discoverDataDirectoryPath() {
 function loadConfig() {
 	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-	const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config_test.json'), 'utf8'));
+	const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
 
 	setIsDeveloperMode(config.isDeveloperMode);
 
