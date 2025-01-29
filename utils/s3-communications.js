@@ -249,7 +249,7 @@ async function s3_validateS3Config(s3Config) {
             const principalArn = (await stsClient.send(new GetCallerIdentityCommand({}))).Arn;
             logDebugMessageToConsole('successfully retrieved principal ARN', null, null);
 
-            logDebugMessageToConsole('using restrictive AWS bucket policy', null, null);
+            logDebugMessageToConsole('attempting to set AWS bucket policy', null, null);
 
             bucketPolicy = {
                 Version: "2012-10-17",
@@ -285,7 +285,7 @@ async function s3_validateS3Config(s3Config) {
         }
         catch(error) {
             logDebugMessageToConsole('failed to retrieve principal ARN', null, null);
-            logDebugMessageToConsole('defaulting to permissive bucket policy', null, null);
+            logDebugMessageToConsole('setting third-party S3 provider bucket policy', null, null);
 
             bucketPolicy = {
                 Version: "2012-10-17",

@@ -2001,7 +2001,7 @@
 						</div>\
 						<div class="row">\
 							<div class="input-group mb-3">\
-								<label class="custom-control-label">Add a CNAME record <i>(required for caching your S3 data with Cloudflare\'s CDN)</i><br>Bucket name format required: <i>externalvideos.domain.TLD</i><br>If your node\'s domain is "my-awesome-node.com", use "externalvideos.my-awesome-node.com"<br>Bucket will be created, configured, and tested if it doesn\'t already exist</label>\
+								<label class="custom-control-label text-start">Add a CNAME record <i>(required for caching your S3 data with Cloudflare\'s CDN)</i><br>Bucket name format required: <i>externalvideos.domain.TLD</i><br>If your node\'s domain is "my-awesome-node.com", use "externalvideos.my-awesome-node.com"<br>Bucket will be created, configured, and tested if it doesn\'t already exist</label>\
 								<div class="input-group form-switch">\
 									<input id="s3-configuration-configure-dns-switch" class="form-check-input" type="checkbox" style="height: 1.10em;">\
 								</div>\
@@ -2020,6 +2020,14 @@
 								</div>\
 							</div>\
 						</div>\
+						<div class="row">\
+							<label class="form-label text-start">URL format</label>\
+							<div class="input-group">\
+								<select id="s3-configuration-url-format" class="multisteps-form__select form-control">\
+									<option value="path" selected>path-style</option>\
+									<option value="vhost">vhost-style</option>\
+								</select>\
+							</div>\
 						<p id="s3-provider-error-message"></p>\
 					</div>';
 
@@ -2046,6 +2054,7 @@
 						const bucketName = $('#s3-provider-bucket-name').val();
 						let s3ProviderClientConfig = $('#s3-provider-client-configuration-textarea').val();
 						const isConfiguringDnsCname = $('#s3-configuration-configure-dns-switch').is(':checked');
+						const urlFormat = $('#s3-configuration-url-format').val();
 
 						if (bucketName !== '' && s3ProviderClientConfig !== '') {
 							// replace single quotes around keys and values with double quotes
@@ -2081,6 +2090,14 @@
 
 							try {
 								const s3ProviderClientConfigParsed = JSON.parse(s3ProviderClientConfig);
+
+								// will override forcePathStyle if defined in the user-provided JSON
+								if(urlFormat === 'path') {
+									s3ProviderClientConfigParsed.forcePathStyle = true;
+								}
+								else if(urlFormat === 'vhost') {
+									s3ProviderClientConfigParsed.forcePathStyle = false;
+								}
 
 								// remove trailing forward slash
 								if (s3ProviderClientConfigParsed.endpoint != null) {
