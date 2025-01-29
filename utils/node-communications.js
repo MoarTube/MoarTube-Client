@@ -1099,6 +1099,16 @@ async function node_uploadM3u8MasterManifest(jwtToken, videoId, type, masterMani
     return response.data;
 }
 
+async function node_setIsIndexOutdated(jwtToken, videoId) {
+    const response = await axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/index/outdated', {}, {
+        headers: {
+            Authorization: jwtToken
+        }
+    });
+
+    return response.data;
+}
+
 module.exports = {
     node_isAuthenticated,
     node_doHeartBeat,
@@ -1189,5 +1199,6 @@ module.exports = {
     node_storageConfigEmpty,
     node_getExternalVideosBaseUrl,
     node_getManifestFile,
-    node_uploadM3u8MasterManifest
+    node_uploadM3u8MasterManifest,
+    node_setIsIndexOutdated
 };

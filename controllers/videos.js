@@ -10,9 +10,10 @@ const {
     refreshM3u8MasterManifest, getNodeSettings
 } = require('../utils/helpers');
 const {
-    node_stopVideoImporting, node_doVideosSearch, node_getVideoData, node_unpublishVideo, node_stopVideoPublishing,
-    node_setSourceFileExtension, node_setThumbnail, node_setPreview, node_setPoster, node_setVideoLengths, node_setVideoImported, node_getVideosTags, node_getSourceFileExtension,
-    node_getVideosTagsAll, node_getVideoPublishes, node_setVideoData, node_deleteVideos, node_finalizeVideos, node_addVideoToIndex, node_removeVideoFromIndex, node_getVideoSources
+    node_stopVideoImporting, node_doVideosSearch, node_getVideoData, node_unpublishVideo, node_stopVideoPublishing, node_setSourceFileExtension, node_setThumbnail, 
+    node_setPreview, node_setPoster, node_setVideoLengths, node_setVideoImported, node_getVideosTags, node_getSourceFileExtension, node_getVideosTagsAll, 
+    node_getVideoPublishes, node_setVideoData, node_deleteVideos, node_finalizeVideos, node_addVideoToIndex, node_removeVideoFromIndex, node_getVideoSources,
+    node_setIsIndexOutdated
 } = require('../utils/node-communications');
 const {
     s3_putObjectFromData, s3_deleteObjectsWithPrefix, s3_deleteObjectWithKey
@@ -368,6 +369,7 @@ async function videoIdThumbnail_POST(jwtToken, videoId, thumbnailFile) {
             const key = 'external/videos/' + videoId + '/images/thumbnail.jpg';
 
             await s3_putObjectFromData(s3Config, key, thumbnailBuffer, 'image/jpeg');
+            await node_setIsIndexOutdated(jwtToken, videoId);
 
             logDebugMessageToConsole('uploaded thumbnail image to s3 for video: ' + videoId, null, null);
         }
@@ -390,7 +392,7 @@ async function videoIdPreview_POST(jwtToken, videoId, previewFile) {
     if (previewFile != null && previewFile.length === 1) {
         previewFile = previewFile[0];
 
-        const previewFileBuffer = await sharp(previewFile.buffer).resize({ width: 100 }).resize(100, 100).jpeg({ quality: 90 }).toBuffer();
+        const previewFileBuffer = await sharp(previewFile.buffer).resize({ width: 512 }).resize(512, 288).jpeg({ quality: 90 }).toBuffer();
 
         const nodeSettings = await getNodeSettings(jwtToken);
 
@@ -412,6 +414,7 @@ async function videoIdPreview_POST(jwtToken, videoId, previewFile) {
             const key = 'external/videos/' + videoId + '/images/preview.jpg';
 
             await s3_putObjectFromData(s3Config, key, previewFileBuffer, 'image/jpeg');
+            await node_setIsIndexOutdated(jwtToken, videoId);
 
             logDebugMessageToConsole('uploaded preview image to s3 for video: ' + videoId, null, null);
         }
@@ -434,7 +437,7 @@ async function videoIdPoster_POST(jwtToken, videoId, posterFile) {
     if (posterFile != null && posterFile.length === 1) {
         posterFile = posterFile[0];
 
-        const posterFileBuffer = await sharp(posterFile.buffer).resize({ width: 100 }).resize(100, 100).jpeg({ quality: 90 }).toBuffer();
+        const posterFileBuffer = await sharp(posterFile.buffer).resize({ width: 1280 }).resize(1280, 720).jpeg({ quality: 90 }).toBuffer();
 
         const nodeSettings = await getNodeSettings(jwtToken);
 
@@ -456,6 +459,7 @@ async function videoIdPoster_POST(jwtToken, videoId, posterFile) {
             const key = 'external/videos/' + videoId + '/images/poster.jpg';
 
             await s3_putObjectFromData(s3Config, key, posterFileBuffer, 'image/jpeg');
+            await node_setIsIndexOutdated(jwtToken, videoId);
 
             logDebugMessageToConsole('uploaded poster image to s3 for video: ' + videoId, null, null);
         }

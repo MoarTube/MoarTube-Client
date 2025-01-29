@@ -2406,11 +2406,11 @@
 											$(checkbox).prop('checked', !isIndexing);
 										}
 										else {
+											Swal.close();
+											
 											showNotification('<span class=\"alert-text\">added your video to the MoarTube Index</span>', 'alert-primary');
 
 											revertAction = false;
-
-											Swal.close();
 										}
 									})
 									.fail(function () {

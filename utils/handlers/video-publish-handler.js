@@ -44,7 +44,7 @@ function startVideoPublishInterval() {
                     inProgressPublishingJobs.splice(index, 1);
 
                     const videoIdHasPendingPublishingJobExists = getPendingPublishVideoTracker().some((pendingPublishingJob) => pendingPublishingJob.hasOwnProperty('videoId') && pendingPublishingJob.videoId === inProgressPublishingJob.videoId);
-                    const videoIdHasInProgressPublishingJobExists = inProgressPublishingJobs.some((inProgressPublishingJob) => inProgressPublishingJob.hasOwnProperty('videoId') && inProgressPublishingJob.videoId === inProgressPublishingJob.videoId);
+                    const videoIdHasInProgressPublishingJobExists = inProgressPublishingJobs.some((inProgressPublishingJobInner) => inProgressPublishingJobInner.hasOwnProperty('videoId') && inProgressPublishingJobInner.videoId === inProgressPublishingJob.videoId);
 
                     if (inProgressPublishingJob.format === 'm3u8') {
                         await refreshM3u8MasterManifest(inProgressPublishingJob.jwtToken, inProgressPublishingJob.videoId);
