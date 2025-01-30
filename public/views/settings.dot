@@ -1979,12 +1979,8 @@
 				storageMode: storageMode
 			}
 
-			const dnsConfig = {
-				isConfiguringDnsCname: false
-			};
-
 			if (storageMode === 'filesystem') {
-				submitStorageConfig(storageConfig, dnsConfig, radio);
+				submitStorageConfig(storageConfig, radio);
 			}
 			else if (storageMode === 's3provider') {
 				const html = '\
@@ -1997,27 +1993,6 @@
 						<div class="row mb-2">\
 							<div class="">\
 								<textarea id="s3-provider-client-configuration-textarea" class="form-control" name="nodeAbout" type="text" placeholder="Paste the S3 client configuration JSON from your S3 provider here. S3 provider configurations will vary. For example, AWS S3: { &quot;region&quot;: &quot;region&quot;, &quot;credentials&quot;: { &quot;accessKeyId&quot;: &quot;accessKeyId&quot;, &quot;secretAccessKey&quot;: &quot;secretAccessKey&quot; } }" rows="5" maxlength="1000" onfocus="focused(this)" onfocusout="defocused(this)"></textarea>\
-							</div>\
-						</div>\
-						<div class="row">\
-							<div class="input-group mb-3">\
-								<label class="custom-control-label text-start">Add a CNAME record <i>(required for caching your S3 data with Cloudflare\'s CDN)</i><br>Bucket name format required: <i>externalvideos.domain.TLD</i><br>If your node\'s domain is "my-awesome-node.com", use "externalvideos.my-awesome-node.com"<br>Bucket will be created, configured, and tested if it doesn\'t already exist</label>\
-								<div class="input-group form-switch">\
-									<input id="s3-configuration-configure-dns-switch" class="form-check-input" type="checkbox" style="height: 1.10em;">\
-								</div>\
-							</div>\
-						</div>\
-						<div id="s3-configuration-cloudflare-container" class="row hidden-elem">\
-							<div>\
-								<div class="input-group mb-2">\
-									<input id="s3-configuration-cloudflare-email-address-input" class="form-control" type="text" required="" autocomplete="off" placeholder="Cloudflare Email Address" title="wee">\
-								</div>\
-								<div class="input-group mb-2">\
-									<input id="s3-configuration-cloudflare-zone-id-input" class="form-control" type="text" required="" autocomplete="off" placeholder="Cloudflare Zone ID">\
-								</div>\
-								<div class="input-group mb-2">\
-									<input id="s3-configuration-cloudflare-global-api-key-input" class="form-control" type="text" required="" autocomplete="off" placeholder="Cloudflare Global API Key">\
-								</div>\
 							</div>\
 						</div>\
 						<div class="row">\
@@ -2041,19 +2016,11 @@
 
 					},
 					didOpen: () => {
-						$('#s3-configuration-configure-dns-switch').change(function () {
-							if ($(this).is(':checked')) {
-								$('#s3-configuration-cloudflare-container').removeClass('hidden-elem');
-							}
-							else {
-								$('#s3-configuration-cloudflare-container').addClass('hidden-elem');
-							}
-						});
+
 					},
 					preConfirm: () => {
 						const bucketName = $('#s3-provider-bucket-name').val();
 						let s3ProviderClientConfig = $('#s3-provider-client-configuration-textarea').val();
-						const isConfiguringDnsCname = $('#s3-configuration-configure-dns-switch').is(':checked');
 						const urlFormat = $('#s3-configuration-url-format').val();
 
 						if (bucketName !== '' && s3ProviderClientConfig !== '') {
@@ -2071,22 +2038,6 @@
 
 							// trim leading and trailing spaces
 							s3ProviderClientConfig = s3ProviderClientConfig.trim();
-
-							if (isConfiguringDnsCname) {
-								const cloudflareEmailAddress = $('#s3-configuration-cloudflare-email-address-input').val();
-								const cloudflareZoneId = $('#s3-configuration-cloudflare-zone-id-input').val();
-								const cloudflareGlobalApiKey = $('#s3-configuration-cloudflare-global-api-key-input').val();
-
-								if (cloudflareEmailAddress !== '' && cloudflareZoneId !== '' && cloudflareGlobalApiKey !== '') {
-									dnsConfig.isConfiguringDnsCname = true;
-
-									dnsConfig.cloudflareCredentials = {
-										cloudflareEmailAddress: cloudflareEmailAddress,
-										cloudflareZoneId: cloudflareZoneId,
-										cloudflareGlobalApiKey: cloudflareGlobalApiKey
-									};
-								}
-							}
 
 							try {
 								const s3ProviderClientConfigParsed = JSON.parse(s3ProviderClientConfig);
@@ -2106,11 +2057,10 @@
 
 								const s3Config = {
 									bucketName: bucketName,
-									isCnameConfigured: false,
 									s3ProviderClientConfig: s3ProviderClientConfigParsed
 								};
 
-								return { s3Config: s3Config, dnsConfig: dnsConfig };
+								return { s3Config: s3Config };
 							}
 							catch (e) {
 								$('#s3-provider-error-message').val('Error: Invalid JSON Configuration');
@@ -2126,11 +2076,10 @@
 					.then((result) => {
 						if (result.isConfirmed) {
 							const s3Config = result.value.s3Config;
-							const dnsConfig = result.value.dnsConfig;
 
 							storageConfig.s3Config = s3Config;
 
-							submitStorageConfig(storageConfig, dnsConfig, radio);
+							submitStorageConfig(storageConfig, radio);
 						}
 						else {
 							$('#storage-configuration-filesystem-radio').prop('disabled', false);
@@ -2139,7 +2088,7 @@
 					});
 			}
 
-			function submitStorageConfig(storageConfig, dnsConfig, radio) {
+			function submitStorageConfig(storageConfig, radio) {
 				Swal.fire({
 					title: 'please wait',
 					html: '...applying your settings...',
@@ -2149,7 +2098,7 @@
 						Swal.showLoading();
 					},
 					didOpen: () => {
-						$.ajax({ type: 'POST', url: '/settings/node/storageConfig/toggle', data: JSON.stringify({ storageConfig: storageConfig, dnsConfig: dnsConfig }), contentType: 'application/json; charset=utf-8' })
+						$.ajax({ type: 'POST', url: '/settings/node/storageConfig/toggle', data: JSON.stringify({ storageConfig: storageConfig }), contentType: 'application/json; charset=utf-8' })
 							.always(function () {
 								$('#storage-configuration-filesystem-radio').prop('disabled', false);
 								$('#storage-configuration-s3provider-radio').prop('disabled', false);

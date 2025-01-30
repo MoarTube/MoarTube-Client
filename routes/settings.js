@@ -9,7 +9,8 @@ const {
     nodeStorageConfigToggle_POST, nodeStorageConfigEmpty_POST
 } = require('../controllers/settings');
 const { 
-    logDebugMessageToConsole 
+    logDebugMessageToConsole, 
+    getMoarTubeNodeIp
 } = require('../utils/helpers');
 const { 
     node_isAuthenticated, node_doSignout 
@@ -353,8 +354,9 @@ router.post('/node/cloudflare/configure', async (req, res) => {
         const cloudflareEmailAddress = req.body.cloudflareEmailAddress;
         const cloudflareZoneId = req.body.cloudflareZoneId;
         const cloudflareGlobalApiKey = req.body.cloudflareGlobalApiKey;
+        const moartubeNodeIp = getMoarTubeNodeIp();
 
-        const data = await nodeCloudflareConfigure_POST(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey);
+        const data = await nodeCloudflareConfigure_POST(jwtToken, moartubeNodeIp, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey);
 
         res.send(data);
     }
@@ -402,7 +404,9 @@ router.post('/node/cloudflare/clear', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
 
-        const data = await nodeCloudflareClear_POST(jwtToken);
+        const moartubeNodeIp = getMoarTubeNodeIp();
+
+        const data = await nodeCloudflareClear_POST(jwtToken, moartubeNodeIp);
 
         res.send(data);
     }
@@ -450,9 +454,9 @@ router.post('/node/storageConfig/toggle', async (req, res) => {
         const jwtToken = req.session.jwtToken;
 
         const storageConfig = req.body.storageConfig;
-        const dnsConfig = req.body.dnsConfig;
+        const moartubeNodeIp = getMoarTubeNodeIp();
 
-        let data = await nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig);
+        let data = await nodeStorageConfigToggle_POST(jwtToken, moartubeNodeIp, storageConfig);
 
         res.send(data);
     }

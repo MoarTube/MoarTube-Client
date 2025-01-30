@@ -735,8 +735,9 @@ async function node_setNetworkInternal(jwtToken, listeningNodePort) {
     return response.data;
 }
 
-async function node_setCloudflareConfiguration(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey) {
+async function node_setCloudflareConfiguration(jwtToken, moartubeNodeIp, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey) {
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare/configure', {
+        moartubeNodeIp: moartubeNodeIp,
         cloudflareEmailAddress: cloudflareEmailAddress,
         cloudflareZoneId: cloudflareZoneId,
         cloudflareGlobalApiKey: cloudflareGlobalApiKey
@@ -772,8 +773,10 @@ async function node_CloudflareTurnstileConfigurationClear(jwtToken) {
     return response.data;
 }
 
-async function node_clearCloudflareConfiguration(jwtToken) {
-    const response = await axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare/clear', {}, {
+async function node_clearCloudflareConfiguration(jwtToken, moartubeNodeIp) {
+    const response = await axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare/clear', {
+        moartubeNodeIp: moartubeNodeIp
+    }, {
         headers: {
             Authorization: jwtToken
         }
@@ -804,10 +807,10 @@ async function node_databaseConfigEmpty(jwtToken) {
     return response.data;
 }
 
-async function node_storageConfigToggle(jwtToken, storageConfig, dnsConfig) {
+async function node_storageConfigToggle(jwtToken, moartubeNodeIp, storageConfig) {
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/storageConfig/toggle', {
-        storageConfig: storageConfig,
-        dnsConfig: dnsConfig
+        moartubeNodeIp: moartubeNodeIp,
+        storageConfig: storageConfig
     }, {
         headers: {
             Authorization: jwtToken

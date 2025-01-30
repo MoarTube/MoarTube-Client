@@ -201,6 +201,7 @@ async function node_Secure_POST(jwtToken, isSecure, keyFile, certFile, caFiles) 
                 setMoarTubeNodeHttpProtocol('https');
                 setMoarTubeNodeWebsocketProtocol('wss');
 
+                clearExternalVideosBaseUrlClientCache();
                 clearNodeSettingsClientCache();
             }
 
@@ -217,6 +218,7 @@ async function node_Secure_POST(jwtToken, isSecure, keyFile, certFile, caFiles) 
             setMoarTubeNodeHttpProtocol('http');
             setMoarTubeNodeWebsocketProtocol('ws');
 
+            clearExternalVideosBaseUrlClientCache();
             clearNodeSettingsClientCache();
         }
 
@@ -258,10 +260,11 @@ async function nodeNetworkExternal_POST(jwtToken, publicNodeProtocol, publicNode
     return response;
 }
 
-async function nodeCloudflareConfigure_POST(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey) {
-    const response = await node_setCloudflareConfiguration(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey);
+async function nodeCloudflareConfigure_POST(jwtToken, moartubeNodeIp, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey) {
+    const response = await node_setCloudflareConfiguration(jwtToken, moartubeNodeIp, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey);
 
     if (!response.isError) {
+        clearExternalVideosBaseUrlClientCache();
         clearNodeSettingsClientCache();
     }
 
@@ -288,10 +291,11 @@ async function nodeCloudflareTurnstileClear_POST(jwtToken) {
     return response;
 }
 
-async function nodeCloudflareClear_POST(jwtToken) {
-    const response = await node_clearCloudflareConfiguration(jwtToken);
+async function nodeCloudflareClear_POST(jwtToken, moartubeNodeIp) {
+    const response = await node_clearCloudflareConfiguration(jwtToken, moartubeNodeIp);
 
     if (!response.isError) {
+        clearExternalVideosBaseUrlClientCache();
         clearNodeSettingsClientCache();
     }
 
@@ -318,12 +322,12 @@ async function nodeDatabaseConfigEmpty_POST(jwtToken) {
     return response;
 }
 
-async function nodeStorageConfigToggle_POST(jwtToken, storageConfig, dnsConfig) {
+async function nodeStorageConfigToggle_POST(jwtToken, moartubeNodeIp, storageConfig) {
     if (storageConfig.storageMode === 's3provider') {
         await s3_validateS3Config(JSON.parse(JSON.stringify(storageConfig.s3Config)));
     }
 
-    const response = await node_storageConfigToggle(jwtToken, storageConfig, dnsConfig);
+    const response = await node_storageConfigToggle(jwtToken, moartubeNodeIp, storageConfig);
 
     if (!response.isError) {
         clearExternalVideosBaseUrlClientCache();
