@@ -172,7 +172,7 @@ async function s3_updateM3u8ManifestsWithExternalVideosBaseUrl(s3Config, videosD
 
             const oldManifest = await streamToString(response.Body);
 
-            const newManifest = oldManifest.replace(/https?:\/\/[^/]+(?=\/external)/g, externalVideosBaseUrl);
+            const newManifest = oldManifest.replace(/(https?:\/\/).*?(\/external\/)/g, externalVideosBaseUrl + "$2");
 
             await s3Client.send(new PutObjectCommand({ Bucket: bucketName, Key: manifestKey, Body: newManifest, ContentType: 'application/vnd.apple.mpegurl' }));
         }
@@ -228,7 +228,7 @@ async function s3_validateS3Config(s3Config) {
             await s3Client.send(new PutPublicAccessBlockCommand({ Bucket: bucketName, PublicAccessBlockConfiguration: publicAccessBlockConfig }));
             logDebugMessageToConsole('successfully configured bucket for public access', null, null);
         }
-        catch(error) {
+        catch (error) {
             logDebugMessageToConsole('failed to configure bucket for public access', null, null);
         }
 
@@ -237,7 +237,7 @@ async function s3_validateS3Config(s3Config) {
             await s3Client.send(new PutBucketOwnershipControlsCommand({ Bucket: bucketName, OwnershipControls: { Rules: [{ ObjectOwnership: "BucketOwnerEnforced" }] } }));
             logDebugMessageToConsole('successfully disabled bucket ACLs', null, null);
         }
-        catch(error) {
+        catch (error) {
             logDebugMessageToConsole('failed to disable bucket ACLs', null, null);
         }
 
@@ -283,7 +283,7 @@ async function s3_validateS3Config(s3Config) {
                 ]
             };
         }
-        catch(error) {
+        catch (error) {
             logDebugMessageToConsole('failed to retrieve principal ARN', null, null);
             logDebugMessageToConsole('setting third-party S3 provider bucket policy', null, null);
 
@@ -309,7 +309,7 @@ async function s3_validateS3Config(s3Config) {
             await s3Client.send(new PutBucketPolicyCommand({ Bucket: bucketName, Policy: JSON.stringify(bucketPolicy) }));
             logDebugMessageToConsole('successfully applied bucket policy', null, null);
         }
-        catch(error) {
+        catch (error) {
             logDebugMessageToConsole('failed to apply bucket policy', null, null);
         }
 
@@ -319,7 +319,7 @@ async function s3_validateS3Config(s3Config) {
             await s3Client.send(new PutBucketCorsCommand({ Bucket: bucketName, CORSConfiguration: { CORSRules: corsRules } }));
             logDebugMessageToConsole('successfully configured bucket Cross-origin resource sharing (CORS)', null, null);
         }
-        catch(error) {
+        catch (error) {
             logDebugMessageToConsole('failed to configure bucket Cross-origin resource sharing (CORS)', null, null);
         }
     }

@@ -4,8 +4,8 @@ const FormData = require('form-data');
 const http = require('http');
 const https = require('https');
 
-const { 
-    getMoarTubeNodeUrl 
+const {
+    getMoarTubeNodeUrl
 } = require('./helpers');
 
 async function node_doSignout(req, res) {
@@ -735,9 +735,8 @@ async function node_setNetworkInternal(jwtToken, listeningNodePort) {
     return response.data;
 }
 
-async function node_setCloudflareConfiguration(jwtToken, moartubeNodeIp, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey) {
+async function node_setCloudflareConfiguration(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey) {
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare/configure', {
-        moartubeNodeIp: moartubeNodeIp,
         cloudflareEmailAddress: cloudflareEmailAddress,
         cloudflareZoneId: cloudflareZoneId,
         cloudflareGlobalApiKey: cloudflareGlobalApiKey
@@ -773,10 +772,8 @@ async function node_CloudflareTurnstileConfigurationClear(jwtToken) {
     return response.data;
 }
 
-async function node_clearCloudflareConfiguration(jwtToken, moartubeNodeIp) {
-    const response = await axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare/clear', {
-        moartubeNodeIp: moartubeNodeIp
-    }, {
+async function node_clearCloudflareConfiguration(jwtToken) {
+    const response = await axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare/clear', {}, {
         headers: {
             Authorization: jwtToken
         }
@@ -807,9 +804,8 @@ async function node_databaseConfigEmpty(jwtToken) {
     return response.data;
 }
 
-async function node_storageConfigToggle(jwtToken, moartubeNodeIp, storageConfig) {
+async function node_storageConfigToggle(jwtToken, storageConfig) {
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/storageConfig/toggle', {
-        moartubeNodeIp: moartubeNodeIp,
         storageConfig: storageConfig
     }, {
         headers: {

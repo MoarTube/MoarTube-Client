@@ -260,12 +260,41 @@ async function nodeNetworkExternal_POST(jwtToken, publicNodeProtocol, publicNode
     return response;
 }
 
-async function nodeCloudflareConfigure_POST(jwtToken, moartubeNodeIp, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey) {
-    const response = await node_setCloudflareConfiguration(jwtToken, moartubeNodeIp, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey);
+async function nodeCloudflareConfigure_POST(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey) {
+    const response = await node_setCloudflareConfiguration(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey);
 
     if (!response.isError) {
         clearExternalVideosBaseUrlClientCache();
         clearNodeSettingsClientCache();
+
+        const nodeSettings = await getNodeSettings(jwtToken);
+
+        if (nodeSettings.storageConfig.storageMode === 's3provider') {
+            const videosData = (await node_getVideoDataAll(jwtToken)).videosData;
+            const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
+
+            await s3_updateM3u8ManifestsWithExternalVideosBaseUrl(nodeSettings.storageConfig.s3Config, videosData, externalVideosBaseUrl);
+        }
+    }
+
+    return response;
+}
+
+async function nodeCloudflareClear_POST(jwtToken) {
+    const response = await node_clearCloudflareConfiguration(jwtToken);
+
+    if (!response.isError) {
+        clearExternalVideosBaseUrlClientCache();
+        clearNodeSettingsClientCache();
+
+        const nodeSettings = await getNodeSettings(jwtToken);
+
+        if (nodeSettings.storageConfig.storageMode === 's3provider') {
+            const videosData = (await node_getVideoDataAll(jwtToken)).videosData;
+            const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
+
+            await s3_updateM3u8ManifestsWithExternalVideosBaseUrl(nodeSettings.storageConfig.s3Config, videosData, externalVideosBaseUrl);
+        }
     }
 
     return response;
@@ -285,17 +314,6 @@ async function nodeCloudflareTurnstileClear_POST(jwtToken) {
     const response = await node_CloudflareTurnstileConfigurationClear(jwtToken);
 
     if (!response.isError) {
-        clearNodeSettingsClientCache();
-    }
-
-    return response;
-}
-
-async function nodeCloudflareClear_POST(jwtToken, moartubeNodeIp) {
-    const response = await node_clearCloudflareConfiguration(jwtToken, moartubeNodeIp);
-
-    if (!response.isError) {
-        clearExternalVideosBaseUrlClientCache();
         clearNodeSettingsClientCache();
     }
 
@@ -322,12 +340,12 @@ async function nodeDatabaseConfigEmpty_POST(jwtToken) {
     return response;
 }
 
-async function nodeStorageConfigToggle_POST(jwtToken, moartubeNodeIp, storageConfig) {
+async function nodeStorageConfigToggle_POST(jwtToken, storageConfig) {
     if (storageConfig.storageMode === 's3provider') {
         await s3_validateS3Config(JSON.parse(JSON.stringify(storageConfig.s3Config)));
     }
 
-    const response = await node_storageConfigToggle(jwtToken, moartubeNodeIp, storageConfig);
+    const response = await node_storageConfigToggle(jwtToken, storageConfig);
 
     if (!response.isError) {
         clearExternalVideosBaseUrlClientCache();

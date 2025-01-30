@@ -8,12 +8,11 @@ const {
     nodeCommentsToggle_POST, nodeDislikesToggle_POST, nodeLikesToggle_POST, nodeReportsToggle_POST, nodeLiveChatToggle_POST, nodeDatabaseConfigToggle_POST, nodeDatabaseConfigEmpty_POST,
     nodeStorageConfigToggle_POST, nodeStorageConfigEmpty_POST
 } = require('../controllers/settings');
-const { 
-    logDebugMessageToConsole, 
-    getMoarTubeNodeIp
+const {
+    logDebugMessageToConsole
 } = require('../utils/helpers');
-const { 
-    node_isAuthenticated, node_doSignout 
+const {
+    node_isAuthenticated, node_doSignout
 } = require('../utils/node-communications');
 
 const router = express.Router();
@@ -354,9 +353,8 @@ router.post('/node/cloudflare/configure', async (req, res) => {
         const cloudflareEmailAddress = req.body.cloudflareEmailAddress;
         const cloudflareZoneId = req.body.cloudflareZoneId;
         const cloudflareGlobalApiKey = req.body.cloudflareGlobalApiKey;
-        const moartubeNodeIp = getMoarTubeNodeIp();
 
-        const data = await nodeCloudflareConfigure_POST(jwtToken, moartubeNodeIp, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey);
+        const data = await nodeCloudflareConfigure_POST(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey);
 
         res.send(data);
     }
@@ -404,9 +402,7 @@ router.post('/node/cloudflare/clear', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
 
-        const moartubeNodeIp = getMoarTubeNodeIp();
-
-        const data = await nodeCloudflareClear_POST(jwtToken, moartubeNodeIp);
+        const data = await nodeCloudflareClear_POST(jwtToken);
 
         res.send(data);
     }
@@ -454,9 +450,8 @@ router.post('/node/storageConfig/toggle', async (req, res) => {
         const jwtToken = req.session.jwtToken;
 
         const storageConfig = req.body.storageConfig;
-        const moartubeNodeIp = getMoarTubeNodeIp();
 
-        let data = await nodeStorageConfigToggle_POST(jwtToken, moartubeNodeIp, storageConfig);
+        let data = await nodeStorageConfigToggle_POST(jwtToken, storageConfig);
 
         res.send(data);
     }
