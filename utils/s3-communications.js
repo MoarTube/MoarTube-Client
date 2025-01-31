@@ -116,8 +116,13 @@ async function s3_convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolut
         const dynamicManifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/dynamic/manifests/manifest-' + resolution + '.m3u8';
         const staticManifestKey = 'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-' + resolution + '.m3u8';
 
-        await performConversion(dynamicMasterManifestKey, staticMasterManifestKey);
-        await performConversion(dynamicManifestKey, staticManifestKey);
+        try {
+            await performConversion(dynamicMasterManifestKey, staticMasterManifestKey);
+            await performConversion(dynamicManifestKey, staticManifestKey);
+        }
+        catch(error) {
+            logDebugMessageToConsole(null, error, new Error().stack);
+        }
     }
 
     async function performConversion(dynamicKey, staticKey) {
