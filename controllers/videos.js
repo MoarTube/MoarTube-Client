@@ -13,7 +13,7 @@ const {
     node_stopVideoImporting, node_doVideosSearch, node_getVideoData, node_unpublishVideo, node_stopVideoPublishing, node_setSourceFileExtension, node_setThumbnail, 
     node_setPreview, node_setPoster, node_setVideoLengths, node_setVideoImported, node_getVideosTags, node_getSourceFileExtension, node_getVideosTagsAll, 
     node_getVideoPublishes, node_setVideoData, node_deleteVideos, node_finalizeVideos, node_addVideoToIndex, node_removeVideoFromIndex, node_getVideoSources,
-    node_setIsIndexOutdated
+    node_setIsIndexOutdated, node_getVideoPermissions, node_postVideoPermissions
 } = require('../utils/node-communications');
 const {
     s3_putObjectFromData, s3_deleteObjectsWithPrefix, s3_deleteObjectWithKey
@@ -496,6 +496,18 @@ async function videoIdSources_GET(videoId) {
     return result;
 }
 
+async function videoIdPermissions_GET(jwtToken, videoId) {
+    const response = await node_getVideoPermissions(jwtToken, videoId);
+
+    return response;
+}
+
+async function videoIdPermissions_POST(jwtToken, videoId, type, isEnabled) {
+    const response = await node_postVideoPermissions(jwtToken, videoId, type, isEnabled);
+
+    return response;
+}
+
 module.exports = {
     search_GET,
     import_POST,
@@ -515,5 +527,7 @@ module.exports = {
     videoIdThumbnail_POST,
     videoIdPreview_POST,
     videoIdPoster_POST,
-    videoIdSources_GET
+    videoIdSources_GET,
+    videoIdPermissions_GET,
+    videoIdPermissions_POST
 };

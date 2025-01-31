@@ -6,7 +6,8 @@ const multer = require('multer');
 const {
     search_GET, import_POST, videoIdImportingStop_POST, videoIdPublishingStop_POST, videoIdPublish_POST, videoIdUnpublish_POST,
     tags_GET, tagsAll_GET, videoIdPublishes_GET, videoIdData_GET, videoIdData_POST, delete_POST, finalize_POST, videoIdIndexAdd_POST,
-    videoIdIndexRemove_POST, videoIdThumbnail_POST, videoIdPreview_POST, videoIdPoster_POST, videoIdSources_GET
+    videoIdIndexRemove_POST, videoIdThumbnail_POST, videoIdPreview_POST, videoIdPoster_POST, videoIdSources_GET,
+    videoIdPermissions_GET, videoIdPermissions_POST
 } = require('../controllers/videos');
 const { 
     logDebugMessageToConsole, websocketClientBroadcast, getVideosDirectoryPath, getExternalVideosBaseUrl 
@@ -534,6 +535,42 @@ router.get('/:videoId/sources', async (req, res) => {
         const videoId = req.params.videoId;
 
         const data = await videoIdSources_GET(videoId);
+
+        res.send(data);
+    }
+    catch (error) {
+        logDebugMessageToConsole(null, error, new Error().stack);
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
+    }
+});
+
+router.get('/:videoId/permissions', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+
+        const videoId = req.params.videoId;
+
+        const data = await videoIdPermissions_GET(jwtToken, videoId);
+
+        res.send(data);
+    }
+    catch (error) {
+        logDebugMessageToConsole(null, error, new Error().stack);
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
+    }
+});
+
+router.post('/:videoId/permissions', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+
+        const videoId = req.params.videoId;
+        const type = req.body.type;
+        const isEnabled = req.body.isEnabled;
+
+        const data = await videoIdPermissions_POST(jwtToken, videoId, type, isEnabled);
 
         res.send(data);
     }

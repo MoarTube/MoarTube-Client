@@ -398,24 +398,35 @@
 		}
 
 		function deleteLink(button) {
-			const row = button.closest('tr');
+			Swal.fire({
+				title: 'Delete Link',
+				text: 'Are you sure?',
+				showCloseButton: true,
+				showConfirmButton: true,
+				showCancelButton: true,
+				confirmButtonText: 'confirm',
+			}).then((result) => {
+				if (result.isConfirmed) {
+					const row = button.closest('tr');
 
-			const linkId = $(button).data('linkid');
+					const linkId = $(button).data('linkid');
 
-			$.ajax({ type: 'POST', url: '/links/delete', data: { linkId: linkId } })
-				.done(function (data, textStatus, xhr) {
-					if (data.isError) {
-						showAlert(true, data.message);
-					}
-					else {
-						const row = button.closest('tr');
+					$.ajax({ type: 'POST', url: '/links/delete', data: { linkId: linkId } })
+						.done(function (data, textStatus, xhr) {
+							if (data.isError) {
+								showAlert(true, data.message);
+							}
+							else {
+								const row = button.closest('tr');
 
-						DATA_TABLE.rows().remove(parseInt(row.dataIndex));
-					}
-				})
-				.fail(function () {
-					console.log('unable to communicate with node');
-				});
+								DATA_TABLE.rows().remove(parseInt(row.dataIndex));
+							}
+						})
+						.fail(function () {
+							console.log('unable to communicate with node');
+						});
+				}
+			});
 		}
 
 		function refreshHoverTooltips() {

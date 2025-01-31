@@ -1108,6 +1108,29 @@ async function node_setIsIndexOutdated(jwtToken, videoId) {
     return response.data;
 }
 
+async function node_getVideoPermissions(jwtToken, videoId) {
+    const response = await axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/permissions', {
+        headers: {
+            Authorization: jwtToken
+        }
+    });
+
+    return response.data;
+}
+
+async function node_postVideoPermissions(jwtToken, videoId, type, isEnabled) {
+    const response = await axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/permissions', {
+        type: type,
+        isEnabled: isEnabled
+    }, {
+        headers: {
+            Authorization: jwtToken
+        }
+    });
+
+    return response.data;
+}
+
 module.exports = {
     node_isAuthenticated,
     node_doHeartBeat,
@@ -1199,5 +1222,7 @@ module.exports = {
     node_getExternalVideosBaseUrl,
     node_getManifestFile,
     node_uploadM3u8MasterManifest,
-    node_setIsIndexOutdated
+    node_setIsIndexOutdated,
+    node_getVideoPermissions,
+    node_postVideoPermissions
 };

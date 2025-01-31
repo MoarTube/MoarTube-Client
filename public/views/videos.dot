@@ -1559,8 +1559,9 @@
 					<div class="nav-wrapper position-relative w-100"> \
 					<ul class="nav nav-pills nav-fill p-1" role="tablist"> \
 					<li class="nav-item moving-tab-selector-1" role="presentation" data-type="information"> <a class="nav-link mb-0 px-0 py-1 active" data-bs-toggle="tab" href="#cam1" role="tab" aria-controls="cam1" aria-selected="false"> Information </a> </li> \
-					<li class="nav-item moving-tab-selector-1" role="presentation" data-type="published"> <a class="nav-link mb-0 px-0 py-1" data-bs-toggle="tab" href="#manage-modal-published-tab-pane" role="tab" aria-controls="manage-modal-published-tab-pane" aria-selected="false" tabindex="-1"> published </a> </li> \
-					<div class="moving-tab moving-tab-1 position-absolute nav-link" style="padding: 0px;width: 50%;ransform: translate3d(0px, 0px, 0px);transition: all 0.5s ease 0s;" aria-selected="false" tabindex="-1" role="tab">\
+					<li class="nav-item moving-tab-selector-1" role="presentation" data-type="published"> <a class="nav-link mb-0 px-0 py-1" data-bs-toggle="tab" href="#manage-modal-published-tab-pane" role="tab" aria-controls="manage-modal-published-tab-pane" aria-selected="false" tabindex="-1"> Published </a> </li> \
+					<li class="nav-item moving-tab-selector-1" role="presentation" data-type="permissions"> <a class="nav-link mb-0 px-0 py-1" data-bs-toggle="tab" href="#manage-modal-permissions-tab-pane" role="tab" aria-controls="manage-modal-permissions-tab-pane" aria-selected="false" tabindex="-1"> Permissions </a> </li> \
+					<div class="moving-tab moving-tab-1 position-absolute nav-link" style="padding: 0px;width: 33%;ransform: translate3d(0px, 0px, 0px);transition: all 0.5s ease 0s;" aria-selected="false" tabindex="-1" role="tab">\
 					<a class="nav-link mb-0 px-0 py-1 active" data-bs-toggle="tab" href="#cam1" role="tab" aria-controls="cam1" aria-selected="true">-</a></div>\
 					</ul> \
 					</div> </div> <div class="card-body p-3 mt-2"> <div class="tab-content"> \
@@ -1626,7 +1627,50 @@
 					<li class="list-group-item border-0 d-flex align-items-center px-0 mb-0"> <div class="col-12"> <div class="mb-1"> <div class="d-flex mb-2"> <span class="me-2 text-sm font-weight-bold text-capitalize">240p</span> </div> <div> <div class="progress progress-md"> <div id="' + videoId + '_ogv_240p" class="progress-bar bg-gradient-info" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div> </div> </div> </div><div><div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input id="' + videoId + '_ogv_240p_publish_checkbox" data-format="ogv" data-resolution="240p" class="form-check-input" type="checkbox"> </div></div> </div> </li>\
 					</ul>\
 					</div>\
-					</div> </div></div>  </div> </div> </div> </div></div></div></div></div>',
+					</div>\
+					</div>\
+					</div>\
+					<div class="tab-pane fade position-relative border-radius-lg text-start" id="manage-modal-permissions-tab-pane" role="tabpanel" aria-labelledby="manage-modal-permissions-tab-pane">\
+						<div class="card-body pt-0 pb-0 d-flex justify-content-center align-items-center">\
+							<p class="mb-0 me-2">Comments</p>\
+							<div class="form-check form-switch my-auto">\
+								<input id="manage-modal-permissions-comments-checkbox" class="form-check-input manage-modal-permissions-checkbox" type="checkbox" data-type="comments">\
+							</div>\
+						</div>\
+						<div class="card-body pt-0 pb-0 d-flex justify-content-center align-items-center mt-2">\
+							<p class="mb-0 me-2">Likes</p>\
+							<div class="form-check form-switch my-auto">\
+								<input id="manage-modal-permissions-likes-checkbox" class="form-check-input manage-modal-permissions-checkbox" type="checkbox" data-type="likes">\
+							</div>\
+						</div>\
+						<div class="card-body pt-0 pb-0 d-flex justify-content-center align-items-center mt-2">\
+							<p class="mb-0 me-2">Dislikes</p>\
+							<div class="form-check form-switch my-auto">\
+								<input id="manage-modal-permissions-dislikes-checkbox" class="form-check-input manage-modal-permissions-checkbox" type="checkbox" data-type="dislikes">\
+							</div>\
+						</div>\
+						<div class="card-body pt-0 pb-0 d-flex justify-content-center align-items-center mt-2">\
+							<p class="mb-0 me-2">Reports</p>\
+							<div class="form-check form-switch my-auto">\
+								<input id="manage-modal-permissions-reports-checkbox" class="form-check-input manage-modal-permissions-checkbox" type="checkbox" data-type="reports">\
+							</div>\
+						</div>\
+						<div class="card-body pt-0 pb-0 d-flex justify-content-center align-items-center mt-2">\
+							<p class="mb-0 me-2">Live Chat</p>\
+							<div class="form-check form-switch my-auto">\
+								<input id="manage-modal-permissions-livechat-checkbox" class="form-check-input manage-modal-permissions-checkbox" type="checkbox" data-type="livechat">\
+							</div>\
+						</div>\
+					</div>\
+					</div>\
+					</div>\
+					</div>\
+					</div>\
+					</div>\
+					</div>\
+					</div>\
+					</div>\
+					',
 				willOpen: () => {
 					$('#importTitleInput').val('......................');
 					$('#importDescriptionInput').val('......................');
@@ -1669,7 +1713,7 @@
 											});
 
 										$('.moving-tab-1').css('padding', '0px');
-										$('.moving-tab-1').css('width', '50%');
+										$('.moving-tab-1').css('width', '33%');
 										$('.moving-tab-1').css('transform', 'translate3d(0px, 0px, 0px)');
 										$('.moving-tab-1').css('transition', 'all 0.5s ease 0s');
 
@@ -1700,8 +1744,39 @@
 											});
 
 										$('.moving-tab-1').css('padding', '0px');
-										$('.moving-tab-1').css('width', '50%');
+										$('.moving-tab-1').css('width', '33%');
 										$('.moving-tab-1').css('transform', 'translate3d(100%, 0px, 0px)');
+										$('.moving-tab-1').css('transition', 'all 0.5s ease 0s');
+
+										$('.swal2-confirm').addClass('hidden-elem');
+									}
+									else if (type === 'permissions') {
+										$.ajax({ type: 'GET', url: '/videos/' + videoId + '/permissions' })
+										.done(function (data, textStatus, xhr) {
+											if (data.isError) {
+												showAlert(true, data.message);
+											}
+											else {
+												const isCommentsEnabled = data.isCommentsEnabled;
+												const isLikesEnabled = data.isLikesEnabled;
+												const isDislikesEnabled = data.isDislikesEnabled;
+												const isReportsEnabled = data.isReportsEnabled;
+												const isLiveChatEnabled = data.isLiveChatEnabled;
+
+												$('#manage-modal-permissions-comments-checkbox').prop('checked', isCommentsEnabled);
+												$('#manage-modal-permissions-likes-checkbox').prop('checked', isLikesEnabled);
+												$('#manage-modal-permissions-dislikes-checkbox').prop('checked', isDislikesEnabled);
+												$('#manage-modal-permissions-reports-checkbox').prop('checked', isReportsEnabled);
+												$('#manage-modal-permissions-livechat-checkbox').prop('checked', isLiveChatEnabled);
+											}
+										})
+										.fail(function () {
+											console.log('unable to communicate with node');
+										});
+
+										$('.moving-tab-1').css('padding', '0px');
+										$('.moving-tab-1').css('width', '33%');
+										$('.moving-tab-1').css('transform', 'translate3d(200%, 0px, 0px)');
 										$('.moving-tab-1').css('transition', 'all 0.5s ease 0s');
 
 										$('.swal2-confirm').addClass('hidden-elem');
@@ -1786,6 +1861,32 @@
 												showAlert(true, 'video unpublish error occurred');
 											});
 									}
+								});
+
+								$('#manage-modal-permissions-tab-pane .form-check-input').change(function (event) {
+									const checkbox = $(this);
+
+									const type = $(checkbox).data('type');
+
+									$(checkbox).attr('disabled', true);
+
+									const isEnabled = $(checkbox).is(':checked');
+
+									$.ajax({ type: 'POST', url: '/videos/' + videoId + '/permissions', data: JSON.stringify({ type: type, isEnabled: isEnabled }), contentType: 'application/json; charset=utf-8' })
+									.done(function (data, textStatus, xhr) {
+										if (data.isError) {
+											showAlert(true, data.message);
+
+											$(checkbox).prop('checked', !$(checkbox).is(':checked'));
+										}
+
+										$(checkbox).attr('disabled', false);
+									})
+									.fail(function () {
+										showAlert(true, 'video publish error occurred');
+
+										$(checkbox).attr('disabled', false);
+									})
 								});
 							}
 						})
