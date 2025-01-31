@@ -2,7 +2,7 @@ const webSocket = require('ws');
 
 const {
     logDebugMessageToConsole, getMoarTubeNodeWebsocketUrl, setMoarTubeNodeHttpProtocol, setMoarTubeNodeWebsocketProtocol, setMoarTubeNodeIp,
-    setMoarTubeNodePort, setWebsocketClient, websocketServerBroadcast
+    setMoarTubeNodePort, setWebsocketClient, websocketServerBroadcast, clearNodeSettingsClientCache, clearExternalVideosBaseUrlClientCache
 } = require('../utils/helpers');
 const { 
     node_doHeartBeat, node_doSignin, node_doSignout 
@@ -158,6 +158,9 @@ async function signIn_POST(username, password, moarTubeNodeIp, moarTubeNodePort,
                 };
 
                 connectWebsocketClient();
+
+                clearNodeSettingsClientCache();
+                clearExternalVideosBaseUrlClientCache();
 
                 return { isError: false, isAuthenticated: true, redirectUrl: '/videos', jwtToken: jwtToken };
             }
