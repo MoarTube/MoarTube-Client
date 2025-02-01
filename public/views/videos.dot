@@ -450,7 +450,6 @@
 		</div>
 	</main>
 	<div id="notifications-container"></div>
-	<div id="notifications-container"></div>
 
 	<script src="/javascript/popper-2.11.6.min.js"></script>
 	<script src="/javascript/bootstrap-5.2.2.min.js"></script>

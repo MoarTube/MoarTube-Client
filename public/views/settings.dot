@@ -1997,7 +1997,7 @@
 								<textarea id="s3-provider-client-configuration-textarea" class="form-control" name="nodeAbout" type="text" placeholder="Paste the S3 client configuration JSON from your S3 provider here. S3 provider configurations will vary. For example, AWS S3: { &quot;region&quot;: &quot;region&quot;, &quot;credentials&quot;: { &quot;accessKeyId&quot;: &quot;accessKeyId&quot;, &quot;secretAccessKey&quot;: &quot;secretAccessKey&quot; } }" rows="5" maxlength="1000" onfocus="focused(this)" onfocusout="defocused(this)"></textarea>\
 							</div>\
 						</div>\
-						<div class="row">\
+						<div class="row mb-2">\
 							<label class="form-label text-start">URL format</label>\
 							<div class="input-group">\
 								<select id="s3-configuration-url-format" class="multisteps-form__select form-control">\
@@ -2005,6 +2005,10 @@
 									<option value="vhost">vhost-style</option>\
 								</select>\
 							</div>\
+						</div>\
+						<div class="row">\
+							<label class="form-label text-start ">Note: if you intend to use Cloudflare CDN for caching, your bucket\'s name must follow the naming convention of "externalvideos.domain.TLD". For example, if your node\'s domain name is "my-awesome-node.com", then your bucket\'s name must be "externalvideos.my-awesome-node.com".</label>\
+						</div>\
 						<p id="s3-provider-error-message"></p>\
 					</div>';
 
@@ -2014,6 +2018,7 @@
 					showCloseButton: true,
 					showConfirmButton: true,
 					confirmButtonText: 'Save',
+					width: "45rem",
 					willOpen: () => {
 
 					},
