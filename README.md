@@ -11,7 +11,6 @@ Welcome to the **MoarTube Client setup guide**! Follow these simple steps to get
 
 When you’re ready, make sure to check out the [MoarTube Node](https://github.com/MoarTube/MoarTube-Node) if you haven’t already.
 
-
 ## Table of Contents
 - [Features](#features)
 - [System Requirements](#system-requirements-lightweight-flexible-and-powerful)
