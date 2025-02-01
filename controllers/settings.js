@@ -13,7 +13,8 @@ const {
     node_setNodeId, node_setSecureConnection, node_setNetworkInternal, node_setAccountCredentials, node_setCloudflareConfiguration,
     node_clearCloudflareConfiguration, node_setCloudflareTurnstileConfiguration, node_CloudflareTurnstileConfigurationClear,
     node_commentsToggle, node_likesToggle, node_dislikesToggle, node_reportsToggle, node_liveChatToggle, node_databaseConfigToggle,
-    node_databaseConfigEmpty, node_storageConfigToggle, node_storageConfigEmpty, node_getVideoDataAll
+    node_databaseConfigEmpty, node_storageConfigToggle, node_storageConfigEmpty, node_getVideoDataAll, node_settingsExportDatabase,
+    node_settingsImportDatabase
 } = require('../utils/node-communications');
 const {
     s3_validateS3Config, s3_updateM3u8ManifestsWithExternalVideosBaseUrl
@@ -434,6 +435,27 @@ async function nodeAccount_POST(jwtToken, username, password) {
     return response;
 }
 
+async function nodeImportDatabase(jwtToken, databaseFile) {
+    let result;
+
+    if (databaseFile != null && databaseFile.length === 1) {
+        databaseFile = databaseFile[0];
+
+        result = await node_settingsImportDatabase(jwtToken, databaseFile.buffer);
+    }
+    else {
+        result = { isError: true, message: 'banner file is missing' };
+    }
+
+    return result;
+}
+
+async function nodeExportDatabase(jwtToken) {
+    const response = await node_settingsExportDatabase(jwtToken);
+
+    return response;
+}
+
 module.exports = {
     client_GET,
     node_GET,
@@ -463,5 +485,7 @@ module.exports = {
     nodeDatabaseConfigToggle_POST,
     nodeDatabaseConfigEmpty_POST,
     nodeStorageConfigToggle_POST,
-    nodeStorageConfigEmpty_POST
+    nodeStorageConfigEmpty_POST,
+    nodeExportDatabase,
+    nodeImportDatabase
 };

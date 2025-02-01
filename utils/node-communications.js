@@ -1131,6 +1131,30 @@ async function node_postVideoPermissions(jwtToken, videoId, type, isEnabled) {
     return response.data;
 }
 
+async function node_settingsImportDatabase(jwtToken, databaseFileBuffer) {
+    const formData = new FormData();
+    formData.append('database_file', databaseFileBuffer, 'database.json');
+
+    const headers = formData.getHeaders();
+    headers.Authorization = jwtToken;
+
+    const response = await axios.post(getMoarTubeNodeUrl() + '/settings/import/database', formData, {
+        headers: headers
+    });
+
+    return response.data;
+}
+
+async function node_settingsExportDatabase(jwtToken) {
+    const response = await axios.get(getMoarTubeNodeUrl() + '/settings/export/database', {
+        headers: {
+            Authorization: jwtToken
+        }
+    });
+
+    return response.data;
+}
+
 module.exports = {
     node_isAuthenticated,
     node_doHeartBeat,
@@ -1224,5 +1248,7 @@ module.exports = {
     node_uploadM3u8MasterManifest,
     node_setIsIndexOutdated,
     node_getVideoPermissions,
-    node_postVideoPermissions
+    node_postVideoPermissions,
+    node_settingsExportDatabase,
+    node_settingsImportDatabase
 };

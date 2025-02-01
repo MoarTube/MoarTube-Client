@@ -6,7 +6,7 @@ const {
     nodePersonalizeNodeName_POST, nodePersonalizeNodeAbout_POST, nodePersonalizeNodeId_POST, node_Secure_POST, nodeNetworkInternal_POST, nodeNetworkExternal_POST, nodeAccount_POST,
     nodeCloudflareConfigure_POST, nodeCloudflareClear_POST, nodeCloudflareTurnstileConfigure_POST, nodeCloudflareTurnstileClear_POST, clientEncodingDefault_GET,
     nodeCommentsToggle_POST, nodeDislikesToggle_POST, nodeLikesToggle_POST, nodeReportsToggle_POST, nodeLiveChatToggle_POST, nodeDatabaseConfigToggle_POST, nodeDatabaseConfigEmpty_POST,
-    nodeStorageConfigToggle_POST, nodeStorageConfigEmpty_POST
+    nodeStorageConfigToggle_POST, nodeStorageConfigEmpty_POST, nodeExportDatabase, nodeImportDatabase
 } = require('../controllers/settings');
 const {
     logDebugMessageToConsole
@@ -567,6 +567,69 @@ router.post('/node/account', async (req, res) => {
         const data = await nodeAccount_POST(jwtToken, username, password);
 
         res.send(data);
+    }
+    catch (error) {
+        logDebugMessageToConsole(null, error, new Error().stack);
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
+    }
+});
+
+router.post('/node/import/database', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+
+        multer({
+            storage: multer.memoryStorage(),
+        }).fields([{ name: 'database_file', maxCount: 1 }])
+        (req, res, async function (error) {
+            if (error) {
+                logDebugMessageToConsole(null, error, new Error().stack);
+
+                res.send({ isError: true, message: 'error communicating with the MoarTube node' });
+            }
+            else {
+                try {
+                    const databaseFile = req.files['database_file'];
+
+                    const data = await nodeImportDatabase(jwtToken, databaseFile);
+
+                    res.send(data);
+                }
+                catch (error) {
+                    logDebugMessageToConsole(null, error, new Error().stack);
+
+                    res.send({ isError: true, message: 'error communicating with the MoarTube node' });
+                }
+            }
+        });
+    }
+    catch (error) {
+        logDebugMessageToConsole(null, error, new Error().stack);
+
+        res.send({ isError: true, message: 'error communicating with the MoarTube node' });
+    }
+});
+
+router.get('/node/export/database', async (req, res) => {
+    try {
+        const jwtToken = req.session.jwtToken;
+
+        const data = await nodeExportDatabase(jwtToken);
+
+        if(data.isError) {
+            res.status(500).send(data);
+        }
+        else {
+            const database = data.database;
+
+            const databaseJsonString = JSON.stringify(database);
+
+            res.setHeader('Content-Disposition', `attachment; filename=database-${Date.now()}.json`);
+            res.setHeader('Content-Type', 'application/json');
+
+            res.send(databaseJsonString);
+        }
     }
     catch (error) {
         logDebugMessageToConsole(null, error, new Error().stack);

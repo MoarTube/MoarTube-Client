@@ -620,26 +620,27 @@
 								</div>
 								<div class="card-body pt-0">
 									<div class="row">
-										<div class="col-6">
-											<div class="radio-group">
-												<label class="form-check-label me-3"
-													for="database-dialect-sqlite-radio">
-													<input id="database-dialect-sqlite-radio"
-														class="form-check-input database-dialect-radio" type="radio"
-														name="database-dialect" data-databasedialect="sqlite"
-														onclick="toggleDatabaseConfiguration(this, event)">
-													SQLite (local)
-												</label>
-												<label class="form-check-label" for="database-dialect-postgres-radio">
-													<input id="database-dialect-postgres-radio"
-														class="form-check-input database-dialect-radio" type="radio"
-														name="database-dialect" data-databasedialect="postgres"
-														onclick="toggleDatabaseConfiguration(this, event)">
-													PostgreSQL (remote)
-												</label>
-											</div>
+										<div class="radio-group">
+											<label class="form-check-label me-3" for="database-dialect-sqlite-radio">
+												<input id="database-dialect-sqlite-radio"
+													class="form-check-input database-dialect-radio" type="radio"
+													name="database-dialect" data-databasedialect="sqlite"
+													onclick="toggleDatabaseConfiguration(this, event)">
+												SQLite (local)
+											</label>
+											<label class="form-check-label" for="database-dialect-postgres-radio">
+												<input id="database-dialect-postgres-radio"
+													class="form-check-input database-dialect-radio" type="radio"
+													name="database-dialect" data-databasedialect="postgres"
+													onclick="toggleDatabaseConfiguration(this, event)">
+												PostgreSQL (remote)
+											</label>
 										</div>
 									</div>
+									<button type="button" class="btn btn-outline-primary me-1"
+										onclick="document.getElementById('database_file_input').click();">import</button>
+									<a href="/settings/node/export/database"><button type="button"
+											class="btn btn-outline-primary">export</button></a>
 								</div>
 							</div>
 							<div class="card-body pt-0 pb-0">
@@ -805,10 +806,10 @@
 									<div class="">
 										<a href="https://www.moartube.com/guides/how-can-moartube-find-your-node"
 											target="_blank">
-											<p class="mb-0 d-flex">What is your node's address?<svg
-													xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-													fill="currentColor" class="bi bi-box-arrow-up-right ps-1"
-													viewBox="0 0 16 16">
+											<p class="mb-0 d-flex">What do people type into their web browser's address
+												bar to find your node?<svg xmlns="http://www.w3.org/2000/svg" width="16"
+													height="16" fill="currentColor"
+													class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
 													<path fill-rule="evenodd"
 														d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5" />
 													<path fill-rule="evenodd"
@@ -908,6 +909,7 @@
 
 	<input id="avatar_file_input" class="hidden-elem" type="file" accept=".jpg,.png" />
 	<input id="banner_file_input" class="hidden-elem" type="file" accept=".jpg,.png" />
+	<input id="database_file_input" class="hidden-elem" type="file" accept=".json" />
 
 	<script src="/javascript/popper-2.11.6.min.js"></script>
 	<script src="/javascript/bootstrap-5.2.2.min.js"></script>
@@ -1057,7 +1059,7 @@
 			const file = this.files[0];
 
 			if (file.size > 0 && (file.type.match("image/jpeg") || file.type.match("image/png"))) {
-				let formData = new FormData();
+				const formData = new FormData();
 
 				formData.append('avatar_file', file);
 
@@ -1087,7 +1089,7 @@
 										.fail(function () {
 											console.error('could not retrieve uploaded banner', error);
 
-											Swal.dismiss();
+											Swal.close();
 										});
 								}
 							})
@@ -1102,7 +1104,7 @@
 		$(document).on('change', '#banner_file_input', function (event) {
 			const file = this.files[0];
 
-			let formData = new FormData();
+			const formData = new FormData();
 
 			formData.append('banner_file', file);
 
@@ -1132,7 +1134,7 @@
 									.fail(function () {
 										console.error('could not retrieve uploaded banner', error);
 
-										Swal.dismiss();
+										Swal.close();
 									});
 							}
 						})
@@ -1540,7 +1542,7 @@
 						const certFile = $('#cert-file-input').get(0).files[0];
 						const caFiles = $('#ca-files-input').get(0).files;
 
-						let formData = new FormData();
+						const formData = new FormData();
 
 						formData.append('keyFile', keyFile);
 						formData.append('certFile', certFile);
@@ -1595,7 +1597,7 @@
 					didOpen: () => {
 						Swal.showLoading();
 
-						let formData = new FormData();
+						const formData = new FormData();
 
 						$.ajax({ type: 'POST', url: '/settings/node/secure?isSecure=' + isCheckboxChecked, data: formData, processData: false, contentType: false })
 							.done(function (data, textStatus, xhr) {
@@ -2043,10 +2045,10 @@
 								const s3ProviderClientConfigParsed = JSON.parse(s3ProviderClientConfig);
 
 								// will override forcePathStyle if defined in the user-provided JSON
-								if(urlFormat === 'path') {
+								if (urlFormat === 'path') {
 									s3ProviderClientConfigParsed.forcePathStyle = true;
 								}
-								else if(urlFormat === 'vhost') {
+								else if (urlFormat === 'vhost') {
 									s3ProviderClientConfigParsed.forcePathStyle = false;
 								}
 
@@ -2367,6 +2369,49 @@
 					}
 				});
 			}
+		});
+
+		$(document).on('change', '#database_file_input', function (event) {
+			const file = this.files[0];
+
+			const formData = new FormData();
+
+			formData.append('database_file', file);
+
+			this.value = null;
+
+			Swal.fire({
+				title: 'Import Database',
+				text: 'This operation will erase all contents of the database. Continue?',
+				showCloseButton: true,
+				showConfirmButton: true,
+				showCancelButton: true,
+				confirmButtonText: 'confirm',
+			}).then((result) => {
+				if (result.isConfirmed) {
+					Swal.fire({
+						title: 'please wait',
+						html: '...importing database...',
+						allowOutsideClick: false,
+						didOpen: () => {
+							Swal.showLoading();
+
+							$.ajax({ type: 'POST', url: '/settings/node/import/database', data: formData, processData: false, contentType: false })
+								.done(function (data, textStatus, xhr) {
+									if (data.isError) {
+										showAlert(true, data.message);
+									}
+									else {
+										showAlert(false);
+									}
+								})
+								.fail(function () {
+									showAlert(true, 'failed to import database');
+								});
+						}
+					});
+				}
+			});
 		});
 
 		function showAlert(isError, text) {

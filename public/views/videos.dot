@@ -1004,7 +1004,7 @@
 						const tags = result.value.tags.join(',');
 						const videoFile = result.value.videoFile;
 
-						let formData = new FormData();
+						const formData = new FormData();
 
 						formData.append('video_file', videoFile);
 
@@ -1991,7 +1991,7 @@
 						if (file.size > 0 && (file.type.match("image/jpeg") || file.type.match("image/png"))) {
 							$('#videos_table_row_' + videoId).find('td').eq(0).find('img').eq(0).replaceWith('<div class="spinner spinner-border text-primary avatar-sm me-3" role="status"><span class="sr-only">Loading...</span></div>');
 
-							let formData = new FormData();
+							const formData = new FormData();
 
 							formData.append('thumbnail_file', file);
 
@@ -2022,7 +2022,7 @@
 						let file = this.files[0];
 
 						if (file.size > 0 && (file.type.match("image/jpeg") || file.type.match("image/png"))) {
-							let formData = new FormData();
+							const formData = new FormData();
 
 							formData.append('preview_file', file);
 
@@ -2049,7 +2049,7 @@
 						let file = this.files[0];
 
 						if (file.size > 0 && (file.type.match("image/jpeg") || file.type.match("image/png"))) {
-							let formData = new FormData();
+							const formData = new FormData();
 
 							formData.append('poster_file', file);
 
