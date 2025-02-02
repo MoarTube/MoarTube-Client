@@ -9,10 +9,10 @@ const {
 } = require('../helpers');
 const {
     node_setVideoLengths, node_setThumbnail, node_setPreview, node_setPoster, node_uploadStream, node_getVideoBandwidth, node_removeAdaptiveStreamSegment,
-    node_stopVideoStreaming
+    node_stopVideoStreaming, node_getVideoData
 } = require('../node-communications');
 const {
-    s3_putObjectFromData, s3_deleteObjectWithKey, s3_deleteObjectsWithPrefix
+    s3_putObjectFromData, s3_deleteObjectWithKey, s3_deleteObjectsWithPrefix, s3_convertM3u8DynamicManifestsToStatic
 } = require('../s3-communications');
 const {
     addProcessToLiveStreamTracker, isLiveStreamStopping, liveStreamExists
@@ -233,29 +233,54 @@ async function performStreamingJob(jwtToken, videoId, rtmpUrl, format, resolutio
         logDebugMessageToConsole('performStreamingJob ffmpeg process spawned with arguments: ' + ffmpegArguments, null, null);
     });
 
-    process.on('exit', function (code) {
+    process.on('exit', async function (code) {
         logDebugMessageToConsole('performStreamingJob live stream process exited with exit code: ' + code, null, null);
 
         if (liveStreamExists(videoId)) {
             logDebugMessageToConsole('performStreamingJob checking if live stream process was interrupted by MoarTube Client...', null, null);
 
             if (!isLiveStreamStopping(videoId)) {
+                /*
+                The stream was stopped from outside of the MoarTube Client.
+                Likely stopped the stream via OBS.
+                A stopped stream should always have a finalization attempt, no matter the cause.
+                */
+
                 logDebugMessageToConsole('performStreamingJob determined live stream process was not interrupted by MoarTube Client', null, null);
 
-                websocketClientBroadcast({ eventName: 'echo', jwtToken: jwtToken, data: { eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId } } });
+                try {
+                    websocketClientBroadcast({ eventName: 'echo', jwtToken: jwtToken, data: { eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId } } });
 
-                node_stopVideoStreaming(jwtToken, videoId)
-                    .then((nodeResponseData) => {
-                        if (nodeResponseData.isError) {
-                            logDebugMessageToConsole(nodeResponseData.message, null, new Error().stack);
+                    const nodeSettings = await getNodeSettings(jwtToken);
+                    const storageConfig = nodeSettings.storageConfig;
+
+                    if (storageConfig.storageMode === 's3provider') {
+                        const s3Config = storageConfig.s3Config;
+
+                        const videoData = (await node_getVideoData(videoId)).videoData;
+                        const isStreamRecordedRemotely = videoData.isStreamRecordedRemotely;
+
+                        if (isStreamRecordedRemotely) {
+                            const resolutions = videoData.outputs.m3u8;
+
+                            await s3_convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions);
                         }
                         else {
-                            websocketClientBroadcast({ eventName: 'echo', jwtToken: jwtToken, data: { eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId } } });
+                            const prefix = 'external/videos/' + videoId + '/adaptive/m3u8';
+
+                            await s3_deleteObjectsWithPrefix(s3Config, prefix);
                         }
-                    })
-                    .catch(error => {
-                        logDebugMessageToConsole(null, error, new Error().stack);
-                    });
+                    }
+
+                    const response = await node_stopVideoStreaming(jwtToken, videoId);
+
+                    if (!response.isError) {
+                        websocketClientBroadcast({ eventName: 'echo', jwtToken: jwtToken, data: { eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId } } });
+                    }
+                }
+                catch(error) {
+                    logDebugMessageToConsole(null, error, new Error().stack);
+                }
             }
             else {
                 logDebugMessageToConsole('performStreamingJob determined live stream process was interrupted by MoarTube Client', null, null);
