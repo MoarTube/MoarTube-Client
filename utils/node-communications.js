@@ -23,7 +23,7 @@ async function node_isAuthenticated(jwtToken) {
     else {
         const response = await axios.get(getMoarTubeNodeUrl() + '/account/authenticated', {
             headers: {
-                Authorization: jwtToken
+                Authorization: 'Bearer ' + jwtToken
             }
         });
 
@@ -55,7 +55,7 @@ async function node_doSignin(username, password, moarTubeNodeHttpProtocol, moarT
 async function node_getSettings(jwtToken) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/settings', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -77,7 +77,7 @@ async function node_setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeA
         publicNodePort: publicNodePort
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -89,7 +89,7 @@ async function node_stopVideoImporting(jwtToken, videoId) {
         videoId: videoId
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -106,7 +106,7 @@ async function node_doVideosSearch(jwtToken, searchTerm, sortTerm, tagTerm, tagL
             timestamp: timestamp
         },
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -173,7 +173,7 @@ async function node_unpublishVideo(jwtToken, videoId, format, resolution) {
         resolution: resolution
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -185,7 +185,7 @@ async function node_stopVideoPublishing(jwtToken, videoId) {
         videoId: videoId
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -197,7 +197,7 @@ async function node_stopVideoStreaming(jwtToken, videoId) {
         videoId: videoId
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -211,7 +211,7 @@ async function node_importVideo(jwtToken, title, description, tags) {
         tags: tags
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -223,7 +223,7 @@ async function node_setVideoError(jwtToken, videoId) {
         videoId: videoId
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -235,7 +235,7 @@ async function node_setSourceFileExtension(jwtToken, videoId, sourceFileExtensio
         sourceFileExtension: sourceFileExtension
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -248,7 +248,7 @@ async function node_setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTime
         lengthTimestamp: lengthTimestamp
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -260,7 +260,7 @@ async function node_setVideoImported(jwtToken, videoId) {
         videoId: videoId
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -272,7 +272,7 @@ async function node_setVideoPublishing(jwtToken, videoId) {
         videoId: videoId
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -284,7 +284,7 @@ async function node_setVideoPublished(jwtToken, videoId) {
         videoId: videoId
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -294,7 +294,7 @@ async function node_setVideoPublished(jwtToken, videoId) {
 async function node_setVideoFormatResolutionPublished(jwtToken, videoId, format, resolution) {
     const response = await axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/' + format + '/' + resolution + '/published', {}, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -309,7 +309,7 @@ async function node_getVideoComments(jwtToken, videoId, timestamp, type, sort) {
             sort: sort
         },
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -325,7 +325,7 @@ async function node_searchComments(jwtToken, videoId, searchTerm, limit, timesta
             timestamp: timestamp
         },
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -335,7 +335,7 @@ async function node_searchComments(jwtToken, videoId, searchTerm, limit, timesta
 async function node_getVideosTags(jwtToken) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/videos/tags', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -345,7 +345,7 @@ async function node_getVideosTags(jwtToken) {
 async function node_getVideoReports(jwtToken) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/reports/videos', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -355,7 +355,7 @@ async function node_getVideoReports(jwtToken) {
 async function node_getVideoReportsArchive(jwtToken) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/reports/archive/videos', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -376,7 +376,7 @@ async function node_streamVideo(jwtToken, title, description, tags, rtmpPort, uu
         videoId: videoId
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -386,7 +386,7 @@ async function node_streamVideo(jwtToken, title, description, tags, rtmpPort, uu
 async function node_getSourceFileExtension(jwtToken, videoId) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/sourceFileExtension', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -396,7 +396,7 @@ async function node_getSourceFileExtension(jwtToken, videoId) {
 async function node_getVideosTagsAll(jwtToken) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/videos/tags/all', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -420,7 +420,7 @@ async function node_doVideosSearchAll(searchTerm, sortTerm, tagTerm, tagLimit, t
 async function node_getNewContentCounts(jwtToken) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/node/newContentCounts', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -432,7 +432,7 @@ async function node_setContentChecked(jwtToken, contentType) {
         contentType: contentType
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -444,7 +444,7 @@ async function node_archiveVideoReport(jwtToken, reportId) {
         reportId: reportId
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -454,7 +454,7 @@ async function node_archiveVideoReport(jwtToken, reportId) {
 async function node_removeVideoReport(jwtToken, reportId) {
     const response = await axios.delete(getMoarTubeNodeUrl() + '/reports/videos/' + reportId + '/delete', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -464,7 +464,7 @@ async function node_removeVideoReport(jwtToken, reportId) {
 async function node_removeVideoReportArchive(jwtToken, archiveId) {
     const response = await axios.delete(getMoarTubeNodeUrl() + '/reports/archive/videos/' + archiveId + '/delete', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -474,7 +474,7 @@ async function node_removeVideoReportArchive(jwtToken, archiveId) {
 async function node_getCommentReports(jwtToken) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/reports/comments', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -484,7 +484,7 @@ async function node_getCommentReports(jwtToken) {
 async function node_getCommentReportsArchive(jwtToken) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/reports/archive/comments', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -496,7 +496,7 @@ async function node_archiveCommentReport(jwtToken, reportId) {
         reportId: reportId
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -506,7 +506,7 @@ async function node_archiveCommentReport(jwtToken, reportId) {
 async function node_removeCommentReport(jwtToken, reportId) {
     const response = await axios.delete(getMoarTubeNodeUrl() + '/reports/comments/' + reportId + '/delete', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -516,7 +516,7 @@ async function node_removeCommentReport(jwtToken, reportId) {
 async function node_removeCommentReportArchive(jwtToken, archiveId) {
     const response = await axios.delete(getMoarTubeNodeUrl() + '/reports/archive/comments/' + archiveId + '/delete', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -529,7 +529,7 @@ async function node_removeComment(jwtToken, videoId, commentId, timestamp) {
             timestamp: timestamp
         },
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -539,7 +539,7 @@ async function node_removeComment(jwtToken, videoId, commentId, timestamp) {
 async function node_getVideoPublishes(jwtToken, videoId) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/publishes', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -553,7 +553,7 @@ async function node_setVideoData(jwtToken, videoId, title, description, tags) {
         tags: tags
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -565,7 +565,7 @@ async function node_deleteVideos(jwtToken, videoIds) {
         videoIds: videoIds
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -577,7 +577,7 @@ async function node_finalizeVideos(jwtToken, videoIds) {
         videoIds: videoIds
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -591,7 +591,7 @@ async function node_addVideoToIndex(jwtToken, videoId, containsAdultContent, ter
         cloudflareTurnstileToken: cloudflareTurnstileToken
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -603,7 +603,7 @@ async function node_removeVideoFromIndex(jwtToken, videoId, cloudflareTurnstileT
         cloudflareTurnstileToken: cloudflareTurnstileToken
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -613,7 +613,7 @@ async function node_removeVideoFromIndex(jwtToken, videoId, cloudflareTurnstileT
 async function node_getVideoAlias(jwtToken, videoId) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/alias', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -638,7 +638,7 @@ async function node_setAvatar(jwtToken, iconBuffer, avatarBuffer) {
 async function node_getBanner(jwtToken) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/settings/banner', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         },
         responseType: 'stream'
     });
@@ -665,7 +665,7 @@ async function node_setNodeName(jwtToken, nodeName) {
         nodeName: nodeName
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -677,7 +677,7 @@ async function node_setNodeAbout(jwtToken, nodeAbout) {
         nodeAbout: nodeAbout
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -689,7 +689,7 @@ async function node_setNodeId(jwtToken, nodeId) {
         nodeId: nodeId
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -728,7 +728,7 @@ async function node_setNetworkInternal(jwtToken, listeningNodePort) {
         listeningNodePort: listeningNodePort
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -742,7 +742,7 @@ async function node_setCloudflareConfiguration(jwtToken, cloudflareEmailAddress,
         cloudflareGlobalApiKey: cloudflareGlobalApiKey
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -755,7 +755,7 @@ async function node_setCloudflareTurnstileConfiguration(jwtToken, cloudflareTurn
         cloudflareTurnstileSecretKey: cloudflareTurnstileSecretKey
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -765,7 +765,7 @@ async function node_setCloudflareTurnstileConfiguration(jwtToken, cloudflareTurn
 async function node_CloudflareTurnstileConfigurationClear(jwtToken) {
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare/turnstile/clear', {}, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -775,7 +775,7 @@ async function node_CloudflareTurnstileConfigurationClear(jwtToken) {
 async function node_clearCloudflareConfiguration(jwtToken) {
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/cloudflare/clear', {}, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -787,7 +787,7 @@ async function node_databaseConfigToggle(jwtToken, databaseConfig) {
         databaseConfig: databaseConfig
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -797,7 +797,7 @@ async function node_databaseConfigToggle(jwtToken, databaseConfig) {
 async function node_databaseConfigEmpty(jwtToken) {
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/databaseConfig/empty', {}, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -809,7 +809,7 @@ async function node_storageConfigToggle(jwtToken, storageConfig) {
         storageConfig: storageConfig
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -819,7 +819,7 @@ async function node_storageConfigToggle(jwtToken, storageConfig) {
 async function node_storageConfigEmpty(jwtToken) {
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/storageConfig/empty', {}, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -832,7 +832,7 @@ async function node_setAccountCredentials(jwtToken, username, password) {
         password: password
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -858,7 +858,7 @@ async function node_uploadVideo(jwtToken, videoId, format, resolution, directory
             resolution: resolution
         },
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -871,7 +871,7 @@ async function node_setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled
         chatHistoryLimit: chatHistoryLimit
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -881,7 +881,7 @@ async function node_setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled
 async function node_getVideoBandwidth(jwtToken, videoId) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/streams/' + videoId + '/bandwidth', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -891,7 +891,7 @@ async function node_getVideoBandwidth(jwtToken, videoId) {
 async function node_getStreamMeta(jwtToken, videoId) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/streams/' + videoId + '/meta/', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -925,7 +925,7 @@ async function node_uploadStream(jwtToken, videoId, format, resolution, manifest
             resolution: resolution
         },
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         },
         timeout: 15000,
         httpAgent: httpAgent,
@@ -940,7 +940,7 @@ async function node_removeAdaptiveStreamSegment(jwtToken, videoId, format, resol
         segmentName: segmentName
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -960,7 +960,7 @@ async function node_MonetizationAdd(jwtToken, walletAddress, chain, currency) {
         currency: currency
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -972,7 +972,7 @@ async function node_MonetizationDelete(jwtToken, cryptoWalletAddressId) {
         cryptoWalletAddressId: cryptoWalletAddressId
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -991,7 +991,7 @@ async function node_LinksAdd(jwtToken, url, svgGraphic) {
         svgGraphic: svgGraphic
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -1003,7 +1003,7 @@ async function node_LinksDelete(jwtToken, linkId) {
         linkId: linkId
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -1015,7 +1015,7 @@ async function node_commentsToggle(jwtToken, isCommentsEnabled) {
         isCommentsEnabled: isCommentsEnabled,
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -1027,7 +1027,7 @@ async function node_likesToggle(jwtToken, isLikesEnabled) {
         isLikesEnabled: isLikesEnabled,
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -1039,7 +1039,7 @@ async function node_dislikesToggle(jwtToken, isDislikesEnabled) {
         isDislikesEnabled: isDislikesEnabled,
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -1051,7 +1051,7 @@ async function node_reportsToggle(jwtToken, isReportsEnabled) {
         isReportsEnabled: isReportsEnabled,
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -1063,7 +1063,7 @@ async function node_liveChatToggle(jwtToken, isLiveChatEnabled) {
         isLiveChatEnabled: isLiveChatEnabled,
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -1073,7 +1073,7 @@ async function node_liveChatToggle(jwtToken, isLiveChatEnabled) {
 async function node_getExternalVideosBaseUrl(jwtToken) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/external/videos/baseUrl', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -1091,7 +1091,7 @@ async function node_uploadM3u8MasterManifest(jwtToken, videoId, type, masterMani
         masterManifest: masterManifest,
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -1101,7 +1101,7 @@ async function node_uploadM3u8MasterManifest(jwtToken, videoId, type, masterMani
 async function node_setIsIndexOutdated(jwtToken, videoId) {
     const response = await axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/index/outdated', {}, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -1111,7 +1111,7 @@ async function node_setIsIndexOutdated(jwtToken, videoId) {
 async function node_getVideoPermissions(jwtToken, videoId) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/permissions', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -1124,7 +1124,7 @@ async function node_postVideoPermissions(jwtToken, videoId, type, isEnabled) {
         isEnabled: isEnabled
     }, {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 
@@ -1148,7 +1148,7 @@ async function node_settingsImportDatabase(jwtToken, databaseFileBuffer) {
 async function node_settingsExportDatabase(jwtToken) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/settings/export/database', {
         headers: {
-            Authorization: jwtToken
+            Authorization: 'Bearer ' + jwtToken
         }
     });
 

@@ -577,10 +577,10 @@
 							reject();
 						}
 						else {
-							const searchResults = data.searchResults;
+							const videos = data.videos;
 
-							if (searchResults.length > 0) {
-								searchResults.forEach(function (row) {
+							if (videos.length > 0) {
+								videos.forEach(function (row) {
 									const videoId = row.video_id;
 									const thumbnail = EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/thumbnail.jpg';
 									const title = row.title;
