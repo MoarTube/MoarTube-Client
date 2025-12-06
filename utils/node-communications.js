@@ -888,16 +888,6 @@ async function node_getVideoBandwidth(jwtToken, videoId) {
     return response.data;
 }
 
-async function node_getStreamMeta(jwtToken, videoId) {
-    const response = await axios.get(getMoarTubeNodeUrl() + '/streams/' + videoId + '/meta/', {
-        headers: {
-            Authorization: 'Bearer ' + jwtToken
-        }
-    });
-
-    return response.data;
-}
-
 async function node_getVideoSources(videoId) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/watch');
 
@@ -1227,7 +1217,6 @@ module.exports = {
     node_getNewContentCounts,
     node_setContentChecked,
     node_getVideoSources,
-    node_getStreamMeta,
     node_MonetizationAll,
     node_MonetizationAdd,
     node_MonetizationDelete,
