@@ -1010,9 +1010,9 @@ async function node_LinksDelete(jwtToken, linkId) {
     return response.data;
 }
 
-async function node_commentsToggle(jwtToken, isCommentsEnabled) {
+async function node_commentsToggle(jwtToken, isEnabled) {
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/comments/toggle', {
-        isCommentsEnabled: isCommentsEnabled,
+        isEnabled: isEnabled,
     }, {
         headers: {
             Authorization: 'Bearer ' + jwtToken
@@ -1022,9 +1022,9 @@ async function node_commentsToggle(jwtToken, isCommentsEnabled) {
     return response.data;
 }
 
-async function node_likesToggle(jwtToken, isLikesEnabled) {
+async function node_likesToggle(jwtToken, isEnabled) {
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/likes/toggle', {
-        isLikesEnabled: isLikesEnabled,
+        isEnabled: isEnabled,
     }, {
         headers: {
             Authorization: 'Bearer ' + jwtToken
@@ -1034,9 +1034,9 @@ async function node_likesToggle(jwtToken, isLikesEnabled) {
     return response.data;
 }
 
-async function node_dislikesToggle(jwtToken, isDislikesEnabled) {
+async function node_dislikesToggle(jwtToken, isEnabled) {
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/dislikes/toggle', {
-        isDislikesEnabled: isDislikesEnabled,
+        isEnabled: isEnabled,
     }, {
         headers: {
             Authorization: 'Bearer ' + jwtToken
@@ -1046,9 +1046,9 @@ async function node_dislikesToggle(jwtToken, isDislikesEnabled) {
     return response.data;
 }
 
-async function node_reportsToggle(jwtToken, isReportsEnabled) {
+async function node_reportsToggle(jwtToken, isEnabled) {
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/reports/toggle', {
-        isReportsEnabled: isReportsEnabled,
+        isEnabled: isEnabled,
     }, {
         headers: {
             Authorization: 'Bearer ' + jwtToken
@@ -1058,9 +1058,9 @@ async function node_reportsToggle(jwtToken, isReportsEnabled) {
     return response.data;
 }
 
-async function node_liveChatToggle(jwtToken, isLiveChatEnabled) {
+async function node_liveChatToggle(jwtToken, isEnabled) {
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/liveChat/toggle', {
-        isLiveChatEnabled: isLiveChatEnabled,
+        isEnabled: isEnabled,
     }, {
         headers: {
             Authorization: 'Bearer ' + jwtToken
@@ -1133,7 +1133,7 @@ async function node_postVideoPermissions(jwtToken, videoId, type, isEnabled) {
 
 async function node_settingsImportDatabase(jwtToken, databaseFileBuffer) {
     const formData = new FormData();
-    formData.append('database_file', databaseFileBuffer, 'database.json');
+    formData.append('databaseFile', databaseFileBuffer, 'database.json');
 
     const headers = formData.getHeaders();
     headers.Authorization = jwtToken;
