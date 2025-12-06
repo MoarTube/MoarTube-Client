@@ -52,10 +52,11 @@ router.get('/search', async (req, res) => {
 
         const videoId = req.query.videoId;
         const searchTerm = req.query.searchTerm;
+        const sortDirection = 'descending';
         const limit = req.query.limit;
         const timestamp = req.query.timestamp;
 
-        const data = await search_GET(jwtToken, videoId, searchTerm, limit, timestamp);
+        const data = await search_GET(jwtToken, videoId, searchTerm, sortDirection, limit, timestamp);
 
         res.send(data);
     }

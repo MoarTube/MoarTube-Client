@@ -316,13 +316,14 @@ async function node_getVideoComments(jwtToken, videoId, timestamp, type, sort) {
     return response.data;
 }
 
-async function node_searchComments(jwtToken, videoId, searchTerm, limit, timestamp) {
+async function node_searchComments(jwtToken, videoId, searchTerm, sortDirection, limit, timestamp) {
     const response = await axios.get(getMoarTubeNodeUrl() + '/comments/search', {
         params: {
             videoId: videoId,
             searchTerm: searchTerm,
             limit: limit,
-            timestamp: timestamp
+            timestamp: timestamp,
+            sortDirection: sortDirection
         },
         headers: {
             Authorization: 'Bearer ' + jwtToken

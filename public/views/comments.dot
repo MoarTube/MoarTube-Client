@@ -320,10 +320,6 @@
 
 			VIDEO_ID = params.get('v');
 
-			if (VIDEO_ID == null) {
-				VIDEO_ID = '';
-			}
-
 			const nodeSettings = INCOMING_PARAMETERS.nodeSettings;
 			const newContentCounts = INCOMING_PARAMETERS.newContentCounts;
 
@@ -433,7 +429,20 @@
 
 		function getComments(searchTerm, limit, timestamp) {
 			return new Promise(function (resolve, reject) {
-				$.ajax({ type: 'GET', url: '/comments/search', data: { videoId: VIDEO_ID, searchTerm: searchTerm, limit: limit, timestamp: timestamp } })
+				let data = {
+					limit: limit,
+					timestamp: timestamp
+				};
+
+				if(VIDEO_ID != null) {
+					data.videoId = VIDEO_ID;
+				}
+
+				if(searchTerm.length > 0) {
+					data.searchTerm = searchTerm;
+				}
+
+				$.ajax({ type: 'GET', url: '/comments/search', data: data })
 					.done(function (data, textStatus, xhr) {
 						if (data.isError) {
 							// showAlert(true, data.message);
