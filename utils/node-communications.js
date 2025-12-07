@@ -292,7 +292,10 @@ async function node_setVideoPublished(jwtToken, videoId) {
 }
 
 async function node_setVideoFormatResolutionPublished(jwtToken, videoId, format, resolution) {
-    const response = await axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/' + format + '/' + resolution + '/published', {}, {
+    const response = await axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/published', {
+        format,
+        resolution
+    }, {
         headers: {
             Authorization: 'Bearer ' + jwtToken
         }
