@@ -130,7 +130,7 @@ async function node_setThumbnail(jwtToken, videoId, thumbnailBuffer) {
     formData.append('thumbnailFile', thumbnailBuffer, 'thumbnail.jpg');
 
     const headers = formData.getHeaders();
-    headers.Authorization = jwtToken;
+    headers.Authorization = 'Bearer ' + jwtToken;
 
     const response = await axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/images/thumbnail', formData, {
         headers: headers
@@ -144,7 +144,7 @@ async function node_setPreview(jwtToken, videoId, previewBuffer) {
     formData.append('previewFile', previewBuffer, 'preview.jpg');
 
     const headers = formData.getHeaders();
-    headers.Authorization = jwtToken;
+    headers.Authorization = 'Bearer ' + jwtToken;
 
     const response = await axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/images/preview', formData, {
         headers: headers
@@ -158,7 +158,7 @@ async function node_setPoster(jwtToken, videoId, posterBuffer) {
     formData.append('posterFile', posterBuffer, 'poster.jpg');
 
     const headers = formData.getHeaders();
-    headers.Authorization = jwtToken;
+    headers.Authorization = 'Bearer ' + jwtToken;
 
     const response = await axios.post(getMoarTubeNodeUrl() + '/videos/' + videoId + '/images/poster', formData, {
         headers: headers
@@ -627,7 +627,7 @@ async function node_setAvatar(jwtToken, iconBuffer, avatarBuffer) {
     formData.append('avatarFile', avatarBuffer, 'avatar.png');
 
     const headers = formData.getHeaders();
-    headers.Authorization = jwtToken;
+    headers.Authorization = 'Bearer ' + jwtToken;
 
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/avatar', formData, {
         headers: headers
@@ -652,7 +652,7 @@ async function node_setBanner(jwtToken, bannerBuffer) {
     formData.append('bannerFile', bannerBuffer, 'banner.png');
 
     const headers = formData.getHeaders();
-    headers.Authorization = jwtToken;
+    headers.Authorization = 'Bearer ' + jwtToken;
 
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/banner', formData, {
         headers: headers
@@ -715,7 +715,7 @@ async function node_setSecureConnection(jwtToken, isSecure, keyFile, certFile, c
     }
 
     const headers = formData.getHeaders();
-    headers.Authorization = jwtToken;
+    headers.Authorization = 'Bearer ' + jwtToken;
 
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/secure?isSecure=' + isSecure, formData, {
         headers: headers
@@ -1127,7 +1127,7 @@ async function node_settingsImportDatabase(jwtToken, databaseFileBuffer) {
     formData.append('databaseFile', databaseFileBuffer, 'database.json');
 
     const headers = formData.getHeaders();
-    headers.Authorization = jwtToken;
+    headers.Authorization = 'Bearer ' + jwtToken;
 
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/import/database', formData, {
         headers: headers

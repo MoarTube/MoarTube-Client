@@ -540,12 +540,24 @@
 
 		function getVideos(searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
 			return new Promise(function (resolve, reject) {
+				let data = {
+					sortTerm: sortTerm,
+					tagLimit: 10,
+					timestamp: timestamp
+				};
+
 				if (searchTerm == null) {
 					searchTerm = '';
+				}
+				else {
+					data.searchTerm = searchTerm;
 				}
 
 				if (tagTerm == null) {
 					tagTerm = '';
+				}
+				else {
+					data.tagTerm = tagTerm;
 				}
 
 				lastUsedTag = tagTerm;
@@ -571,7 +583,7 @@
 					window.history.replaceState({}, '', '/videos');
 				}
 
-				$.ajax({ type: 'GET', url: '/videos/search', data: { searchTerm: searchTerm, sortTerm: sortTerm, tagTerm: tagTerm, tagLimit: 10, timestamp: timestamp } })
+				$.ajax({ type: 'GET', url: '/videos/search', data: data })
 					.done(function (data, textStatus, xhr) {
 						if (data.isError) {
 							reject();
@@ -658,17 +670,6 @@
 
 				let blocked = false;
 
-				VIDEOS_LOADER_INTERVAL = setInterval(async function () {
-					const videosTableLoadingSpinnerRect = $(videosTableLoadingSpinner)[0].getBoundingClientRect();
-
-					if (videosTableLoadingSpinnerRect.top >= 0 && videosTableLoadingSpinnerRect.bottom <= (window.innerHeight || document.documentElement.clientHeight)) {
-						if (!blocked) {
-							blocked = true;
-							await getVideos(searchTerm, sortTerm, tagTerm, tagLimit, OLDEST_VISIBLE_TIMESTAMP);
-							blocked = false;
-						}
-					}
-				}, 500);
 			}
 			catch (error) {
 				console.log(error);
