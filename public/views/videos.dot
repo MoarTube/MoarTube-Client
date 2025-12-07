@@ -546,17 +546,11 @@
 					timestamp: timestamp
 				};
 
-				if (searchTerm == null) {
-					searchTerm = '';
-				}
-				else {
+				if (searchTerm != null && searchTerm !== '') {
 					data.searchTerm = searchTerm;
 				}
 
-				if (tagTerm == null) {
-					tagTerm = '';
-				}
-				else {
+				if (tagTerm != null && tagTerm !== '') {
 					data.tagTerm = tagTerm;
 				}
 
@@ -564,11 +558,11 @@
 
 				let stateString = '?';
 
-				if (searchTerm !== '') {
+				if (searchTerm != null && searchTerm !== '') {
 					stateString += 's=' + searchTerm;
 				}
 
-				if (tagTerm !== '') {
+				if (tagTerm != null && tagTerm !== '') {
 					if (stateString !== '?') {
 						stateString += '&';
 					}
@@ -670,6 +664,17 @@
 
 				let blocked = false;
 
+				VIDEOS_LOADER_INTERVAL = setInterval(async function () {
+					const videosTableLoadingSpinnerRect = $(videosTableLoadingSpinner)[0].getBoundingClientRect();
+
+					if (videosTableLoadingSpinnerRect.top >= 0 && videosTableLoadingSpinnerRect.bottom <= (window.innerHeight || document.documentElement.clientHeight)) {
+						if (!blocked) {
+							blocked = true;
+							await getVideos(searchTerm, sortTerm, tagTerm, tagLimit, OLDEST_VISIBLE_TIMESTAMP);
+							blocked = false;
+						}
+					}
+				}, 500);
 			}
 			catch (error) {
 				console.log(error);
