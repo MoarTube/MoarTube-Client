@@ -478,7 +478,7 @@
 
 			for (const comment of comments) {
 				const videoId = comment.video_id;
-				const commentId = comment.id;
+				const commentId = comment.comment_id;
 				const message = comment.comment_plain_text_sanitized;
 				const timestamp = comment.timestamp;
 
