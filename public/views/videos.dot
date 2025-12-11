@@ -1461,9 +1461,7 @@
 											for (adaptiveSource of adaptiveSources) {
 												const src = adaptiveSource.src;
 
-												const value = NODE_BASE_URL + src;
-
-												const html = '<option value="' + value + '">' + value + '</option>';
+												const html = '<option value="' + src + '">' + src + '</option>';
 
 												$('#direct-source-links-select').append(html);
 											}
@@ -1471,9 +1469,7 @@
 											for (progressiveSource of progressiveSources) {
 												const src = progressiveSource.src;
 
-												const value = NODE_BASE_URL + src;
-
-												const html = '<option value="' + value + '">' + value + '</option>';
+												const html = '<option value="' + src + '">' + src + '</option>';
 
 												$('#direct-source-links-select').append(html);
 											}
