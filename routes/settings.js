@@ -480,9 +480,9 @@ router.post('/node/storageConfig/empty', async (req, res) => {
 router.post('/node/comments/toggle', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        const isCommentsEnabled = req.body.isCommentsEnabled;
+        const isEnabled = req.body.isEnabled;
 
-        const data = await nodeCommentsToggle_POST(jwtToken, isCommentsEnabled);
+        const data = await nodeCommentsToggle_POST(jwtToken, isEnabled);
 
         res.send(data);
     }
@@ -496,9 +496,9 @@ router.post('/node/comments/toggle', async (req, res) => {
 router.post('/node/likes/toggle', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        const isLikesEnabled = req.body.isLikesEnabled;
+        const isEnabled = req.body.isEnabled;
 
-        const data = await nodeLikesToggle_POST(jwtToken, isLikesEnabled);
+        const data = await nodeLikesToggle_POST(jwtToken, isEnabled);
 
         res.send(data);
     }
@@ -512,9 +512,9 @@ router.post('/node/likes/toggle', async (req, res) => {
 router.post('/node/dislikes/toggle', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        const isDislikesEnabled = req.body.isDislikesEnabled;
+        const isEnabled = req.body.isEnabled;
 
-        const data = await nodeDislikesToggle_POST(jwtToken, isDislikesEnabled);
+        const data = await nodeDislikesToggle_POST(jwtToken, isEnabled);
 
         res.send(data);
     }
@@ -528,9 +528,9 @@ router.post('/node/dislikes/toggle', async (req, res) => {
 router.post('/node/reports/toggle', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        const isReportsEnabled = req.body.isReportsEnabled;
+        const isEnabled = req.body.isEnabled;
 
-        const data = await nodeReportsToggle_POST(jwtToken, isReportsEnabled);
+        const data = await nodeReportsToggle_POST(jwtToken, isEnabled);
 
         res.send(data);
     }
@@ -544,9 +544,9 @@ router.post('/node/reports/toggle', async (req, res) => {
 router.post('/node/liveChat/toggle', async (req, res) => {
     try {
         const jwtToken = req.session.jwtToken;
-        const isLiveChatEnabled = req.body.isLiveChatEnabled;
+        const isEnabled = req.body.isEnabled;
 
-        const data = await nodeLiveChatToggle_POST(jwtToken, isLiveChatEnabled);
+        const data = await nodeLiveChatToggle_POST(jwtToken, isEnabled);
 
         res.send(data);
     }

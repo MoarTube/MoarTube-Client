@@ -1179,10 +1179,6 @@
 					const isRecordingStreamLocally = Swal.getPopup().querySelector('#recordStreamLocallyCheckbox').checked;
 					const networkAddress = Swal.getPopup().querySelector('#liveNetworkAddressSelect').value;
 
-					if (videoId == null) {
-						videoId = '';
-					}
-
 					let resolution = '';
 
 					const radioButtons = Swal.getPopup().querySelectorAll('input[name="streamResolutionRadioButton"]');
