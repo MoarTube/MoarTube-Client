@@ -1928,6 +1928,8 @@
 				Swal.fire({
 					title: 'please wait',
 					html: '...applying your settings...',
+					timer: 10000,
+					timerProgressBar: true,
 					showConfirmButton: false,
 					allowOutsideClick: false,
 					willOpen: () => {
@@ -1953,8 +1955,6 @@
 									$('#database-dialect-postgres-radio').removeData('selected');
 
 									$(radio).data('selected', 'selected');
-
-									showAlert(false);
 								}
 							})
 							.fail(function () {
@@ -2099,6 +2099,8 @@
 				Swal.fire({
 					title: 'please wait',
 					html: '...applying your settings...',
+					timer: 10000,
+					timerProgressBar: true,
 					showConfirmButton: false,
 					allowOutsideClick: false,
 					willOpen: () => {
@@ -2124,8 +2126,6 @@
 									$('#storage-configuration-s3provider-radio').removeData('selected');
 
 									$(radio).data('selected', 'selected');
-
-									showAlert(false);
 								}
 							})
 							.fail(function () {

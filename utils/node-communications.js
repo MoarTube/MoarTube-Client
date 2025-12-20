@@ -119,8 +119,12 @@ async function node_getVideoData(videoId) {
     return response.data;
 }
 
-async function node_getVideoDataAll(videoId) {
-    const response = await axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/data/all');
+async function node_getVideoDataAll(jwtToken) {
+    const response = await axios.get(getMoarTubeNodeUrl() + '/videos/data/all', {
+        headers: {
+            Authorization: 'Bearer ' + jwtToken
+        }
+    });
 
     return response.data;
 }
@@ -727,9 +731,9 @@ async function node_setSecureConnection(jwtToken, isSecure, keyFile, certFile, c
     return response.data;
 }
 
-async function node_setNetworkInternal(jwtToken, listeningNodePort) {
+async function node_setNetworkInternal(jwtToken, nodeListeningPort) {
     const response = await axios.post(getMoarTubeNodeUrl() + '/settings/network/internal', {
-        listeningNodePort: listeningNodePort
+        nodeListeningPort: nodeListeningPort
     }, {
         headers: {
             Authorization: 'Bearer ' + jwtToken

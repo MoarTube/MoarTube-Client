@@ -346,19 +346,17 @@ async function nodeStorageConfigToggle_POST(jwtToken, storageConfig) {
         await s3_validateS3Config(JSON.parse(JSON.stringify(storageConfig.s3Config)));
     }
 
+    const videosData = (await node_getVideoDataAll(jwtToken)).videosData;
+    const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
+
     const response = await node_storageConfigToggle(jwtToken, storageConfig);
 
     if (!response.isError) {
         clearExternalVideosBaseUrlClientCache();
         clearNodeSettingsClientCache();
 
-        const nodeSettings = await getNodeSettings(jwtToken);
-
-        if (nodeSettings.storageConfig.storageMode === 's3provider') {
-            const videosData = (await node_getVideoDataAll(jwtToken)).videosData;
-            const externalVideosBaseUrl = await getExternalVideosBaseUrl(jwtToken);
-
-            await s3_updateM3u8ManifestsWithExternalVideosBaseUrl(nodeSettings.storageConfig.s3Config, videosData, externalVideosBaseUrl);
+        if (storageConfig.storageMode === 's3provider') {
+            await s3_updateM3u8ManifestsWithExternalVideosBaseUrl(storageConfig.s3Config, videosData, externalVideosBaseUrl);
         }
     }
 
