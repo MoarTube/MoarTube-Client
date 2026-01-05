@@ -1928,10 +1928,10 @@
 									showAlert(true, data.message);
 								}
 								else {
-									const videoData = data.videoData;
+									const video = data.video;
 
-									const title = videoData.title;
-									const tags = videoData.tags;
+									const title = video.title;
+									const tags = video.tags;
 
 									$('#videos_table_row_' + videoId).find('.table-row-title-link').text(title);
 									$('#videos_table_row_' + videoId).find('.table-row-tags').text(tags);
