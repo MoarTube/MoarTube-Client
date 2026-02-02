@@ -1,4 +1,5 @@
-import fastify, { FastifyInstance } from 'fastify';
+import type { FastifyInstance } from 'fastify';
+import fastify from 'fastify';
 import path from 'node:path';
 
 // Plugins
@@ -34,9 +35,10 @@ export async function createFastifyApp(container: AwilixContainer<ContainerCradl
   app.setSerializerCompiler(serializerCompiler);
 
   // Attach container to every request
-  app.decorateRequest('container', null as any);
-  app.addHook('onRequest', async (req) => {
-    req.container = container; 
+  app.decorateRequest('container', null);
+  app.addHook('onRequest', (req) => {
+    req.container = container;
+    return Promise.resolve();
   });
 
   // Register Plugins
@@ -123,10 +125,4 @@ export async function createFastifyApp(container: AwilixContainer<ContainerCradl
   return app;
 }
 
-// Augment Fastify Request to include container
-declare module 'fastify' {
-  interface FastifyRequest {
-    container: AwilixContainer<ContainerCradle>;
-    session: any; // Placeholder until session plugin installed
-  }
-}
+

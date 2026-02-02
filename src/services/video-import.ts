@@ -25,7 +25,7 @@ export class VideoImportService extends BaseService {
 
   private getFfmpegPath(): string {
       const settings = this.settingsRepository.getClientSettings();
-      if (settings.ffmpegPath) return settings.ffmpegPath;
+      if (settings.ffmpegPath) {return settings.ffmpegPath;}
       return (ffmpegStatic as unknown as string) || 'ffmpeg';
   }
 

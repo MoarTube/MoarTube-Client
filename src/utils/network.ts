@@ -27,10 +27,10 @@ export function getNetworkAddresses(): string[] {
     return ipv4Addresses.concat(ipv6Addresses);
 }
 
-// eslint-disable-next-line @typescript-eslint/require-await
+ 
 export async function checkNetworkPortStatus(port: number, host: string): Promise<string> {
     // Portscanner types might be missing, so we trust it returns string
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+     
     return await portscanner.checkPortStatus(port, host);
 }
 

@@ -67,7 +67,7 @@ export class LifecycleManager {
                try {
                 const stat = await fs.stat(videoPath);
                
-                if (!stat.isDirectory()) continue;
+                if (!stat.isDirectory()) {continue;}
  
                 const subDirs = await fs.readdir(videoPath);
                 for (const subDir of subDirs) {

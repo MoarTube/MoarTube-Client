@@ -49,7 +49,7 @@ export type Container = AwilixContainer<ContainerCradle>;
 /**
  * Create and configure DI container
  */
-export async function createAppContainer(): Promise<Container> {
+export function createAppContainer(): Promise<Container> {
   const container = createContainer<ContainerCradle>({
     injectionMode: InjectionMode.CLASSIC, 
   });
@@ -80,7 +80,7 @@ export async function createAppContainer(): Promise<Container> {
       manifestService: asClass(ManifestService).singleton(),
   });
 
-  return container;
+  return Promise.resolve(container);
 }
 
 

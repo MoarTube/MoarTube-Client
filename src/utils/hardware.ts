@@ -1,11 +1,11 @@
 import os from 'os';
 import systeminformation from 'systeminformation';
 
-export async function detectOperatingSystem() {
-    return os.platform();
+export function detectOperatingSystem(): Promise<NodeJS.Platform> {
+    return Promise.resolve(os.platform());
 }
 
-export async function detectSystemCpu() {
+export async function detectSystemCpu(): Promise<{ processingAgentName: string; processingAgentModel: string }> {
     const cpu = await systeminformation.cpu();
     return {
         processingAgentName: 'CPU', // Generic fallback or specific brand
@@ -13,7 +13,7 @@ export async function detectSystemCpu() {
     };
 }
 
-export async function detectSystemGpu() {
+export async function detectSystemGpu(): Promise<{ processingAgentName: string; processingAgentModel: string }> {
     const graphics = await systeminformation.graphics();
     let processingAgentName = '';
     let processingAgentModel = '';

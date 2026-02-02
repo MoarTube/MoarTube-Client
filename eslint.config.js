@@ -1,5 +1,6 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import globals from 'globals';
 import unusedImports from 'eslint-plugin-unused-imports';
 
 export default tseslint.config(
@@ -13,6 +14,7 @@ export default tseslint.config(
       '_src/',
       '**/*.js',
       '*.config.ts',
+      'drizzle.config.ts',
     ],
   },
 
@@ -47,22 +49,41 @@ export default tseslint.config(
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
+      globals: {
+        ...globals.node,
+        ...globals.es2022,
+      },
       parserOptions: {
-        project: ['./tsconfig.json'],
+        project: ['./tsconfig.json', './tsconfig.build.json'],
         tsconfigRootDir: import.meta.dirname,
       },
     },
     rules: {
-      '@typescript-eslint/require-await': 'off', // Fastify often uses async without await
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': [
-        'warn',
-        { 
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_'
-        }
-      ],
+      // TypeScript-specific rules
+      '@typescript-eslint/explicit-function-return-type': 'warn',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/prefer-nullish-coalescing': 'error',
+      '@typescript-eslint/prefer-optional-chain': 'error',
+      '@typescript-eslint/strict-boolean-expressions': 'warn',
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
+      '@typescript-eslint/no-misused-promises': ['error', {
+        // Allow async functions where void return is expected (common in Fastify handlers)
+        checksVoidReturn: {
+          attributes: false,
+          properties: false,
+        },
+      }],
+      '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
+      '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
+
+      // General rules
       'no-console': 'warn',
+      'prefer-const': 'error',
+      'no-var': 'error',
+      'eqeqeq': ['error', 'always'],
+      'curly': ['error', 'all'],
     },
-  }
+  },
 );

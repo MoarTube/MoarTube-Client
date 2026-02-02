@@ -1,4 +1,4 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import { BaseController } from './base.js';
 import type { NodeApiService } from '@/services/node-api.js';
 import type { Logger } from '@/utils/logger.js';
@@ -13,12 +13,12 @@ export class LinksController extends BaseController {
   }
 
   // View: GET /links
-  public getLinksPage = async (request: FastifyRequest, reply: FastifyReply) => {
+  public getLinksPage = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
     const session = request.session as any;
     const jwtToken = session.jwtToken;
 
     if (!jwtToken) {
-      return reply.redirect('/account/signin');
+      return await reply.redirect('/account/signin');
     }
 
     const authCheck = await this.nodeApiService.isAuthenticated(jwtToken);
@@ -27,11 +27,11 @@ export class LinksController extends BaseController {
         // Log error?
         // Legacy: node_doSignout(req, res);
         session.jwtToken = undefined;
-        return reply.redirect('/account/signin');
+        return await reply.redirect('/account/signin');
     }
 
     if (!authCheck.isAuthenticated) {
-        return reply.redirect('/account/signin');
+        return await reply.redirect('/account/signin');
     }
 
     try {
@@ -52,12 +52,12 @@ export class LinksController extends BaseController {
         this.logger.error('Error rendering links page', error);
         // Legacy: node_doSignout(req, res);
         session.jwtToken = undefined;
-        return reply.redirect('/account/signin');
+        return await reply.redirect('/account/signin');
     }
   }
 
   // API: GET /links/all
-  public apiGetAllLinks = async (_request: FastifyRequest, reply: FastifyReply) => {
+  public apiGetAllLinks = async (_request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
       try {
           const data = await this.nodeApiService.getLinks();
           return await reply.send(data);
@@ -68,7 +68,7 @@ export class LinksController extends BaseController {
   }
 
   // API: POST /links/add
-  public apiAddLink = async (request: FastifyRequest, reply: FastifyReply) => {
+  public apiAddLink = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
       try {
           const session = request.session as any;
           const { url, svgGraphic } = request.body as { url: string, svgGraphic: string };
@@ -82,7 +82,7 @@ export class LinksController extends BaseController {
   }
 
   // API: POST /links/delete
-  public apiDeleteLink = async (request: FastifyRequest, reply: FastifyReply) => {
+  public apiDeleteLink = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
       try {
           const session = request.session as any;
           const { linkId } = request.body as { linkId: string };

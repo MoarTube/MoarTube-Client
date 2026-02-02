@@ -1,8 +1,8 @@
-import { FastifyInstance } from 'fastify';
-import { Container } from '@/core/container.js';
+import type { FastifyInstance } from 'fastify';
+import type { Container } from '@/core/container.js';
 import { SettingsController } from '@/controllers/settings.js';
 
-export async function settingsRoutes(
+export function settingsRoutes(
   fastify: FastifyInstance & ReturnType<FastifyInstance['withTypeProvider']>,
   container: Container
 ) {

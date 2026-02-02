@@ -8,7 +8,7 @@ export class MonetizationController {
     this.nodeApiService = nodeApiService;
   }
 
-  public async getRoot(request: FastifyRequest, reply: FastifyReply) {
+  public async getRoot(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
     try {
       const jwtToken = request.session.get('jwtToken');
       // Authenticated check is usually handled by a hook/decorator in the new architecture if applied globally?
@@ -24,11 +24,11 @@ export class MonetizationController {
         // return reply.redirect('/account/signin');
         // Let's standardise on redirecting if not authenticated.
          request.session.delete();
-         return reply.redirect('/account/signin');
+         return await reply.redirect('/account/signin');
       }
 
       if (!authResponse.isAuthenticated) {
-        return reply.redirect('/account/signin');
+        return await reply.redirect('/account/signin');
       }
 
       const [nodeSettings, newContentCountsResponse, monetizationResponse] = await Promise.all([
@@ -55,47 +55,47 @@ export class MonetizationController {
     }
   }
 
-  public async getAll(request: FastifyRequest, reply: FastifyReply) {
+  public async getAll(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
      try {
          const data = await this.nodeApiService.getMonetizationAll();
-         return reply.send(data);
+         return await reply.send(data);
      } catch (error) {
          request.log.error(error);
-         return reply.send({ isError: true, message: 'error communicating with the MoarTube node' });
+         return await reply.send({ isError: true, message: 'error communicating with the MoarTube node' });
      }
   }
 
-  public async postAdd(request: FastifyRequest<{ Body: { walletAddress: string; chain: string; currency: string } }>, reply: FastifyReply) {
+  public async postAdd(request: FastifyRequest<{ Body: { walletAddress: string; chain: string; currency: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
           const jwtToken = request.session.get('jwtToken');
           if (!jwtToken) {
-              return reply.send({ isError: true, message: 'Not authenticated' });
+              return await reply.send({ isError: true, message: 'Not authenticated' });
           }
 
           const { walletAddress, chain, currency } = request.body;
           const data = await this.nodeApiService.addMonetizationAddress(jwtToken, walletAddress, chain, currency);
-          return reply.send(data);
+          return await reply.send(data);
 
       } catch (error) {
           request.log.error(error);
-          return reply.send({ isError: true, message: 'error communicating with the MoarTube node' });
+          return await reply.send({ isError: true, message: 'error communicating with the MoarTube node' });
       }
   }
 
-  public async postDelete(request: FastifyRequest<{ Body: { cryptoWalletAddressId: string } }>, reply: FastifyReply) {
+  public async postDelete(request: FastifyRequest<{ Body: { cryptoWalletAddressId: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
           const jwtToken = request.session.get('jwtToken');
           if (!jwtToken) {
-               return reply.send({ isError: true, message: 'Not authenticated' });
+               return await reply.send({ isError: true, message: 'Not authenticated' });
           }
 
           const { cryptoWalletAddressId } = request.body;
           const data = await this.nodeApiService.deleteMonetizationAddress(jwtToken, cryptoWalletAddressId);
-          return reply.send(data);
+          return await reply.send(data);
 
       } catch (error) {
            request.log.error(error);
-           return reply.send({ isError: true, message: 'error communicating with the MoarTube node' });
+           return await reply.send({ isError: true, message: 'error communicating with the MoarTube node' });
       }
   }
 }

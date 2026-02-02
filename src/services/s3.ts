@@ -49,7 +49,7 @@ export class S3Service extends BaseService {
         const chunks: any[] = [];
         stream.on('data', (chunk: any) => chunks.push(chunk));
         stream.on('error', reject);
-        stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+        stream.on('end', () => { resolve(Buffer.concat(chunks).toString('utf8')); });
     }); 
   }
 
@@ -137,7 +137,7 @@ export class S3Service extends BaseService {
       const performUpdate = async (manifestKey: string) => {
           try {
               const response = await s3Client.send(new GetObjectCommand({ Bucket: bucketName, Key: manifestKey }));
-              if (!response.Body) return;
+              if (!response.Body) {return;}
 
               const oldManifest = await this.streamToString(response.Body);
               // Regex from legacy code
@@ -238,7 +238,7 @@ export class S3Service extends BaseService {
           });
           const listResponse = await client.send(listCommand);
 
-          if (!listResponse.Contents || listResponse.Contents.length === 0) return;
+          if (!listResponse.Contents || listResponse.Contents.length === 0) {return;}
 
           const objectsToDelete = listResponse.Contents.map(obj => ({ Key: obj.Key }));
 

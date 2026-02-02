@@ -1,12 +1,13 @@
-import { spawn, ChildProcess } from 'child_process';
+import type { ChildProcess } from 'child_process';
+import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Logger } from 'pino';
-import { NodeApiService } from './node-api.js';
-import { S3Service } from './s3.js';
-import { SettingsRepository } from '../database/repositories/settings.js';
-import { SocketService } from './socket.js';
-import { ManifestService } from './manifest.js';
+import type { Logger } from 'pino';
+import type { NodeApiService } from './node-api.js';
+import type { S3Service } from './s3.js';
+import type { SettingsRepository } from '../database/repositories/settings.js';
+import type { SocketService } from './socket.js';
+import type { ManifestService } from './manifest.js';
 
 interface VideoPublishJob {
     jwtToken: string;
@@ -49,7 +50,7 @@ export class VideoPublishService {
         const index = this.pendingPublishVideoQueue.findIndex(job => job.videoId === videoId);
         if (index !== -1) {
             const job = this.pendingPublishVideoQueue[index];
-            if (job && job.idleInterval) {
+            if (job?.idleInterval) {
                 clearInterval(job.idleInterval);
             }
             this.pendingPublishVideoQueue.splice(index, 1);
@@ -73,7 +74,7 @@ export class VideoPublishService {
     }
 
     private startVideoPublishInterval() {
-        setInterval(async () => {
+        setInterval(() => {
             while (this.pendingPublishVideoQueue.length > 0 && this.inProgressPublishingJobCount < this.maximumInProgressPublishingJobCount) {
                 this.inProgressPublishingJobCount++;
                 const job = this.pendingPublishVideoQueue.shift();
@@ -87,7 +88,7 @@ export class VideoPublishService {
                             this.logger.info(`[VideoPublishService] Video finished publishing: ${job.videoId} ${job.format} ${job.resolution}`);
 
                             const index = this.findInProgressPublishJobIndex(job);
-                            if (index !== -1) this.inProgressPublishingJobs.splice(index, 1);
+                            if (index !== -1) {this.inProgressPublishingJobs.splice(index, 1);}
 
                             const videoIdHasPending = this.pendingPublishVideoQueue.some(p => p.videoId === job.videoId);
                             const videoIdHasInProgress = this.inProgressPublishingJobs.some(p => p.videoId === job.videoId);
@@ -115,7 +116,7 @@ export class VideoPublishService {
                             this.logger.error(error, `[VideoPublishService] Failed publishing job: ${job.videoId}`);
                             
                             const index = this.findInProgressPublishJobIndex(job);
-                            if (index !== -1) this.inProgressPublishingJobs.splice(index, 1);
+                            if (index !== -1) {this.inProgressPublishingJobs.splice(index, 1);}
 
                             if (!this.isPublishVideoEncodingStopping(job.videoId)) {
                                 job.idleInterval = setInterval(() => {
@@ -146,7 +147,7 @@ export class VideoPublishService {
     }
 
     private async startPublishingJob(job: VideoPublishJob) {
-        if (job.idleInterval) clearInterval(job.idleInterval);
+        if (job.idleInterval) {clearInterval(job.idleInterval);}
 
         const response = await this.nodeApiService.setVideoPublishing(job.jwtToken, job.videoId);
         if (!response.isError) {
@@ -159,19 +160,21 @@ export class VideoPublishService {
         }
     }
 
-    private performEncodingJob(job: VideoPublishJob): Promise<void> {
-        return new Promise(async (resolve, reject) => {
-            if (this.isPublishVideoEncodingStopping(job.videoId)) {
-                return reject({ isError: true, message: `${job.videoId} attempted to encode but publishing is stopping` });
-            }
+    private async performEncodingJob(job: VideoPublishJob): Promise<void> {
+        if (this.isPublishVideoEncodingStopping(job.videoId)) {
+            throw { isError: true, message: `${job.videoId} attempted to encode but publishing is stopping` };
+        }
 
+        const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(job.jwtToken);
+
+        return new Promise((resolve, reject) => {
             const videosPath = this.settingsRepository.getVideosDirectoryPath();
             const sourceFilePath = path.join(videosPath, job.videoId, 'source', job.videoId + job.sourceFileExtension);
             
             const destinationFileExtension = '.' + job.format;
             let destinationFilePath = '';
 
-            const ensureDir = (p: string) => { if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true }); };
+            const ensureDir = (p: string) => { if (!fs.existsSync(p)) {fs.mkdirSync(p, { recursive: true });} };
 
             if (job.format === 'm3u8') {
                 ensureDir(path.join(videosPath, job.videoId, 'adaptive', 'm3u8', job.resolution));
@@ -187,13 +190,12 @@ export class VideoPublishService {
                 destinationFilePath = path.join(videosPath, job.videoId, 'progressive', 'ogv', job.resolution + destinationFileExtension);
             }
 
-            const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(job.jwtToken);
             const ffmpegArguments = this.generateFfmpegVideoArguments(job.videoId, job.resolution, job.format, sourceFilePath, destinationFilePath, job.sourceFileExtension, externalVideosBaseUrl);
 
             const process = spawn(this.ffmpegPath, ffmpegArguments);
             
             const activeJob = this.activeEncodingJobs.get(job.videoId);
-            if (activeJob) activeJob.process = process;
+            if (activeJob) {activeJob.process = process;}
 
             process.stdout.on('data', (_data) => {
                // this.logger.debug(Buffer.from(data).toString());
@@ -358,20 +360,20 @@ export class VideoPublishService {
         const encoderSettings = clientSettings.videoEncoderSettings;
 
          if (format === 'm3u8') {
-            bitrate = (encoderSettings.hls as any)[resolution + '-bitrate'] + 'k';
+            bitrate = (encoderSettings.hls)[resolution + '-bitrate'] + 'k';
             gop = encoderSettings.hls.gop;
             framerate = encoderSettings.hls.framerate;
             segmentLength = encoderSettings.hls.segmentLength;
         } else if (format === 'mp4') {
-            bitrate = (encoderSettings.mp4 as any)[resolution + '-bitrate'] + 'k';
+            bitrate = (encoderSettings.mp4)[resolution + '-bitrate'] + 'k';
             gop = encoderSettings.mp4.gop;
             framerate = encoderSettings.mp4.framerate;
         } else if (format === 'webm') {
-            bitrate = (encoderSettings.webm as any)[resolution + '-bitrate'] + 'k';
+            bitrate = (encoderSettings.webm)[resolution + '-bitrate'] + 'k';
             gop = encoderSettings.webm.gop;
             framerate = encoderSettings.webm.framerate;
         } else if (format === 'ogv') {
-            bitrate = (encoderSettings.ogv as any)[resolution + '-bitrate'] + 'k';
+            bitrate = (encoderSettings.ogv)[resolution + '-bitrate'] + 'k';
             gop = encoderSettings.ogv.gop;
             framerate = encoderSettings.ogv.framerate;
         }
@@ -380,7 +382,7 @@ export class VideoPublishService {
         // Copying logic from legacy
         let scale = 'scale';
         if (clientSettings.processingAgent.processingAgentType === 'gpu' && (format === 'm3u8' || format === 'mp4')) {
-             if (clientSettings.processingAgent.processingAgentName === 'NVIDIA') scale = 'scale_cuda';
+             if (clientSettings.processingAgent.processingAgentName === 'NVIDIA') {scale = 'scale_cuda';}
         }
 
         let filterComplex = `${scale}='if(gt(ih,iw),-1,${width})':'if(gt(ih,iw),${height},-1)',`;

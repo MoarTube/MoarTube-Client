@@ -2,10 +2,10 @@ import WebSocket from 'ws';
 import { BaseService } from './base.js';
 import type { Logger } from '@/utils/logger.js';
 import type { Config } from '@/config/index.js';
-import { SocketService } from './socket.js';
-import { VideoPublishService } from './video-publish.js';
-import { LiveStreamService } from './live-stream.js';
-import { VideoImportService } from './video-import.js';
+import type { SocketService } from './socket.js';
+import type { VideoPublishService } from './video-publish.js';
+import type { LiveStreamService } from './live-stream.js';
+import type { VideoImportService } from './video-import.js';
 
 export class NodeSocketService extends BaseService {
   private websocketClient: WebSocket | null = null;
@@ -59,7 +59,7 @@ export class NodeSocketService extends BaseService {
       this.logger.info(`Disconnected from Node: ${url}`);
       this.cleanup();
       // Auto-reconnect logic? Legacy does: setTimeout(connectWebsocketClient, 1000);
-      setTimeout(() => this.connect(jwtToken), 1000);
+      setTimeout(() => { this.connect(jwtToken); }, 1000);
     });
 
     this.websocketClient.on('error', (err) => {
@@ -92,8 +92,8 @@ export class NodeSocketService extends BaseService {
 
   private cleanup() {
       this._isConnected = false;
-      if (this.pingIntervalTimer) clearInterval(this.pingIntervalTimer);
-      if (this.pingTimeoutTimer) clearTimeout(this.pingTimeoutTimer);
+      if (this.pingIntervalTimer) {clearInterval(this.pingIntervalTimer);}
+      if (this.pingTimeoutTimer) {clearTimeout(this.pingTimeoutTimer);}
       this.pingIntervalTimer = null;
       this.pingTimeoutTimer = null;
   }

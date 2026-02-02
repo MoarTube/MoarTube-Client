@@ -1,4 +1,4 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { BaseController } from './base.js';
 import type { NodeApiService } from '@/services/node-api.js';
 import type { NodeSocketService } from '@/services/node-socket.js';
@@ -13,13 +13,13 @@ export class AccountController extends BaseController {
         super('AccountController');
     }
 
-    public getSignIn = async (request: FastifyRequest, reply: FastifyReply) => {
+    getSignIn = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken; // Type assertion until session types are fixed
-            if (jwtToken) {
+            const jwtToken = request.session.jwtToken; // Type assertion until session types are fixed
+            if (jwtToken !== undefined) {
                 const check = await this.nodeApiService.isAuthenticated(jwtToken);
                 if (check.isAuthenticated) {
-                    return reply.redirect('/videos');
+                    return await reply.redirect('/videos');
                 }
             }
             return await reply.view('signin', { model: {} }); 
@@ -29,7 +29,7 @@ export class AccountController extends BaseController {
         }
     }
 
-    public postSignIn = async (request: FastifyRequest, reply: FastifyReply) => {
+    postSignIn = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         const BodySchema = z.object({
             username: z.string(),
             password: z.string(),
@@ -66,7 +66,7 @@ export class AccountController extends BaseController {
             }
 
             if (!heartbeatSuccess) {
-                 return reply.send({ isError: true, message: 'Could not connect to MoarTube Node' });
+                 return await reply.send({ isError: true, message: 'Could not connect to MoarTube Node' });
             }
 
             // Update Configuration with successful connection details
@@ -81,23 +81,24 @@ export class AccountController extends BaseController {
             const result = await this.nodeApiService.signIn(body.username, body.password, body.rememberMe || false);
 
             if (!result.isError && result.isAuthenticated) {
-                (request.session as any).jwtToken = result.token;
+                request.session.jwtToken = result.token;
                 
                 this.nodeSocketService.connect(result.token);
                 
                  delete result.token;
             }
             
-            return reply.send(result);
+            return await reply.send(result);
         } catch (error) {
              this.logger.error('Error in postSignIn', error);
-             return this.sendError(reply, 'error communicating with the MoarTube node');
+             return await this.sendError(reply, 'error communicating with the MoarTube node');
         }
     }
 
-    public getSignOut = async (request: FastifyRequest, reply: FastifyReply) => {
+    getSignOut = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
          request.session.delete();
          this.nodeSocketService.disconnect();
-         return this.sendSuccess(reply);
+         return await this.sendSuccess(reply);
     }
 }
+

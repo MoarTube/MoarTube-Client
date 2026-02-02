@@ -10,14 +10,14 @@ export class ReportsController {
 
   // --- Videos Reports ---
 
-  public async getVideosRoot(request: FastifyRequest, reply: FastifyReply) {
+  public async getVideosRoot(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
     try {
       const jwtToken = request.session.get('jwtToken');
       const authResponse = await this.nodeApiService.isAuthenticated(jwtToken);
       
       if (authResponse.isError || !authResponse.isAuthenticated) {
           request.session.delete();
-          return reply.redirect('/account/signin');
+          return await reply.redirect('/account/signin');
       }
 
       const [nodeSettings, newContentCountsResponse, videoReportsResponse, videoReportsArchiveResponse] = await Promise.all([
@@ -47,10 +47,10 @@ export class ReportsController {
     }
   }
 
-  public async getVideosAll(request: FastifyRequest, reply: FastifyReply) {
+  public async getVideosAll(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
       try {
           const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) return await reply.send({ isError: true, message: 'Not authenticated' });
+          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
           
           const data = await this.nodeApiService.getVideoReports(jwtToken);
           return await reply.send(data);
@@ -60,10 +60,10 @@ export class ReportsController {
       }
   }
   
-  public async getCommentsArchiveAll(request: FastifyRequest, reply: FastifyReply) {
+  public async getCommentsArchiveAll(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
       try {
           const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) return await reply.send({ isError: true, message: 'Not authenticated' });
+          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const data = await this.nodeApiService.getCommentReportsArchive(jwtToken);
           return await reply.send(data);
@@ -73,10 +73,10 @@ export class ReportsController {
       }
   }
 
-  public async postCommentsArchive(request: FastifyRequest<{ Body: { reportId: string } }>, reply: FastifyReply) {
+  public async postCommentsArchive(request: FastifyRequest<{ Body: { reportId: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
           const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) return await reply.send({ isError: true, message: 'Not authenticated' });
+          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const { reportId } = request.body;
           const data = await this.nodeApiService.archiveCommentReport(jwtToken, reportId);
@@ -87,10 +87,10 @@ export class ReportsController {
       }
   }
 
-  public async postCommentsDelete(request: FastifyRequest<{ Body: { reportId: string } }>, reply: FastifyReply) {
+  public async postCommentsDelete(request: FastifyRequest<{ Body: { reportId: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
           const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) return await reply.send({ isError: true, message: 'Not authenticated' });
+          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const { reportId } = request.body;
           const data = await this.nodeApiService.removeCommentReport(jwtToken, reportId);
@@ -101,10 +101,10 @@ export class ReportsController {
       }
   }
 
-  public async postVideosArchiveDelete(request: FastifyRequest<{ Body: { archiveId: string } }>, reply: FastifyReply) {
+  public async postVideosArchiveDelete(request: FastifyRequest<{ Body: { archiveId: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
           const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) return await reply.send({ isError: true, message: 'Not authenticated' });
+          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const { archiveId } = request.body;
           const data = await this.nodeApiService.removeVideoReportArchive(jwtToken, archiveId);
@@ -117,14 +117,14 @@ export class ReportsController {
 
   // --- Comments Reports ---
 
-  public async getCommentsRoot(request: FastifyRequest, reply: FastifyReply) {
+  public async getCommentsRoot(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
     try {
       const jwtToken = request.session.get('jwtToken');
       const authResponse = await this.nodeApiService.isAuthenticated(jwtToken);
       
       if (authResponse.isError || !authResponse.isAuthenticated) {
           request.session.delete();
-          return reply.redirect('/account/signin');
+          return await reply.redirect('/account/signin');
       }
 
       const [nodeSettings, newContentCountsResponse, commentReportsResponse, commentReportsArchiveResponse] = await Promise.all([
@@ -138,7 +138,7 @@ export class ReportsController {
       const commentReports = commentReportsResponse?.reports || [];
       const commentReportsArchive = commentReportsArchiveResponse?.reports || [];
 
-      return reply.view('reports-comments', {
+      return await reply.view('reports-comments', {
         model: {
             nodeSettings,
             newContentCounts,
@@ -150,14 +150,14 @@ export class ReportsController {
     } catch (error) {
        request.log.error(error);
        request.session.delete();
-       return reply.redirect('/account/signin');
+       return await reply.redirect('/account/signin');
     }
   }
 
-  public async getCommentsAll(request: FastifyRequest, reply: FastifyReply) {
+  public async getCommentsAll(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
       try {
           const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) return await reply.send({ isError: true, message: 'Not authenticated' });
+          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const data = await this.nodeApiService.getCommentReports(jwtToken);
           return await reply.send(data);
@@ -167,58 +167,58 @@ export class ReportsController {
       }
   }
 
-  public async getVideosArchiveAll(request: FastifyRequest, reply: FastifyReply) {
+  public async getVideosArchiveAll(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
       try {
           const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) return reply.send({ isError: true, message: 'Not authenticated' });
+          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const data = await this.nodeApiService.getVideoReportsArchive(jwtToken);
-          return reply.send(data);
+          return await reply.send(data);
       } catch (error) {
           request.log.error(error);
-          return reply.send({ isError: true, message: 'error communicating with the MoarTube node' });
+          return await reply.send({ isError: true, message: 'error communicating with the MoarTube node' });
       }
   }
 
-  public async postVideosArchive(request: FastifyRequest<{ Body: { reportId: string } }>, reply: FastifyReply) {
+  public async postVideosArchive(request: FastifyRequest<{ Body: { reportId: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
           const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) return reply.send({ isError: true, message: 'Not authenticated' });
+          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const { reportId } = request.body;
           const data = await this.nodeApiService.archiveVideoReport(jwtToken, reportId);
-          return reply.send(data);
+          return await reply.send(data);
       } catch (error) {
           request.log.error(error);
-          return reply.send({ isError: true, message: 'error communicating with the MoarTube node' });
+          return await reply.send({ isError: true, message: 'error communicating with the MoarTube node' });
       }
   }
 
-  public async postVideosDelete(request: FastifyRequest<{ Body: { reportId: string } }>, reply: FastifyReply) {
+  public async postVideosDelete(request: FastifyRequest<{ Body: { reportId: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
           const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) return reply.send({ isError: true, message: 'Not authenticated' });
+          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const { reportId } = request.body;
           const data = await this.nodeApiService.removeVideoReport(jwtToken, reportId);
-          return reply.send(data);
+          return await reply.send(data);
       } catch (error) {
           request.log.error(error);
-          return reply.send({ isError: true, message: 'error communicating with the MoarTube node' });
+          return await reply.send({ isError: true, message: 'error communicating with the MoarTube node' });
       }
   }
 
-  public async postCommentsArchiveDelete(request: FastifyRequest<{ Body: { archiveId: string } }>, reply: FastifyReply) {
+  public async postCommentsArchiveDelete(request: FastifyRequest<{ Body: { archiveId: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
           const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) return reply.send({ isError: true, message: 'Not authenticated' });
+          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const { archiveId } = request.body;
           const data = await this.nodeApiService.removeCommentReportArchive(jwtToken, archiveId);
-          return reply.send(data);
+          return await reply.send(data);
       } catch (error) {
           request.log.error(error);
-          return reply.send({ isError: true, message: 'error communicating with the MoarTube node' });
+          return await reply.send({ isError: true, message: 'error communicating with the MoarTube node' });
       }
   }
 

@@ -1,13 +1,14 @@
-import { spawn, ChildProcess } from 'child_process';
+import type { ChildProcess } from 'child_process';
+import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Logger } from 'pino';
+import type { Logger } from 'pino';
 import sharp from 'sharp';
-import { NodeApiService } from './node-api.js';
-import { S3Service } from './s3.js';
-import { SettingsRepository } from '../database/repositories/settings.js';
-import { SocketService } from './socket.js';
-import { ManifestService } from './manifest.js';
+import type { NodeApiService } from './node-api.js';
+import type { S3Service } from './s3.js';
+import type { SettingsRepository } from '../database/repositories/settings.js';
+import type { SocketService } from './socket.js';
+import type { ManifestService } from './manifest.js';
 import axios from 'axios';
 
 export class LiveStreamService {
@@ -45,7 +46,7 @@ export class LiveStreamService {
         if (this.activeStreams.has(videoId)) {
             const stream = this.activeStreams.get(videoId)!;
             stream.stopping = true;
-            if (stream.process) stream.process.kill();
+            if (stream.process) {stream.process.kill();}
         }
     }
 
@@ -288,7 +289,7 @@ export class LiveStreamService {
         let bitrate = '', gop = '', framerate = '', segmentLength = '';
         
         if (format === 'm3u8') {
-             bitrate = (clientSettings.liveEncoderSettings.hls as any)[resolution + '-bitrate'] + 'k';
+             bitrate = (clientSettings.liveEncoderSettings.hls)[resolution + '-bitrate'] + 'k';
              gop = clientSettings.liveEncoderSettings.hls.gop;
              framerate = clientSettings.liveEncoderSettings.hls.framerate;
              segmentLength = clientSettings.liveEncoderSettings.hls.segmentLength;
@@ -318,7 +319,7 @@ export class LiveStreamService {
 
         if (!isRecordingStreamRemotely) {
              const idx = args.indexOf('-hls_playlist_type');
-             if(idx !== -1) args.splice(idx, 2);
+             if(idx !== -1) {args.splice(idx, 2);}
         }
 
         return args;

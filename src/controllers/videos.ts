@@ -1,4 +1,4 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { pipeline } from 'node:stream/promises';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -25,20 +25,20 @@ export class VideosController extends BaseController {
         super('VideosController');
     }
 
-    public getRoot = async (request: FastifyRequest, reply: FastifyReply) => {
+    public getRoot = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
 
             // Check authentication
             const check = await this.nodeApiService.isAuthenticated(jwtToken);
             if (!check.isAuthenticated) {
-                return reply.redirect('/account/signin');
+                return await reply.redirect('/account/signin');
             }
 
             if (check.isError) {
                  // In legacy, if error, it signs out.
-                 (request.session as any).delete();
-                 return reply.redirect('/account/signin');
+                 request.session.delete();
+                 return await reply.redirect('/account/signin');
             }
 
             // Fetch data
@@ -59,15 +59,15 @@ export class VideosController extends BaseController {
         } catch (error) {
             this.logger.error('Error in getRoot', error);
              // In legacy, on error also signs out? "node_doSignout(req, res);"
-             (req.session as any).delete();
-             return reply.redirect('/account/signin');
+             request.session.delete();
+             return await reply.redirect('/account/signin');
         }
     }
 
     // View: GET /videos/search
-    public getSearch = async (request: FastifyRequest, reply: FastifyReply) => {
+    public getSearch = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-             const jwtToken = (request.session as any).jwtToken;
+             const jwtToken = request.session.jwtToken;
              const query = request.query as any;
 
              const data = await this.nodeApiService.searchVideos(
@@ -79,15 +79,15 @@ export class VideosController extends BaseController {
                  query.timestamp
              );
 
-             return reply.send(data);
+             return await reply.send(data);
         } catch (error) {
              this.logger.error('Error in getSearch', error);
-             return this.sendError(reply, 'error communicating with the MoarTube node');
+             return await this.sendError(reply, 'error communicating with the MoarTube node');
         }
     }
-    public postImport = async (request: FastifyRequest, reply: FastifyReply) => {
+    public postImport = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const parts = request.parts();
             
             let videoId: string | undefined;
@@ -116,7 +116,7 @@ export class VideosController extends BaseController {
             }
 
             if (!videoId || !tempFilePath) {
-                return this.sendError(reply, 'Missing videoId or videoFile');
+                return await this.sendError(reply, 'Missing videoId or videoFile');
             }
 
             // Move to correct source location
@@ -126,8 +126,8 @@ export class VideosController extends BaseController {
 
             let ext = path.extname(tempFilePath);
             if (!ext && fileMimeType) {
-                 if (fileMimeType === 'video/mp4') ext = '.mp4';
-                 else if (fileMimeType === 'video/webm') ext = '.webm';
+                 if (fileMimeType === 'video/mp4') {ext = '.mp4';}
+                 else if (fileMimeType === 'video/webm') {ext = '.webm';}
             }
             
             const destPath = path.join(videoSourceDir, videoId + (ext || ''));
@@ -142,47 +142,47 @@ export class VideosController extends BaseController {
 
             const result = await this.videoImportService.importVideo(jwtToken, videoId, fileObj);
             
-            return reply.send(result);
+            return await reply.send(result);
         } catch (error) {
             this.logger.error('Error in postImport', error);
-            return this.sendError(reply, 'Upload failed');
+            return await this.sendError(reply, 'Upload failed');
         }
     }
 
-    public postStopImport = async (request: FastifyRequest, reply: FastifyReply) => {
+    public postStopImport = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
          try {
-             const jwtToken = (request.session as any).jwtToken;
+             const jwtToken = request.session.jwtToken;
              const { videoId } = request.body as { videoId: string };
              const result = await this.videoImportService.stopImporting(jwtToken, videoId);
-             return reply.send(result);
+             return await reply.send(result);
          } catch(error) {
              this.logger.error('Error in postStopImport', error);
-             return this.sendError(reply, 'Stop import failed');
+             return await this.sendError(reply, 'Stop import failed');
          }
     }
 
-    public postPublish = async (request: FastifyRequest, reply: FastifyReply) => {
+    public postPublish = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const { videoId, publishings: publishingsStr } = request.body as { videoId: string, publishings: string };
             const publishings = JSON.parse(publishingsStr);
 
             const response1 = await this.nodeApiService.getVideoData(jwtToken, videoId);
             if (response1.isError) {
-                 return reply.send(response1);
+                 return await reply.send(response1);
             }
 
             const { isLive, isStreaming, isFinalized } = response1.videoData;
             if (isLive && isStreaming) {
-                return this.sendError(reply, 'this video is currently streaming');
+                return await this.sendError(reply, 'this video is currently streaming');
             }
             if (isFinalized) {
-                return this.sendError(reply, 'this video was finalized; no further publishings are possible');
+                return await this.sendError(reply, 'this video was finalized; no further publishings are possible');
             }
 
             const response2 = await this.nodeApiService.getSourceFileExtension(jwtToken, videoId);
             if (response2.isError) {
-                return reply.send(response2);
+                return await reply.send(response2);
             }
             
             const sourceFileExtension = response2.sourceFileExtension;
@@ -198,23 +198,23 @@ export class VideosController extends BaseController {
                           sourceFileExtension
                       });
                  }
-                 return this.sendSuccess(reply, {});
+                 return await this.sendSuccess(reply, {});
             } else {
                  if (isLive) {
-                     return this.sendError(reply, 'a recording of this stream does not exist<br>record your streams locally for later publishing');
+                     return await this.sendError(reply, 'a recording of this stream does not exist<br>record your streams locally for later publishing');
                  }
-                 return this.sendError(reply, 'source file not found');
+                 return await this.sendError(reply, 'source file not found');
             }
 
         } catch (error) {
              this.logger.error('Error in postPublish', error);
-             return this.sendError(reply, 'Publish request failed');
+             return await this.sendError(reply, 'Publish request failed');
         }
     }
 
-    public postStopPublish = async (request: FastifyRequest, reply: FastifyReply) => {
+    public postStopPublish = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-             const jwtToken = (request.session as any).jwtToken;
+             const jwtToken = request.session.jwtToken;
              const { videoId } = request.body as { videoId: string };
              
              // Stop local
@@ -222,16 +222,16 @@ export class VideosController extends BaseController {
              
              // Tell node
              const response = await this.nodeApiService.stopVideoPublishing(jwtToken, videoId);
-             return reply.send(response);
+             return await reply.send(response);
         } catch(error) {
              this.logger.error('Error in postStopPublish', error);
-             return this.sendError(reply, 'Stop publish failed');
+             return await this.sendError(reply, 'Stop publish failed');
         }
     }
 
-    public postUnpublish = async (request: FastifyRequest, reply: FastifyReply) => {
+    public postUnpublish = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const { videoId, format, resolution } = request.body as { videoId: string, format: string, resolution: string };
 
             const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
@@ -239,7 +239,7 @@ export class VideosController extends BaseController {
 
             const response = await this.nodeApiService.unpublishVideo(jwtToken, videoId, format, resolution);
             if (response.isError) {
-                return reply.send(response);
+                return await reply.send(response);
             }
 
             if (storageConfig.storageMode === 's3provider') {
@@ -265,138 +265,138 @@ export class VideosController extends BaseController {
                 await this.manifestService.refreshMasterManifest(jwtToken, videoId);
             }
 
-            return this.sendSuccess(reply, {});
+            return await this.sendSuccess(reply, {});
         } catch (error) {
             this.logger.error('Error in postUnpublish', error);
-            return this.sendError(reply, 'Unpublish failed');
+            return await this.sendError(reply, 'Unpublish failed');
         }
     }
 
-    public getTags = async (request: FastifyRequest, reply: FastifyReply) => {
+    public getTags = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const response = await this.nodeApiService.getVideosTags(jwtToken);
-            return reply.send(response);
+            return await reply.send(response);
         } catch (error) {
             this.logger.error('Error in getTags', error);
-            return this.sendError(reply, 'Failed to get tags');
+            return await this.sendError(reply, 'Failed to get tags');
         }
     }
 
-    public getAllTags = async (request: FastifyRequest, reply: FastifyReply) => {
+    public getAllTags = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const response = await this.nodeApiService.getVideosTagsAll(jwtToken);
-            return reply.send(response);
+            return await reply.send(response);
         } catch (error) {
             this.logger.error('Error in getAllTags', error);
-            return this.sendError(reply, 'Failed to get all tags');
+            return await this.sendError(reply, 'Failed to get all tags');
         }
     }
 
-    public getVideoPublishes = async (request: FastifyRequest, reply: FastifyReply) => {
+    public getVideoPublishes = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const { videoId } = request.params as { videoId: string };
             const response = await this.nodeApiService.getVideoPublishes(jwtToken, videoId);
-            return reply.send(response);
+            return await reply.send(response);
         } catch (error) {
             this.logger.error('Error in getVideoPublishes', error);
-            return this.sendError(reply, 'Failed to get video publishes');
+            return await this.sendError(reply, 'Failed to get video publishes');
         }
     }
 
-    public getVideoData = async (request: FastifyRequest, reply: FastifyReply) => {
+    public getVideoData = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const { videoId } = request.params as { videoId: string };
             const response = await this.nodeApiService.getVideoData(jwtToken, videoId);
-            return reply.send(response);
+            return await reply.send(response);
         } catch (error) {
             this.logger.error('Error in getVideoData', error);
-            return this.sendError(reply, 'Failed to get video data');
+            return await this.sendError(reply, 'Failed to get video data');
         }
     }
 
-    public postVideoData = async (request: FastifyRequest, reply: FastifyReply) => {
+    public postVideoData = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const { videoId, title, description, tags } = request.body as { videoId: string, title: string, description: string, tags: string };
             const response = await this.nodeApiService.setVideoData(jwtToken, videoId, title, description, tags);
-            return reply.send(response);
+            return await reply.send(response);
         } catch (error) {
             this.logger.error('Error in postVideoData', error);
-            return this.sendError(reply, 'Failed to update video data');
+            return await this.sendError(reply, 'Failed to update video data');
         }
     }
 
-    public postAddToIndex = async (request: FastifyRequest, reply: FastifyReply) => {
+    public postAddToIndex = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const { videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken } = request.body as any;
             const response = await this.nodeApiService.addVideoToIndex(jwtToken, videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken);
-            return reply.send(response);
+            return await reply.send(response);
         } catch (error) {
             this.logger.error('Error in postAddToIndex', error);
-            return this.sendError(reply, 'Failed to add to index');
+            return await this.sendError(reply, 'Failed to add to index');
         }
     }
 
-    public postRemoveFromIndex = async (request: FastifyRequest, reply: FastifyReply) => {
+    public postRemoveFromIndex = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const { videoId, cloudflareTurnstileToken } = request.body as any;
             const response = await this.nodeApiService.removeVideoFromIndex(jwtToken, videoId, cloudflareTurnstileToken);
-            return reply.send(response);
+            return await reply.send(response);
         } catch (error) {
             this.logger.error('Error in postRemoveFromIndex', error);
-            return this.sendError(reply, 'Failed to remove from index');
+            return await this.sendError(reply, 'Failed to remove from index');
         }
     }
 
-    public getVideoPermissions = async (request: FastifyRequest, reply: FastifyReply) => {
+    public getVideoPermissions = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const { videoId } = request.params as { videoId: string };
             const response = await this.nodeApiService.getVideoPermissions(jwtToken, videoId);
-            return reply.send(response);
+            return await reply.send(response);
         } catch (error) {
             this.logger.error('Error in getVideoPermissions', error);
-            return this.sendError(reply, 'Failed to get permissions');
+            return await this.sendError(reply, 'Failed to get permissions');
         }
     }
 
-    public postVideoPermissions = async (request: FastifyRequest, reply: FastifyReply) => {
+    public postVideoPermissions = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const { videoId, type, isEnabled } = request.body as any;
             const response = await this.nodeApiService.postVideoPermissions(jwtToken, videoId, type, isEnabled);
-            return reply.send(response);
+            return await reply.send(response);
         } catch (error) {
             this.logger.error('Error in postVideoPermissions', error);
-            return this.sendError(reply, 'Failed to set permissions');
+            return await this.sendError(reply, 'Failed to set permissions');
         }
     }
 
-    public getVideoSources = async (request: FastifyRequest, reply: FastifyReply) => {
+    public getVideoSources = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
             const { videoId } = request.params as { videoId: string };
             
             const response = await this.nodeApiService.getVideoSources(videoId);
             if (!response.isError) {
                 const { adaptiveSources, progressiveSources } = response.video;
-                return this.sendSuccess(reply, { sources: { adaptiveSources, progressiveSources } });
+                return await this.sendSuccess(reply, { sources: { adaptiveSources, progressiveSources } });
             }
-            return reply.send(response);
+            return await reply.send(response);
         } catch (error) {
             this.logger.error('Error in getVideoSources', error);
-            return this.sendError(reply, 'Failed to get sources');
+            return await this.sendError(reply, 'Failed to get sources');
         }
     }
 
-    public postDelete = async (request: FastifyRequest, reply: FastifyReply) => {
+    public postDelete = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const { videoIds } = request.body as { videoIds: string[] };
 
             const nodeResponse = await this.nodeApiService.deleteVideos(jwtToken, videoIds);
@@ -417,17 +417,17 @@ export class VideosController extends BaseController {
                 }
             }
 
-            return reply.send({ isError: false, deletedVideoIds, nonDeletedVideoIds });
+            return await reply.send({ isError: false, deletedVideoIds, nonDeletedVideoIds });
 
         } catch (error) {
             this.logger.error('Error in postDelete', error);
-            return this.sendError(reply, 'Failed to delete videos');
+            return await this.sendError(reply, 'Failed to delete videos');
         }
     }
 
-    public postFinalize = async (request: FastifyRequest, reply: FastifyReply) => {
+    public postFinalize = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const { videoIds } = request.body as { videoIds: string[] };
 
             const response = await this.nodeApiService.finalizeVideos(jwtToken, videoIds);
@@ -443,23 +443,23 @@ export class VideosController extends BaseController {
                         payload: { type: 'finalized', videoId: finalizedVideoId } 
                     });
                 }
-                return reply.send({ isError: false, finalizedVideoIds, nonFinalizedVideoIds });
+                return await reply.send({ isError: false, finalizedVideoIds, nonFinalizedVideoIds });
             }
-            return reply.send(response);
+            return await reply.send(response);
         } catch (error) {
             this.logger.error('Error in postFinalize', error);
-            return this.sendError(reply, 'Failed to finalize videos');
+            return await this.sendError(reply, 'Failed to finalize videos');
         }
     }
 
-    public postThumbnail = async (request: FastifyRequest, reply: FastifyReply) => {
+    public postThumbnail = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const { videoId } = request.params as { videoId: string };
             const data = await request.file();
 
             if (!data) {
-                return this.sendError(reply, 'Thumbnail file is missing');
+                return await this.sendError(reply, 'Thumbnail file is missing');
             }
 
             const buffer = await data.toBuffer();
@@ -482,22 +482,22 @@ export class VideosController extends BaseController {
                 await this.nodeApiService.setIsIndexOutdated(jwtToken, videoId);
             }
 
-            return this.sendSuccess(reply, {});
+            return await this.sendSuccess(reply, {});
 
         } catch (error) {
             this.logger.error('Error in postThumbnail', error);
-            return this.sendError(reply, 'Failed to upload thumbnail');
+            return await this.sendError(reply, 'Failed to upload thumbnail');
         }
     }
 
-    public postPreview = async (request: FastifyRequest, reply: FastifyReply) => {
+    public postPreview = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const { videoId } = request.params as { videoId: string };
             const data = await request.file();
 
             if (!data) {
-                return this.sendError(reply, 'Preview file is missing');
+                return await this.sendError(reply, 'Preview file is missing');
             }
 
             const buffer = await data.toBuffer();
@@ -520,22 +520,22 @@ export class VideosController extends BaseController {
                 await this.nodeApiService.setIsIndexOutdated(jwtToken, videoId);
             }
 
-            return this.sendSuccess(reply, {});
+            return await this.sendSuccess(reply, {});
 
         } catch (error) {
             this.logger.error('Error in postPreview', error);
-            return this.sendError(reply, 'Failed to upload preview');
+            return await this.sendError(reply, 'Failed to upload preview');
         }
     }
 
-    public postPoster = async (request: FastifyRequest, reply: FastifyReply) => {
+    public postPoster = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const { videoId } = request.params as { videoId: string };
             const data = await request.file();
 
             if (!data) {
-                return this.sendError(reply, 'Poster file is missing');
+                return await this.sendError(reply, 'Poster file is missing');
             }
 
             const buffer = await data.toBuffer();
@@ -558,11 +558,12 @@ export class VideosController extends BaseController {
                 await this.nodeApiService.setIsIndexOutdated(jwtToken, videoId);
             }
 
-            return this.sendSuccess(reply, {});
+            return await this.sendSuccess(reply, {});
 
         } catch (error) {
             this.logger.error('Error in postPoster', error);
-            return this.sendError(reply, 'Failed to upload poster');
+            return await this.sendError(reply, 'Failed to upload poster');
         }
     }
 }
+

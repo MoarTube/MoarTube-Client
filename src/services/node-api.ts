@@ -1,8 +1,16 @@
-import axios, { AxiosInstance } from 'axios';
+import type { AxiosInstance } from 'axios';
+import axios from 'axios';
 import FormData from 'form-data';
 import { BaseService } from './base.js';
 import type { Logger } from '@/utils/logger.js';
 import type { Config } from '@/config/index.js';
+import type { 
+    AuthResponse, 
+    NodeSettings, 
+    NewContentCounts, 
+    Video,
+    VideoDataAllResponse
+} from '@/types/node-api.js';
 
 /**
  * Service for communicating with the MoarTube Node API
@@ -18,10 +26,10 @@ export class NodeApiService extends BaseService {
     // this.settingsRepo = settingsRepository;
   }
 
-  private async getBaseUrl(): Promise<string> {
+  private getBaseUrl(): Promise<string> {
     // We read fresh settings every time to ensure we use valid IP/Port if they change
     const settings = this.config.clientSettings;
-    return `${settings.nodeHttpProtocol}://${settings.nodeIp}:${settings.nodePort}`;
+    return Promise.resolve(`${settings.nodeHttpProtocol}://${settings.nodeIp}:${String(settings.nodePort)}`);
   }
 
   private async getClient(): Promise<AxiosInstance> {
@@ -36,7 +44,7 @@ export class NodeApiService extends BaseService {
   /**
    * Check if user is authenticated with the Node
    */
-  public async isAuthenticated(jwtToken?: string): Promise<{ isError: boolean; isAuthenticated: boolean; message?: string }> {
+  public async isAuthenticated(jwtToken?: string): Promise<AuthResponse> {
     if (!jwtToken) {
       return { isError: false, isAuthenticated: false };
     }
@@ -46,7 +54,7 @@ export class NodeApiService extends BaseService {
       const response = await client.get('/account/authenticated', {
         headers: { Authorization: `Bearer ${jwtToken}` }
       });
-      return response.data;
+      return response.data as AuthResponse;
     } catch (error) {
       this.logger.error('isAuthenticated check failed', error);
       return { isError: true, isAuthenticated: false, message: 'Communication error' };
@@ -56,9 +64,9 @@ export class NodeApiService extends BaseService {
   /**
    * Perform Heartbeat check
    */
-  public async heartbeat(protocol: string, ip: string, port: number): Promise<any> {
+  public async heartbeat(protocol: string, ip: string, port: number): Promise<unknown> {
       try {
-          const url = `${protocol}://${ip}:${port}/status/heartbeat`;
+          const url = `${protocol}://${ip}:${String(port)}/status/heartbeat`;
           const response = await axios.get(url, { timeout: 5000 });
           return response.data;
       } catch (error) {
@@ -69,7 +77,7 @@ export class NodeApiService extends BaseService {
   /**
    * Sign In
    */
-  public async signIn(username: string, password: string, rememberMe: boolean): Promise<any> {
+  public async signIn(username: string, password: string, rememberMe: boolean): Promise<AuthResponse> {
     const client = await this.getClient();
     const settings = this.config.clientSettings;
     
@@ -83,13 +91,13 @@ export class NodeApiService extends BaseService {
     };
 
     const response = await client.post('/account/signin', payload);
-    return response.data;
+    return response.data as AuthResponse;
   }
 
   /**
    * Get Videos (Search)
    */
-  public async searchVideos(jwtToken: string | undefined, searchTerm: string, sortTerm: string, tagTerm: string, tagLimit: number, timestamp: number): Promise<any> {
+  public async searchVideos(jwtToken: string | undefined, searchTerm: string, sortTerm: string, tagTerm: string, tagLimit: number, timestamp: number): Promise<Video[]> {
       const client = await this.getClient();
       const headers = jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {};
       
@@ -104,15 +112,15 @@ export class NodeApiService extends BaseService {
           headers
       });
 
-      return response.data;
+      return response.data as Video[];
   }
 
-  private async postAuthenticated(jwtToken: string, url: string, data: any = {}): Promise<any> {
+  private async postAuthenticated<T = unknown>(jwtToken: string, url: string, data: unknown = {}): Promise<T> {
       const client = await this.getClient();
       const response = await client.post(url, data, {
           headers: { Authorization: `Bearer ${jwtToken}` }
       });
-      return response.data;
+      return response.data as T;
   }
 
   public async setVideoPublishing(jwtToken: string, videoId: string) {
@@ -124,31 +132,31 @@ export class NodeApiService extends BaseService {
       const response = await client.get('/external/videos/baseUrl', {
         headers: { Authorization: `Bearer ${jwtToken}` }
       });
-      return response.data.externalVideosBaseUrl;
+      return (response.data as { externalVideosBaseUrl: string }).externalVideosBaseUrl;
   }
   
-  public async getNodeSettings(jwtToken: string): Promise<any> {
+  public async getNodeSettings(jwtToken: string): Promise<NodeSettings> {
        const client = await this.getClient();
        const response = await client.get('/settings', {
         headers: { Authorization: `Bearer ${jwtToken}` }
        });
-       return response.data.nodeSettings;
+       return (response.data as { nodeSettings: NodeSettings }).nodeSettings;
   }
 
-  public async searchVideosAll(searchTerm: string, sortTerm: string, tagTerm: string, tagLimit: number, timestamp: number): Promise<any> {
+  public async searchVideosAll(searchTerm: string, sortTerm: string, tagTerm: string, tagLimit: number, timestamp: number): Promise<Video[]> {
       const client = await this.getClient();
       const response = await client.get('/node/search', {
           params: { searchTerm, sortTerm, tagTerm, tagLimit, timestamp }
       });
-      return response.data;
+      return response.data as Video[];
   }
 
-  public async getNewContentCounts(jwtToken: string): Promise<any> {
+  public async getNewContentCounts(jwtToken: string): Promise<{ newContentCounts: NewContentCounts }> {
     const client = await this.getClient();
     const response = await client.get('/node/newContentCounts', {
         headers: { Authorization: `Bearer ${jwtToken}` }
     });
-    return response.data;
+    return response.data as { newContentCounts: NewContentCounts };
   }
 
   public async setContentChecked(jwtToken: string, contentType: string): Promise<any> {
@@ -159,23 +167,23 @@ export class NodeApiService extends BaseService {
       return this.postAuthenticated(jwtToken, `/videos/${videoId}/published`, { format, resolution });
   }
 
-  public async getVideoDataAll(jwtToken: string): Promise<any> {
+  public async getVideoDataAll(jwtToken: string): Promise<VideoDataAllResponse> {
     const client = await this.getClient();
     const response = await client.get('/videos/data/all', {
         headers: { Authorization: `Bearer ${jwtToken}` }
     });
-    return response.data;
+    return response.data as VideoDataAllResponse;
   }
 
   // Settings Methods
   
-  public async getAvatar(jwtToken: string): Promise<any> {
+  public async getAvatar(jwtToken: string): Promise<unknown> {
     const client = await this.getClient();
     const response = await client.get('/settings/avatar', { headers: { Authorization: `Bearer ${jwtToken}` } });
     return response.data;
   }
 
-  public async setAvatar(jwtToken: string, icon: Buffer, avatar: Buffer): Promise<any> {
+  public async setAvatar(jwtToken: string, icon: Buffer, avatar: Buffer): Promise<unknown> {
     const formData = new FormData();
     formData.append('iconFile', icon, 'icon.png');
     formData.append('avatarFile', avatar, 'avatar.png');
@@ -188,13 +196,13 @@ export class NodeApiService extends BaseService {
     return response.data;
   }
 
-  public async getBanner(jwtToken: string): Promise<any> {
+  public async getBanner(jwtToken: string): Promise<unknown> {
     const client = await this.getClient();
     const response = await client.get('/settings/banner', { headers: { Authorization: `Bearer ${jwtToken}` } });
     return response.data;
   }
 
-  public async setBanner(jwtToken: string, banner: Buffer): Promise<any> {
+  public async setBanner(jwtToken: string, banner: Buffer): Promise<unknown> {
     const formData = new FormData();
     formData.append('bannerFile', banner, 'banner.png');
 
@@ -514,23 +522,23 @@ export class NodeApiService extends BaseService {
   }
 
 
-  public async setSourceFileExtension(jwtToken: string, videoId: string, extension: string) {
+  public async setSourceFileExtension(jwtToken: string, videoId: string, extension: string): Promise<unknown> {
        return this.postAuthenticated(jwtToken, `/videos/${videoId}/sourceFileExtension`, { sourceFileExtension: extension });
   }
 
-  public async setVideoImported(jwtToken: string, videoId: string) {
+  public async setVideoImported(jwtToken: string, videoId: string): Promise<unknown> {
       return this.postAuthenticated(jwtToken, '/videos/imported', { videoId });
   }
   
-  public async stopVideoImporting(jwtToken: string, videoId: string) {
+  public async stopVideoImporting(jwtToken: string, videoId: string): Promise<unknown> {
       return this.postAuthenticated(jwtToken, `/videos/${videoId}/importing/stop`, { videoId });
   }
   
-  public async stopVideoPublishing(jwtToken: string, videoId: string) {
+  public async stopVideoPublishing(jwtToken: string, videoId: string): Promise<unknown> {
       return this.postAuthenticated(jwtToken, `/videos/${videoId}/publishing/stop`, { videoId });
   }
 
-  public async unpublishVideo(jwtToken: string, videoId: string, format: string, resolution: string) {
+  public async unpublishVideo(jwtToken: string, videoId: string, format: string, resolution: string): Promise<unknown> {
       return this.postAuthenticated(jwtToken, `/videos/${videoId}/unpublish`, { format, resolution });
   }
 
@@ -541,7 +549,7 @@ export class NodeApiService extends BaseService {
       return response.data;
   }
 
-  public async getSourceFileExtension(jwtToken: string, videoId: string) {
+  public async getSourceFileExtension(jwtToken: string, videoId: string): Promise<unknown> {
      const client = await this.getClient();
      const response = await client.get(`/videos/${videoId}/sourceFileExtension`, {
          headers: { Authorization: `Bearer ${jwtToken}` }
@@ -549,36 +557,36 @@ export class NodeApiService extends BaseService {
      return response.data;
   }
 
-  public async setVideoPublished(jwtToken: string, videoId: string) {
+  public async setVideoPublished(jwtToken: string, videoId: string): Promise<unknown> {
       return this.postAuthenticated(jwtToken, '/videos/published', { videoId });
   }
 
-  public async uploadVideo(
+  public uploadVideo(
     _jwtToken: string, _videoId: string, _format: string, _resolution: string,
     _files: Array<{ fileName: string, filePath: string, contentType: string }>
-  ): Promise<any> {
+  ): Promise<unknown> {
     // Placeholder for multipart upload
-    return { isError: false }; 
+    return Promise.resolve({ isError: false }); 
   }
 
-  public async setVideoLengths(jwtToken: string, videoId: string, lengthSeconds: number, lengthTimestamp: string) {
+  public async setVideoLengths(jwtToken: string, videoId: string, lengthSeconds: number, lengthTimestamp: string): Promise<unknown> {
       return this.postAuthenticated(jwtToken, '/video/set-lengths', { videoId, lengthSeconds, lengthTimestamp });
   }
 
-  public async uploadStream(_jwtToken: string, _videoId: string, _format: string, _resolution: string, _manifestBuffer: Buffer, _segmentBuffer: Buffer, _manifestFileName: string, _segmentFileName: string) {
+  public uploadStream(_jwtToken: string, _videoId: string, _format: string, _resolution: string, _manifestBuffer: Buffer, _segmentBuffer: Buffer, _manifestFileName: string, _segmentFileName: string): Promise<unknown> {
        // Placeholder
-       return { isError: false };
+       return Promise.resolve({ isError: false });
   }
 
-  public async removeAdaptiveStreamSegment(jwtToken: string, videoId: string, format: string, resolution: string, segmentName: string) {
+  public async removeAdaptiveStreamSegment(jwtToken: string, videoId: string, format: string, resolution: string, segmentName: string): Promise<unknown> {
       return this.postAuthenticated(jwtToken, '/video/remove-adaptive-stream-segment', { videoId, format, resolution, segmentName });
   }
   
-  public async getVideoBandwidth(jwtToken: string, videoId: string) {
+  public async getVideoBandwidth(jwtToken: string, videoId: string): Promise<unknown> {
       return this.postAuthenticated(jwtToken, '/video/get-bandwidth', { videoId });
   }
 
-  public async stopVideoStreaming(jwtToken: string, videoId: string) {
+  public async stopVideoStreaming(jwtToken: string, videoId: string): Promise<unknown> {
       return this.postAuthenticated(jwtToken, '/video/stop-streaming', { videoId });
   }
 
@@ -623,7 +631,7 @@ export class NodeApiService extends BaseService {
     title: string, description: string, tags: string, resolution: string,
     isRecordingStreamRemotely: boolean, isRecordingStreamLocally: boolean,
     networkAddress: string, videoId?: string
-  ) {
+  ): Promise<unknown> {
       return this.postAuthenticated(jwtToken, '/video/stream', {
           title, description, tags, resolution,
           isRecordingStreamRemotely, isRecordingStreamLocally,
@@ -631,11 +639,11 @@ export class NodeApiService extends BaseService {
       });
   }
 
-  public async setVideoChatSettings(jwtToken: string, videoId: string, isChatHistoryEnabled: boolean, chatHistoryLimit: number) {
+  public async setVideoChatSettings(jwtToken: string, videoId: string, isChatHistoryEnabled: boolean, chatHistoryLimit: number): Promise<unknown> {
       return this.postAuthenticated(jwtToken, '/video/set-chat-settings', { videoId, isChatHistoryEnabled, chatHistoryLimit });
   }
 
-  public async uploadM3u8MasterManifest(jwtToken: string, videoId: string, type: string, masterManifest: string): Promise<any> {
+  public async uploadM3u8MasterManifest(jwtToken: string, videoId: string, type: string, masterManifest: string): Promise<unknown> {
       const client = await this.getClient();
       const response = await client.post(`/videos/${videoId}/adaptive/m3u8/${type}/manifests/masterManifest`, {
           masterManifest

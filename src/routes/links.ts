@@ -1,8 +1,8 @@
-import { FastifyInstance } from 'fastify';
-import { Container } from '@/core/container.js';
+import type { FastifyInstance } from 'fastify';
+import type { Container } from '@/core/container.js';
 import { LinksController } from '@/controllers/links.js';
 
-export async function linksRoutes(
+export function linksRoutes(
   fastify: FastifyInstance & ReturnType<FastifyInstance['withTypeProvider']>,
   container: Container
 ) {

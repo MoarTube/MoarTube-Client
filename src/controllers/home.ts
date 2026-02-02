@@ -1,4 +1,4 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { BaseController } from './base.js';
 import type { NodeApiService } from '@/services/node-api.js';
 import { getNetworkAddresses } from '@/utils/network.js';
@@ -10,9 +10,9 @@ export class HomeController extends BaseController {
         super('HomeController');
     }
 
-    public getRoot = async (request: FastifyRequest, reply: FastifyReply) => {
+    public getRoot = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = (request.session as any).jwtToken;
+            const jwtToken = request.session.jwtToken;
             const response = await this.nodeApiService.isAuthenticated(jwtToken);
 
             if (response.isError) {
@@ -30,7 +30,7 @@ export class HomeController extends BaseController {
         }
     }
 
-    public getNetwork = async (_request: FastifyRequest, reply: FastifyReply) => {
+    public getNetwork = async (_request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
            const addresses = getNetworkAddresses();
            return await this.sendSuccess(reply, { networkAddresses: addresses });
@@ -40,3 +40,4 @@ export class HomeController extends BaseController {
         }
     }
 }
+
