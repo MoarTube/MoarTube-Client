@@ -2,7 +2,7 @@
 <html>
 
 <head>
-	<title>MoarTube - Links</title>
+	<title>MoarTube - Comments</title>
 	<link rel="icon" type="image/x-icon" href="/images/favicon.ico">
 	<meta charset="utf-8">
 	<script src="/javascript/jquery-3.6.4.min.js"></script>
@@ -52,7 +52,7 @@
 								</a>
 							</li>
 							<li class="nav-item ">
-								<a class="nav-link " href="/comments">
+								<a class="nav-link active " href="/comments">
 									<span class="sidenav-mini-icon"> C </span>
 									<span class="sidenav-normal"> Comments </span>
 									<span id="new-comments-count" class="badge badge-primary ms-1"></span>
@@ -94,7 +94,7 @@
 								</a>
 							</li>
 							<li class="nav-item ">
-								<a class="nav-link active " href="/links">
+								<a class="nav-link " href="/links">
 									<span class="sidenav-mini-icon"> L </span>
 									<span class="sidenav-normal"> Links </span>
 									<span id="new-comments-count" class="badge badge-primary ms-1"></span>
@@ -236,10 +236,21 @@
 			id="navbarBlur" data-scroll="true">
 			<div class="container-fluid py-1 px-3">
 				<nav aria-label="breadcrumb">
-					<h6 class="font-weight-bolder mb-0">Links</h6>
+					<h6 class="font-weight-bolder mb-0">Comments</h6>
 				</nav>
 				<div class="collapse navbar-collapse mt-sm-0 mt-2 me-md-0 me-sm-4" id="navbar">
 					<div class="ms-md-auto pe-md-3 d-flex align-items-center">
+						<div class="input-group">
+							<span class="input-group-text text-body">
+								<i id="search_input_icon" class="fas fa-search" aria-hidden="true"></i>
+								<div id="search_input_spinner"
+									class="spinner-grow text-primary spinner-grow-sm hidden-elem" role="status">
+									<span class="sr-only">Loading...</span>
+								</div>
+							</span>
+							<input type="text" id="search-input" class="form-control" placeholder="Search here..."
+								onfocus="focused(this)" onfocusout="defocused(this)" oninput="searchInputEntered(this)">
+						</div>
 					</div>
 					<ul class="navbar-nav justify-content-end">
 						<li class="nav-item d-flex align-items-center">
@@ -268,13 +279,9 @@
 		</nav>
 		<div class="container-fluid py-4">
 			<div class="row ">
-				<div class="mb-2">
-					<button class="btn bg-gradient-primary mb-0 btn-outline-primary" onclick="showAddLinkModal()">Add
-						Link</button>
-				</div>
 				<div class="col-lg-12">
 					<div class="card">
-						<table id="links-table" class="table table-striped">
+						<table id="comments-table" class="table table-striped">
 						</table>
 					</div>
 				</div>
@@ -282,7 +289,8 @@
 		</div>
 		<div class="row align-items-center justify-content-center">
 			<div class="col-auto">
-				<div id="scroller-loading-spinner" class="spinner-border text-primary spinner-md" role="status"></div>
+				<div id="comments-scroller-loading-spinner" class="spinner-border text-primary spinner-md"
+					role="status"></div>
 			</div>
 		</div>
 	</main>
@@ -296,40 +304,60 @@
 	<script src="/javascript/choices-9.0.1.min.js"></script>
 	<script src="/javascript/soft-ui-dashboard-1.1.0.min.js"></script>
 	<script>
-		const INCOMING_PARAMETERS = [[= JSON.stringify(model)]];
+		const INCOMING_PARAMETERS = <%- JSON.stringify(model) %>;
+
+		let VIDEO_ID;
+		let NODE_BASE_URL;
+
+		let OLDEST_COMMENT_VISIBLE_TIMESTAMP;
+
+		let COMMENTS_LOADER_INTERVAL;
 
 		let DATA_TABLE;
 
 		$(document).ready(async function () {
+			const params = new URL(window.location.href).searchParams;
+
+			VIDEO_ID = params.get('v');
+
 			const nodeSettings = INCOMING_PARAMETERS.nodeSettings;
 			const newContentCounts = INCOMING_PARAMETERS.newContentCounts;
-			const links = INCOMING_PARAMETERS.links;
+
+			setContentChecked('comments');
 
 			loadNodeSettings(nodeSettings);
 			loadNewContentCounts(newContentCounts);
-			loadLinks(links);
+
+			startCommentsLoaderInterval('', 10, Date.now());
 		});
+
+		function setContentChecked(contentType) {
+			$.ajax({ type: 'POST', url: '/node/contentChecked', data: { contentType: contentType } })
+				.done(function (data, textStatus, xhr) {
+					if (data.isError) {
+						showAlert(true, data.message);
+					}
+				})
+				.fail(function () {
+					console.log('unable to communicate with node');
+				});
+		}
 
 		function loadNodeSettings(nodeSettings) {
 			const nodeProtocol = nodeSettings.publicNodeProtocol;
 			const nodeAddress = nodeSettings.publicNodeAddress;
 			const nodePort = nodeSettings.publicNodePort;
 
-			const nodeBaseUrl = nodeProtocol + '://' + nodeAddress + ':' + nodePort;
+			NODE_BASE_URL = nodeProtocol + '://' + nodeAddress + ':' + nodePort;
 
-			$('#node-link').attr('href', nodeBaseUrl);
+			$('#node-link').attr('href', NODE_BASE_URL);
 		}
 
 		function loadNewContentCounts(newContentCounts) {
-			const newCommentsCount = newContentCounts.newCommentsCount;
 			const newVideoReportsCount = newContentCounts.newVideoReportsCount;
 			const newCommentReportsCount = newContentCounts.newCommentReportsCount;
 
 			const newReportsCount = newVideoReportsCount + newCommentReportsCount;
-
-			if (newCommentsCount > 0) {
-				$('#new-comments-count').text(newCommentsCount);
-			}
 
 			if (newReportsCount > 0) {
 				$('#new-reports-count').text(newReportsCount);
@@ -344,47 +372,145 @@
 			}
 		}
 
-		function loadLinks(links) {
-			const tableData = parseLinks(links);
+		let searchInputTimer;
+		function searchInputEntered(input) {
+			const searchTerm = input.value;
 
-			populateLinksTable(tableData);
+			clearTimeout(searchInputTimer);
 
-			refreshHoverTooltips();
+			$('#search_input_icon').addClass('hidden-elem');
+			$('#search_input_spinner').removeClass('hidden-elem');
+			searchInputTimer = setTimeout(async function () {
+				$('#videos_table tbody').empty();
 
-			$('#scroller-loading-spinner').addClass('hidden-elem');
+				if (DATA_TABLE != null) {
+					DATA_TABLE.destroy();
+					DATA_TABLE = null;
+				}
+
+				startCommentsLoaderInterval(searchTerm, 10, Date.now());
+
+				$('#search_input_spinner').addClass('hidden-elem');
+				$('#search_input_icon').removeClass('hidden-elem');
+
+			}, 500);
 		}
 
-		function parseLinks(links) {
+		async function startCommentsLoaderInterval(searchTerm, limit, timestamp) {
+			clearInterval(COMMENTS_LOADER_INTERVAL);
+
+			OLDEST_COMMENT_VISIBLE_TIMESTAMP = timestamp;
+
+			try {
+				const commentsTableLoadingSpinner = $('#comments-scroller-loading-spinner');
+
+				$(commentsTableLoadingSpinner).removeClass('hidden-elem');
+
+				await getComments(searchTerm, limit, OLDEST_COMMENT_VISIBLE_TIMESTAMP);
+
+				let blocked = false;
+
+				COMMENTS_LOADER_INTERVAL = setInterval(async function () {
+					const commentsTableLoadingSpinnerRect = $(commentsTableLoadingSpinner)[0].getBoundingClientRect();
+
+					if (commentsTableLoadingSpinnerRect.top >= 0 && commentsTableLoadingSpinnerRect.bottom <= (window.innerHeight || document.documentElement.clientHeight)) {
+						if (!blocked) {
+							blocked = true;
+							await getComments(searchTerm, limit, OLDEST_COMMENT_VISIBLE_TIMESTAMP);
+							blocked = false;
+						}
+					}
+				}, 500);
+			}
+			catch (error) {
+				console.log(error);
+			}
+		}
+
+		function getComments(searchTerm, limit, timestamp) {
+			return new Promise(function (resolve, reject) {
+				let data = {
+					limit: limit,
+					timestamp: timestamp
+				};
+
+				if(VIDEO_ID != null) {
+					data.videoId = VIDEO_ID;
+				}
+
+				if(searchTerm.length > 0) {
+					data.searchTerm = searchTerm;
+				}
+
+				$.ajax({ type: 'GET', url: '/comments/search', data: data })
+					.done(function (data, textStatus, xhr) {
+						if (data.isError) {
+							// showAlert(true, data.message);
+						}
+						else {
+							let comments = data.comments;
+
+							const tableData = parseComments(comments);
+
+							populateCommentsTable(tableData);
+
+							refreshHoverTooltips();
+
+							if (comments.length === 0) {
+								clearInterval(COMMENTS_LOADER_INTERVAL);
+
+								$('#comments-scroller-loading-spinner').addClass('hidden-elem');
+							}
+						}
+
+						resolve();
+					})
+					.fail(function () {
+						console.log('unable to communicate with node');
+
+						resolve();
+					});
+			});
+		}
+
+		function parseComments(comments) {
 			const data = [];
 
-			for (const link of links) {
-				const linkId = link.link_id;
-				const url = link.url;
-				const svgGraphic = link.svg_graphic;
-				const timestamp = link.timestamp;
+			for (const comment of comments) {
+				const videoId = comment.video_id;
+				const commentId = comment.comment_id;
+				const message = comment.comment_plain_text_sanitized;
+				const timestamp = comment.timestamp;
 
 				const timestampFormatted = createDateTimestamp(timestamp);
+				const videoIdFormatted = '<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '" target="_blank">' + videoId + '</a>';
+				const commentIdFormatted = '<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '#p' + commentId + '" target="_blank">' + commentId + '</a>';
 
 				data.push([
-					'<button type="button" class="btn btn-icon btn-2 btn-primary" onclick="deleteLink(this)" data-linkid="' + linkId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete link" data-bs-original-title="delete link"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>',
+					'<button type="button" class="btn btn-icon btn-2 btn-primary" onclick="deleteComment(this)" data-videoid="' + videoId + '" data-commentid="' + commentId + '" data-timestamp="' + timestamp + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>',
 					timestampFormatted,
-					'<a href="' + url + '" target="_blank">' + url + '</a>',
-					svgGraphic
+					videoIdFormatted,
+					commentIdFormatted,
+					message
 				]);
+
+				if (OLDEST_COMMENT_VISIBLE_TIMESTAMP == null || timestamp < OLDEST_COMMENT_VISIBLE_TIMESTAMP) {
+					OLDEST_COMMENT_VISIBLE_TIMESTAMP = timestamp;
+				}
 			}
 
 			let tableData = {
-				headings: ["actions", "date", 'url', "SVG Graphic"],
+				headings: ["actions", 'comment date', "video id", "comment id", "message"],
 				data: data
 			};
 
 			return tableData;
 		}
 
-		function populateLinksTable(data) {
+		function populateCommentsTable(data) {
 			if (DATA_TABLE == null) {
 				DATA_TABLE = new simpleDatatables.DataTable(
-					"#links-table",
+					"#comments-table",
 					{
 						searchable: false,
 						sortable: false,
@@ -397,9 +523,9 @@
 			DATA_TABLE.insert(data);
 		}
 
-		function deleteLink(button) {
+		function deleteComment(button) {
 			Swal.fire({
-				title: 'Delete Link',
+				title: 'Delete Comment',
 				text: 'Are you sure?',
 				showCloseButton: true,
 				showConfirmButton: true,
@@ -409,9 +535,11 @@
 				if (result.isConfirmed) {
 					const row = button.closest('tr');
 
-					const linkId = $(button).data('linkid');
+					const videoId = $(button).data('videoid');
+					const commentId = $(button).data('commentid');
+					const timestamp = $(button).data('timestamp');
 
-					$.ajax({ type: 'POST', url: '/links/delete', data: { linkId: linkId } })
+					$.ajax({ type: 'POST', url: '/comments/delete', data: { videoId: videoId, commentId: commentId, timestamp: timestamp } })
 						.done(function (data, textStatus, xhr) {
 							if (data.isError) {
 								showAlert(true, data.message);
@@ -465,93 +593,6 @@
 			let weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 			return ('0' + (date.getMonth() + 1).toString()).substr(-2) + '/' + ('0' + date.getDate().toString()).substr(-2) + '/' + (date.getFullYear().toString()).substr(2) + '(' + weekday[date.getDay()] + ')' + date.toTimeString().split(' ')[0];
-		}
-
-		function showAddLinkModal() {
-			const html = $('\
-                <div class="row mt-3">\
-                    <div class="input-group mb-3"><input id="url-input" class="form-control" type="text" required autocomplete="off" placeholder="https://...." maxlength="100"/></div> \
-					<div class="input-group mb-3"><textarea id="svg-graphic-textarea" class="form-control" rows="5" required placeholder="SVG Graphic <svg>.....</svg>" maxlength="5000"></textarea></div> \
-                    <div class="input-group mb-3">\
-                        <div class="me-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-meta sample-svg-icon" viewBox="0 0 16 16" role="button"> <path fill-rule="evenodd" d="M8.217 5.243C9.145 3.988 10.171 3 11.483 3 13.96 3 16 6.153 16.001 9.907c0 2.29-.986 3.725-2.757 3.725-1.543 0-2.395-.866-3.924-3.424l-.667-1.123-.118-.197a55 55 0 0 0-.53-.877l-1.178 2.08c-1.673 2.925-2.615 3.541-3.923 3.541C1.086 13.632 0 12.217 0 9.973 0 6.388 1.995 3 4.598 3q.477-.001.924.122c.31.086.611.22.913.407.577.359 1.154.915 1.782 1.714m1.516 2.224q-.378-.614-.727-1.133L9 6.326c.845-1.305 1.543-1.954 2.372-1.954 1.723 0 3.102 2.537 3.102 5.653 0 1.188-.39 1.877-1.195 1.877-.773 0-1.142-.51-2.61-2.87zM4.846 4.756c.725.1 1.385.634 2.34 2.001A212 212 0 0 0 5.551 9.3c-1.357 2.126-1.826 2.603-2.581 2.603-.777 0-1.24-.682-1.24-1.9 0-2.602 1.298-5.264 2.846-5.264q.136 0 .27.018Z"/> </svg></div>\
-                        <div class="me-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-discord sample-svg-icon" viewBox="0 0 16 16" role="button"><path d="M13.545 2.907a13.2 13.2 0 0 0-3.257-1.011.05.05 0 0 0-.052.025c-.141.25-.297.577-.406.833a12.2 12.2 0 0 0-3.658 0 8 8 0 0 0-.412-.833.05.05 0 0 0-.052-.025c-1.125.194-2.22.534-3.257 1.011a.04.04 0 0 0-.021.018C.356 6.024-.213 9.047.066 12.032q.003.022.021.037a13.3 13.3 0 0 0 3.995 2.02.05.05 0 0 0 .056-.019q.463-.63.818-1.329a.05.05 0 0 0-.01-.059l-.018-.011a9 9 0 0 1-1.248-.595.05.05 0 0 1-.02-.066l.015-.019q.127-.095.248-.195a.05.05 0 0 1 .051-.007c2.619 1.196 5.454 1.196 8.041 0a.05.05 0 0 1 .053.007q.121.1.248.195a.05.05 0 0 1-.004.085 8 8 0 0 1-1.249.594.05.05 0 0 0-.03.03.05.05 0 0 0 .003.041c.24.465.515.909.817 1.329a.05.05 0 0 0 .056.019 13.2 13.2 0 0 0 4.001-2.02.05.05 0 0 0 .021-.037c.334-3.451-.559-6.449-2.366-9.106a.03.03 0 0 0-.02-.019m-8.198 7.307c-.789 0-1.438-.724-1.438-1.612s.637-1.613 1.438-1.613c.807 0 1.45.73 1.438 1.613 0 .888-.637 1.612-1.438 1.612m5.316 0c-.788 0-1.438-.724-1.438-1.612s.637-1.613 1.438-1.613c.807 0 1.451.73 1.438 1.613 0 .888-.631 1.612-1.438 1.612"/></svg></div>\
-                        <div class="me-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-twitter-x sample-svg-icon" viewBox="0 0 16 16" role="button"><path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865z"/></svg></div>\
-                        <div class="me-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-facebook sample-svg-icon" viewBox="0 0 16 16" role="button"><path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951"/></svg></div>\
-                        <div class="me-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-linkedin sample-svg-icon" viewBox="0 0 16 16" role="button"><path d="M0 1.146C0 .513.526 0 1.175 0h13.65C15.474 0 16 .513 16 1.146v13.708c0 .633-.526 1.146-1.175 1.146H1.175C.526 16 0 15.487 0 14.854zm4.943 12.248V6.169H2.542v7.225zm-1.2-8.212c.837 0 1.358-.554 1.358-1.248-.015-.709-.52-1.248-1.342-1.248S2.4 3.226 2.4 3.934c0 .694.521 1.248 1.327 1.248zm4.908 8.212V9.359c0-.216.016-.432.08-.586.173-.431.568-.878 1.232-.878.869 0 1.216.662 1.216 1.634v3.865h2.401V9.25c0-2.22-1.184-3.252-2.764-3.252-1.274 0-1.845.7-2.165 1.193v.025h-.016l.016-.025V6.169h-2.4c.03.678 0 7.225 0 7.225z"/></svg></div>\
-                        <div class="me-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi sample-svg-icon" viewBox="0 0 400 400" role="button"><defs xmlns="http://www.w3.org/2000/svg"><style>.a{fill:none;}.b{fill:#00aeef;}.c{fill:#008ccf;}</style></defs><rect xmlns="http://www.w3.org/2000/svg" class="a" width="400" height="400"></rect><path xmlns="http://www.w3.org/2000/svg" class="b" d="M137.5,75a125,125,0,1,0,125,125A125,125,0,0,0,137.5,75Zm0,162.5A37.5,37.5,0,1,1,175,200,37.45,37.45,0,0,1,137.5,237.5Z"></path><path xmlns="http://www.w3.org/2000/svg" class="c" d="M278,168.75c31.76,9.14,69.25,0,69.25,0-10.88,47.5-45.38,77.25-95.13,80.87A124.73,124.73,0,0,1,137.5,325L175,205.81C213.55,83.3,233.31,75,324.73,75H387.5C377,121.25,340.81,156.58,278,168.75Z"></path></svg></div>\
-                        <div class="me-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-link-45deg sample-svg-icon" viewBox="0 0 16 16" role="button"><path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1 1 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4 4 0 0 1-.128-1.287z"/><path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243z"/></svg></div>\
-                        <div class="me-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-youtube sample-svg-icon" viewBox="0 0 16 16" role="button"><path d="M8.051 1.999h.089c.822.003 4.987.033 6.11.335a2.01 2.01 0 0 1 1.415 1.42c.101.38.172.883.22 1.402l.01.104.022.26.008.104c.065.914.073 1.77.074 1.957v.075c-.001.194-.01 1.108-.082 2.06l-.008.105-.009.104c-.05.572-.124 1.14-.235 1.558a2.01 2.01 0 0 1-1.415 1.42c-1.16.312-5.569.334-6.18.335h-.142c-.309 0-1.587-.006-2.927-.052l-.17-.006-.087-.004-.171-.007-.171-.007c-1.11-.049-2.167-.128-2.654-.26a2.01 2.01 0 0 1-1.415-1.419c-.111-.417-.185-.986-.235-1.558L.09 9.82l-.008-.104A31 31 0 0 1 0 7.68v-.123c.002-.215.01-.958.064-1.778l.007-.103.003-.052.008-.104.022-.26.01-.104c.048-.519.119-1.023.22-1.402a2.01 2.01 0 0 1 1.415-1.42c.487-.13 1.544-.21 2.654-.26l.17-.007.172-.006.086-.003.171-.007A100 100 0 0 1 7.858 2zM6.4 5.209v4.818l4.157-2.408z"/></svg></div>\
-                        <div class="me-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-reddit sample-svg-icon" viewBox="0 0 16 16" role="button"><path d="M6.167 8a.83.83 0 0 0-.83.83c0 .459.372.84.83.831a.831.831 0 0 0 0-1.661m1.843 3.647c.315 0 1.403-.038 1.976-.611a.23.23 0 0 0 0-.306.213.213 0 0 0-.306 0c-.353.363-1.126.487-1.67.487-.545 0-1.308-.124-1.671-.487a.213.213 0 0 0-.306 0 .213.213 0 0 0 0 .306c.564.563 1.652.61 1.977.61zm.992-2.807c0 .458.373.83.831.83s.83-.381.83-.83a.831.831 0 0 0-1.66 0z"/><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.828-1.165c-.315 0-.602.124-.812.325-.801-.573-1.9-.945-3.121-.993l.534-2.501 1.738.372a.83.83 0 1 0 .83-.869.83.83 0 0 0-.744.468l-1.938-.41a.2.2 0 0 0-.153.028.2.2 0 0 0-.086.134l-.592 2.788c-1.24.038-2.358.41-3.17.992-.21-.2-.496-.324-.81-.324a1.163 1.163 0 0 0-.478 2.224q-.03.17-.029.353c0 1.795 2.091 3.256 4.669 3.256s4.668-1.451 4.668-3.256c0-.114-.01-.238-.029-.353.401-.181.688-.592.688-1.069 0-.65-.525-1.165-1.165-1.165"/></svg></div>\
-                    </div> \
-                    <div class="input-group"><a href="https://icons.getbootstrap.com" target="_blank">Bootstrap 5 Icons</a></div> \
-                    <div class="input-group"><a href="https://fontawesome.com/icons" target="_blank">Font Awesome Icons</a></div> \
-                    </div>\
-                ');
-
-			Swal.fire({
-				title: 'Add Link',
-				html: html,
-				showConfirmButton: true,
-				confirmButtonText: "Add",
-				showCloseButton: true,
-				showCancelButton: true,
-				width: '500px',
-				didOpen: () => {
-					$('.sample-svg-icon').click(function (event) {
-						$('#svg-graphic-textarea').val(this.outerHTML);
-					});
-				},
-				preConfirm: () => {
-					const url = Swal.getPopup().querySelector('#url-input').value;
-					let svgGraphic = Swal.getPopup().querySelector('#svg-graphic-textarea').value;
-
-					// convert the SVG graphic to conform to 16x16 size
-					// retain styles if the graphic defines them
-					const parser = new DOMParser();
-					const doc = parser.parseFromString(svgGraphic, "image/svg+xml");
-
-					if (doc.querySelector("parsererror")) {
-						return false;
-					}
-					else {
-						const svgGraphicCode = doc.documentElement.innerHTML;
-						const viewBox = doc.documentElement.getAttribute("viewBox");
-
-						svgGraphic = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi" viewBox="' + viewBox + '">' + svgGraphicCode + '</svg>';
-
-						if (url === '' || svgGraphic === '') {
-							return false;
-						}
-
-						return { url: url, svgGraphic: svgGraphic }
-					}
-				}
-			})
-				.then((result) => {
-					if (result.isConfirmed) {
-						const url = result.value.url;
-						const svgGraphic = result.value.svgGraphic;
-
-						$.ajax({ type: 'POST', url: '/links/add', data: { url: url, svgGraphic: svgGraphic } })
-							.done(function (data, textStatus, xhr) {
-								if (data.isError) {
-									showAlert(true, data.message);
-								}
-								else {
-									const link = data.link;
-
-									const tableData = parseLinks([link]);
-
-									populateLinksTable(tableData);
-
-									refreshHoverTooltips();
-								}
-							})
-							.fail(function () {
-								showAlert(true, 'error occurred');
-							});
-					}
-				});
 		}
 	</script>
 </body>

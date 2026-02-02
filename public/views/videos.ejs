@@ -460,7 +460,7 @@
 	<script src="/javascript/circle-progress-1.2.2.min.js"></script>
 	<script src="/javascript/pickr-nano-theme-1.9.0.min.js"></script>
 	<script>
-		const INCOMING_PARAMETERS = [[= JSON.stringify(model)]];
+		const INCOMING_PARAMETERS = <%- JSON.stringify(model) %>;
 
 		let NODE_BASE_URL;
 		let OLDEST_VISIBLE_TIMESTAMP;
@@ -684,7 +684,8 @@
 		function connectWebsocket() {
 			let connectWebsocketClient = function () {
 				try {
-					const ws = new WebSocket('ws://localhost:8080');
+					const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+					const ws = new WebSocket(protocol + '//' + window.location.host + '/ws');
 
 					ws.onopen = () => {
 						console.log('Connected to WebSocket server');

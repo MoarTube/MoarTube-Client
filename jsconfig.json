@@ -1,9 +1,0 @@
-{
-    "compilerOptions": {
-      "resolveJsonModule": true,
-      "target": "ES2023",
-      "module": "CommonJS",
-      "checkJs": true
-    },
-    "exclude": ["node_modules", "**/node_modules/*", "**/temp/*", "**/out/*"]
-  }

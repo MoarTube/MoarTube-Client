@@ -1,0 +1,43 @@
+import os from 'os';
+import systeminformation from 'systeminformation';
+
+export async function detectOperatingSystem() {
+    return os.platform();
+}
+
+export async function detectSystemCpu() {
+    const cpu = await systeminformation.cpu();
+    return {
+        processingAgentName: 'CPU', // Generic fallback or specific brand
+        processingAgentModel: `${cpu.manufacturer} ${cpu.brand}`.trim()
+    };
+}
+
+export async function detectSystemGpu() {
+    const graphics = await systeminformation.graphics();
+    let processingAgentName = '';
+    let processingAgentModel = '';
+
+    // Simple heuristic to pick the first NVIDIA card found, or fallback to first controller
+    // This matches the logic seen in legacy helpers.js
+    for (const controller of graphics.controllers) {
+        if (controller.vendor.toLowerCase().includes('nvidia')) {
+            processingAgentName = 'NVIDIA';
+            processingAgentModel = controller.model.replace(/^.*\bNVIDIA\s*/, '');
+            break;
+        }
+    }
+
+    if (!processingAgentName && graphics.controllers.length > 0) {
+        const controller = graphics.controllers[0];
+        if (controller) {
+            processingAgentName = controller.vendor;
+            processingAgentModel = controller.model;
+        }
+    }
+
+    return {
+        processingAgentName,
+        processingAgentModel
+    };
+}

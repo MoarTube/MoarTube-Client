@@ -5,3 +5,6 @@ temp
 user
 
 _client_log.txt
+dist/
+coverage/
+node_modules/

@@ -2,7 +2,7 @@
 <html>
 
 <head>
-	<title>MoarTube - Comments</title>
+	<title>MoarTube - Reports</title>
 	<link rel="icon" type="image/x-icon" href="/images/favicon.ico">
 	<meta charset="utf-8">
 	<script src="/javascript/jquery-3.6.4.min.js"></script>
@@ -15,7 +15,7 @@
 	<link href="/css/nucleo-svg.css" rel="stylesheet">
 	<link id="pagestyle" href="/css/soft-ui-dashboard-1.1.0.min.css" rel="stylesheet">
 	<style>
-		td:nth-child(4) {
+		td:nth-child(6) {
 			word-wrap: break-word;
 			word-break: break-all;
 			overflow: hidden
@@ -52,23 +52,23 @@
 								</a>
 							</li>
 							<li class="nav-item ">
-								<a class="nav-link active " href="/comments">
+								<a class="nav-link " href="/comments">
 									<span class="sidenav-mini-icon"> C </span>
 									<span class="sidenav-normal"> Comments </span>
 									<span id="new-comments-count" class="badge badge-primary ms-1"></span>
 								</a>
 							</li>
 							<li class="nav-item ">
-								<a class="nav-link collapsed" data-bs-toggle="collapse" aria-expanded="false"
+								<a class="nav-link active" data-bs-toggle="collapse" aria-expanded="true"
 									href="#reports">
 									<span class="sidenav-mini-icon"> R </span>
 									<span class="sidenav-normal"> Reports <b class="caret"></b></span>
 									<span id="new-reports-count" class="badge badge-primary ms-1"></span>
 								</a>
-								<div class="collapse" id="reports">
+								<div class="collapse show" id="reports">
 									<ul class="nav nav-sm flex-column">
 										<li class="nav-item">
-											<a class="nav-link " href="/reports/videos">
+											<a class="nav-link" href="/reports/videos">
 												<span class="sidenav-mini-icon text-xs"> V </span>
 												<span class="sidenav-normal"> Videos </span>
 												<span id="new-video-reports-count"
@@ -76,7 +76,7 @@
 											</a>
 										</li>
 										<li class="nav-item">
-											<a class="nav-link " href="/reports/comments">
+											<a class="nav-link active" href="/reports/comments">
 												<span class="sidenav-mini-icon text-xs"> C </span>
 												<span class="sidenav-normal"> Comments </span>
 												<span id="new-comment-reports-count"
@@ -231,28 +231,17 @@
 			</ul>
 		</div>
 	</aside>
-	<main class="main-content position-relative max-height-vh-100 h-100 border-radius-lg height-vh-100">
+	<main class="main-content position-relative max-height-vh-100 h-100 border-radius-lg">
 		<nav class="navbar navbar-main navbar-expand-lg position-sticky mt-4 top-1 px-0 mx-4 shadow-none border-radius-xl z-index-sticky"
 			id="navbarBlur" data-scroll="true">
 			<div class="container-fluid py-1 px-3">
 				<nav aria-label="breadcrumb">
-					<h6 class="font-weight-bolder mb-0">Comments</h6>
+					<h6 class="font-weight-bolder mb-0">Comment Reports</h6>
 				</nav>
 				<div class="collapse navbar-collapse mt-sm-0 mt-2 me-md-0 me-sm-4" id="navbar">
 					<div class="ms-md-auto pe-md-3 d-flex align-items-center">
-						<div class="input-group">
-							<span class="input-group-text text-body">
-								<i id="search_input_icon" class="fas fa-search" aria-hidden="true"></i>
-								<div id="search_input_spinner"
-									class="spinner-grow text-primary spinner-grow-sm hidden-elem" role="status">
-									<span class="sr-only">Loading...</span>
-								</div>
-							</span>
-							<input type="text" id="search-input" class="form-control" placeholder="Search here..."
-								onfocus="focused(this)" onfocusout="defocused(this)" oninput="searchInputEntered(this)">
-						</div>
 					</div>
-					<ul class="navbar-nav justify-content-end">
+					<ul class="navbar-nav  justify-content-end">
 						<li class="nav-item d-flex align-items-center">
 							<a href="/account/signout" class="nav-link text-body font-weight-bold px-0">
 								<i class="fa fa-user me-sm-1" aria-hidden="true"></i>
@@ -281,20 +270,21 @@
 			<div class="row ">
 				<div class="col-lg-12">
 					<div class="card">
-						<table id="comments-table" class="table table-striped">
+						<table id="comment-reports-table" class="table table-striped">
+						</table>
+					</div>
+				</div>
+			</div>
+			<div class="row mt-3">
+				<div class="col-lg-12">
+					<div class="card">
+						<table id="comment-reports-archive-table" class="table table-striped">
 						</table>
 					</div>
 				</div>
 			</div>
 		</div>
-		<div class="row align-items-center justify-content-center">
-			<div class="col-auto">
-				<div id="comments-scroller-loading-spinner" class="spinner-border text-primary spinner-md"
-					role="status"></div>
-			</div>
-		</div>
 	</main>
-	<div id="notifications-container"></div>
 
 	<script src="/javascript/popper-2.11.6.min.js"></script>
 	<script src="/javascript/bootstrap-5.2.2.min.js"></script>
@@ -303,32 +293,27 @@
 	<script src="/javascript/simple-datatables.js"></script>
 	<script src="/javascript/choices-9.0.1.min.js"></script>
 	<script src="/javascript/soft-ui-dashboard-1.1.0.min.js"></script>
-	<script>
-		const INCOMING_PARAMETERS = [[= JSON.stringify(model)]];
 
-		let VIDEO_ID;
+	<script>
+		const INCOMING_PARAMETERS = <%- JSON.stringify(model) %>;
+
 		let NODE_BASE_URL;
 
-		let OLDEST_COMMENT_VISIBLE_TIMESTAMP;
-
-		let COMMENTS_LOADER_INTERVAL;
-
-		let DATA_TABLE;
+		let DATA_TABLE_COMMENT_REPORTS;
+		let DATA_TABLE_COMMENT_REPORTS_ARCHIVE;
 
 		$(document).ready(async function () {
-			const params = new URL(window.location.href).searchParams;
-
-			VIDEO_ID = params.get('v');
-
 			const nodeSettings = INCOMING_PARAMETERS.nodeSettings;
 			const newContentCounts = INCOMING_PARAMETERS.newContentCounts;
+			const commentReports = INCOMING_PARAMETERS.commentReports;
+			const commentReportsArchive = INCOMING_PARAMETERS.commentReportsArchive;
 
-			setContentChecked('comments');
+			setContentChecked('commentReports');
 
 			loadNodeSettings(nodeSettings);
 			loadNewContentCounts(newContentCounts);
-
-			startCommentsLoaderInterval('', 10, Date.now());
+			loadCommentReports(commentReports);
+			loadCommentReportsArchive(commentReportsArchive);
 		});
 
 		function setContentChecked(contentType) {
@@ -354,173 +339,227 @@
 		}
 
 		function loadNewContentCounts(newContentCounts) {
+			const newCommentsCount = newContentCounts.newCommentsCount;
 			const newVideoReportsCount = newContentCounts.newVideoReportsCount;
 			const newCommentReportsCount = newContentCounts.newCommentReportsCount;
 
-			const newReportsCount = newVideoReportsCount + newCommentReportsCount;
-
-			if (newReportsCount > 0) {
-				$('#new-reports-count').text(newReportsCount);
+			if (newCommentsCount > 0) {
+				$('#new-comments-count').text(newCommentsCount);
 			}
 
 			if (newVideoReportsCount > 0) {
+				$('#new-reports-count').text(newVideoReportsCount);
 				$('#new-video-reports-count').text(newVideoReportsCount);
 			}
-
-			if (newCommentReportsCount > 0) {
-				$('#new-comment-reports-count').text(newCommentReportsCount);
-			}
 		}
 
-		let searchInputTimer;
-		function searchInputEntered(input) {
-			const searchTerm = input.value;
+		function loadCommentReports(commentReports) {
+			const parsedCommentReports = parseCommentReports(commentReports);
 
-			clearTimeout(searchInputTimer);
+			populateCommentReportsTable(parsedCommentReports);
 
-			$('#search_input_icon').addClass('hidden-elem');
-			$('#search_input_spinner').removeClass('hidden-elem');
-			searchInputTimer = setTimeout(async function () {
-				$('#videos_table tbody').empty();
-
-				if (DATA_TABLE != null) {
-					DATA_TABLE.destroy();
-					DATA_TABLE = null;
-				}
-
-				startCommentsLoaderInterval(searchTerm, 10, Date.now());
-
-				$('#search_input_spinner').addClass('hidden-elem');
-				$('#search_input_icon').removeClass('hidden-elem');
-
-			}, 500);
+			refreshHoverTooltips();
 		}
 
-		async function startCommentsLoaderInterval(searchTerm, limit, timestamp) {
-			clearInterval(COMMENTS_LOADER_INTERVAL);
+		function loadCommentReportsArchive(commentReportsArchive) {
+			const parsedCommentReportsArchive = parseCommentReportsArchive(commentReportsArchive);
 
-			OLDEST_COMMENT_VISIBLE_TIMESTAMP = timestamp;
+			populateCommentReportsArchiveTable(parsedCommentReportsArchive);
 
-			try {
-				const commentsTableLoadingSpinner = $('#comments-scroller-loading-spinner');
-
-				$(commentsTableLoadingSpinner).removeClass('hidden-elem');
-
-				await getComments(searchTerm, limit, OLDEST_COMMENT_VISIBLE_TIMESTAMP);
-
-				let blocked = false;
-
-				COMMENTS_LOADER_INTERVAL = setInterval(async function () {
-					const commentsTableLoadingSpinnerRect = $(commentsTableLoadingSpinner)[0].getBoundingClientRect();
-
-					if (commentsTableLoadingSpinnerRect.top >= 0 && commentsTableLoadingSpinnerRect.bottom <= (window.innerHeight || document.documentElement.clientHeight)) {
-						if (!blocked) {
-							blocked = true;
-							await getComments(searchTerm, limit, OLDEST_COMMENT_VISIBLE_TIMESTAMP);
-							blocked = false;
-						}
-					}
-				}, 500);
-			}
-			catch (error) {
-				console.log(error);
-			}
+			refreshHoverTooltips();
 		}
 
-		function getComments(searchTerm, limit, timestamp) {
-			return new Promise(function (resolve, reject) {
-				let data = {
-					limit: limit,
-					timestamp: timestamp
-				};
-
-				if(VIDEO_ID != null) {
-					data.videoId = VIDEO_ID;
-				}
-
-				if(searchTerm.length > 0) {
-					data.searchTerm = searchTerm;
-				}
-
-				$.ajax({ type: 'GET', url: '/comments/search', data: data })
-					.done(function (data, textStatus, xhr) {
-						if (data.isError) {
-							// showAlert(true, data.message);
-						}
-						else {
-							let comments = data.comments;
-
-							const tableData = parseComments(comments);
-
-							populateCommentsTable(tableData);
-
-							refreshHoverTooltips();
-
-							if (comments.length === 0) {
-								clearInterval(COMMENTS_LOADER_INTERVAL);
-
-								$('#comments-scroller-loading-spinner').addClass('hidden-elem');
-							}
-						}
-
-						resolve();
-					})
-					.fail(function () {
-						console.log('unable to communicate with node');
-
-						resolve();
-					});
-			});
-		}
-
-		function parseComments(comments) {
+		function parseCommentReports(reports) {
 			const data = [];
 
-			for (const comment of comments) {
-				const videoId = comment.video_id;
-				const commentId = comment.comment_id;
-				const message = comment.comment_plain_text_sanitized;
-				const timestamp = comment.timestamp;
+			for (const report of reports) {
+				const reportId = report.report_id;
+				const timestamp = report.timestamp;
+				const commentTimestamp = report.comment_timestamp;
+				const videoId = report.video_id;
+				const commentId = report.comment_id;
+				const email = report.email;
+				const type = report.type;
+				const message = report.message;
 
 				const timestampFormatted = createDateTimestamp(timestamp);
-				const videoIdFormatted = '<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '" target="_blank">' + videoId + '</a>';
-				const commentIdFormatted = '<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '#p' + commentId + '" target="_blank">' + commentId + '</a>';
+				const commentTimestampFormatted = createDateTimestamp(commentTimestamp);
+
+				const deleteCommentButton = '<button type="button" class="btn btn-icon btn-2 btn-primary me-1" onclick="deleteComment(this)" data-videoid="' + videoId + '" data-commentid="' + commentId + '" data-commenttimestamp="' + commentTimestamp + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>';
+				const archiveReportButton = '<button type="button" class="btn btn-icon btn-2 btn-primary me-1" onclick="archiveReport(this)" data-reportid="' + reportId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="archive report" data-bs-original-title="archive report"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-archive" viewBox="0 0 16 16"><path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1V2zm2 3v7.5A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5H2zm13-3H1v2h14V2zM5 7.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/></svg></span></button>';
+				const deleteReportButton = '<button type="button" class="btn btn-icon btn-2 btn-primary" onclick="deleteReport(this)" data-reportid="' + reportId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete report" data-bs-original-title="delete report"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/></svg></span></button>';
 
 				data.push([
-					'<button type="button" class="btn btn-icon btn-2 btn-primary" onclick="deleteComment(this)" data-videoid="' + videoId + '" data-commentid="' + commentId + '" data-timestamp="' + timestamp + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>',
+					deleteCommentButton + archiveReportButton + deleteReportButton,
 					timestampFormatted,
-					videoIdFormatted,
-					commentIdFormatted,
+					commentTimestampFormatted,
+					reportId.toString(),
+					'<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '" target="_blank">' + videoId + '</a>',
+					'<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '#p' + commentId + '" target="_blank">' + commentId + '</a>',
+					email,
+					type,
 					message
 				]);
-
-				if (OLDEST_COMMENT_VISIBLE_TIMESTAMP == null || timestamp < OLDEST_COMMENT_VISIBLE_TIMESTAMP) {
-					OLDEST_COMMENT_VISIBLE_TIMESTAMP = timestamp;
-				}
 			}
 
 			let tableData = {
-				headings: ["actions", 'comment date', "video id", "comment id", "message"],
+				headings: ["actions", "report date", 'comment date', "report id", "video id", "comment id", "email", "type", "message"],
 				data: data
 			};
 
 			return tableData;
 		}
 
-		function populateCommentsTable(data) {
-			if (DATA_TABLE == null) {
-				DATA_TABLE = new simpleDatatables.DataTable(
-					"#comments-table",
-					{
-						searchable: false,
-						sortable: false,
-						fixedHeight: true,
-						paging: false
-					}
-				);
+		function parseCommentReportsArchive(reports) {
+			const data = [];
+
+			for (const report of reports) {
+				const archiveId = report.archive_id;
+				const reportId = report.report_id;
+				const timestamp = report.timestamp;
+				const commentTimestamp = report.comment_timestamp;
+				const videoId = report.video_id;
+				const commentId = report.comment_id;
+				const email = report.email;
+				const type = report.type;
+				const message = report.message;
+
+				const timestampFormatted = createDateTimestamp(timestamp);
+				const commentTimestampFormatted = createDateTimestamp(commentTimestamp);
+
+				const deleteCommentButton = '<button class="btn btn-icon btn-2 btn-primary me-1" onclick="deleteComment(this)" data-videoid="' + videoId + '" data-commentid="' + commentId + '" data-commenttimestamp="' + commentTimestamp + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>';
+				const deleteArchiveButton = '<button class="btn btn-icon btn-2 btn-primary" onclick="deleteArchive(this)" data-archiveid="' + archiveId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete archive" data-bs-original-title="delete archive"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/></svg></span></button>';
+
+				data.push([
+					deleteCommentButton + deleteArchiveButton,
+					timestampFormatted,
+					commentTimestampFormatted,
+					archiveId.toString(),
+					reportId.toString(),
+					'<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '" target="_blank">' + videoId + '</a>',
+					'<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '#p' + commentId + '" target="_blank">' + commentId + '</a>',
+					email,
+					type,
+					message
+				]);
 			}
 
-			DATA_TABLE.insert(data);
+			let tableData = {
+				headings: ["actions", "report date", 'comment date', "archive id", "report id", "video id", "comment id", "email", "type", "message"],
+				data: data
+			};
+
+			return tableData;
+		}
+
+		function getCommentReportsArchive() {
+			$.ajax({ type: 'GET', url: '/reports/comments/archive/all' })
+				.done(function (data, textStatus, xhr) {
+					if (data.isError) {
+						showAlert(true, data.message);
+					}
+					else {
+						let reports = data.reports;
+
+						loadCommentReportsArchive(reports);
+					}
+				})
+				.fail(function () {
+					console.log('unable to communicate with node');
+				});
+		}
+
+		function populateCommentReportsTable(parsedCommentReports) {
+			if (DATA_TABLE_COMMENT_REPORTS != null) {
+				DATA_TABLE_COMMENT_REPORTS.destroy();
+			}
+
+			DATA_TABLE_COMMENT_REPORTS = new simpleDatatables.DataTable(
+				"#comment-reports-table",
+				{
+					searchable: true,
+					fixedHeight: true
+				}
+			);
+
+			DATA_TABLE_COMMENT_REPORTS.insert(parsedCommentReports);
+		}
+
+		function populateCommentReportsArchiveTable(parsedCommentReportArchives) {
+			if (DATA_TABLE_COMMENT_REPORTS_ARCHIVE != null) {
+				DATA_TABLE_COMMENT_REPORTS_ARCHIVE.destroy();
+			}
+
+			DATA_TABLE_COMMENT_REPORTS_ARCHIVE = new simpleDatatables.DataTable(
+				"#comment-reports-archive-table",
+				{
+					searchable: true,
+					fixedHeight: true
+				}
+			);
+
+			DATA_TABLE_COMMENT_REPORTS_ARCHIVE.insert(parsedCommentReportArchives);
+		}
+
+
+		function archiveReport(button) {
+			const reportId = $(button).data('reportid');
+
+			$.ajax({ type: 'POST', url: '/reports/comments/archive', data: { reportId: reportId } })
+				.done(function (data, textStatus, xhr) {
+					if (data.isError) {
+						showAlert(true, data.message);
+					}
+					else {
+						const row = button.closest('tr');
+
+						DATA_TABLE_COMMENT_REPORTS.rows().remove(parseInt(row.dataIndex));
+
+						getCommentReportsArchive();
+					}
+				})
+				.fail(function () {
+					console.log('unable to communicate with node');
+				});
+		}
+
+
+		function deleteReport(button) {
+			const reportId = $(button).data('reportid');
+
+			$.ajax({ type: 'POST', url: '/reports/comments/delete', data: { reportId: reportId } })
+				.done(function (data, textStatus, xhr) {
+					if (data.isError) {
+						showAlert(true, data.message);
+					}
+					else {
+						const row = button.closest('tr');
+
+						DATA_TABLE_COMMENT_REPORTS.rows().remove(parseInt(row.dataIndex));
+					}
+				})
+				.fail(function () {
+					console.log('unable to communicate with node');
+				});
+		}
+
+		function deleteArchive(button) {
+			const archiveId = $(button).data('archiveid');
+
+			$.ajax({ type: 'POST', url: '/reports/comments/archive/delete', data: { archiveId: archiveId } })
+				.done(function (data, textStatus, xhr) {
+					if (data.isError) {
+						showAlert(true, data.message);
+					}
+					else {
+						const row = button.closest('tr');
+
+						DATA_TABLE_COMMENT_REPORTS_ARCHIVE.rows().remove(parseInt(row.dataIndex));
+					}
+				})
+				.fail(function () {
+					console.log('unable to communicate with node');
+				});
 		}
 
 		function deleteComment(button) {
@@ -533,11 +572,9 @@
 				confirmButtonText: 'confirm',
 			}).then((result) => {
 				if (result.isConfirmed) {
-					const row = button.closest('tr');
-
 					const videoId = $(button).data('videoid');
 					const commentId = $(button).data('commentid');
-					const timestamp = $(button).data('timestamp');
+					const timestamp = $(button).data('commenttimestamp');
 
 					$.ajax({ type: 'POST', url: '/comments/delete', data: { videoId: videoId, commentId: commentId, timestamp: timestamp } })
 						.done(function (data, textStatus, xhr) {
@@ -545,9 +582,7 @@
 								showAlert(true, data.message);
 							}
 							else {
-								const row = button.closest('tr');
-
-								DATA_TABLE.rows().remove(parseInt(row.dataIndex));
+								showAlert(false, 'comment deleted');
 							}
 						})
 						.fail(function () {

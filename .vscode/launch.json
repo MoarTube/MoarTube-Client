@@ -11,7 +11,10 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}\\moartube-client.js"
+            "preLaunchTask": "npm: build",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "start"],
+            "console": "integratedTerminal"
         }
     ]
 }

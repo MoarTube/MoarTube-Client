@@ -1,0 +1,25 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "project": [
+    "src/**/*.{ts,js}"
+  ],
+  "ignore": [
+    "**/*.d.ts",
+    "**/*.config.*",
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts",
+    "dist/**",
+    "node_modules/**",
+    "public/**",
+    "data/**",
+    "coverage/**",
+    "_src/**"
+  ],
+  "ignoreDependencies": [
+    "@types/*",
+    "@fastify/jwt",
+    "async-mutex",
+    "http-terminator"
+  ],
+  "ignoreExportsUsedInFile": true
+}
