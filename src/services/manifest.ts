@@ -57,9 +57,9 @@ export class ManifestService extends BaseService {
         const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
         const storageConfig = nodeSettings.storageConfig;
         
-        if (storageConfig.storageMode === 'filesystem') {
+        if (storageConfig?.storageMode === 'filesystem') {
             await this.nodeApiService.uploadM3u8MasterManifest(jwtToken, videoId, manifestType, masterManifest);
-        } else if (storageConfig.storageMode === 's3provider') {
+        } else if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
             const s3Config = storageConfig.s3Config;
             const key = `external/videos/${videoId}/adaptive/m3u8/${manifestType}/manifests/manifest-master.m3u8`;
             await this.s3Service.putObjectFromData(s3Config, key, Buffer.from(masterManifest), 'application/vnd.apple.mpegurl');

@@ -252,7 +252,7 @@ export class VideoPublishService {
             const nodeSettings = await this.nodeApiService.getNodeSettings(job.jwtToken);
             const videosPath = this.settingsRepository.getVideosDirectoryPath();
 
-            if (nodeSettings.storageConfig.storageMode === 'filesystem') {
+            if (nodeSettings.storageConfig?.storageMode === 'filesystem') {
                  const paths: any[] = [];
                  
                  if (job.format === 'm3u8') {
@@ -286,7 +286,7 @@ export class VideoPublishService {
                     }
                 }
 
-            } else if (nodeSettings.storageConfig.storageMode === 's3provider') {
+            } else if (nodeSettings.storageConfig?.storageMode === 's3provider' && nodeSettings.storageConfig.s3Config) {
                 const paths: any[] = [];
                 // S3 Logic
                 if (job.format === 'm3u8') {

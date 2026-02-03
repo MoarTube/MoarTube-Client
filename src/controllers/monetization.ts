@@ -10,7 +10,7 @@ export class MonetizationController {
 
   public async getRoot(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
     try {
-      const jwtToken = request.session.get('jwtToken');
+      const jwtToken = request.session.jwtToken ?? '';
       // Authenticated check is usually handled by a hook/decorator in the new architecture if applied globally?
       // But here we might need to do it manually or rely on a preHandler.
       // The legacy code does manual check.
@@ -23,7 +23,7 @@ export class MonetizationController {
         // request.session.delete(); // clear session
         // return reply.redirect('/account/signin');
         // Let's standardise on redirecting if not authenticated.
-         request.session.delete();
+         await request.session.destroy();
          return await reply.redirect('/account/signin');
       }
 
@@ -38,7 +38,7 @@ export class MonetizationController {
       ]);
 
       const newContentCounts = newContentCountsResponse?.newContentCounts;
-      const cryptoWalletAddresses = monetizationResponse?.cryptoWalletAddresses || [];
+      const cryptoWalletAddresses = monetizationResponse?.cryptoWalletAddresses ?? [];
 
       return await reply.view('monetization', {
         model: {
@@ -50,7 +50,7 @@ export class MonetizationController {
 
     } catch (error) {
        request.log.error(error);
-       request.session.delete();
+       await request.session.destroy();
        return await reply.redirect('/account/signin');
     }
   }
@@ -67,7 +67,7 @@ export class MonetizationController {
 
   public async postAdd(request: FastifyRequest<{ Body: { walletAddress: string; chain: string; currency: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
-          const jwtToken = request.session.get('jwtToken');
+          const jwtToken = request.session.jwtToken ?? '';
           if (!jwtToken) {
               return await reply.send({ isError: true, message: 'Not authenticated' });
           }
@@ -84,7 +84,7 @@ export class MonetizationController {
 
   public async postDelete(request: FastifyRequest<{ Body: { cryptoWalletAddressId: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
-          const jwtToken = request.session.get('jwtToken');
+          const jwtToken = request.session.jwtToken ?? '';
           if (!jwtToken) {
                return await reply.send({ isError: true, message: 'Not authenticated' });
           }

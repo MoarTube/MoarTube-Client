@@ -12,24 +12,29 @@ export class ReportsController {
 
   public async getVideosRoot(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
     try {
-      const jwtToken = request.session.get('jwtToken');
+      const jwtToken = request.session.jwtToken ?? '';
       const authResponse = await this.nodeApiService.isAuthenticated(jwtToken);
       
       if (authResponse.isError || !authResponse.isAuthenticated) {
-          request.session.delete();
+          await request.session.destroy();
+          return await reply.redirect('/account/signin');
+      }
+
+      if (!jwtToken) {
+          await request.session.destroy();
           return await reply.redirect('/account/signin');
       }
 
       const [nodeSettings, newContentCountsResponse, videoReportsResponse, videoReportsArchiveResponse] = await Promise.all([
-          this.nodeApiService.getNodeSettings(jwtToken!),
-          this.nodeApiService.getNewContentCounts(jwtToken!),
-          this.nodeApiService.getVideoReports(jwtToken!),
-          this.nodeApiService.getVideoReportsArchive(jwtToken!)
+          this.nodeApiService.getNodeSettings(jwtToken),
+          this.nodeApiService.getNewContentCounts(jwtToken),
+          this.nodeApiService.getVideoReports(jwtToken),
+          this.nodeApiService.getVideoReportsArchive(jwtToken)
       ]);
 
       const newContentCounts = newContentCountsResponse?.newContentCounts;
-      const videoReports = videoReportsResponse?.reports || [];
-      const videoReportsArchive = videoReportsArchiveResponse?.reports || [];
+      const videoReports = videoReportsResponse?.reports ?? [];
+      const videoReportsArchive = videoReportsArchiveResponse?.reports ?? [];
 
       return await reply.view('reports-videos', {
         model: {
@@ -42,7 +47,7 @@ export class ReportsController {
 
     } catch (error) {
        request.log.error(error);
-       request.session.delete();
+       await request.session.destroy();
        return await reply.redirect('/account/signin');
     }
   }
@@ -119,24 +124,29 @@ export class ReportsController {
 
   public async getCommentsRoot(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
     try {
-      const jwtToken = request.session.get('jwtToken');
+      const jwtToken = request.session.jwtToken ?? '';
       const authResponse = await this.nodeApiService.isAuthenticated(jwtToken);
       
       if (authResponse.isError || !authResponse.isAuthenticated) {
-          request.session.delete();
+          await request.session.destroy();
+          return await reply.redirect('/account/signin');
+      }
+
+      if (!jwtToken) {
+          await request.session.destroy();
           return await reply.redirect('/account/signin');
       }
 
       const [nodeSettings, newContentCountsResponse, commentReportsResponse, commentReportsArchiveResponse] = await Promise.all([
-          this.nodeApiService.getNodeSettings(jwtToken!),
-          this.nodeApiService.getNewContentCounts(jwtToken!),
-          this.nodeApiService.getCommentReports(jwtToken!),
-          this.nodeApiService.getCommentReportsArchive(jwtToken!)
+          this.nodeApiService.getNodeSettings(jwtToken),
+          this.nodeApiService.getNewContentCounts(jwtToken),
+          this.nodeApiService.getCommentReports(jwtToken),
+          this.nodeApiService.getCommentReportsArchive(jwtToken)
       ]);
 
       const newContentCounts = newContentCountsResponse?.newContentCounts;
-      const commentReports = commentReportsResponse?.reports || [];
-      const commentReportsArchive = commentReportsArchiveResponse?.reports || [];
+      const commentReports = commentReportsResponse?.reports ?? [];
+      const commentReportsArchive = commentReportsArchiveResponse?.reports ?? [];
 
       return await reply.view('reports-comments', {
         model: {
@@ -149,7 +159,7 @@ export class ReportsController {
 
     } catch (error) {
        request.log.error(error);
-       request.session.delete();
+       await request.session.destroy();
        return await reply.redirect('/account/signin');
     }
   }

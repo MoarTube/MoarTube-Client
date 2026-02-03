@@ -14,6 +14,14 @@ const ClientSettingsSchema = z.object({
   nodeWebsocketProtocol: z.string(),
   ffmpegPath: z.string().optional(),
   isDeveloperMode: z.boolean().default(false),
+  processingAgent: z.object({
+      processingAgentType: z.string(),
+      processingAgentName: z.string().optional(),
+      processingAgentModel: z.string().optional()
+  }).optional(),
+  videoEncoderSettings: z.record(z.unknown()).optional(),
+  liveEncoderSettings: z.record(z.unknown()).optional(),
+  version: z.string().optional()
 }).passthrough();
 
 export type ClientSettings = z.infer<typeof ClientSettingsSchema>;

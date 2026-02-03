@@ -21,7 +21,7 @@ export class NodeController {
 
   public async getNewContentCounts(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
       try {
-          const jwtToken = request.session.get('jwtToken');
+          const jwtToken = request.session.jwtToken ?? '';
           if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const data = await this.nodeApiService.getNewContentCounts(jwtToken);
@@ -34,7 +34,7 @@ export class NodeController {
 
   public async postContentChecked(request: FastifyRequest<{ Body: { contentType: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
-          const jwtToken = request.session.get('jwtToken');
+          const jwtToken = request.session.jwtToken ?? '';
           if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const { contentType } = request.body;

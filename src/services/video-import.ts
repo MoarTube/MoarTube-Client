@@ -6,6 +6,7 @@ import ffmpegStatic from 'ffmpeg-static';
 import { BaseService } from './base.js';
 import type { Logger } from '@/utils/logger.js';
 import type { SettingsRepository } from '@/database/repositories/settings.js';
+import type { BaseNodeResponse } from '@/types/node-api.js';
 import type { NodeApiService } from './node-api.js';
 // import type { NodeSocketService } from './node-socket.js';
 import type { S3Service } from './s3.js';
@@ -105,13 +106,13 @@ export class VideoImportService extends BaseService {
 
                const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
                const storageConfig = nodeSettings.storageConfig;
-               const storageMode = storageConfig.storageMode;
+               const storageMode = storageConfig?.storageMode;
 
                if (storageMode === 'filesystem') {
                    await this.nodeApiService.setThumbnail(jwtToken, videoId, thumbnailBuffer);
                    await this.nodeApiService.setPreview(jwtToken, videoId, previewFileBuffer);
                    await this.nodeApiService.setPoster(jwtToken, videoId, posterFileBuffer);
-               } else if (storageMode === 's3provider') {
+               } else if (storageMode === 's3provider' && storageConfig?.s3Config) {
                    const s3Config = storageConfig.s3Config;
                    const thumbnailImageKey = `external/videos/${videoId}/images/thumbnail.jpg`;
                    const previewImageKey = `external/videos/${videoId}/images/preview.jpg`;
@@ -143,7 +144,7 @@ export class VideoImportService extends BaseService {
       }
   }
 
-  public async stopImporting(jwtToken: string, videoId: string): Promise<any> {
+  public async stopImporting(jwtToken: string, videoId: string): Promise<BaseNodeResponse> {
        this.socketService.broadcastToUser(jwtToken, 'echo', { 
             eventName: 'video_status', 
             payload: { type: 'importing_stopping', videoId: videoId } 

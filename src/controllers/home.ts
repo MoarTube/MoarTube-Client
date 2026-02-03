@@ -12,7 +12,7 @@ export class HomeController extends BaseController {
 
     public getRoot = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
+            const jwtToken = request.session.jwtToken ?? '';
             const response = await this.nodeApiService.isAuthenticated(jwtToken);
 
             if (response.isError) {

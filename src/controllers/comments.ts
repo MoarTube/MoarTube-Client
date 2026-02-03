@@ -10,18 +10,23 @@ export class CommentsController {
 
   public async getRoot(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
     try {
-      const jwtToken = request.session.get('jwtToken');
+      const jwtToken = request.session.jwtToken ?? '';
       
       const authResponse = await this.nodeApiService.isAuthenticated(jwtToken);
 
       if (authResponse.isError || !authResponse.isAuthenticated) {
-         request.session.delete();
+         await request.session.destroy();
          return await reply.redirect('/account/signin');
       }
 
+      if (!jwtToken) {
+          await request.session.destroy();
+          return await reply.redirect('/account/signin');
+      }
+
       const [nodeSettings, newContentCountsResponse] = await Promise.all([
-          this.nodeApiService.getNodeSettings(jwtToken!),
-          this.nodeApiService.getNewContentCounts(jwtToken!)
+          this.nodeApiService.getNodeSettings(jwtToken),
+          this.nodeApiService.getNewContentCounts(jwtToken)
       ]);
 
       const newContentCounts = newContentCountsResponse?.newContentCounts;
@@ -35,14 +40,14 @@ export class CommentsController {
 
     } catch (error) {
        request.log.error(error);
-       request.session.delete();
+       await request.session.destroy();
        return await reply.redirect('/account/signin');
     }
   }
 
   public async getSearch(request: FastifyRequest<{ Querystring: { videoId: string; searchTerm: string; limit: number; timestamp: number } }>, reply: FastifyReply): Promise<FastifyReply> {
      try {
-         const jwtToken = request.session.get('jwtToken');
+         const jwtToken = request.session.jwtToken ?? '';
          if (!jwtToken) {
              return await reply.send({ isError: true, message: 'Not authenticated' });
          }
@@ -61,7 +66,7 @@ export class CommentsController {
 
   public async getVideoId(request: FastifyRequest<{ Params: { videoId: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
-          const jwtToken = request.session.get('jwtToken');
+          const jwtToken = request.session.jwtToken ?? '';
           if (!jwtToken) {
                return await reply.send({ isError: true, message: 'Not authenticated' });
           }
@@ -83,7 +88,7 @@ export class CommentsController {
 
   public async postDelete(request: FastifyRequest<{ Body: { videoId: string; commentId: string; timestamp: number } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
-          const jwtToken = request.session.get('jwtToken');
+          const jwtToken = request.session.jwtToken ?? '';
           if (!jwtToken) {
                return await reply.send({ isError: true, message: 'Not authenticated' });
           }

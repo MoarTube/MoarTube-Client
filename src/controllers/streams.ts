@@ -4,6 +4,12 @@ import type { LiveStreamService } from '@/services/live-stream.js';
 import type { NodeApiService } from '@/services/node-api.js';
 import { checkNetworkPortStatus, isPortValid } from '@/utils/network.js';
 import type { S3Service } from '@/services/s3.js';
+import type {
+    StartStreamBody,
+    StopStreamParams,
+    VideoIdParams,
+    UpdateChatSettingsBody
+} from '@/types/requests.js';
 
 export class StreamsController extends BaseController {
     private liveStreamService: LiveStreamService;
@@ -22,9 +28,7 @@ export class StreamsController extends BaseController {
     }
 
     public async startStream(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const body = request.body as any;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const body = request.body as StartStreamBody;
         const { title, description, tags, rtmpPort, resolution, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, videoId: existingVideoId } = body;
 
         if (!isPortValid(rtmpPort)) {
@@ -33,7 +37,7 @@ export class StreamsController extends BaseController {
 
         try {
             // Check if port is available
-            const portStatus = await checkNetworkPortStatus(parseInt(rtmpPort as string, 10), '127.0.0.1');
+            const portStatus = await checkNetworkPortStatus(parseInt(rtmpPort, 10), '127.0.0.1');
 
             if (portStatus === 'closed') {
                 const uuid = 'moartube';
@@ -52,16 +56,15 @@ export class StreamsController extends BaseController {
 
                 const response = await this.nodeApiService.streamVideo(
                     jwtToken,
-                    title as string, description as string, tags as string, resolution as string,
-                    isRecordingStreamRemotely as boolean, isRecordingStreamLocally as boolean,
-                    networkAddress as string, existingVideoId as string
+                    title, description, tags, resolution,
+                    isRecordingStreamRemotely, isRecordingStreamLocally,
+                    networkAddress, existingVideoId
                 );
 
                 if (response.isError) {
                      return await reply.send(response);
                 }
 
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
                 const newVideoId = response.videoId; 
 
                 // Construct RTMP URL
@@ -70,12 +73,12 @@ export class StreamsController extends BaseController {
 
                 await this.liveStreamService.performStreamingJob(
                     jwtToken,
-                    newVideoId as string,
+                    newVideoId,
                     rtmpUrl,
                     format,
-                    resolution as string,
-                    isRecordingStreamRemotely as boolean,
-                    isRecordingStreamLocally as boolean
+                    resolution,
+                    isRecordingStreamRemotely,
+                    isRecordingStreamLocally
                 );
                 
                 // LiveStreamService tracks the process internally by videoId
@@ -87,15 +90,12 @@ export class StreamsController extends BaseController {
 
         } catch (error: any) {
             this.logger.error('Error starting stream', error);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             return await reply.send({ isError: true, message: error.message || 'Unknown error' });
         }
     }
     
     public async stopStream(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const params = request.params as any;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const params = request.params as StopStreamParams;
         const { videoId } = params;
         
         const authHeader = request.headers.authorization;
@@ -121,24 +121,18 @@ export class StreamsController extends BaseController {
             
             // S3 Conversion Logic
             const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const storageConfig = nodeSettings.storageConfig;
 
-            if (storageConfig.storageMode === 's3provider') {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
                 const s3Config = storageConfig.s3Config;
 
-                const videoDataResponse = await this.nodeApiService.getVideoData(jwtToken, videoId as string);
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                const videoDataResponse = await this.nodeApiService.getVideoData(jwtToken, videoId);
                 const videoData = videoDataResponse.videoData;
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 const isStreamRecordedRemotely = videoData.isStreamRecordedRemotely;
 
                 if (isStreamRecordedRemotely) {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                     const resolutions = videoData.outputs.m3u8;
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-                    await this.s3Service.convertM3u8DynamicManifestsToStatic(s3Config, videoId as string, resolutions);
+                    await this.s3Service.convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions);
                 } else {
                     const prefix = `external/videos/${videoId}/adaptive/m3u8`;
                      
@@ -146,29 +140,26 @@ export class StreamsController extends BaseController {
                 }
             }
             
-            this.liveStreamService.stopLiveStream(videoId as string); // managed in service
+            this.liveStreamService.stopLiveStream(videoId); // managed in service
 
-            const stopResponse = await this.nodeApiService.stopVideoStreaming(jwtToken, videoId as string);
+            const stopResponse = await this.nodeApiService.stopVideoStreaming(jwtToken, videoId);
             
             return await reply.send(stopResponse);
         } catch (error: any) {
             this.logger.error('Error stopping stream', error);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             return await reply.send({ isError: true, message: error.message || 'Unknown error' });
         }
     }
 
     public async getStreamRtmpInfo(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const params = request.params as any;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const params = request.params as VideoIdParams;
         const { videoId } = params;
         const authHeader = request.headers.authorization;
         const jwtToken = authHeader?.replace('Bearer ', '') || '';
         if (!jwtToken) {return reply.code(401).send({ isError: true, message: 'Unauthorized' });}
 
         try {
-            const response = await this.nodeApiService.getVideoData(jwtToken, videoId as string);
+            const response = await this.nodeApiService.getVideoData(jwtToken, videoId);
             if (response.isError) {
                 return await reply.send(response);
             }
@@ -185,22 +176,19 @@ export class StreamsController extends BaseController {
             return await reply.send({ isError: false, rtmpStreamUrl, rtmpServerUrl, rtmpStreamkey });
         } catch (error: any) {
             this.logger.error('Error getting stream RTMP info', error);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             return await reply.send({ isError: true, message: error.message });
         }
     }
     
     public async getChatSettings(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const params = request.params as any;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const params = request.params as VideoIdParams;
         const { videoId } = params;
         const authHeader = request.headers.authorization;
         const jwtToken = authHeader?.replace('Bearer ', '') || '';
         if (!jwtToken) {return reply.code(401).send({ isError: true, message: 'Unauthorized' });}
 
         try {
-            const response = await this.nodeApiService.getVideoData(jwtToken, videoId as string);
+            const response = await this.nodeApiService.getVideoData(jwtToken, videoId);
              if (response.isError) {
                 return await reply.send(response);
             }
@@ -212,19 +200,14 @@ export class StreamsController extends BaseController {
             });
         } catch (error: any) {
             this.logger.error('Error getting chat settings', error);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             return await reply.send({ isError: true, message: error.message });
         }
     }
 
     public async updateChatSettings(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const params = request.params as any;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const params = request.params as VideoIdParams;
         const { videoId } = params;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const body = request.body as any;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const body = request.body as UpdateChatSettingsBody;
         const { isChatHistoryEnabled, chatHistoryLimit } = body;
         
         const authHeader = request.headers.authorization;
@@ -232,11 +215,10 @@ export class StreamsController extends BaseController {
         if (!jwtToken) {return reply.code(401).send({ isError: true, message: 'Unauthorized' });}
 
         try {
-            const response = await this.nodeApiService.setVideoChatSettings(jwtToken, videoId as string, isChatHistoryEnabled as boolean, chatHistoryLimit as number);
+            const response = await this.nodeApiService.setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled, chatHistoryLimit);
             return await reply.send(response);
         } catch (error: any) {
             this.logger.error('Error updating chat settings', error);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             return await reply.send({ isError: true, message: error.message });
         }
     }

@@ -14,8 +14,7 @@ export class LinksController extends BaseController {
 
   // View: GET /links
   public getLinksPage = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-    const session = request.session as any;
-    const jwtToken = session.jwtToken;
+    const jwtToken = request.session.jwtToken ?? '';
 
     if (!jwtToken) {
       return await reply.redirect('/account/signin');
@@ -26,7 +25,7 @@ export class LinksController extends BaseController {
     if (authCheck.isError) {
         // Log error?
         // Legacy: node_doSignout(req, res);
-        session.jwtToken = undefined;
+        await request.session.destroy();
         return await reply.redirect('/account/signin');
     }
 
@@ -39,7 +38,7 @@ export class LinksController extends BaseController {
         const newContentCounts = (await this.nodeApiService.getNewContentCounts(jwtToken)).newContentCounts;
         const linksData = await this.nodeApiService.getLinks();
         // Legacy: links = (await linksAll_GET()).links;
-        const links = linksData.links || [];
+        const links = linksData.links ?? [];
 
         return await reply.view('links.ejs', {
             model: {
@@ -51,7 +50,7 @@ export class LinksController extends BaseController {
     } catch (error) {
         this.logger.error('Error rendering links page', error);
         // Legacy: node_doSignout(req, res);
-        session.jwtToken = undefined;
+        await request.session.destroy();
         return await reply.redirect('/account/signin');
     }
   }
@@ -70,10 +69,9 @@ export class LinksController extends BaseController {
   // API: POST /links/add
   public apiAddLink = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
       try {
-          const session = request.session as any;
           const { url, svgGraphic } = request.body as { url: string, svgGraphic: string };
           
-          const data = await this.nodeApiService.addLink(session.jwtToken, url, svgGraphic);
+          const data = await this.nodeApiService.addLink(request.session.jwtToken ?? '', url, svgGraphic);
           return await reply.send(data);
       } catch (error) {
           this.logger.error('Error adding link', error);
@@ -84,10 +82,9 @@ export class LinksController extends BaseController {
   // API: POST /links/delete
   public apiDeleteLink = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
       try {
-          const session = request.session as any;
           const { linkId } = request.body as { linkId: string };
           
-          const data = await this.nodeApiService.deleteLink(session.jwtToken, linkId);
+          const data = await this.nodeApiService.deleteLink(request.session.jwtToken ?? '', linkId);
           return await reply.send(data);
       } catch (error) {
            this.logger.error('Error deleting link', error);

@@ -9,7 +9,18 @@ import type {
     NodeSettings, 
     NewContentCounts, 
     Video,
-    VideoDataAllResponse
+    VideoDataAllResponse,
+    BaseNodeResponse,
+    StreamVideoResponse,
+    SourceFileExtensionResponse,
+    VideoDataResponse,
+    DeleteVideosResponse,
+    FinalizeVideosResponse,
+    VideoSourcesResponse,
+    VideoTagsResponse,
+    VideoTagsAllResponse,
+    VideoPublishesResponse,
+    VideoPermissionsResponse
 } from '@/types/node-api.js';
 
 /**
@@ -159,12 +170,12 @@ export class NodeApiService extends BaseService {
     return response.data as { newContentCounts: NewContentCounts };
   }
 
-  public async setContentChecked(jwtToken: string, contentType: string): Promise<any> {
-      return this.postAuthenticated(jwtToken, '/node/contentChecked', { contentType });
+  public async setContentChecked(jwtToken: string, contentType: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/node/contentChecked', { contentType });
   }
 
-  public async setVideoFormatResolutionPublished(jwtToken: string, videoId: string, format: string, resolution: string) {
-      return this.postAuthenticated(jwtToken, `/videos/${videoId}/published`, { format, resolution });
+  public async setVideoFormatResolutionPublished(jwtToken: string, videoId: string, format: string, resolution: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/videos/${videoId}/published`, { format, resolution });
   }
 
   public async getVideoDataAll(jwtToken: string): Promise<VideoDataAllResponse> {
@@ -190,7 +201,7 @@ export class NodeApiService extends BaseService {
 
     const client = await this.getClient();
     const headers = formData.getHeaders();
-    headers.Authorization = `Bearer ${jwtToken}`;
+    headers["Authorization"] = `Bearer ${jwtToken}`;
 
     const response = await client.post('/settings/avatar', formData, { headers });
     return response.data;
@@ -208,25 +219,25 @@ export class NodeApiService extends BaseService {
 
     const client = await this.getClient();
     const headers = formData.getHeaders();
-    headers.Authorization = `Bearer ${jwtToken}`;
+    headers["Authorization"] = `Bearer ${jwtToken}`;
 
     const response = await client.post('/settings/banner', formData, { headers });
     return response.data;
   }
 
-  public async setNodeName(jwtToken: string, nodeName: string): Promise<any> {
-      return this.postAuthenticated(jwtToken, '/settings/personalize/name', { nodeName });
+  public async setNodeName(jwtToken: string, nodeName: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/personalize/name', { nodeName });
   }
 
-  public async setNodeAbout(jwtToken: string, nodeAbout: string): Promise<any> {
-      return this.postAuthenticated(jwtToken, '/settings/personalize/about', { nodeAbout });
+  public async setNodeAbout(jwtToken: string, nodeAbout: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/personalize/about', { nodeAbout });
   }
 
-  public async setNodeId(jwtToken: string, nodeId: string): Promise<any> {
-      return this.postAuthenticated(jwtToken, '/settings/personalize/id', { nodeId });
+  public async setNodeId(jwtToken: string, nodeId: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/personalize/id', { nodeId });
   }
 
-  public async setSecureConnection(jwtToken: string, isSecure: boolean, keyFile: any, certFile: any, caFiles: any): Promise<any> {
+  public async setSecureConnection(jwtToken: string, isSecure: boolean, keyFile: any, certFile: any, caFiles: any): Promise<BaseNodeResponse> {
       const formData = new FormData();
 
       if (keyFile) {
@@ -249,53 +260,53 @@ export class NodeApiService extends BaseService {
 
       const client = await this.getClient();
       const headers = formData.getHeaders();
-      headers.Authorization = `Bearer ${jwtToken}`;
+      headers["Authorization"] = `Bearer ${jwtToken}`;
 
       const response = await client.post('/settings/secure', formData, {
           params: { isSecure }, 
           headers 
       });
-      return response.data;
+      return response.data as BaseNodeResponse;
   }
 
-  public async setNetworkInternal(jwtToken: string, nodeListeningPort: number): Promise<any> {
-      return this.postAuthenticated(jwtToken, '/settings/network/internal', { nodeListeningPort });
+  public async setNetworkInternal(jwtToken: string, nodeListeningPort: number): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/network/internal', { nodeListeningPort });
   }
 
-  public async setExternalNetwork(jwtToken: string, publicNodeProtocol: string, publicNodeAddress: string, publicNodePort: number): Promise<any> {
-      return this.postAuthenticated(jwtToken, '/settings/network/external', { publicNodeProtocol, publicNodeAddress, publicNodePort });
+  public async setExternalNetwork(jwtToken: string, publicNodeProtocol: string, publicNodeAddress: string, publicNodePort: number): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/network/external', { publicNodeProtocol, publicNodeAddress, publicNodePort });
   }
 
-  public async setCloudflareConfiguration(jwtToken: string, email: string, zoneId: string, apiKey: string): Promise<any> {
-      return this.postAuthenticated(jwtToken, '/settings/cloudflare/configure', { cloudflareEmailAddress: email, cloudflareZoneId: zoneId, cloudflareGlobalApiKey: apiKey });
+  public async setCloudflareConfiguration(jwtToken: string, email: string, zoneId: string, apiKey: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/cloudflare/configure', { cloudflareEmailAddress: email, cloudflareZoneId: zoneId, cloudflareGlobalApiKey: apiKey });
   }
 
-  public async clearCloudflareConfiguration(jwtToken: string): Promise<any> {
-      return this.postAuthenticated(jwtToken, '/settings/cloudflare/clear');
+  public async clearCloudflareConfiguration(jwtToken: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/cloudflare/clear');
   }
 
-  public async setCloudflareTurnstileConfiguration(jwtToken: string, siteKey: string, secretKey: string): Promise<any> {
-      return this.postAuthenticated(jwtToken, '/settings/cloudflare/turnstile/configure', { cloudflareTurnstileSiteKey: siteKey, cloudflareTurnstileSecretKey: secretKey });
+  public async setCloudflareTurnstileConfiguration(jwtToken: string, siteKey: string, secretKey: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/cloudflare/turnstile/configure', { cloudflareTurnstileSiteKey: siteKey, cloudflareTurnstileSecretKey: secretKey });
   }
 
-  public async clearCloudflareTurnstileConfiguration(jwtToken: string): Promise<any> {
-      return this.postAuthenticated(jwtToken, '/settings/cloudflare/turnstile/clear');
+  public async clearCloudflareTurnstileConfiguration(jwtToken: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/cloudflare/turnstile/clear');
   }
 
-  public async databaseConfigToggle(jwtToken: string, databaseConfig: any): Promise<any> {
-      return this.postAuthenticated(jwtToken, '/settings/database/config/toggle', { databaseConfig });
+  public async databaseConfigToggle(jwtToken: string, databaseConfig: any): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/database/config/toggle', { databaseConfig });
   }
 
-  public async databaseConfigEmpty(jwtToken: string): Promise<any> {
-      return this.postAuthenticated(jwtToken, '/settings/database/config/empty');
+  public async databaseConfigEmpty(jwtToken: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/database/config/empty');
   }
 
-  public async storageConfigToggle(jwtToken: string, storageConfig: any): Promise<any> {
-      return this.postAuthenticated(jwtToken, '/settings/storage/config/toggle', { storageConfig });
+  public async storageConfigToggle(jwtToken: string, storageConfig: any): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/storage/config/toggle', { storageConfig });
   }
 
-  public async storageConfigEmpty(jwtToken: string): Promise<any> {
-      return this.postAuthenticated(jwtToken, '/settings/storage/config/empty');
+  public async storageConfigEmpty(jwtToken: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/storage/config/empty');
   }
 
   public async commentsToggle(jwtToken: string, isCommentsEnabled: boolean): Promise<any> {
@@ -453,59 +464,59 @@ export class NodeApiService extends BaseService {
 
   // Videos Methods
 
-  public async getVideosTags(jwtToken: string): Promise<any> {
+  public async getVideosTags(jwtToken: string): Promise<VideoTagsResponse> {
     const client = await this.getClient();
     const response = await client.get('/videos/tags', { headers: { Authorization: `Bearer ${jwtToken}` } });
-    return response.data;
+    return response.data as VideoTagsResponse;
   }
 
-  public async getVideosTagsAll(jwtToken: string): Promise<any> {
+  public async getVideosTagsAll(jwtToken: string): Promise<VideoTagsAllResponse> {
     const client = await this.getClient();
     const response = await client.get('/videos/tags/all', { headers: { Authorization: `Bearer ${jwtToken}` } });
-    return response.data;
+    return response.data as VideoTagsAllResponse;
   }
 
-  public async getVideoPublishes(jwtToken: string, videoId: string): Promise<any> {
+  public async getVideoPublishes(jwtToken: string, videoId: string): Promise<VideoPublishesResponse> {
     const client = await this.getClient();
     const response = await client.get(`/videos/${videoId}/publishes`, { headers: { Authorization: `Bearer ${jwtToken}` } });
-    return response.data;
+    return response.data as VideoPublishesResponse;
   }
 
-  public async setVideoData(jwtToken: string, videoId: string, title: string, description: string, tags: string): Promise<any> {
-    return this.postAuthenticated(jwtToken, `/videos/${videoId}/data`, { title, description, tags });
+  public async setVideoData(jwtToken: string, videoId: string, title: string, description: string, tags: string): Promise<BaseNodeResponse> {
+    return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/videos/${videoId}/data`, { title, description, tags });
   }
 
-  public async deleteVideos(jwtToken: string, videoIds: string[]): Promise<any> {
-    return this.postAuthenticated(jwtToken, '/videos/delete', { videoIds });
+  public async deleteVideos(jwtToken: string, videoIds: string[]): Promise<DeleteVideosResponse> {
+    return this.postAuthenticated<DeleteVideosResponse>(jwtToken, '/videos/delete', { videoIds });
   }
 
-  public async finalizeVideos(jwtToken: string, videoIds: string[]): Promise<any> {
-    return this.postAuthenticated(jwtToken, '/videos/finalize', { videoIds });
+  public async finalizeVideos(jwtToken: string, videoIds: string[]): Promise<FinalizeVideosResponse> {
+    return this.postAuthenticated<FinalizeVideosResponse>(jwtToken, '/videos/finalize', { videoIds });
   }
 
-  public async addVideoToIndex(jwtToken: string, videoId: string, containsAdultContent: boolean, termsOfServiceAgreed: boolean, cloudflareTurnstileToken: string): Promise<any> {
-    return this.postAuthenticated(jwtToken, '/videos/index/add', { videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken });
+  public async addVideoToIndex(jwtToken: string, videoId: string, containsAdultContent: boolean, termsOfServiceAgreed: boolean, cloudflareTurnstileToken: string): Promise<BaseNodeResponse> {
+    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/videos/index/add', { videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken });
   }
 
-  public async removeVideoFromIndex(jwtToken: string, videoId: string, cloudflareTurnstileToken: string): Promise<any> {
-    return this.postAuthenticated(jwtToken, '/videos/index/remove', { videoId, cloudflareTurnstileToken });
+  public async removeVideoFromIndex(jwtToken: string, videoId: string, cloudflareTurnstileToken: string): Promise<BaseNodeResponse> {
+    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/videos/index/remove', { videoId, cloudflareTurnstileToken });
   }
 
-  public async setIsIndexOutdated(jwtToken: string, videoId: string): Promise<any> {
-    return this.postAuthenticated(jwtToken, `/videos/${videoId}/index/outdated`);
+  public async setIsIndexOutdated(jwtToken: string, videoId: string): Promise<BaseNodeResponse> {
+    return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/videos/${videoId}/index/outdated`);
   }
 
-  public async getVideoPermissions(jwtToken: string, videoId: string): Promise<any> {
+  public async getVideoPermissions(jwtToken: string, videoId: string): Promise<VideoPermissionsResponse> {
     const client = await this.getClient();
     const response = await client.get(`/videos/${videoId}/permissions`, { headers: { Authorization: `Bearer ${jwtToken}` } });
-    return response.data;
+    return response.data as VideoPermissionsResponse;
   }
 
-  public async postVideoPermissions(jwtToken: string, videoId: string, type: string, isEnabled: boolean): Promise<any> {
-    return this.postAuthenticated(jwtToken, `/videos/${videoId}/permissions`, { type, isEnabled });
+  public async postVideoPermissions(jwtToken: string, videoId: string, type: string, isEnabled: boolean): Promise<BaseNodeResponse> {
+    return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/videos/${videoId}/permissions`, { type, isEnabled });
   }
 
-  public async getVideoSources(videoId: string): Promise<any> {
+  public async getVideoSources(videoId: string): Promise<VideoSourcesResponse> {
       const client = await this.getClient();
       // This endpoint might be checking the node directly? 
       // Legacy used node_getVideoSources without token? 
@@ -513,48 +524,47 @@ export class NodeApiService extends BaseService {
       // node_getVideoSources implementation:
       // axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/sources')
       const response = await client.get(`/videos/${videoId}/sources`);
-      return response.data;
+      return response.data as VideoSourcesResponse;
   }
 
 
-  public async liveChatToggle(jwtToken: string, isLiveChatEnabled: boolean): Promise<any> {
-      return this.postAuthenticated(jwtToken, '/settings/live-chat/toggle', { isLiveChatEnabled });
+  public async liveChatToggle(jwtToken: string, isLiveChatEnabled: boolean): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/live-chat/toggle', { isLiveChatEnabled });
   }
 
-
-  public async setSourceFileExtension(jwtToken: string, videoId: string, extension: string): Promise<unknown> {
-       return this.postAuthenticated(jwtToken, `/videos/${videoId}/sourceFileExtension`, { sourceFileExtension: extension });
+  public async setSourceFileExtension(jwtToken: string, videoId: string, extension: string): Promise<BaseNodeResponse> {
+       return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/videos/${videoId}/sourceFileExtension`, { sourceFileExtension: extension });
   }
 
-  public async setVideoImported(jwtToken: string, videoId: string): Promise<unknown> {
-      return this.postAuthenticated(jwtToken, '/videos/imported', { videoId });
-  }
-  
-  public async stopVideoImporting(jwtToken: string, videoId: string): Promise<unknown> {
-      return this.postAuthenticated(jwtToken, `/videos/${videoId}/importing/stop`, { videoId });
+  public async setVideoImported(jwtToken: string, videoId: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/videos/imported', { videoId });
   }
   
-  public async stopVideoPublishing(jwtToken: string, videoId: string): Promise<unknown> {
-      return this.postAuthenticated(jwtToken, `/videos/${videoId}/publishing/stop`, { videoId });
+  public async stopVideoImporting(jwtToken: string, videoId: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/videos/${videoId}/importing/stop`, { videoId });
+  }
+  
+  public async stopVideoPublishing(jwtToken: string, videoId: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/videos/${videoId}/publishing/stop`, { videoId });
   }
 
-  public async unpublishVideo(jwtToken: string, videoId: string, format: string, resolution: string): Promise<unknown> {
-      return this.postAuthenticated(jwtToken, `/videos/${videoId}/unpublish`, { format, resolution });
+  public async unpublishVideo(jwtToken: string, videoId: string, format: string, resolution: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/videos/${videoId}/unpublish`, { format, resolution });
   }
 
-  public async getVideoData(jwtToken: string | undefined, videoId: string): Promise<any> {
+  public async getVideoData(jwtToken: string | undefined, videoId: string): Promise<VideoDataResponse> {
       const client = await this.getClient();
       // Legacy behavior: GET /videos/:videoId/data
       const response = await client.get(`/videos/${videoId}/data`); 
-      return response.data;
+      return response.data as VideoDataResponse;
   }
 
-  public async getSourceFileExtension(jwtToken: string, videoId: string): Promise<unknown> {
-     const client = await this.getClient();
-     const response = await client.get(`/videos/${videoId}/sourceFileExtension`, {
-         headers: { Authorization: `Bearer ${jwtToken}` }
-     });
-     return response.data;
+public async getSourceFileExtension(jwtToken: string, videoId: string): Promise<SourceFileExtensionResponse> {
+      const client = await this.getClient();
+      const response = await client.get(`/videos/${videoId}/sourceFileExtension`, {
+        headers: { Authorization: `Bearer ${jwtToken}` }
+      });
+      return response.data as SourceFileExtensionResponse;
   }
 
   public async setVideoPublished(jwtToken: string, videoId: string): Promise<unknown> {
@@ -590,40 +600,40 @@ export class NodeApiService extends BaseService {
       return this.postAuthenticated(jwtToken, '/video/stop-streaming', { videoId });
   }
 
-  public async setThumbnail(jwtToken: string, videoId: string, buffer: Buffer): Promise<any> {
+  public async setThumbnail(jwtToken: string, videoId: string, buffer: Buffer): Promise<BaseNodeResponse> {
     const formData = new FormData();
     formData.append('thumbnailFile', buffer, 'thumbnail.jpg');
     
     const client = await this.getClient();
     const headers = formData.getHeaders();
-    headers.Authorization = `Bearer ${jwtToken}`;
+    headers["Authorization"] = `Bearer ${jwtToken}`;
 
     const response = await client.post(`/videos/${videoId}/images/thumbnail`, formData, { headers });
-    return response.data;
+    return response.data as BaseNodeResponse;
   }
 
-  public async setPreview(jwtToken: string, videoId: string, buffer: Buffer): Promise<any> {
+  public async setPreview(jwtToken: string, videoId: string, buffer: Buffer): Promise<BaseNodeResponse> {
     const formData = new FormData();
     formData.append('previewFile', buffer, 'preview.jpg');
     
     const client = await this.getClient();
     const headers = formData.getHeaders();
-    headers.Authorization = `Bearer ${jwtToken}`;
+    headers["Authorization"] = `Bearer ${jwtToken}`;
 
     const response = await client.post(`/videos/${videoId}/images/preview`, formData, { headers });
-    return response.data;
+    return response.data as BaseNodeResponse;
   }
 
-  public async setPoster(jwtToken: string, videoId: string, buffer: Buffer): Promise<any> {
+  public async setPoster(jwtToken: string, videoId: string, buffer: Buffer): Promise<BaseNodeResponse> {
     const formData = new FormData();
     formData.append('posterFile', buffer, 'poster.jpg');
     
     const client = await this.getClient();
     const headers = formData.getHeaders();
-    headers.Authorization = `Bearer ${jwtToken}`;
+    headers["Authorization"] = `Bearer ${jwtToken}`;
 
     const response = await client.post(`/videos/${videoId}/images/poster`, formData, { headers });
-    return response.data;
+    return response.data as BaseNodeResponse;
   }
 
   public async streamVideo(
@@ -631,25 +641,25 @@ export class NodeApiService extends BaseService {
     title: string, description: string, tags: string, resolution: string,
     isRecordingStreamRemotely: boolean, isRecordingStreamLocally: boolean,
     networkAddress: string, videoId?: string
-  ): Promise<unknown> {
-      return this.postAuthenticated(jwtToken, '/video/stream', {
+  ): Promise<StreamVideoResponse> {
+      return this.postAuthenticated<StreamVideoResponse>(jwtToken, '/video/stream', {
           title, description, tags, resolution,
           isRecordingStreamRemotely, isRecordingStreamLocally,
           networkAddress, videoId
       });
   }
 
-  public async setVideoChatSettings(jwtToken: string, videoId: string, isChatHistoryEnabled: boolean, chatHistoryLimit: number): Promise<unknown> {
-      return this.postAuthenticated(jwtToken, '/video/set-chat-settings', { videoId, isChatHistoryEnabled, chatHistoryLimit });
+  public async setVideoChatSettings(jwtToken: string, videoId: string, isChatHistoryEnabled: boolean, chatHistoryLimit: number): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/video/set-chat-settings', { videoId, isChatHistoryEnabled, chatHistoryLimit });
   }
 
-  public async uploadM3u8MasterManifest(jwtToken: string, videoId: string, type: string, masterManifest: string): Promise<unknown> {
+  public async uploadM3u8MasterManifest(jwtToken: string, videoId: string, type: string, masterManifest: string): Promise<BaseNodeResponse> {
       const client = await this.getClient();
       const response = await client.post(`/videos/${videoId}/adaptive/m3u8/${type}/manifests/masterManifest`, {
           masterManifest
       }, {
           headers: { Authorization: `Bearer ${jwtToken}` }
       });
-      return response.data;
+      return response.data as BaseNodeResponse;
   }
 }

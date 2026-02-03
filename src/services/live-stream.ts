@@ -58,7 +58,7 @@ export class LiveStreamService {
         const isCloudflareCdnEnabled = nodeSettings.isCloudflareCdnEnabled;
         const videosPath = this.settingsRepository.getVideosDirectoryPath();
 
-        if (storageConfig.storageMode === 's3provider') {
+        if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
             const prefix = `external/videos/${videoId}/adaptive/m3u8`;
             await this.s3Service.deleteDirectoryRecursive(storageConfig.s3Config, prefix); // Assuming implementation in S3Service
         }
@@ -172,9 +172,9 @@ export class LiveStreamService {
                                      const segmentIndexToRemove = currentSegmentCounter - 20;
                                      if(segmentIndexToRemove >= 0) {
                                         const segmentName = `segment-${resolution}-${segmentIndexToRemove}.ts`;
-                                        if (storageConfig.storageMode === 'filesystem') {
+                                        if (storageConfig?.storageMode === 'filesystem') {
                                             this.nodeApiService.removeAdaptiveStreamSegment(jwtToken, videoId, format, resolution, segmentName).catch(()=>{});
-                                        } else if (storageConfig.storageMode === 's3provider') {
+                                        } else if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
                                              // const segmentKey = `external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/${segmentName}`;
                                              // this.s3Service.deleteObjectWithKey(storageConfig.s3Config, segmentKey).catch(()=>{});
                                         }
@@ -203,7 +203,7 @@ export class LiveStreamService {
                      // Stopped externally
                      this.socketService.broadcastToUser(jwtToken, 'echo', { eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId } });
                      // Handle cleanup/finalization similar to legacy
-                     if (storageConfig.storageMode === 's3provider') {
+                     if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
                          if (!isRecordingStreamRemotely) {
                               // cleanup S3
                          }
@@ -226,9 +226,9 @@ export class LiveStreamService {
              }
         }
 
-        if (storageConfig.storageMode === 'filesystem') {
+        if (storageConfig?.storageMode === 'filesystem') {
              await this.nodeApiService.uploadStream(jwtToken, videoId, 'm3u8', resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName); // Need to add uploadStream to NodeApiService
-        } else if (storageConfig.storageMode === 's3provider') {
+        } else if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
              const segmentKey = `external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/${segmentFileName}`;
              const manifestKey = `external/videos/${videoId}/adaptive/m3u8/dynamic/manifests/manifest-${resolution}.m3u8`;
              
@@ -262,12 +262,12 @@ export class LiveStreamService {
                             sharp(sourceImagePath).resize({ width: 1280 }).resize(1280, 720).jpeg({ quality: 90 }).toBuffer()
                         ]);
 
-                        if (storageConfig.storageMode === 'filesystem') {
+                        if (storageConfig?.storageMode === 'filesystem') {
                              // Node API methods: setThumbnail, setPreview, setPoster
                              await this.nodeApiService.setThumbnail(jwtToken, videoId, thumbnail);
                              await this.nodeApiService.setPreview(jwtToken, videoId, preview);
                              await this.nodeApiService.setPoster(jwtToken, videoId, poster);
-                        } else if (storageConfig.storageMode === 's3provider') {
+                        } else if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
                              const s3Config = storageConfig.s3Config;
                              await this.s3Service.putObjectFromData(s3Config, `external/videos/${videoId}/images/thumbnail.jpg`, thumbnail, 'image/jpeg');
                              await this.s3Service.putObjectFromData(s3Config, `external/videos/${videoId}/images/preview.jpg`, preview, 'image/jpeg');

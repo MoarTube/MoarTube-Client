@@ -16,6 +16,7 @@ import {
 import { STSClient, GetCallerIdentityCommand } from '@aws-sdk/client-sts';
 import { Upload } from '@aws-sdk/lib-storage';
 import fs from 'node:fs';
+import type { S3Config } from '@/types/node-api.js';
 
 /**
  * Service for S3 Operations
@@ -26,7 +27,7 @@ export class S3Service extends BaseService {
     super('s3Service', logger);
   }
 
-  private createClient(endpoint: string, accessKeyId: string, secretAccessKey: string, sessionToken?: string): S3Client {
+  private createClient(endpoint: string | undefined, accessKeyId: string, secretAccessKey: string, sessionToken?: string): S3Client {
     const credentials: any = {
       accessKeyId,
       secretAccessKey
@@ -35,12 +36,16 @@ export class S3Service extends BaseService {
       credentials.sessionToken = sessionToken;
     }
 
-    return new S3Client({
+    const config: any = {
       region: 'us-east-1', // Placeholder region
-      endpoint,
       credentials,
       forcePathStyle: true
-    });
+    };
+    if (endpoint) {
+        config.endpoint = endpoint;
+    }
+
+    return new S3Client(config);
   }
 
   // Helper method to convert stream to string
@@ -225,7 +230,7 @@ export class S3Service extends BaseService {
   }
 
   public async deleteObjectsWithPrefix(
-      endpoint: string, accessKeyId: string, secretAccessKey: string, sessionToken: string | undefined,
+      endpoint: string | undefined, accessKeyId: string, secretAccessKey: string, sessionToken: string | undefined,
       bucket: string, prefix: string
   ): Promise<void> {
       const client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken);
@@ -260,19 +265,56 @@ export class S3Service extends BaseService {
   /**
    * Delete "directory" (objects with prefix) in S3
    */
-  public async deleteDirectoryRecursive(s3Config: any, prefix: string): Promise<void> {
+  public async deleteDirectoryRecursive(s3Config: S3Config, prefix: string): Promise<void> {
       // s3Config comes from node settings, extracting credentials
       const { endpoint, accessKeyId, secretAccessKey, sessionToken, bucket, bucketName } = s3Config;
-      const actualBucket = bucket || bucketName;
+      const actualBucket = (bucket as string) || bucketName; // Support legacy 'bucket' prop if present
+      const region = s3Config.region;
       
-      await this.deleteObjectsWithPrefix(endpoint, accessKeyId, secretAccessKey, sessionToken, actualBucket, prefix);
+      await this.deleteObjectsWithPrefix(endpoint as string, accessKeyId, secretAccessKey, sessionToken as string, actualBucket as string, prefix);
+  }
+
+  /**
+   * Delete a single object with specific key
+   */
+  public async deleteObjectWithKey(s3Config: S3Config, key: string): Promise<void> {
+      const { endpoint, accessKeyId, secretAccessKey, sessionToken, bucket, bucketName } = s3Config;
+      const actualBucket = (bucket as string) || bucketName; // Support legacy 'bucket' prop if present
+      const region = s3Config.region;
+
+      const config: any = {
+          region,
+          credentials: {
+              accessKeyId,
+              secretAccessKey,
+              sessionToken: sessionToken as string | undefined
+          },
+          forcePathStyle: true
+      };
+      if (endpoint) {
+          config.endpoint = endpoint;
+      }
+
+      const client = new S3Client(config);
+
+      try {
+          const deleteCommand = new DeleteObjectCommand({
+              Bucket: actualBucket as string,
+              Key: key
+          });
+          
+          await client.send(deleteCommand);
+      } catch (error) {
+          this.logger.error(`Failed to delete object with key ${key}`, error);
+          throw error;
+      }
   }
 
   /**
    * Convert dynamic HLS manifests to static VOD manifests
    */
   public async convertM3u8DynamicManifestsToStatic(
-    s3Config: any,
+    s3Config: S3Config,
     videoId: string,
     resolutions: string[]
   ): Promise<void> {

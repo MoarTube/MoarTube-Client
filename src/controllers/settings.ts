@@ -4,6 +4,25 @@ import type { NodeApiService } from '@/services/node-api.js';
 import type { Config } from '@/config/index.js';
 import type { Logger } from '@/utils/logger.js';
 import type { S3Service } from '@/services/s3.js';
+import type {
+    SetGpuAccelerationBody,
+    SetClientEncodingBody,
+    SetNodeNameBody,
+    SetNodeAboutBody,
+    SetNodeIdBody,
+    SetSecureConnectionBody,
+    SetNetworkInternalBody,
+    SetNetworkExternalBody,
+    SetCloudflareConfigBody,
+    SetTurnstileConfigBody,
+    ToggleCommentsBody,
+    ToggleLikesBody,
+    ToggleDislikesBody,
+    ToggleReportsBody,
+    ToggleLiveChatBody,
+    ToggleDatabaseBody,
+    ToggleStorageBody
+} from '@/types/requests.js';
 import { detectOperatingSystem, detectSystemCpu, detectSystemGpu } from '@/utils/hardware.js';
 import sharp from 'sharp';
 
@@ -23,13 +42,13 @@ export class SettingsController extends BaseController {
     }
 
     private getClientSettings() {
-        return this.config.clientSettings as any;
+        return this.config.clientSettings;
     }
     
     // View: GET /settings
     public getSettingsPage = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const session = request.session as any;
-        const jwtToken = session.jwtToken;
+        const session = request.session;
+        const jwtToken = session.jwtToken ?? '';
 
         if (!jwtToken) {
             return await reply.redirect('/account/signin');
@@ -38,7 +57,7 @@ export class SettingsController extends BaseController {
         const authCheck = await this.nodeApiService.isAuthenticated(jwtToken);
         if (authCheck.isError || !authCheck.isAuthenticated) {
              // Invalidate session
-             session.jwtToken = undefined;
+             session.jwtToken = '';
              session.user = undefined;
              return await reply.redirect('/account/signin');
         }
@@ -48,13 +67,14 @@ export class SettingsController extends BaseController {
             const clientSettings = this.getClientSettings();
             
             // Enrich with GPU/CPU info if needed (matches legacy logic in client_GET)
-            const viewClientSettings: any = { ...clientSettings };
-            viewClientSettings.isGpuAccelerationEnabled = clientSettings.processingAgent?.processingAgentType === 'gpu';
-            if (viewClientSettings.isGpuAccelerationEnabled) {
-                 viewClientSettings.gpuVendor = clientSettings.processingAgent.processingAgentName;
-                 viewClientSettings.gpuModel = clientSettings.processingAgent.processingAgentModel;
-            }
-            viewClientSettings.version = (this.config.clientSettings as any).version; // Assuming version is in config or package.json
+            const isGpuAccelerationEnabled = clientSettings.processingAgent?.processingAgentType === 'gpu';
+            const viewClientSettings = {
+                ...clientSettings,
+                isGpuAccelerationEnabled,
+                gpuVendor: isGpuAccelerationEnabled ? clientSettings.processingAgent?.processingAgentName : undefined,
+                gpuModel: isGpuAccelerationEnabled ? clientSettings.processingAgent?.processingAgentModel : undefined,
+                version: this.config.clientSettings.version
+            };
 
             // Get Node Settings (Remote)
             const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
@@ -70,34 +90,34 @@ export class SettingsController extends BaseController {
                 }
             });
 
-        } catch (error: any) {
-            return this.sendError(reply, error.message || 'Unknown error');
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            return this.sendError(reply, errorMessage);
         }
     }
 
     // API: GET /settings/client (Legacy: client_GET)
     public apiGetClientSettings = async (_request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-         const settings: any = { isGpuAccelerationEnabled: false };
          const clientSettings = this.getClientSettings();
+         const isGpuAccelerationEnabled = clientSettings.processingAgent?.processingAgentType === 'gpu';
 
-         if (clientSettings.processingAgent?.processingAgentType === 'gpu') {
-             settings.isGpuAccelerationEnabled = true;
-             settings.gpuVendor = clientSettings.processingAgent.processingAgentName;
-             settings.gpuModel = clientSettings.processingAgent.processingAgentModel;
-         }
-
-         settings.videoEncoderSettings = clientSettings.videoEncoderSettings;
-         settings.liveEncoderSettings = clientSettings.liveEncoderSettings;
-         settings.version = (this.config.clientSettings as any).version;
+         const settings = {
+            isGpuAccelerationEnabled,
+            gpuVendor: isGpuAccelerationEnabled ? clientSettings.processingAgent?.processingAgentName : undefined,
+            gpuModel: isGpuAccelerationEnabled ? clientSettings.processingAgent?.processingAgentModel : undefined,
+            videoEncoderSettings: clientSettings.videoEncoderSettings,
+            liveEncoderSettings: clientSettings.liveEncoderSettings,
+            version: this.config.clientSettings.version
+         };
 
          return reply.send({ isError: false, clientSettings: settings });
     }
 
     // API: POST /settings/client/gpu-acceleration
     public apiSetGpuAcceleration = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-         const { isGpuAccelerationEnabled } = request.body as { isGpuAccelerationEnabled: boolean };
+         const { isGpuAccelerationEnabled } = request.body as SetGpuAccelerationBody;
          const operatingSystem = await detectOperatingSystem();
-         const clientSettings = this.config.clientSettings as any;
+         const clientSettings = this.config.clientSettings;
          const result: any = {};
 
          if (operatingSystem === 'win32') {
@@ -130,8 +150,8 @@ export class SettingsController extends BaseController {
 
     // API: POST /settings/client/encoding
     public apiSetClientEncoding = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const { videoEncoderSettings, liveEncoderSettings } = request.body as any;
-        const clientSettings = this.config.clientSettings as any;
+        const { videoEncoderSettings, liveEncoderSettings } = request.body as SetClientEncodingBody;
+        const clientSettings = this.config.clientSettings;
         
         clientSettings.videoEncoderSettings = videoEncoderSettings;
         clientSettings.liveEncoderSettings = liveEncoderSettings;
@@ -151,8 +171,8 @@ export class SettingsController extends BaseController {
 
     // API: GET /settings/node
     public apiGetNodeSettings = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-         const session = request.session as any;
-         const nodeSettings = await this.nodeApiService.getNodeSettings(session.jwtToken);
+         const session = request.session;
+         const nodeSettings = await this.nodeApiService.getNodeSettings(session.jwtToken ?? '');
          return reply.send(nodeSettings);
     }
 
@@ -171,7 +191,7 @@ export class SettingsController extends BaseController {
             const iconBuffer = await sharp(avatarFile).resize({ width: 48 }).resize(48, 48).png({ compressionLevel: 9 }).toBuffer();
             const avatarBuffer = await sharp(avatarFile).resize({ width: 128 }).resize(128, 128).png({ compressionLevel: 9 }).toBuffer();
             
-            const response = await this.nodeApiService.setAvatar(request.session.jwtToken, iconBuffer, avatarBuffer);
+            const response = await this.nodeApiService.setAvatar(request.session.jwtToken ?? '', iconBuffer, avatarBuffer);
             return reply.send(response);
         }
         return reply.send({ isError: true, message: 'avatar file is missing' });
@@ -190,7 +210,7 @@ export class SettingsController extends BaseController {
 
          if (bannerFile) {
              const bannerBuffer = await sharp(bannerFile).resize({ width: 2560 }).resize(2560, 424).png({ compressionLevel: 9 }).toBuffer();
-             const response = await this.nodeApiService.setBanner(request.session.jwtToken, bannerBuffer);
+             const response = await this.nodeApiService.setBanner(request.session.jwtToken ?? '', bannerBuffer);
              return reply.send(response);
          }
          return reply.send({ isError: true, message: 'banner file is missing' });
@@ -198,47 +218,44 @@ export class SettingsController extends BaseController {
 
     // API: POST /settings/node/personalize/name
     public apiSetNodeName = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-         const { nodeName } = request.body as any;
-         const response = await this.nodeApiService.setNodeName(request.session.jwtToken, nodeName);
+         const { nodeName } = request.body as SetNodeNameBody;
+         const response = await this.nodeApiService.setNodeName(request.session.jwtToken ?? '', nodeName);
          return reply.send(response);
     }
     
     // API: POST /settings/node/personalize/about
     public apiSetNodeAbout = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-         const { nodeAbout } = request.body as any;
-         const response = await this.nodeApiService.setNodeAbout(request.session.jwtToken, nodeAbout);
+         const { nodeAbout } = request.body as SetNodeAboutBody;
+         const response = await this.nodeApiService.setNodeAbout(request.session.jwtToken ?? '', nodeAbout);
          return reply.send(response);
     }
 
     // API: POST /settings/node/personalize/id
     public apiSetNodeId = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-         const { nodeId } = request.body as any;
-         const response = await this.nodeApiService.setNodeId(request.session.jwtToken, nodeId);
+         const { nodeId } = request.body as SetNodeIdBody;
+         const response = await this.nodeApiService.setNodeId(request.session.jwtToken ?? '', nodeId);
          return reply.send(response);
     }
 
     // API: POST /settings/node/network/secure
     public apiSetSecureConnection = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         // Multipart?
-        let keyFile: any;
-        let certFile: any;
-        const caFiles: any[] = [];
-        let isSecure: boolean = false;
+        let keyFile: { originalname: string; buffer: Buffer; encoding: string; mimetype: string; size: number } | undefined;
+        let certFile: { originalname: string; buffer: Buffer; encoding: string; mimetype: string; size: number } | undefined;
+        const caFiles: { originalname: string; buffer: Buffer; encoding: string; mimetype: string; size: number }[] = [];
+        let isSecure = false;
         
         // Handling multipart with dynamic fields can be tricky if mixed with non-file fields easily.
         // Fastify multipart parses everything if we iterate.
-        // But for booleans passed as multipart fields, they come as value fields.
+        // We use request.parts() to iterate over both files and fields.
         
         if (!request.isMultipart()) {
              // Fallback if strictly JSON (e.g. disabling secure mode)
-             const { isSecure: secure } = request.body as any;
+             const { isSecure: secure } = request.body as SetSecureConnectionBody;
              isSecure = !!secure;
         } else {
              // We need to buffer the files and extract fields
-             // This logic needs to be robust. 
-             // With @fastify/multipart, we can process parts.
-             // @ts-ignore
-             for await (const part of request.files()) {
+             for await (const part of request.parts()) {
                  if (part.type === 'file') {
                      const buf = await part.toBuffer();
                      const fileObj = { 
@@ -247,8 +264,7 @@ export class SettingsController extends BaseController {
                          encoding: part.encoding, 
                          mimetype: part.mimetype,
                          size: buf.length 
-                     }; // Match legacy multer structure roughly if helper expects it?
-                     // Legacy helper: `node_setSecureConnection` expects file objects with buffer property.
+                     }; 
                      
                      if (part.fieldname === 'keyFile') {keyFile = fileObj;}
                      else if (part.fieldname === 'certFile') {certFile = fileObj;}
@@ -256,13 +272,13 @@ export class SettingsController extends BaseController {
                  } else {
                      // Field
                      if (part.fieldname === 'isSecure') {
-                         isSecure = (part as any).value === 'true';
+                         isSecure = (part as { value: unknown }).value === 'true';
                      }
                  }
              }
         }
         
-        const response = await this.nodeApiService.setSecureConnection(request.session.jwtToken, isSecure, keyFile, certFile, caFiles );
+        const response = await this.nodeApiService.setSecureConnection(request.session.jwtToken ?? '', isSecure, keyFile, certFile, caFiles );
         
         if (!response.isError) {
              const settings = this.config.clientSettings;
@@ -280,8 +296,8 @@ export class SettingsController extends BaseController {
 
     // API: POST /settings/node/network/internal
     public apiSetNetworkInternal = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-         const { nodeListeningPort } = request.body as any;
-         const response = await this.nodeApiService.setNetworkInternal(request.session.jwtToken, nodeListeningPort);
+         const { nodeListeningPort } = request.body as SetNetworkInternalBody;
+         const response = await this.nodeApiService.setNetworkInternal(request.session.jwtToken ?? '', nodeListeningPort);
          if (!response.isError) {
              const settings = this.config.clientSettings;
              settings.nodePort = nodeListeningPort;
@@ -306,8 +322,8 @@ export class SettingsController extends BaseController {
 
     // API: POST /settings/node/network/external
     public apiSetNetworkExternal = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-         const { publicNodeProtocol, publicNodeAddress, publicNodePort } = request.body as any;
-         const jwtToken = request.session.jwtToken;
+         const { publicNodeProtocol, publicNodeAddress, publicNodePort } = request.body as SetNetworkExternalBody;
+         const jwtToken = request.session.jwtToken ?? '';
          const response = await this.nodeApiService.setExternalNetwork(jwtToken, publicNodeProtocol, publicNodeAddress, publicNodePort);
          
          if (!response.isError) {
@@ -317,8 +333,8 @@ export class SettingsController extends BaseController {
     }
 
     public apiSetCloudflareConfig = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const { cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey } = request.body as any;
-        const jwtToken = request.session.jwtToken;
+        const { cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey } = request.body as SetCloudflareConfigBody;
+        const jwtToken = request.session.jwtToken ?? '';
         const response = await this.nodeApiService.setCloudflareConfiguration(jwtToken, cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey);
         if (!response.isError) {
              await this.updateS3Manifests(jwtToken);
@@ -327,7 +343,7 @@ export class SettingsController extends BaseController {
     }
     
     public apiClearCloudflareConfig = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const jwtToken = request.session.jwtToken;
+        const jwtToken = request.session.jwtToken ?? '';
         const response = await this.nodeApiService.clearCloudflareConfiguration(jwtToken);
         if (!response.isError) {
              await this.updateS3Manifests(jwtToken);
@@ -337,60 +353,60 @@ export class SettingsController extends BaseController {
 
 
     public apiSetTurnstileConfig = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const { cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey } = request.body as any;
-        const response = await this.nodeApiService.setCloudflareTurnstileConfiguration(request.session.jwtToken, cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey);
+        const { cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey } = request.body as SetTurnstileConfigBody;
+        const response = await this.nodeApiService.setCloudflareTurnstileConfiguration(request.session.jwtToken ?? '', cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey);
         return reply.send(response);
     }
     
     public apiClearTurnstileConfig = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const response = await this.nodeApiService.clearCloudflareTurnstileConfiguration(request.session.jwtToken);
+        const response = await this.nodeApiService.clearCloudflareTurnstileConfiguration(request.session.jwtToken ?? '');
         return reply.send(response);
     }
 
     public apiToggleComments = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const { isCommentsEnabled } = request.body as any;
-        const response = await this.nodeApiService.commentsToggle(request.session.jwtToken, isCommentsEnabled);
+        const { isCommentsEnabled } = request.body as ToggleCommentsBody;
+        const response = await this.nodeApiService.commentsToggle(request.session.jwtToken ?? '', isCommentsEnabled);
         return reply.send(response);
     }
     
     public apiToggleLikes = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const { isLikesEnabled } = request.body as any;
-        const response = await this.nodeApiService.likesToggle(request.session.jwtToken, isLikesEnabled);
+        const { isLikesEnabled } = request.body as ToggleLikesBody;
+        const response = await this.nodeApiService.likesToggle(request.session.jwtToken ?? '', isLikesEnabled);
         return reply.send(response);
     }
     
     public apiToggleDislikes = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const { isDislikesEnabled } = request.body as any;
-        const response = await this.nodeApiService.dislikesToggle(request.session.jwtToken, isDislikesEnabled);
+        const { isDislikesEnabled } = request.body as ToggleDislikesBody;
+        const response = await this.nodeApiService.dislikesToggle(request.session.jwtToken ?? '', isDislikesEnabled);
         return reply.send(response);
     }
 
     public apiToggleReports = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const { isReportsEnabled } = request.body as any;
-        const response = await this.nodeApiService.reportVideosToggle(request.session.jwtToken, isReportsEnabled);
+        const { isReportsEnabled } = request.body as ToggleReportsBody;
+        const response = await this.nodeApiService.reportVideosToggle(request.session.jwtToken ?? '', isReportsEnabled);
         return reply.send(response);
     }
     
     public apiToggleLiveChat = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const { isLiveChatEnabled } = request.body as any;
-        const response = await this.nodeApiService.liveChatToggle(request.session.jwtToken, isLiveChatEnabled);
+        const { isLiveChatEnabled } = request.body as ToggleLiveChatBody;
+        const response = await this.nodeApiService.liveChatToggle(request.session.jwtToken ?? '', isLiveChatEnabled);
         return reply.send(response);
     }
     
     public apiToggleDatabase = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const { databaseConfig } = request.body as any;
-        const response = await this.nodeApiService.databaseConfigToggle(request.session.jwtToken, databaseConfig);
+        const { databaseConfig } = request.body as ToggleDatabaseBody;
+        const response = await this.nodeApiService.databaseConfigToggle(request.session.jwtToken ?? '', databaseConfig);
         return reply.send(response);
     }
     
     public apiEmptyDatabase = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const response = await this.nodeApiService.databaseConfigEmpty(request.session.jwtToken);
+        const response = await this.nodeApiService.databaseConfigEmpty(request.session.jwtToken ?? '');
         return reply.send(response);
     }
     
     public apiToggleStorage = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const { storageConfig } = request.body as any;
-        const jwtToken = request.session.jwtToken;
+        const { storageConfig } = request.body as ToggleStorageBody;
+        const jwtToken = request.session.jwtToken ?? '';
 
         if (storageConfig.storageMode === 's3provider') {
             await this.s3Service.validateS3Config(storageConfig.s3Config);
@@ -405,7 +421,7 @@ export class SettingsController extends BaseController {
     }
     
     public apiEmptyStorage = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const response = await this.nodeApiService.storageConfigEmpty(request.session.jwtToken);
+        const response = await this.nodeApiService.storageConfigEmpty(request.session.jwtToken ?? '');
         return reply.send(response);
     }
 }

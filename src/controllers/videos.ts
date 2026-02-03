@@ -11,6 +11,20 @@ import type { SettingsRepository } from '@/database/repositories/settings.js';
 import type { ManifestService } from '@/services/manifest.js';
 import type { S3Service } from '@/services/s3.js';
 import type { SocketService } from '@/services/socket.js';
+import type {
+    VideoSearchQuery,
+    VideoIdParams,
+    StopImportBody,
+    PublishBody,
+    StopPublishBody,
+    UnpublishBody,
+    VideoDataBody,
+    AddToIndexBody,
+    RemoveFromIndexBody,
+    VideoPermissionsBody,
+    DeleteVideosBody,
+    FinalizeVideosBody
+} from '@/types/requests.js';
 
 export class VideosController extends BaseController {
     constructor(
@@ -27,7 +41,7 @@ export class VideosController extends BaseController {
 
     public getRoot = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
+            const jwtToken = request.session.jwtToken ?? '';
 
             // Check authentication
             const check = await this.nodeApiService.isAuthenticated(jwtToken);
@@ -37,7 +51,7 @@ export class VideosController extends BaseController {
 
             if (check.isError) {
                  // In legacy, if error, it signs out.
-                 request.session.delete();
+                 await request.session.destroy();
                  return await reply.redirect('/account/signin');
             }
 
@@ -59,7 +73,7 @@ export class VideosController extends BaseController {
         } catch (error) {
             this.logger.error('Error in getRoot', error);
              // In legacy, on error also signs out? "node_doSignout(req, res);"
-             request.session.delete();
+             await request.session.destroy();
              return await reply.redirect('/account/signin');
         }
     }
@@ -67,16 +81,16 @@ export class VideosController extends BaseController {
     // View: GET /videos/search
     public getSearch = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-             const jwtToken = request.session.jwtToken;
-             const query = request.query as any;
+             const jwtToken = request.session.jwtToken ?? '';
+             const query = request.query as VideoSearchQuery;
 
              const data = await this.nodeApiService.searchVideos(
                  jwtToken,
-                 query.searchTerm || '',
-                 query.sortTerm || '',
-                 query.tagTerm || '',
-                 query.tagLimit,
-                 query.timestamp
+                 query.searchTerm ?? '',
+                 query.sortTerm ?? '',
+                 query.tagTerm ?? '',
+                 query.tagLimit ?? 0,
+                 query.timestamp ?? 0
              );
 
              return await reply.send(data);
@@ -87,7 +101,7 @@ export class VideosController extends BaseController {
     }
     public postImport = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
+            const jwtToken = request.session.jwtToken ?? '';
             const parts = request.parts();
             
             let videoId: string | undefined;
@@ -96,26 +110,27 @@ export class VideosController extends BaseController {
 
             for await (const part of parts) {
                 if (part.type === 'file') {
-                    if (part.fieldname === 'videoFile' && videoId) {
-                         // We have videoId, we can save to destination or temp
-                         // Legacy logic seems to rely on file already being at a path or temp.
-                         // Let's save to temp first.
+                    if (part.fieldname === 'videoFile') {
+                         // We save to temp regardless of order
                          const tempDir = this.settingsRepository.getTempDirectoryPath();
                          tempFilePath = path.join(tempDir, part.filename);
                          fileMimeType = part.mimetype;
                          await pipeline(part.file, fs.createWriteStream(tempFilePath));
                     } else {
-                        // Consum stream to avoid hanging if we don't have videoId yet or wrong field
+                        // Consume stream to avoid hanging
                          part.file.resume();
                     }
                 } else {
                     if (part.fieldname === 'videoId') {
-                        videoId = (part.value as any);
+                        videoId = (part.value as string);
                     }
                 }
             }
 
-            if (!videoId || !tempFilePath) {
+            if (videoId === undefined || tempFilePath === undefined) {
+                if (tempFilePath !== undefined && fs.existsSync(tempFilePath)) {
+                    await fs.promises.unlink(tempFilePath);
+                }
                 return await this.sendError(reply, 'Missing videoId or videoFile');
             }
 
@@ -125,19 +140,19 @@ export class VideosController extends BaseController {
             await fs.promises.mkdir(videoSourceDir, { recursive: true });
 
             let ext = path.extname(tempFilePath);
-            if (!ext && fileMimeType) {
+            if (ext === '' && fileMimeType !== undefined) {
                  if (fileMimeType === 'video/mp4') {ext = '.mp4';}
                  else if (fileMimeType === 'video/webm') {ext = '.webm';}
             }
             
-            const destPath = path.join(videoSourceDir, videoId + (ext || ''));
+            const destPath = path.join(videoSourceDir, videoId + ext);
             await fs.promises.rename(tempFilePath, destPath);
 
             // Trigger Import Service
             // We mock the "file" object expected by service
             const fileObj = {
                 path: destPath,
-                mimetype: fileMimeType || 'application/octet-stream' // Should be detected
+                mimetype: fileMimeType ?? 'application/octet-stream' // Should be detected
             };
 
             const result = await this.videoImportService.importVideo(jwtToken, videoId, fileObj);
@@ -151,8 +166,8 @@ export class VideosController extends BaseController {
 
     public postStopImport = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
          try {
-             const jwtToken = request.session.jwtToken;
-             const { videoId } = request.body as { videoId: string };
+             const jwtToken = request.session.jwtToken ?? '';
+             const { videoId } = request.body as StopImportBody;
              const result = await this.videoImportService.stopImporting(jwtToken, videoId);
              return await reply.send(result);
          } catch(error) {
@@ -163,9 +178,9 @@ export class VideosController extends BaseController {
 
     public postPublish = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
-            const { videoId, publishings: publishingsStr } = request.body as { videoId: string, publishings: string };
-            const publishings = JSON.parse(publishingsStr);
+            const jwtToken = request.session.jwtToken ?? '';
+            const { videoId, publishings: publishingsStr } = request.body as PublishBody;
+            const publishings = JSON.parse(publishingsStr) as { format: string, resolution: string }[];
 
             const response1 = await this.nodeApiService.getVideoData(jwtToken, videoId);
             if (response1.isError) {
@@ -193,7 +208,7 @@ export class VideosController extends BaseController {
                       this.videoPublishService.enqueuePendingPublishVideo({
                           jwtToken,
                           videoId,
-                          format: publishing.format,
+                          format: publishing.format as 'm3u8' | 'mp4' | 'webm' | 'ogv',
                           resolution: publishing.resolution,
                           sourceFileExtension
                       });
@@ -214,8 +229,8 @@ export class VideosController extends BaseController {
 
     public postStopPublish = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-             const jwtToken = request.session.jwtToken;
-             const { videoId } = request.body as { videoId: string };
+             const jwtToken = request.session.jwtToken ?? '';
+             const { videoId } = request.body as StopPublishBody;
              
              // Stop local
              this.videoPublishService.stopPendingPublishVideo(videoId);
@@ -231,8 +246,8 @@ export class VideosController extends BaseController {
 
     public postUnpublish = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
-            const { videoId, format, resolution } = request.body as { videoId: string, format: string, resolution: string };
+            const jwtToken = request.session.jwtToken ?? '';
+            const { videoId, format, resolution } = request.body as UnpublishBody;
 
             const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
             const storageConfig = nodeSettings.storageConfig;
@@ -242,22 +257,17 @@ export class VideosController extends BaseController {
                 return await reply.send(response);
             }
 
-            if (storageConfig.storageMode === 's3provider') {
+            if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
                 const s3Config = storageConfig.s3Config;
                 if (format === 'm3u8') {
                     const segmentsPrefix = `external/videos/${videoId}/adaptive/m3u8/${resolution}`;
                     const manifestKey = `external/videos/${videoId}/adaptive/m3u8/static/manifests/manifest-${resolution}.m3u8`;
                     
                     await this.s3Service.deleteDirectoryRecursive(s3Config, segmentsPrefix);
-                    // deleteObjectWithKey needs to be exposed on S3Service or verified
-                    // I will Assume deleteObjectWithKey exists or use putObject to empty? No.
-                    // deleteDirectoryRecursive was verified? No, I used deleteDirectoryRecursive in LiveStreamService without verifying.
-                    // But I need to delete the specific manifest file.
-                    // I should check S3Service for deleteObject or similar.
-                    // For now, I'll attempt to call it.
+                    await this.s3Service.deleteObjectWithKey(s3Config, manifestKey);
                 } else if (['mp4', 'webm', 'ogv'].includes(format)) {
                      const key = `external/videos/${videoId}/progressive/${format}/${resolution}.${format}`;
-                     // await this.s3Service.deleteObject(s3Config, key);
+                     await this.s3Service.deleteObjectWithKey(s3Config, key);
                 }
             }
 
@@ -274,7 +284,7 @@ export class VideosController extends BaseController {
 
     public getTags = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
+            const jwtToken = request.session.jwtToken ?? '';
             const response = await this.nodeApiService.getVideosTags(jwtToken);
             return await reply.send(response);
         } catch (error) {
@@ -285,7 +295,7 @@ export class VideosController extends BaseController {
 
     public getAllTags = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
+            const jwtToken = request.session.jwtToken ?? '';
             const response = await this.nodeApiService.getVideosTagsAll(jwtToken);
             return await reply.send(response);
         } catch (error) {
@@ -296,8 +306,8 @@ export class VideosController extends BaseController {
 
     public getVideoPublishes = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
-            const { videoId } = request.params as { videoId: string };
+            const jwtToken = request.session.jwtToken ?? '';
+            const { videoId } = request.params as VideoIdParams;
             const response = await this.nodeApiService.getVideoPublishes(jwtToken, videoId);
             return await reply.send(response);
         } catch (error) {
@@ -308,8 +318,8 @@ export class VideosController extends BaseController {
 
     public getVideoData = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
-            const { videoId } = request.params as { videoId: string };
+            const jwtToken = request.session.jwtToken ?? '';
+            const { videoId } = request.params as VideoIdParams;
             const response = await this.nodeApiService.getVideoData(jwtToken, videoId);
             return await reply.send(response);
         } catch (error) {
@@ -320,8 +330,8 @@ export class VideosController extends BaseController {
 
     public postVideoData = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
-            const { videoId, title, description, tags } = request.body as { videoId: string, title: string, description: string, tags: string };
+            const jwtToken = request.session.jwtToken ?? '';
+            const { videoId, title, description, tags } = request.body as VideoDataBody;
             const response = await this.nodeApiService.setVideoData(jwtToken, videoId, title, description, tags);
             return await reply.send(response);
         } catch (error) {
@@ -332,8 +342,8 @@ export class VideosController extends BaseController {
 
     public postAddToIndex = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
-            const { videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken } = request.body as any;
+            const jwtToken = request.session.jwtToken ?? '';
+            const { videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken } = request.body as AddToIndexBody;
             const response = await this.nodeApiService.addVideoToIndex(jwtToken, videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken);
             return await reply.send(response);
         } catch (error) {
@@ -344,8 +354,8 @@ export class VideosController extends BaseController {
 
     public postRemoveFromIndex = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
-            const { videoId, cloudflareTurnstileToken } = request.body as any;
+            const jwtToken = request.session.jwtToken ?? '';
+            const { videoId, cloudflareTurnstileToken } = request.body as RemoveFromIndexBody;
             const response = await this.nodeApiService.removeVideoFromIndex(jwtToken, videoId, cloudflareTurnstileToken);
             return await reply.send(response);
         } catch (error) {
@@ -356,8 +366,8 @@ export class VideosController extends BaseController {
 
     public getVideoPermissions = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
-            const { videoId } = request.params as { videoId: string };
+            const jwtToken = request.session.jwtToken ?? '';
+            const { videoId } = request.params as VideoIdParams;
             const response = await this.nodeApiService.getVideoPermissions(jwtToken, videoId);
             return await reply.send(response);
         } catch (error) {
@@ -368,8 +378,8 @@ export class VideosController extends BaseController {
 
     public postVideoPermissions = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
-            const { videoId, type, isEnabled } = request.body as any;
+            const jwtToken = request.session.jwtToken ?? '';
+            const { videoId, type, isEnabled } = request.body as VideoPermissionsBody;
             const response = await this.nodeApiService.postVideoPermissions(jwtToken, videoId, type, isEnabled);
             return await reply.send(response);
         } catch (error) {
@@ -380,7 +390,7 @@ export class VideosController extends BaseController {
 
     public getVideoSources = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const { videoId } = request.params as { videoId: string };
+            const { videoId } = request.params as VideoIdParams;
             
             const response = await this.nodeApiService.getVideoSources(videoId);
             if (!response.isError) {
@@ -396,8 +406,8 @@ export class VideosController extends BaseController {
 
     public postDelete = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
-            const { videoIds } = request.body as { videoIds: string[] };
+            const jwtToken = request.session.jwtToken ?? '';
+            const { videoIds } = request.body as DeleteVideosBody;
 
             const nodeResponse = await this.nodeApiService.deleteVideos(jwtToken, videoIds);
             const { deletedVideoIds, nonDeletedVideoIds } = nodeResponse;
@@ -410,7 +420,7 @@ export class VideosController extends BaseController {
             const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
             const storageConfig = nodeSettings.storageConfig;
 
-            if (storageConfig.storageMode === 's3provider') {
+            if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
                 for (const videoId of videoIds) {
                      const videoPrefix = `external/videos/${videoId}`;
                      await this.s3Service.deleteDirectoryRecursive(storageConfig.s3Config, videoPrefix);
@@ -427,8 +437,8 @@ export class VideosController extends BaseController {
 
     public postFinalize = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
-            const { videoIds } = request.body as { videoIds: string[] };
+            const jwtToken = request.session.jwtToken ?? '';
+            const { videoIds } = request.body as FinalizeVideosBody;
 
             const response = await this.nodeApiService.finalizeVideos(jwtToken, videoIds);
 
@@ -454,8 +464,8 @@ export class VideosController extends BaseController {
 
     public postThumbnail = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
-            const { videoId } = request.params as { videoId: string };
+            const jwtToken = request.session.jwtToken ?? '';
+            const { videoId } = request.params as VideoIdParams;
             const data = await request.file();
 
             if (!data) {
@@ -473,9 +483,9 @@ export class VideosController extends BaseController {
             const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
             const storageConfig = nodeSettings.storageConfig;
 
-            if (storageConfig.storageMode === 'filesystem') {
+            if (storageConfig?.storageMode === 'filesystem') {
                 await this.nodeApiService.setThumbnail(jwtToken, videoId, thumbnailBuffer);
-            } else if (storageConfig.storageMode === 's3provider') {
+            } else if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
                 const s3Config = storageConfig.s3Config;
                 const key = `external/videos/${videoId}/images/thumbnail.jpg`;
                 await this.s3Service.putObjectFromData(s3Config, key, thumbnailBuffer, 'image/jpeg');
@@ -492,8 +502,8 @@ export class VideosController extends BaseController {
 
     public postPreview = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
-            const { videoId } = request.params as { videoId: string };
+            const jwtToken = request.session.jwtToken ?? '';
+            const { videoId } = request.params as VideoIdParams;
             const data = await request.file();
 
             if (!data) {
@@ -511,9 +521,9 @@ export class VideosController extends BaseController {
             const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
             const storageConfig = nodeSettings.storageConfig;
 
-            if (storageConfig.storageMode === 'filesystem') {
+            if (storageConfig?.storageMode === 'filesystem') {
                 await this.nodeApiService.setPreview(jwtToken, videoId, previewBuffer);
-            } else if (storageConfig.storageMode === 's3provider') {
+            } else if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
                 const s3Config = storageConfig.s3Config;
                 const key = `external/videos/${videoId}/images/preview.jpg`;
                 await this.s3Service.putObjectFromData(s3Config, key, previewBuffer, 'image/jpeg');
@@ -530,8 +540,8 @@ export class VideosController extends BaseController {
 
     public postPoster = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
-            const jwtToken = request.session.jwtToken;
-            const { videoId } = request.params as { videoId: string };
+            const jwtToken = request.session.jwtToken ?? '';
+            const { videoId } = request.params as VideoIdParams;
             const data = await request.file();
 
             if (!data) {
@@ -549,9 +559,9 @@ export class VideosController extends BaseController {
             const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
             const storageConfig = nodeSettings.storageConfig;
 
-            if (storageConfig.storageMode === 'filesystem') {
+            if (storageConfig?.storageMode === 'filesystem') {
                 await this.nodeApiService.setPoster(jwtToken, videoId, posterBuffer);
-            } else if (storageConfig.storageMode === 's3provider') {
+            } else if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
                 const s3Config = storageConfig.s3Config;
                 const key = `external/videos/${videoId}/images/poster.jpg`;
                 await this.s3Service.putObjectFromData(s3Config, key, posterBuffer, 'image/jpeg');
