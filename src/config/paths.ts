@@ -14,7 +14,7 @@ export interface Paths {
 
 export function initializePaths(rootPath: string, isDevelopment: boolean, entryPointDir?: string): Paths {
   // If running from dist (entryPointDir provided), use that to resolve public/views
-  const currentRoot = entryPointDir || rootPath;
+  const currentRoot = entryPointDir ?? rootPath;
   
   // In dev specific paths might differ if we want to run from src but use data from root
   const projectRoot = isDevelopment ? path.resolve(currentRoot, '..') : rootPath; 

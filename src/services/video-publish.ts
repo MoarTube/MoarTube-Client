@@ -37,16 +37,16 @@ export class VideoPublishService {
         this.startVideoPublishInterval();
     }
 
-    public setFfmpegPath(path: string) {
+    public setFfmpegPath(path: string): void {
         this.ffmpegPath = path;
     }
 
-    public enqueuePendingPublishVideo(job: VideoPublishJob) {
+    public enqueuePendingPublishVideo(job: VideoPublishJob): void {
         this.pendingPublishVideoQueue.push(job);
         this.logger.info(`[VideoPublishService] Enqueued job for video ${job.videoId}`);
     }
 
-    public stopPendingPublishVideo(videoId: string) {
+    public stopPendingPublishVideo(videoId: string): void {
         const index = this.pendingPublishVideoQueue.findIndex(job => job.videoId === videoId);
         if (index !== -1) {
             const job = this.pendingPublishVideoQueue[index];
@@ -59,12 +59,12 @@ export class VideoPublishService {
     }
 
     public isPublishVideoEncodingStopping(videoId: string): boolean {
-        return this.activeEncodingJobs.get(videoId)?.stopping || false;
+        return this.activeEncodingJobs.get(videoId)?.stopping ?? false;
     }
 
-    public stoppingPublishVideoEncoding(videoId: string) {
-        if (this.activeEncodingJobs.has(videoId)) {
-            const job = this.activeEncodingJobs.get(videoId)!;
+    public stoppingPublishVideoEncoding(videoId: string): void {
+        const job = this.activeEncodingJobs.get(videoId);
+        if (job) {
             job.stopping = true;
             if (job.process) {
                 job.process.kill();
@@ -73,7 +73,7 @@ export class VideoPublishService {
         }
     }
 
-    private startVideoPublishInterval() {
+    private startVideoPublishInterval(): void {
         setInterval(() => {
             while (this.pendingPublishVideoQueue.length > 0 && this.inProgressPublishingJobCount < this.maximumInProgressPublishingJobCount) {
                 this.inProgressPublishingJobCount++;
@@ -112,7 +112,7 @@ export class VideoPublishService {
                                 this.maximumInProgressPublishingJobCount = 5;
                             }
                         })
-                        .catch(error => {
+                        .catch((error: unknown) => {
                             this.logger.error(error, `[VideoPublishService] Failed publishing job: ${job.videoId}`);
                             
                             const index = this.findInProgressPublishJobIndex(job);
@@ -146,10 +146,10 @@ export class VideoPublishService {
         );
     }
 
-    private async startPublishingJob(job: VideoPublishJob) {
+    private async startPublishingJob(job: VideoPublishJob): Promise<void> {
         if (job.idleInterval) {clearInterval(job.idleInterval);}
 
-        const response = await this.nodeApiService.setVideoPublishing(job.jwtToken, job.videoId);
+        const response = await this.nodeApiService.setVideoPublishing(job.jwtToken, job.videoId) as { isError: boolean };
         if (!response.isError) {
             this.activeEncodingJobs.set(job.videoId, { stopping: false });
             
@@ -162,7 +162,7 @@ export class VideoPublishService {
 
     private async performEncodingJob(job: VideoPublishJob): Promise<void> {
         if (this.isPublishVideoEncodingStopping(job.videoId)) {
-            throw { isError: true, message: `${job.videoId} attempted to encode but publishing is stopping` };
+            throw new Error(`${job.videoId} attempted to encode but publishing is stopping`);
         }
 
         const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(job.jwtToken);
@@ -174,7 +174,7 @@ export class VideoPublishService {
             const destinationFileExtension = '.' + job.format;
             let destinationFilePath = '';
 
-            const ensureDir = (p: string) => { if (!fs.existsSync(p)) {fs.mkdirSync(p, { recursive: true });} };
+            const ensureDir = (p: string): void => { if (!fs.existsSync(p)) {fs.mkdirSync(p, { recursive: true });} };
 
             if (job.format === 'm3u8') {
                 ensureDir(path.join(videosPath, job.videoId, 'adaptive', 'm3u8', job.resolution));
@@ -185,7 +185,7 @@ export class VideoPublishService {
             } else if (job.format === 'webm') {
                 ensureDir(path.join(videosPath, job.videoId, 'progressive', 'webm'));
                 destinationFilePath = path.join(videosPath, job.videoId, 'progressive', 'webm', job.resolution + destinationFileExtension);
-            } else if (job.format === 'ogv') {
+            } else {
                 ensureDir(path.join(videosPath, job.videoId, 'progressive', 'ogv'));
                 destinationFilePath = path.join(videosPath, job.videoId, 'progressive', 'ogv', job.resolution + destinationFileExtension);
             }
@@ -213,13 +213,13 @@ export class VideoPublishService {
                          if (lengthSeconds === 0) {
                             const index = stderrOutput.indexOf('Duration: ');
                             if(index !== -1) {
-                                lengthTimestamp = stderrOutput.substr(index + 10, 11);
+                                lengthTimestamp = stderrOutput.substring(index + 10, index + 10 + 11);
                                 lengthSeconds = this.timestampToSeconds(lengthTimestamp);
                             }
                         }
 
                         const index = stderrTemp.indexOf('time=');
-                        const currentTimestamp = stderrTemp.substr(index + 5, 11);
+                        const currentTimestamp = stderrTemp.substring(index + 5, index + 5 + 11);
                         const currentTimeSeconds = this.timestampToSeconds(currentTimestamp);
 
                         if (currentTimeSeconds > 0 && lengthSeconds > 0) {
@@ -241,19 +241,20 @@ export class VideoPublishService {
                 if (code === 0) {
                     resolve();
                 } else {
-                    reject({ isError: true, message: 'encoding process ended with an error code: ' + code });
+                    const exitCode = code ?? 'unknown';
+                    reject(new Error('encoding process ended with an error code: ' + String(exitCode)));
                 }
             });
         });
     }
 
-    private async performUploadingJob(job: VideoPublishJob) {
+    private async performUploadingJob(job: VideoPublishJob): Promise<void> {
         if (!this.isPublishVideoEncodingStopping(job.videoId)) {
             const nodeSettings = await this.nodeApiService.getNodeSettings(job.jwtToken);
             const videosPath = this.settingsRepository.getVideosDirectoryPath();
 
             if (nodeSettings.storageConfig?.storageMode === 'filesystem') {
-                 const paths: any[] = [];
+                 const paths: Array<{ fileName: string; filePath: string; contentType: string }> = [];
                  
                  if (job.format === 'm3u8') {
                     const manifestFilePath = path.join(videosPath, job.videoId, 'adaptive/m3u8/manifest-' + job.resolution + '.m3u8');
@@ -287,7 +288,7 @@ export class VideoPublishService {
                 }
 
             } else if (nodeSettings.storageConfig?.storageMode === 's3provider' && nodeSettings.storageConfig.s3Config) {
-                const paths: any[] = [];
+                const paths: Array<{ key: string; filePath: string; contentType: string }> = [];
                 // S3 Logic
                 if (job.format === 'm3u8') {
                     const manifestFilePath = path.join(videosPath, job.videoId, 'adaptive/m3u8/manifest-' + job.resolution + '.m3u8');
@@ -312,13 +313,6 @@ export class VideoPublishService {
                     paths.push({ key: key, filePath: filePath, contentType: `video/${ext}` });
                 }
                 
-                // Assuming s3Service has putObjectsFromFilePathsWithProgress equivalent
-                // Legacy: s3_putObjectsFromFilePathsWithProgress(s3Config, jwtToken, paths, videoId, format, resolution)
-                // We need to implement this on S3Service or here. I'll assume S3Service for now or use looping.
-                // The legacy function did progress updates.
-                
-                // Since I haven't implemented `putObjectsFromFilePathsWithProgress` in S3Service yet, I should probably do it or do simple upload here.
-                // For now, I will use a simple loop.
                 for (const p of paths) {
                     const fileStream = fs.createReadStream(p.filePath);
                     await this.s3Service.putObjectFromData(nodeSettings.storageConfig.s3Config, p.key, fileStream, p.contentType);
@@ -327,7 +321,7 @@ export class VideoPublishService {
         }
     }
 
-    private async finishVideoPublish(jwtToken: string, videoId: string) {
+    private async finishVideoPublish(jwtToken: string, videoId: string): Promise<void> {
         const videosPath = this.settingsRepository.getVideosDirectoryPath();
         await this.deleteDirectoryRecursive(path.join(videosPath, videoId, 'adaptive'));
         await this.deleteDirectoryRecursive(path.join(videosPath, videoId, 'progressive'));
@@ -357,36 +351,41 @@ export class VideoPublishService {
         }
 
         let bitrate = '', gop = '', framerate = '', segmentLength = '';
-        const encoderSettings = clientSettings.videoEncoderSettings;
+        const encoderSettings = clientSettings.videoEncoderSettings as unknown as {
+            hls: Record<string, string>;
+            mp4: Record<string, string>;
+            webm: Record<string, string>;
+            ogv: Record<string, string>;
+        };
 
          if (format === 'm3u8') {
-            bitrate = (encoderSettings.hls)[resolution + '-bitrate'] + 'k';
-            gop = encoderSettings.hls.gop;
-            framerate = encoderSettings.hls.framerate;
-            segmentLength = encoderSettings.hls.segmentLength;
+            bitrate = String(encoderSettings.hls[resolution + '-bitrate']) + 'k';
+            gop = String(encoderSettings.hls.gop);
+            framerate = String(encoderSettings.hls.framerate);
+            segmentLength = String(encoderSettings.hls.segmentLength);
         } else if (format === 'mp4') {
-            bitrate = (encoderSettings.mp4)[resolution + '-bitrate'] + 'k';
-            gop = encoderSettings.mp4.gop;
-            framerate = encoderSettings.mp4.framerate;
+            bitrate = String(encoderSettings.mp4[resolution + '-bitrate']) + 'k';
+            gop = String(encoderSettings.mp4.gop);
+            framerate = String(encoderSettings.mp4.framerate);
         } else if (format === 'webm') {
-            bitrate = (encoderSettings.webm)[resolution + '-bitrate'] + 'k';
-            gop = encoderSettings.webm.gop;
-            framerate = encoderSettings.webm.framerate;
+            bitrate = String(encoderSettings.webm[resolution + '-bitrate']) + 'k';
+            gop = String(encoderSettings.webm.gop);
+            framerate = String(encoderSettings.webm.framerate);
         } else if (format === 'ogv') {
-            bitrate = (encoderSettings.ogv)[resolution + '-bitrate'] + 'k';
-            gop = encoderSettings.ogv.gop;
-            framerate = encoderSettings.ogv.framerate;
+            bitrate = String(encoderSettings.ogv[resolution + '-bitrate']) + 'k';
+            gop = String(encoderSettings.ogv.gop);
+            framerate = String(encoderSettings.ogv.framerate);
         }
         
         // ... (Scaling logic omitted for brevity, implementing CPU only first as fallback, add GPU logic later if needed or copy fully)
         // Copying logic from legacy
         let scale = 'scale';
-        if (clientSettings.processingAgent.processingAgentType === 'gpu' && (format === 'm3u8' || format === 'mp4')) {
+        if (clientSettings.processingAgent?.processingAgentType === 'gpu' && (format === 'm3u8' || format === 'mp4')) {
              if (clientSettings.processingAgent.processingAgentName === 'NVIDIA') {scale = 'scale_cuda';}
         }
 
         let filterComplex = `${scale}='if(gt(ih,iw),-1,${width})':'if(gt(ih,iw),${height},-1)',`;
-        if (clientSettings.processingAgent.processingAgentType === 'cpu') {
+        if (clientSettings.processingAgent?.processingAgentType === 'cpu') {
              filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
         }
 
@@ -452,13 +451,13 @@ export class VideoPublishService {
 
     private timestampToSeconds(timestamp: string): number {
         const parts = timestamp.split(':');
-        const hours = parseInt(parts[0] || '0');
-        const minutes = parseInt(parts[1] || '0');
-        const seconds = parseFloat(parts[2] || '0');
+        const hours = parseInt(parts[0] ?? '0');
+        const minutes = parseInt(parts[1] ?? '0');
+        const seconds = parseFloat(parts[2] ?? '0');
         return (hours * 3600) + (minutes * 60) + seconds;
     }
 
-     private async deleteDirectoryRecursive(directoryPath: string) {
+     private async deleteDirectoryRecursive(directoryPath: string): Promise<void> {
         try {
             await fs.promises.rm(directoryPath, { recursive: true, force: true });
         } catch (error) {

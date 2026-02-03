@@ -50,16 +50,16 @@ export class Logger {
         colorize: true,
         translateTime: 'SYS:standard',
         ignore: 'pid,hostname',
-        messageFormat: config.prefix ? `[${config.prefix}] {msg}` : '{msg}',
+        messageFormat: (config.prefix !== undefined && config.prefix !== '') ? `[${config.prefix}] {msg}` : '{msg}',
       });
 
       this.logger = pino(
         {
-          level: config.level || LogLevel.DEBUG, // Default to debug for client
+          level: config.level ?? LogLevel.DEBUG, // Default to debug for client
           base: null, // Remove pid and hostname
           timestamp: pino.stdTimeFunctions.isoTime,
         },
-        stream as any
+        stream as unknown as pino.DestinationStream
       );
     }
   }
@@ -79,23 +79,23 @@ export class Logger {
     return new Logger({}, this.logger.child(bindings));
   }
 
-  public debug(message: string, ...args: any[]): void {
+  public debug(message: string, ...args: unknown[]): void {
     this.logger.debug(message, ...args);
   }
 
-  public info(message: string, ...args: any[]): void {
+  public info(message: string, ...args: unknown[]): void {
     this.logger.info(message, ...args);
   }
 
-  public warn(message: string, ...args: any[]): void {
+  public warn(message: string, ...args: unknown[]): void {
     this.logger.warn(message, ...args);
   }
 
-  public error(message: string, error?: unknown, ...args: any[]): void {
+  public error(message: string, error?: unknown, ...args: unknown[]): void {
     if (error instanceof Error) {
-      this.logger.error({ err: error, ...args }, message);
+      this.logger.error({ err: error }, message, ...args);
     } else {
-      this.logger.error({ err: error, ...args }, message);
+      this.logger.error({ err: error }, message, ...args);
     }
   }
 }

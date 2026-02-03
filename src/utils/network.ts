@@ -34,7 +34,7 @@ export async function checkNetworkPortStatus(port: number, host: string): Promis
     return await portscanner.checkPortStatus(port, host);
 }
 
-export function isPortValid(port: any): boolean {
-    const portNumber = parseInt(port, 10);
+export function isPortValid(port: string | number): boolean {
+    const portNumber = parseInt(String(port), 10);
     return !isNaN(portNumber) && portNumber > 0 && portNumber <= 65535;
 }

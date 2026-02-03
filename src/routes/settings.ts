@@ -5,7 +5,7 @@ import { SettingsController } from '@/controllers/settings.js';
 export function settingsRoutes(
   fastify: FastifyInstance & ReturnType<FastifyInstance['withTypeProvider']>,
   container: Container
-) {
+): void {
   const logger = container.resolve('logger');
   const config = container.resolve('config');
   const nodeApiService = container.resolve('nodeApiService');

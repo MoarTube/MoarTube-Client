@@ -5,7 +5,7 @@ import { LinksController } from '@/controllers/links.js';
 export function linksRoutes(
   fastify: FastifyInstance & ReturnType<FastifyInstance['withTypeProvider']>,
   container: Container
-) {
+): void {
   const logger = container.resolve('logger');
   const config = container.resolve('config');
   const nodeApiService = container.resolve('nodeApiService');

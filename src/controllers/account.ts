@@ -16,7 +16,7 @@ export class AccountController extends BaseController {
     getSignIn = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
             const jwtToken = request.session.jwtToken ?? ''; // Type assertion until session types are fixed
-            if (jwtToken !== undefined) {
+            if (jwtToken !== '') {
                 const check = await this.nodeApiService.isAuthenticated(jwtToken);
                 if (check.isAuthenticated) {
                     return await reply.redirect('/videos');
@@ -52,7 +52,7 @@ export class AccountController extends BaseController {
                 await this.nodeApiService.heartbeat('http', moarTubeNodeIp, moarTubeNodePort);
                 this.logger.debug('HTTP heartbeat successful');
                 heartbeatSuccess = true;
-            } catch (_error) {
+            } catch {
                  this.logger.debug('HTTP heartbeat failed, trying HTTPS...');
                  try {
                     await this.nodeApiService.heartbeat('https', moarTubeNodeIp, moarTubeNodePort);
@@ -81,11 +81,12 @@ export class AccountController extends BaseController {
             const result = await this.nodeApiService.signIn(body.username, body.password, body.rememberMe ?? false);
 
             if (!result.isError && result.isAuthenticated) {
-                if (result.token) {request.session.jwtToken = result.token;}
+                if (result.token !== undefined && result.token !== '') {
+                    request.session.jwtToken = result.token;
+                    this.nodeSocketService.connect(result.token);
+                }
                 
-                if (result.token) {this.nodeSocketService.connect(result.token);}
-                
-                 delete result.token;
+                delete result.token;
             }
             
             return await reply.send(result);

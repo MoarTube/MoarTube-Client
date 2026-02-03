@@ -38,7 +38,7 @@ export class LinksController extends BaseController {
         const newContentCounts = (await this.nodeApiService.getNewContentCounts(jwtToken)).newContentCounts;
         const linksData = await this.nodeApiService.getLinks();
         // Legacy: links = (await linksAll_GET()).links;
-        const links = linksData.links ?? [];
+        const links = linksData.links;
 
         return await reply.view('links.ejs', {
             model: {

@@ -26,19 +26,19 @@ export class VideoImportService extends BaseService {
 
   private getFfmpegPath(): string {
       const settings = this.settingsRepository.getClientSettings();
-      if (settings.ffmpegPath) {return settings.ffmpegPath;}
-      return (ffmpegStatic as unknown as string) || 'ffmpeg';
+      if (settings.ffmpegPath !== '') { return settings.ffmpegPath; }
+      return (ffmpegStatic as unknown as string | null) ?? 'ffmpeg';
   }
 
   private timestampToSeconds(timestamp: string): number {
     const parts = timestamp.split(':');
-    const hours = parseInt(parts[0] || '0');
-    const minutes = parseInt(parts[1] || '0');
-    const seconds = parseFloat(parts[2] || '0');
+    const hours = parseInt(parts[0] ?? '0');
+    const minutes = parseInt(parts[1] ?? '0');
+    const seconds = parseFloat(parts[2] ?? '0');
     return (hours * 3600) + (minutes * 60) + seconds;
   }
 
-  public async importVideo(jwtToken: string, videoId: string, videoFile: any): Promise<{ isError: boolean; message?: string }> {
+  public async importVideo(jwtToken: string, videoId: string, videoFile: unknown): Promise<{ isError: boolean; message?: string }> {
       // videoFile is expected to be the object from fastify-multipart (file properies)
       // Actually fastify-multipart 'file' event gives a stream. 'files' in body gives access if using attachFieldsToBody: true, but standard is different.
       // Legacy Code: `videoFile = req.files['videoFile'][0];` - Express Multer style.
@@ -52,13 +52,15 @@ export class VideoImportService extends BaseService {
       // Fastify multipart usually streams. To define `path`, we need to save it to a temp file, OR use `fastify-multipart`'s `attachFieldsToBody` with a custom handler?
       // Given `MoarTube-Client` is a desktop-like client, likely saving to temp is fine.
       // Assuming the controller handles saving to temp path and passes `{ path: ... }` to service.
+      
+      const file = videoFile as { path: string; mimetype: string } | undefined;
 
-      if (!videoFile) {
+      if (file === undefined) {
           return { isError: true, message: 'video file is missing' };
       }
 
-      const videoFilePath = videoFile.path; // Assumed standard interface from controller
-      const mimetype = videoFile.mimetype;
+      const videoFilePath = file.path; // Assumed standard interface from controller
+      const mimetype = file.mimetype;
       let sourceFileExtension = '';
 
       if (mimetype === 'video/mp4') {
@@ -80,11 +82,11 @@ export class VideoImportService extends BaseService {
               this.logger.warn(`Could not determine duration for video ${videoId}`);
           }
           
-          const lengthTimestamp = durationIndex !== -1 ? stderr.substr(durationIndex + 10, 11) : '00:00:00.00';
+          const lengthTimestamp = durationIndex !== -1 ? stderr.substring(durationIndex + 10, durationIndex + 21) : '00:00:00.00';
           const lengthSeconds = this.timestampToSeconds(lengthTimestamp);
           const imageExtractionTimestamp = Math.floor(lengthSeconds * 0.25);
 
-          this.logger.debug(`Video ${videoId}: Duration ${lengthTimestamp} (${lengthSeconds}s)`);
+          this.logger.debug(`Video ${videoId}: Duration ${lengthTimestamp} (${String(lengthSeconds)}s)`);
 
           await this.nodeApiService.setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp);
           await this.nodeApiService.setSourceFileExtension(jwtToken, videoId, sourceFileExtension);
@@ -127,7 +129,7 @@ export class VideoImportService extends BaseService {
           // Cleanup images
           try {
             await fs.promises.rm(imagesDirectoryPath, { recursive: true, force: true });
-          } catch(e) { /* ignore */ }
+          } catch { /* ignore */ }
 
           await this.nodeApiService.setVideoImported(jwtToken, videoId);
           
@@ -161,14 +163,14 @@ export class VideoImportService extends BaseService {
        return response;
   }
 
-  public stoppingVideoImport(videoId: string) {
+  public stoppingVideoImport(videoId: string): void {
       // Placeholder: If we were tracking active imports processes, we would kill it here.
       // Current implementation uses spawnSync which cannot be interrupted easily from here.
       // TODO: Refactor importVideo to use spawn() and track processes.
       this.logger.info(`Received stop import signal for ${videoId}`);
   }
 
-  public stoppedVideoImport(_videoId: string, data: any) {
+  public stoppedVideoImport(_videoId: string, data: unknown): void {
       // Broadcast to user that it's stopped
       // We need a JWT token? Data usually has event info. 
       // Legacy: socketService.broadcastToUser(??, 'echo', data);

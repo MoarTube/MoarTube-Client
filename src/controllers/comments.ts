@@ -29,7 +29,7 @@ export class CommentsController {
           this.nodeApiService.getNewContentCounts(jwtToken)
       ]);
 
-      const newContentCounts = newContentCountsResponse?.newContentCounts;
+      const newContentCounts = newContentCountsResponse.newContentCounts;
 
       return await reply.view('comments', {
         model: {

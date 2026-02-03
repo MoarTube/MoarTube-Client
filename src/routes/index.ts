@@ -6,6 +6,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { Container } from '@/core/index.js';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import type { WebSocket } from 'ws';
 
 // Import for registration
 import { accountRoutes } from '@/routes/account.js';
@@ -27,9 +28,9 @@ import { nodeRoutes } from '@/routes/node.js';
  */
 export function registerRoutes(fastify: FastifyInstance, container: Container): void {
   // WebSocket Route
-  fastify.get('/ws', { websocket: true }, (connection, req) => {
+  fastify.get('/ws', { websocket: true }, (connection, _req) => {
       const socketService = container.resolve('socketService');
-      socketService.handleConnection(connection.socket);
+      socketService.handleConnection(connection.socket as unknown as WebSocket);
   });
 
   // Account routes (/account/*)

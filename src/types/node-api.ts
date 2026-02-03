@@ -96,7 +96,7 @@ export interface VideoData {
     networkAddress?: string;
     rtmpPort?: number;
     outputs?: VideoOutputs;
-    chatSettings?: any;
+    chatSettings?: unknown;
     meta?: VideoMeta;
     video?: {
         sourceFileExtension: string;
@@ -120,9 +120,9 @@ export interface FinalizeVideosResponse extends BaseNodeResponse {
 
 export interface VideoSourcesResponse extends BaseNodeResponse {
     video: {
-        adaptiveSources: any[];
-        progressiveSources: any[];
-        [key: string]: any;
+        adaptiveSources: unknown[];
+        progressiveSources: unknown[];
+        [key: string]: unknown;
     };
 }
 

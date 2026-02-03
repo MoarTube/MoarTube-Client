@@ -37,7 +37,7 @@ export class LifecycleManager {
 
             if (gpu.controllers.length > 0) {
                  // Try to find a non-Intel/integrated if possible, or just list first
-                 const controller = gpu.controllers.find(c => !c.vendor.toLowerCase().includes('intel')) || gpu.controllers[0];
+                 const controller = gpu.controllers.find(c => !c.vendor.toLowerCase().includes('intel')) ?? gpu.controllers[0];
                  gpuName = `${controller.vendor} ${controller.model}`.trim();
             }
 

@@ -8,7 +8,7 @@ export interface Env {
 }
 
 export function getEnv(): Env {
-  const nodeEnv = (process.env['NODE_ENV'] as Env['nodeEnv']) || 'development';
+  const nodeEnv = (process.env['NODE_ENV'] ?? 'development') as Env['nodeEnv'];
 
   return {
     port: Number(process.env['PORT']) || 3000,

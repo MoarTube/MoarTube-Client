@@ -20,7 +20,7 @@ export class ReportsController {
           return await reply.redirect('/account/signin');
       }
 
-      if (!jwtToken) {
+      if (jwtToken === '') {
           await request.session.destroy();
           return await reply.redirect('/account/signin');
       }
@@ -32,9 +32,9 @@ export class ReportsController {
           this.nodeApiService.getVideoReportsArchive(jwtToken)
       ]);
 
-      const newContentCounts = newContentCountsResponse?.newContentCounts;
-      const videoReports = videoReportsResponse?.reports ?? [];
-      const videoReportsArchive = videoReportsArchiveResponse?.reports ?? [];
+      const newContentCounts = newContentCountsResponse.newContentCounts;
+      const videoReports = videoReportsResponse.reports;
+      const videoReportsArchive = videoReportsArchiveResponse.reports;
 
       return await reply.view('reports-videos', {
         model: {
@@ -54,8 +54,8 @@ export class ReportsController {
 
   public async getVideosAll(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
       try {
-          const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
+          const jwtToken = request.session.jwtToken ?? '';
+          if (jwtToken === '') {return await reply.send({ isError: true, message: 'Not authenticated' });}
           
           const data = await this.nodeApiService.getVideoReports(jwtToken);
           return await reply.send(data);
@@ -67,8 +67,8 @@ export class ReportsController {
   
   public async getCommentsArchiveAll(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
       try {
-          const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
+          const jwtToken = request.session.jwtToken ?? '';
+          if (jwtToken === '') {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const data = await this.nodeApiService.getCommentReportsArchive(jwtToken);
           return await reply.send(data);
@@ -80,8 +80,8 @@ export class ReportsController {
 
   public async postCommentsArchive(request: FastifyRequest<{ Body: { reportId: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
-          const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
+          const jwtToken = request.session.jwtToken ?? '';
+          if (jwtToken === '') {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const { reportId } = request.body;
           const data = await this.nodeApiService.archiveCommentReport(jwtToken, reportId);
@@ -94,8 +94,8 @@ export class ReportsController {
 
   public async postCommentsDelete(request: FastifyRequest<{ Body: { reportId: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
-          const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
+          const jwtToken = request.session.jwtToken ?? '';
+          if (jwtToken === '') {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const { reportId } = request.body;
           const data = await this.nodeApiService.removeCommentReport(jwtToken, reportId);
@@ -108,8 +108,8 @@ export class ReportsController {
 
   public async postVideosArchiveDelete(request: FastifyRequest<{ Body: { archiveId: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
-          const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
+          const jwtToken = request.session.jwtToken ?? '';
+          if (jwtToken === '') {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const { archiveId } = request.body;
           const data = await this.nodeApiService.removeVideoReportArchive(jwtToken, archiveId);
@@ -132,7 +132,7 @@ export class ReportsController {
           return await reply.redirect('/account/signin');
       }
 
-      if (!jwtToken) {
+      if (jwtToken === '') {
           await request.session.destroy();
           return await reply.redirect('/account/signin');
       }
@@ -144,9 +144,9 @@ export class ReportsController {
           this.nodeApiService.getCommentReportsArchive(jwtToken)
       ]);
 
-      const newContentCounts = newContentCountsResponse?.newContentCounts;
-      const commentReports = commentReportsResponse?.reports ?? [];
-      const commentReportsArchive = commentReportsArchiveResponse?.reports ?? [];
+      const newContentCounts = newContentCountsResponse.newContentCounts;
+      const commentReports = commentReportsResponse.reports;
+      const commentReportsArchive = commentReportsArchiveResponse.reports;
 
       return await reply.view('reports-comments', {
         model: {
@@ -166,8 +166,8 @@ export class ReportsController {
 
   public async getCommentsAll(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
       try {
-          const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
+          const jwtToken = request.session.jwtToken ?? '';
+          if (jwtToken === '') {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const data = await this.nodeApiService.getCommentReports(jwtToken);
           return await reply.send(data);
@@ -179,8 +179,8 @@ export class ReportsController {
 
   public async getVideosArchiveAll(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
       try {
-          const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
+          const jwtToken = request.session.jwtToken ?? '';
+          if (jwtToken === '') {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const data = await this.nodeApiService.getVideoReportsArchive(jwtToken);
           return await reply.send(data);
@@ -192,8 +192,8 @@ export class ReportsController {
 
   public async postVideosArchive(request: FastifyRequest<{ Body: { reportId: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
-          const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
+          const jwtToken = request.session.jwtToken ?? '';
+          if (jwtToken === '') {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const { reportId } = request.body;
           const data = await this.nodeApiService.archiveVideoReport(jwtToken, reportId);
@@ -206,8 +206,8 @@ export class ReportsController {
 
   public async postVideosDelete(request: FastifyRequest<{ Body: { reportId: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
-          const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
+          const jwtToken = request.session.jwtToken ?? '';
+          if (jwtToken === '') {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const { reportId } = request.body;
           const data = await this.nodeApiService.removeVideoReport(jwtToken, reportId);
@@ -220,8 +220,8 @@ export class ReportsController {
 
   public async postCommentsArchiveDelete(request: FastifyRequest<{ Body: { archiveId: string } }>, reply: FastifyReply): Promise<FastifyReply> {
       try {
-          const jwtToken = request.session.get('jwtToken');
-          if (!jwtToken) {return await reply.send({ isError: true, message: 'Not authenticated' });}
+          const jwtToken = request.session.jwtToken ?? '';
+          if (jwtToken === '') {return await reply.send({ isError: true, message: 'Not authenticated' });}
 
           const { archiveId } = request.body;
           const data = await this.nodeApiService.removeCommentReportArchive(jwtToken, archiveId);

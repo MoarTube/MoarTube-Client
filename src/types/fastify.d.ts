@@ -9,6 +9,6 @@ declare module 'fastify' {
 
   interface Session {
       jwtToken?: string;
-      user?: any; // Legacy property, cleared in settings but seemingly unused
+      user?: unknown; // Legacy property, cleared in settings but seemingly unused
   }
 }

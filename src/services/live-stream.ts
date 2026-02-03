@@ -98,12 +98,13 @@ export class LiveStreamService {
                     lengthSeconds = this.timestampToSeconds(lengthTimestamp);
                     
                     // Fire and forget update length
-                    this.nodeApiService.setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp).catch(() => {});
+                    void this.nodeApiService.setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp).catch(() => {});
                 }
              }
         });
 
-        process.stdout.on('data', async (data: Buffer) => {
+        process.stdout.on('data', (data: Buffer): void => {
+          void (async (): Promise<void> => {
             if (!this.isLiveStreamStopping(videoId)) {
                 accumulatedBuffer = Buffer.concat([accumulatedBuffer, data]);
 
@@ -195,9 +196,11 @@ export class LiveStreamService {
                     }
                 }
             }
+          })();
         });
 
-        process.on('exit', async (code) => {
+        process.on('exit', (code): void => {
+             void (async (): Promise<void> => {
              this.logger.info(`[LiveStreamService] Stream process exited with code ${String(code)}`);
              if (this.liveStreamExists(videoId)) {
                  if (!this.isLiveStreamStopping(videoId)) {
@@ -214,6 +217,7 @@ export class LiveStreamService {
                  }
                  this.activeStreams.delete(videoId);
              }
+             })();
         });
     }
 
@@ -253,7 +257,8 @@ export class LiveStreamService {
             process.stdin.write(segmentBuffer);
             process.stdin.end();
 
-        process.on('exit', async (code) => {
+        process.on('exit', (code): void => {
+            void (async (): Promise<void> => {
                 if(code === 0 && fs.existsSync(sourceImagePath)) {
                     try {
                         this.uploadingImages = { thumbnail: true, preview: true, poster: true };
@@ -280,6 +285,7 @@ export class LiveStreamService {
                         this.uploadingImages = { thumbnail: false, preview: false, poster: false };
                     }
                 }
+            })();
             });
          }
     }

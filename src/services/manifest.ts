@@ -16,7 +16,7 @@ export class ManifestService extends BaseService {
     try {
         const responseProxy = await this.nodeApiService.getVideoData(jwtToken, videoId);
         if (responseProxy.isError) {
-             this.logger.error(`Failed to get video data for ${videoId}: ${responseProxy.message}`);
+             this.logger.error(`Failed to get video data for ${videoId}: ${responseProxy.message ?? ''}`);
              return;
         }
         const videoData = responseProxy.videoData;

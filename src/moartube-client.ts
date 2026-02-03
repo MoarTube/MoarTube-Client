@@ -4,11 +4,11 @@ import { fileURLToPath } from 'node:url';
 import { initializeConfig, getConfig } from '@/config/index.js';
 import { createAppContainer } from '@/core/container.js';
 import { createFastifyApp } from '@/plugins/index.js';
-import { Logger } from '@/utils/logger.js';
+import { Logger, LogLevel } from '@/utils/logger.js';
 import { registerRoutes } from '@/routes/index.js';
 import { LifecycleManager } from '@/core/lifecycle.js';
 
-async function start() {
+async function start(): Promise<void> {
   // ESM equivalent of __dirname
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
@@ -20,7 +20,7 @@ async function start() {
 
   // Initialize Logger
   const logger = Logger.getInstance({
-      level: config.env.isDevelopment ? 'debug' : 'info' as any
+      level: config.env.isDevelopment ? LogLevel.DEBUG : LogLevel.INFO
   });
 
   try {
@@ -43,7 +43,7 @@ async function start() {
 
     await app.listen({ port, host });
     
-    logger.info(`Server listening on ${host}:${port}`);
+    logger.info(`Server listening on ${host}:${String(port)}`);
     logger.info(`Environment: ${config.env.nodeEnv}`);
     
   } catch (err) {

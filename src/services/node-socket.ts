@@ -28,13 +28,13 @@ export class NodeSocketService extends BaseService {
       return this._isConnected;
   }
 
-  public connect(jwtToken: string) {
+  public connect(jwtToken: string): void {
     if (this.websocketClient) {
       this.disconnect();
     }
 
     const settings = this.config.clientSettings;
-    const url = `${settings.nodeWebsocketProtocol}://${settings.nodeIp}:${settings.nodePort}`;
+    const url = `${settings.nodeWebsocketProtocol}://${settings.nodeIp}:${String(settings.nodePort)}`;
     this.logger.info(`Connecting to Node WebSocket at ${url}`);
 
     this.websocketClient = new WebSocket(url);
@@ -67,7 +67,7 @@ export class NodeSocketService extends BaseService {
     });
   }
 
-  public disconnect() {
+  public disconnect(): void {
     if (this.websocketClient) {
       this.websocketClient.terminate();
       this.websocketClient = null;
@@ -75,7 +75,7 @@ export class NodeSocketService extends BaseService {
     this.cleanup();
   }
 
-  private startPingPong(jwtToken: string, url: string) {
+  private startPingPong(jwtToken: string, url: string): void {
      this.pingIntervalTimer = setInterval(() => {
         if (!this.pingTimeoutTimer) {
              this.pingTimeoutTimer = setTimeout(() => {
@@ -90,7 +90,7 @@ export class NodeSocketService extends BaseService {
      }, 1000);
   }
 
-  private cleanup() {
+  private cleanup(): void {
       this._isConnected = false;
       if (this.pingIntervalTimer) {clearInterval(this.pingIntervalTimer);}
       if (this.pingTimeoutTimer) {clearTimeout(this.pingTimeoutTimer);}
@@ -98,9 +98,20 @@ export class NodeSocketService extends BaseService {
       this.pingTimeoutTimer = null;
   }
 
-  private handleMessage(message: WebSocket.Data) {
+  private handleMessage(message: WebSocket.Data): void {
       try {
-          const parsedMessage = JSON.parse(message.toString());
+          let msgStr: string;
+          if (Buffer.isBuffer(message)) {
+              msgStr = message.toString();
+          } else if (Array.isArray(message)) {
+              msgStr = Buffer.concat(message).toString();
+          } else if (message instanceof ArrayBuffer) {
+              msgStr = Buffer.from(message).toString();
+          } else {
+              msgStr = message;
+          }
+
+          const parsedMessage = JSON.parse(msgStr) as { eventName?: string; data?: unknown };
 
           if (parsedMessage.eventName === 'pong') {
               if (this.pingTimeoutTimer) {
@@ -117,9 +128,20 @@ export class NodeSocketService extends BaseService {
       }
   }
 
-  private handleEchoEvent(data: any) {
-      if (data.eventName === 'video_status') {
-          const payload = data.payload;
+  private handleEchoEvent(data: unknown): void {
+      if (data === undefined || data === null || typeof data !== 'object') {
+        return;
+      }
+      
+      const echoData = data as { eventName?: string; payload?: unknown };
+
+      if (echoData.eventName === 'video_status') {
+          const payload = echoData.payload as { videoId: string; type: string } | undefined;
+          
+          if (!payload) {
+            return;
+          }
+
           const { videoId, type } = payload;
 
           if (type === 'importing_stopping') {
@@ -138,10 +160,14 @@ export class NodeSocketService extends BaseService {
                // Legacy: stoppedLiveStream(videoId, data) -> broadcasts
                this.socketService.broadcast('echo', data);
           } else {
-               this.socketService.broadcast(data.eventName, data); // Legacy calls websocketServerBroadcast(data)
+               if (typeof echoData.eventName === 'string') {
+                  this.socketService.broadcast(echoData.eventName, data); 
+               }
           }
-      } else if (data.eventName === 'video_data') {
-          this.socketService.broadcast(data.eventName, data);
+      } else if (echoData.eventName === 'video_data') {
+          if (typeof echoData.eventName === 'string') {
+             this.socketService.broadcast(echoData.eventName, data);
+          }
       }
   }
 }

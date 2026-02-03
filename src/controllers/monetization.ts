@@ -37,8 +37,8 @@ export class MonetizationController {
           this.nodeApiService.getMonetizationAll()
       ]);
 
-      const newContentCounts = newContentCountsResponse?.newContentCounts;
-      const cryptoWalletAddresses = monetizationResponse?.cryptoWalletAddresses ?? [];
+      const newContentCounts = newContentCountsResponse.newContentCounts;
+      const cryptoWalletAddresses = monetizationResponse.cryptoWalletAddresses;
 
       return await reply.view('monetization', {
         model: {

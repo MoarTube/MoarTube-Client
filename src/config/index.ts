@@ -22,7 +22,7 @@ const ClientSettingsSchema = z.object({
   videoEncoderSettings: z.record(z.unknown()).optional(),
   liveEncoderSettings: z.record(z.unknown()).optional(),
   version: z.string().optional()
-}).passthrough();
+}); //.passthrough(); // TODO: Deprecated, usually default for unknown keys is strip, passthough keeps them.
 
 export type ClientSettings = z.infer<typeof ClientSettingsSchema>;
 
@@ -51,14 +51,15 @@ export class Config {
     this._clientSettings = this.loadClientSettings();
 
     // Initialize Runtime
+    const ffmpegSettingsPath = this._clientSettings.ffmpegPath;
     this._runtime = {
-      ffmpegPath: this._clientSettings.ffmpegPath || 'ffmpeg' // Fallback or set logic later
+      ffmpegPath: (ffmpegSettingsPath !== undefined && ffmpegSettingsPath !== '') ? ffmpegSettingsPath : 'ffmpeg'
     };
 
     this.setupSettingsFileWatcher();
   }
 
-  private ensureDirectory(dirPath: string) {
+  private ensureDirectory(dirPath: string): void {
     if (!fs.existsSync(dirPath)) {
       fs.mkdirSync(dirPath, { recursive: true });
     }
@@ -68,14 +69,14 @@ export class Config {
     try {
       if (fs.existsSync(this._paths.clientSettingsPath)) {
         const content = fs.readFileSync(this._paths.clientSettingsPath, 'utf8');
-        const parsed = JSON.parse(content);
+        const parsed: unknown = JSON.parse(content);
         return ClientSettingsSchema.parse(parsed);
       }
       
       // Fallback to default if exists
       if (fs.existsSync(this._paths.clientSettingsDefaultPath)) {
         const content = fs.readFileSync(this._paths.clientSettingsDefaultPath, 'utf8');
-        const parsed = JSON.parse(content);
+        const parsed: unknown = JSON.parse(content);
         return ClientSettingsSchema.parse(parsed);
       }
     } catch (error) {
@@ -108,7 +109,7 @@ export class Config {
     }
   }
 
-  public stopWatching() {
+  public stopWatching(): void {
     if (this._settingsWatcher) {
       this._settingsWatcher.close();
     }
@@ -119,11 +120,11 @@ export class Config {
   public get clientSettings(): ClientSettings { return this._clientSettings; }
   public get runtime(): RuntimeConfig { return this._runtime; }
   
-  public setFfmpegPath(path: string) {
+  public setFfmpegPath(path: string): void {
       this._runtime.ffmpegPath = path;
   }
   
-  public saveClientSettings(settings: Partial<ClientSettings>) {
+  public saveClientSettings(settings: Partial<ClientSettings>): void {
       // Merge updates
       const updatedSettings = { ...this._clientSettings, ...settings };
       
@@ -138,9 +139,7 @@ export class Config {
   }
 
   public static initialize(baseDir: string, entryPointDir?: string): Config {
-    if (!Config.instance) {
-      Config.instance = new Config(baseDir, entryPointDir);
-    }
+    Config.instance ??= new Config(baseDir, entryPointDir);
     return Config.instance;
   }
 

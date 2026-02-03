@@ -138,7 +138,7 @@ export class NodeApiService extends BaseService {
       return response.data as T;
   }
 
-  public async setVideoPublishing(jwtToken: string, videoId: string) {
+  public async setVideoPublishing(jwtToken: string, videoId: string): Promise<unknown> {
       return this.postAuthenticated(jwtToken, '/videos/publishing', { videoId });
   }
 
