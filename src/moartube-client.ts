@@ -52,4 +52,4 @@ async function start() {
   }
 }
 
-start();
+await start();

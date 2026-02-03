@@ -103,7 +103,6 @@ export class LiveStreamService {
              }
         });
 
-        /* eslint-disable-next-line @typescript-eslint/no-misused-promises */
         process.stdout.on('data', async (data: Buffer) => {
             if (!this.isLiveStreamStopping(videoId)) {
                 accumulatedBuffer = Buffer.concat([accumulatedBuffer, data]);
@@ -198,7 +197,6 @@ export class LiveStreamService {
             }
         });
 
-        /* eslint-disable-next-line @typescript-eslint/no-misused-promises */
         process.on('exit', async (code) => {
              this.logger.info(`[LiveStreamService] Stream process exited with code ${String(code)}`);
              if (this.liveStreamExists(videoId)) {
@@ -255,7 +253,6 @@ export class LiveStreamService {
             process.stdin.write(segmentBuffer);
             process.stdin.end();
 
-            /* eslint-disable-next-line @typescript-eslint/no-misused-promises */
         process.on('exit', async (code) => {
                 if(code === 0 && fs.existsSync(sourceImagePath)) {
                     try {

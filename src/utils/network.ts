@@ -35,7 +35,6 @@ export async function checkNetworkPortStatus(port: number, host: string): Promis
 }
 
 export function isPortValid(port: any): boolean {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const portNumber = parseInt(port, 10);
     return !isNaN(portNumber) && portNumber > 0 && portNumber <= 65535;
 }
