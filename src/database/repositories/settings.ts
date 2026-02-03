@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { BaseService } from '@/services/base.js';
 import type { Logger } from '@/utils/logger.js';
-import type { Config } from '@/config/index.js';
+import type { Config, ClientSettings } from '@/config/index.js';
 
 // Define the shape of mutable client settings (mirroring _client_settings.json)
 export interface ClientSettingsModel {
@@ -33,7 +33,7 @@ export class SettingsRepository extends BaseService {
       return this.config.paths.temp;
   }
 
-  public getClientSettings(): any {
+  public getClientSettings(): ClientSettings {
       // Direct access to cached settings in Config
       return this.config.clientSettings;
   }

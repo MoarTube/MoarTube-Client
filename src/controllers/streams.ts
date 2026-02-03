@@ -48,9 +48,9 @@ export class StreamsController extends BaseController {
                 // In Fastify, usually handled by middleware, but if NodeAPI needs it, we extract it.
                 // Assuming bearer token in header.
                 const authHeader = request.headers.authorization;
-                const jwtToken = authHeader?.replace('Bearer ', '') || '';
+                const jwtToken = authHeader?.replace('Bearer ', '') ?? '';
 
-                if (!jwtToken) {
+                if (jwtToken === '') {
                     return await reply.code(401).send({ isError: true, message: 'Unauthorized' });
                 }
 
@@ -88,9 +88,9 @@ export class StreamsController extends BaseController {
                  return await reply.send({ isError: true, message: 'RTMP port is already in use' });
             }
 
-        } catch (error: any) {
-            this.logger.error('Error starting stream', error);
-            return await reply.send({ isError: true, message: error.message || 'Unknown error' });
+        } catch (error) {
+            this.logger.error('Error starting stream', error as Error);
+            return await reply.send({ isError: true, message: (error as Error).message || 'Unknown error' });
         }
     }
     
@@ -99,9 +99,9 @@ export class StreamsController extends BaseController {
         const { videoId } = params;
         
         const authHeader = request.headers.authorization;
-        const jwtToken = authHeader?.replace('Bearer ', '') || '';
+        const jwtToken = authHeader?.replace('Bearer ', '') ?? '';
         
-        if (!jwtToken) {
+        if (jwtToken === '') {
              return reply.code(401).send({ isError: true, message: 'Unauthorized' });
         }
 
@@ -130,7 +130,7 @@ export class StreamsController extends BaseController {
                 const videoData = videoDataResponse.videoData;
                 const isStreamRecordedRemotely = videoData.isStreamRecordedRemotely;
 
-                if (isStreamRecordedRemotely) {
+                if (isStreamRecordedRemotely === true) {
                     const resolutions = videoData.outputs.m3u8;
                     await this.s3Service.convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions);
                 } else {
@@ -145,9 +145,9 @@ export class StreamsController extends BaseController {
             const stopResponse = await this.nodeApiService.stopVideoStreaming(jwtToken, videoId);
             
             return await reply.send(stopResponse);
-        } catch (error: any) {
-            this.logger.error('Error stopping stream', error);
-            return await reply.send({ isError: true, message: error.message || 'Unknown error' });
+        } catch (error) {
+            this.logger.error('Error stopping stream', error as Error);
+            return await reply.send({ isError: true, message: (error as Error).message || 'Unknown error' });
         }
     }
 
@@ -155,8 +155,8 @@ export class StreamsController extends BaseController {
         const params = request.params as VideoIdParams;
         const { videoId } = params;
         const authHeader = request.headers.authorization;
-        const jwtToken = authHeader?.replace('Bearer ', '') || '';
-        if (!jwtToken) {return reply.code(401).send({ isError: true, message: 'Unauthorized' });}
+        const jwtToken = authHeader?.replace('Bearer ', '') ?? '';
+        if (jwtToken === '') {return reply.code(401).send({ isError: true, message: 'Unauthorized' });}
 
         try {
             const response = await this.nodeApiService.getVideoData(jwtToken, videoId);
@@ -169,14 +169,14 @@ export class StreamsController extends BaseController {
             const rtmpPort = meta.rtmpPort;
             const uuid = meta.uuid;
 
-            const rtmpStreamUrl = `rtmp://${networkAddress}:${rtmpPort}/live/${uuid}`;
-            const rtmpServerUrl = `rtmp://${networkAddress}:${rtmpPort}/live`;
+            const rtmpStreamUrl = `rtmp://${networkAddress}:${String(rtmpPort)}/live/${uuid}`;
+            const rtmpServerUrl = `rtmp://${networkAddress}:${String(rtmpPort)}/live`;
             const rtmpStreamkey = uuid;
             
             return await reply.send({ isError: false, rtmpStreamUrl, rtmpServerUrl, rtmpStreamkey });
-        } catch (error: any) {
-            this.logger.error('Error getting stream RTMP info', error);
-            return await reply.send({ isError: true, message: error.message });
+        } catch (error) {
+            this.logger.error('Error getting stream RTMP info', error as Error);
+            return await reply.send({ isError: true, message: (error as Error).message });
         }
     }
     
@@ -184,8 +184,8 @@ export class StreamsController extends BaseController {
         const params = request.params as VideoIdParams;
         const { videoId } = params;
         const authHeader = request.headers.authorization;
-        const jwtToken = authHeader?.replace('Bearer ', '') || '';
-        if (!jwtToken) {return reply.code(401).send({ isError: true, message: 'Unauthorized' });}
+        const jwtToken = authHeader?.replace('Bearer ', '') ?? '';
+        if (jwtToken === '') {return reply.code(401).send({ isError: true, message: 'Unauthorized' });}
 
         try {
             const response = await this.nodeApiService.getVideoData(jwtToken, videoId);
@@ -198,9 +198,9 @@ export class StreamsController extends BaseController {
                 isChatHistoryEnabled: meta.chatSettings.isChatHistoryEnabled,
                 chatHistoryLimit: meta.chatSettings.chatHistoryLimit 
             });
-        } catch (error: any) {
-            this.logger.error('Error getting chat settings', error);
-            return await reply.send({ isError: true, message: error.message });
+        } catch (error) {
+            this.logger.error('Error getting chat settings', error as Error);
+            return await reply.send({ isError: true, message: (error as Error).message });
         }
     }
 
@@ -211,15 +211,15 @@ export class StreamsController extends BaseController {
         const { isChatHistoryEnabled, chatHistoryLimit } = body;
         
         const authHeader = request.headers.authorization;
-        const jwtToken = authHeader?.replace('Bearer ', '') || '';
-        if (!jwtToken) {return reply.code(401).send({ isError: true, message: 'Unauthorized' });}
+        const jwtToken = authHeader?.replace('Bearer ', '') ?? '';
+        if (jwtToken === '') {return reply.code(401).send({ isError: true, message: 'Unauthorized' });}
 
         try {
             const response = await this.nodeApiService.setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled, chatHistoryLimit);
             return await reply.send(response);
-        } catch (error: any) {
-            this.logger.error('Error updating chat settings', error);
-            return await reply.send({ isError: true, message: error.message });
+        } catch (error) {
+            this.logger.error('Error updating chat settings', error as Error);
+            return await reply.send({ isError: true, message: (error as Error).message });
         }
     }
 }

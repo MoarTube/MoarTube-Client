@@ -70,24 +70,38 @@ export interface VideoDataAllResponse {
     [key: string]: unknown;
 }
 
+export interface VideoMeta {
+    networkAddress: string;
+    rtmpPort: number | string;
+    uuid: string;
+    chatSettings: {
+        isChatHistoryEnabled: boolean;
+        chatHistoryLimit: number;
+        [key: string]: unknown;
+    };
+    [key: string]: unknown;
+}
+
+export interface VideoOutputs {
+    m3u8?: string[];
+    [key: string]: unknown;
+}
+
 export interface VideoData {
     uuid: string;
     isLive: boolean;
     isStreaming: boolean;
-    isFinalized: boolean; // eslint-disable-line @typescript-eslint/naming-convention
+    isFinalized: boolean;  
     isStreamRecordedRemotely?: boolean;
     networkAddress?: string;
     rtmpPort?: number;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    outputs?: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    outputs?: VideoOutputs;
     chatSettings?: any;
-    meta?: any;
+    meta?: VideoMeta;
     video?: {
         sourceFileExtension: string;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export interface VideoDataResponse extends BaseNodeResponse {
@@ -133,4 +147,66 @@ export interface VideoPermissionsResponse extends BaseNodeResponse {
 }
 
 
+
+
+export interface Link {
+    linkId: string;
+    url: string;
+    svgGraphic: string;
+    [key: string]: unknown;
+}
+
+export interface GetLinksResponse extends BaseNodeResponse {
+    links: Link[];
+}
+
+export interface CryptoWalletAddress {
+    cryptoWalletAddressId: string;
+    walletAddress: string;
+    chain: string;
+    currency: string;
+    [key: string]: unknown;
+}
+
+export interface GetMonetizationResponse extends BaseNodeResponse {
+    cryptoWalletAddresses: CryptoWalletAddress[];
+}
+
+export interface Comment {
+    commentId: string;
+    text: string;
+    creationDate: number;
+    [key: string]: unknown;
+}
+
+export interface GetCommentsResponse extends BaseNodeResponse {
+    comments: Comment[];
+}
+
+export interface Report {
+    reportId: string;
+    reason: string;
+    [key: string]: unknown;
+}
+
+export interface GetReportsResponse extends BaseNodeResponse {
+    reports: Report[];
+}
+
+
+export interface VideoBandwidthResponse extends BaseNodeResponse {
+    bandwidth: number | string;
+    [key: string]: unknown;
+}
+
+export interface UploadedFile {
+    buffer: Buffer;
+    filename: string;
+    mimetype: string;
+    [key: string]: unknown;
+}
+
+export interface DatabaseConfig {
+    [key: string]: unknown;
+}
 

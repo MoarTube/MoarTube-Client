@@ -32,8 +32,8 @@ export class MonetizationController {
       }
 
       const [nodeSettings, newContentCountsResponse, monetizationResponse] = await Promise.all([
-          this.nodeApiService.getNodeSettings(jwtToken!),
-          this.nodeApiService.getNewContentCounts(jwtToken!),
+          this.nodeApiService.getNodeSettings(jwtToken),
+          this.nodeApiService.getNewContentCounts(jwtToken),
           this.nodeApiService.getMonetizationAll()
       ]);
 

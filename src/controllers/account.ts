@@ -81,9 +81,9 @@ export class AccountController extends BaseController {
             const result = await this.nodeApiService.signIn(body.username, body.password, body.rememberMe ?? false);
 
             if (!result.isError && result.isAuthenticated) {
-                if (result.token) request.session.jwtToken = result.token;
+                if (result.token) {request.session.jwtToken = result.token;}
                 
-                if (result.token) this.nodeSocketService.connect(result.token);
+                if (result.token) {this.nodeSocketService.connect(result.token);}
                 
                  delete result.token;
             }

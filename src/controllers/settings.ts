@@ -1,7 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { BaseController } from './base.js';
 import type { NodeApiService } from '@/services/node-api.js';
-import type { Config } from '@/config/index.js';
+import type { Config, ClientSettings } from '@/config/index.js';
 import type { Logger } from '@/utils/logger.js';
 import type { S3Service } from '@/services/s3.js';
 import type {
@@ -41,7 +41,7 @@ export class SettingsController extends BaseController {
         this.s3Service = s3Service;
     }
 
-    private getClientSettings() {
+    private getClientSettings(): ClientSettings {
         return this.config.clientSettings;
     }
     
@@ -118,7 +118,7 @@ export class SettingsController extends BaseController {
          const { isGpuAccelerationEnabled } = request.body as SetGpuAccelerationBody;
          const operatingSystem = await detectOperatingSystem();
          const clientSettings = this.config.clientSettings;
-         const result: any = {};
+         const result: { isGpuAccelerationEnabled?: boolean; gpuVendor?: string; gpuModel?: string } = {};
 
          if (operatingSystem === 'win32') {
              if (isGpuAccelerationEnabled) {
@@ -252,7 +252,7 @@ export class SettingsController extends BaseController {
         if (!request.isMultipart()) {
              // Fallback if strictly JSON (e.g. disabling secure mode)
              const { isSecure: secure } = request.body as SetSecureConnectionBody;
-             isSecure = !!secure;
+             isSecure = secure;
         } else {
              // We need to buffer the files and extract fields
              for await (const part of request.parts()) {
@@ -306,10 +306,10 @@ export class SettingsController extends BaseController {
          return reply.send(response);
     }
 
-    private async updateS3Manifests(jwtToken: string) {
+    private async updateS3Manifests(jwtToken: string): Promise<void> {
         try {
             const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
-            if (nodeSettings?.storageConfig?.storageMode === 's3provider') {
+            if (nodeSettings.storageConfig?.storageMode === 's3provider') {
                 const { videosData } = await this.nodeApiService.getVideoDataAll(jwtToken);
                 const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(jwtToken);
                 
