@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
 	<title>MoarTube - Settings</title>
@@ -120,7 +120,7 @@
 								<a class="nav-link " href="/comments">
 									<span class="sidenav-mini-icon"> C </span>
 									<span class="sidenav-normal"> Comments </span>
-									<span id="new-comments-count" class="badge badge-primary ms-1"></span>
+									<span id="new-comments-count-badge" class="badge badge-primary ms-1"></span>
 								</a>
 							</li>
 							<li class="nav-item ">
@@ -155,14 +155,14 @@
 								<a class="nav-link " href="/monetization">
 									<span class="sidenav-mini-icon"> M </span>
 									<span class="sidenav-normal"> Monetization </span>
-									<span id="new-comments-count" class="badge badge-primary ms-1"></span>
+									<span id="new-comments-count-monetization-badge" class="badge badge-primary ms-1"></span>
 								</a>
 							</li>
 							<li class="nav-item ">
 								<a class="nav-link " href="/links">
 									<span class="sidenav-mini-icon"> L </span>
 									<span class="sidenav-normal"> Links </span>
-									<span id="new-comments-count" class="badge badge-primary ms-1"></span>
+									<span id="new-comments-count-links-badge" class="badge badge-primary ms-1"></span>
 								</a>
 							</li>
 							<li class="nav-item ">
@@ -195,9 +195,6 @@
 													d="M1.855,31.4066667 C3.05106558,30.2024182 4.79973884,29.7296005 6.43969145,30.1670277 C8.07964407,30.6044549 9.36054508,31.8853559 9.7979723,33.5253085 C10.2353995,35.1652612 9.76258177,36.9139344 8.55833333,38.11 C6.70666667,39.9616667 0,40 0,40 C0,40 0,33.2566667 1.855,31.4066667 Z">
 												</path>
 												<path class="color-background"
-													d="M17.2616667,3.90166667 C12.4943643,3.07192755 7.62174065,4.61673894 4.20333333,8.04166667 C3.31200265,8.94126033 2.53706177,9.94913142 1.89666667,11.0416667 C1.5109569,11.6966059 1.61721591,12.5295394 2.155,13.0666667 L5.47,16.3833333 C8.55036617,11.4946947 12.5559074,7.25476565 17.2616667,3.90166667 L17.2616667,3.90166667 Z"
-													opacity="0.598539807"></path>
-												<path class="color-background"
 													d="M36.0983333,22.7383333 C36.9280725,27.5056357 35.3832611,32.3782594 31.9583333,35.7966667 C31.0587397,36.6879974 30.0508686,37.4629382 28.9583333,38.1033333 C28.3033941,38.4890431 27.4704606,38.3827841 26.9333333,37.845 L23.6166667,34.53 C28.5053053,31.4496338 32.7452344,27.4440926 36.0983333,22.7383333 L36.0983333,22.7383333 Z"
 													opacity="0.598539807"></path>
 											</g>
@@ -222,13 +219,11 @@
 											<g id="customer-support" transform="translate(1.000000, 0.000000)">
 												<path class="color-background"
 													d="M45,0 L26,0 C25.447,0 25,0.447 25,1 L25,20 C25,20.379 25.214,20.725 25.553,20.895 C25.694,20.965 25.848,21 26,21 C26.212,21 26.424,20.933 26.6,20.8 L34.333,15 L45,15 C45.553,15 46,14.553 46,14 L46,1 C46,0.447 45.553,0 45,0 Z"
-													id="Path" opacity="0.59858631"></path>
+													opacity="0.59858631"></path>
 												<path class="color-foreground"
-													d="M22.883,32.86 C20.761,32.012 17.324,31 13,31 C8.676,31 5.239,32.012 3.116,32.86 C1.224,33.619 0,35.438 0,37.494 L0,41 C0,41.553 0.447,42 1,42 L25,42 C25.553,42 26,41.553 26,41 L26,37.494 C26,35.438 24.776,33.619 22.883,32.86 Z"
-													id="Path"></path>
+													d="M22.883,32.86 C20.761,32.012 17.324,31 13,31 C8.676,31 5.239,32.012 3.116,32.86 C1.224,33.619 0,35.438 0,37.494 L0,41 C0,41.553 0.447,42 1,42 L25,42 C25.553,42 26,41.553 26,41 L26,37.494 C26,35.438 24.776,33.619 22.883,32.86 Z"></path>
 												<path class="color-foreground"
-													d="M13,28 C17.432,28 21,22.529 21,18 C21,13.589 17.411,10 13,10 C8.589,10 5,13.589 5,18 C5,22.529 8.568,28 13,28 Z"
-													id="Path"></path>
+													d="M13,28 C17.432,28 21,22.529 21,18 C21,13.589 17.411,10 13,10 C8.589,10 5,13.589 5,18 C5,22.529 8.568,28 13,28 Z"></path>
 											</g>
 										</g>
 									</g>
@@ -254,10 +249,9 @@
 												</polygon>
 												<path class="color-background"
 													d="M31.5666667,23.2333333 C31.0516667,23.2933333 30.53,23.3333333 30,23.3333333 C29.4916667,23.3333333 28.9866667,23.3033333 28.48,23.245 L22.4116667,30.7433333 L29.9416667,38.2733333 C32.2433333,40.575 35.9733333,40.575 38.275,38.2733333 L38.275,38.2733333 C40.5766667,35.9716667 40.5766667,32.2416667 38.275,29.94 L31.5666667,23.2333333 Z"
-													id="Path" opacity="0.596981957"></path>
+													opacity="0.596981957"></path>
 												<path class="color-background"
-													d="M33.785,11.285 L28.715,6.215 L34.0616667,0.868333333 C32.82,0.315 31.4483333,0 30,0 C24.4766667,0 20,4.47666667 20,10 C20,10.99 20.1483333,11.9433333 20.4166667,12.8466667 L2.435,27.3966667 C0.95,28.7083333 0.0633333333,30.595 0.00333333333,32.5733333 C-0.0583333333,34.5533333 0.71,36.4916667 2.11,37.89 C3.47,39.2516667 5.27833333,40 7.20166667,40 C9.26666667,40 11.2366667,39.1133333 12.6033333,37.565 L27.1533333,19.5833333 C28.0566667,19.8516667 29.01,20 30,20 C35.5233333,20 40,15.5233333 40,10 C40,8.55166667 39.685,7.18 39.1316667,5.93666667 L33.785,11.285 Z"
-													id="Path"></path>
+													d="M33.785,11.285 L28.715,6.215 L34.0616667,0.868333333 C32.82,0.315 31.4483333,0 30,0 C24.4766667,0 20,4.47666667 20,10 C20,10.99 20.1483333,11.9433333 20.4166667,12.8466667 L2.435,27.3966667 C0.95,28.7083333 0.0633333333,30.595 0.00333333333,32.5733333 C-0.0583333333,34.5533333 0.71,36.4916667 2.11,37.89 C3.47,39.2516667 5.27833333,40 7.20166667,40 C9.26666667,40 11.2366667,39.1133333 12.6033333,37.565 L27.1533333,19.5833333 C28.0566667,19.8516667 29.01,20 30,20 C35.5233333,20 40,15.5233333 40,10 C40,8.55166667 39.685,7.18 39.1316667,5.93666667 L33.785,11.285 Z"></path>
 											</g>
 										</g>
 									</g>
@@ -280,7 +274,7 @@
 											<g transform="translate(154.000000, 300.000000)">
 												<path class="color-background"
 													d="M40,40 L36.3636364,40 L36.3636364,3.63636364 L5.45454545,3.63636364 L5.45454545,0 L38.1818182,0 C39.1854545,0 40,0.814545455 40,1.81818182 L40,40 Z"
-													id="Path" opacity="0.603585379"></path>
+													opacity="0.603585379"></path>
 												<path class="color-background"
 													d="M30.9090909,7.27272727 L1.81818182,7.27272727 C0.814545455,7.27272727 0,8.08727273 0,9.09090909 L0,41.8181818 C0,42.8218182 0.814545455,43.6363636 1.81818182,43.6363636 L30.9090909,43.6363636 C31.9127273,43.6363636 32.7272727,42.8218182 32.7272727,41.8181818 L32.7272727,9.09090909 C32.7272727,8.08727273 31.9127273,7.27272727 30.9090909,7.27272727 Z M18.1818182,34.5454545 L7.27272727,34.5454545 L7.27272727,30.9090909 L18.1818182,30.9090909 L18.1818182,34.5454545 Z M25.4545455,27.2727273 L7.27272727,27.2727273 L7.27272727,23.6363636 L25.4545455,23.6363636 L25.4545455,27.2727273 Z M25.4545455,20 L7.27272727,20 L7.27272727,16.3636364 L25.4545455,16.3636364 L25.4545455,20 Z"
 													id="Shape"></path>
@@ -298,7 +292,7 @@
 	</aside>
 	<main class="main-content position-relative max-height-vh-100 h-100 border-radius-lg">
 		<nav class="navbar navbar-main navbar-expand-lg position-sticky mt-4 top-1 px-0 mx-4 shadow-none border-radius-xl z-index-sticky"
-			id="navbarBlur" data-scroll="true">
+			id="navbarBlur" data-scroll="true" aria-label="Main Navigation">
 			<div class="container-fluid py-1 px-3">
 				<nav aria-label="breadcrumb">
 					<h6 class="font-weight-bolder mb-0">Settings</h6>
@@ -314,7 +308,7 @@
 							</a>
 						</li>
 						<li class="nav-item d-xl-none ps-3 d-flex align-items-center">
-							<a href="javascript:;" class="nav-link text-body p-0" id="iconNavbarSidenav">
+							<a href="javascript:;" class="nav-link text-body p-0" id="iconNavbarSidenav" aria-label="Toggle navigation">
 								<div class="sidenav-toggler-inner">
 									<i class="sidenav-toggler-line"></i>
 									<i class="sidenav-toggler-line"></i>
@@ -323,7 +317,7 @@
 							</a>
 						</li>
 						<li class="nav-item px-3 d-flex align-items-center hidden-elem">
-							<a href="javascript:;" class="nav-link text-body p-0">
+							<a href="javascript:;" class="nav-link text-body p-0" aria-label="Settings">
 								<i class="fa fa-cog fixed-plugin-button-nav cursor-pointer" aria-hidden="true"></i>
 							</a>
 						</li>
@@ -360,7 +354,7 @@
 									class="text-sm text-secondary ms-auto me-3 my-auto"></p>
 								<div class="form-check form-switch my-auto">
 									<input id="client-setting-gpu-acceleration-checkbox" class="form-check-input"
-										type="checkbox" onclick="toggleClientSettingGpuAccelerationCheckbox(this)">
+										type="checkbox" onchange="toggleClientSettingGpuAccelerationCheckbox(this)">
 								</div>
 							</div>
 							<div class="card-body pt-0 d-flex">
@@ -433,32 +427,36 @@
 								<div class="card-body pt-0">
 									<div class="row">
 										<div class="col-2">
-											<label class="form-label">Node Avatar (128x128)</label>
+											<label class="form-label" for="avatar_file_input">Node Avatar (128x128)</label>
 											<div class="input-group">
-												<img src="/settings/node/avatar"
-													class="node-avatar cursor-pointer w-100"
+												<button type="button" class="btn p-0 w-100 border-0 bg-transparent"
 													onclick="document.getElementById('avatar_file_input').click();">
+													<img src="/settings/node/avatar" class="node-avatar cursor-pointer w-100"
+														alt="Node Avatar">
+												</button>
 											</div>
 										</div>
 										<div class="col-6">
-											<label class="form-label">Node Banner (2560x424)</label>
+											<label class="form-label" for="banner_file_input">Node Banner (2560x424)</label>
 											<div class="input-group">
-												<img id="node-banner" src="/settings/node/banner"
-													class="cursor-pointer w-100"
+												<button type="button" class="btn p-0 w-100 border-0 bg-transparent"
 													onclick="document.getElementById('banner_file_input').click();">
+													<img id="node-banner" src="/settings/node/banner"
+														class="cursor-pointer w-100" alt="Node Banner">
+												</button>
 											</div>
 										</div>
 									</div>
 								</div>
 							</div>
 
-							<form id="personalize_settings_node_name_form" role="form" method="POST"
+							<form id="personalize_settings_node_name_form" method="POST"
 								action="/settings/node/personalize/nodeName">
 								<div class="card-body pt-0 pb-0">
 									<div class="card-body pt-0">
 										<div class="row mt-3">
 											<div class="col-12">
-												<label class="form-label">Node Name</label>
+												<label class="form-label" for="node-name-input">Node Name</label>
 												<div class="input-group">
 													<input id="node-name-input" class="form-control"
 														name="nodeNameJustCuz" type="text" placeholder="node name"
@@ -476,13 +474,13 @@
 								</div>
 							</form>
 
-							<form id="personalize_settings_node_about_form" role="form" method="POST"
+							<form id="personalize_settings_node_about_form" method="POST"
 								action="/settings/node/personalize/nodeAbout">
 								<div class="card-body pt-0 pb-0">
 									<div class="card-body pt-0">
 										<div class="row mt-3">
 											<div class="col-12">
-												<label class="form-label">Node About</label>
+												<label class="form-label" for="node-about-input">Node About</label>
 												<div class="input-group">
 													<textarea id="node-about-textarea" class="form-control"
 														name="nodeAbout" type="text" placeholder="about this node"
@@ -501,13 +499,13 @@
 								</div>
 							</form>
 
-							<form id="personalize_settings_node_id_form" role="form" method="POST"
+							<form id="personalize_settings_node_id_form" aria-label="Node ID Form" method="POST"
 								action="/settings/node/personalize/nodeId">
 								<div class="card-body pt-0 pb-0">
 									<div class="card-body pt-0">
 										<div class="row mt-3">
 											<div class="col-12">
-												<label class="form-label">Node ID</label>
+												<label class="form-label" for="node-id-input">Node ID</label>
 												<div class="input-group">
 													<input id="node-id-input" class="form-control" name="nodeId"
 														type="text" placeholder="node id" onfocus="focused(this)"
@@ -546,7 +544,7 @@
 											<div class="form-check form-switch my-auto">
 												<input id="node-setting-secure-mode-checkbox" class="form-check-input"
 													type="checkbox"
-													onclick="toggleNodeSettingSecureModeCheckbox(this)" />
+													onchange="toggleNodeSettingSecureModeCheckbox(this)" />
 											</div>
 										</div>
 									</div>
@@ -571,7 +569,7 @@
 										<div class="col-6">
 											<div class="form-check form-switch my-auto">
 												<input id="cloudflare-one-click-cdn-checkbox" class="form-check-input"
-													type="checkbox" onclick="toggleCloudflareCdnCheckbox(this)">
+													type="checkbox" onchange="toggleCloudflareCdnCheckbox(this)">
 											</div>
 										</div>
 									</div>
@@ -597,7 +595,7 @@
 										<div class="col-6">
 											<div class="form-check form-switch my-auto">
 												<input id="cloudflare-turnstile-checkbox" class="form-check-input"
-													type="checkbox" onclick="toggleCloudflareTurnstileCheckbox(this)">
+													type="checkbox" onchange="toggleCloudflareTurnstileCheckbox(this)">
 											</div>
 										</div>
 									</div>
@@ -625,14 +623,14 @@
 												<input id="database-dialect-sqlite-radio"
 													class="form-check-input database-dialect-radio" type="radio"
 													name="database-dialect" data-databasedialect="sqlite"
-													onclick="toggleDatabaseConfiguration(this, event)">
+													onclick="toggleDatabaseConfiguration(this, event)" onkeyup="void(0)">
 												SQLite (local)
 											</label>
 											<label class="form-check-label" for="database-dialect-postgres-radio">
 												<input id="database-dialect-postgres-radio"
 													class="form-check-input database-dialect-radio" type="radio"
 													name="database-dialect" data-databasedialect="postgres"
-													onclick="toggleDatabaseConfiguration(this, event)">
+													onclick="toggleDatabaseConfiguration(this, event)" onkeyup="void(0)">
 												PostgreSQL (remote)
 											</label>
 										</div>
@@ -668,7 +666,7 @@
 														class="form-check-input storage-configuration-radio"
 														type="radio" name="storage-configuration"
 														data-storagemode="filesystem"
-														onclick="toggleStorageConfiguration(this, event)">
+														onclick="toggleStorageConfiguration(this, event)" onkeyup="void(0)">
 													Filesystem (local)
 												</label>
 												<label class="form-check-label"
@@ -677,7 +675,7 @@
 														class="form-check-input storage-configuration-radio"
 														type="radio" name="storage-configuration"
 														data-storagemode="s3provider"
-														onclick="toggleStorageConfiguration(this, event)">
+														onclick="toggleStorageConfiguration(this, event)" onkeyup="void(0)">
 													S3 Provider (remote)
 												</label>
 											</div>
@@ -694,7 +692,7 @@
 										<div class="col-6">
 											<div class="form-check form-switch my-auto">
 												<input id="comments-checkbox" class="form-check-input" type="checkbox"
-													onclick="toggleCommentsCheckbox(this)">
+													onchange="toggleCommentsCheckbox(this)">
 											</div>
 										</div>
 									</div>
@@ -710,7 +708,7 @@
 										<div class="col-6">
 											<div class="form-check form-switch my-auto">
 												<input id="likes-checkbox" class="form-check-input" type="checkbox"
-													onclick="toggleLikesCheckbox(this)">
+													onchange="toggleLikesCheckbox(this)">
 											</div>
 										</div>
 									</div>
@@ -726,7 +724,7 @@
 										<div class="col-6">
 											<div class="form-check form-switch my-auto">
 												<input id="dislikes-checkbox" class="form-check-input" type="checkbox"
-													onclick="toggleDislikesCheckbox(this)">
+													onchange="toggleDislikesCheckbox(this)">
 											</div>
 										</div>
 									</div>
@@ -742,7 +740,7 @@
 										<div class="col-6">
 											<div class="form-check form-switch my-auto">
 												<input id="reports-checkbox" class="form-check-input" type="checkbox"
-													onclick="toggleReportsCheckbox(this)">
+													onchange="toggleReportsCheckbox(this)">
 											</div>
 										</div>
 									</div>
@@ -758,13 +756,13 @@
 										<div class="col-6">
 											<div class="form-check form-switch my-auto">
 												<input id="live-chat-checkbox" class="form-check-input" type="checkbox"
-													onclick="toggleLiveChatCheckbox(this)">
+													onchange="toggleLiveChatCheckbox(this)">
 											</div>
 										</div>
 									</div>
 								</div>
 							</div>
-							<form id="internal_network_settings_form" role="form" method="POST"
+							<form id="internal_network_settings_form" aria-label="Internal Network Settings Form" method="POST"
 								action="/settings/node/network/internal">
 								<div class="card-body pt-0 pb-0">
 									<div class="">
@@ -784,7 +782,7 @@
 									<div class="card-body pt-0">
 										<div class="row">
 											<div class="col-12">
-												<label class="form-label">node listening port</label>
+												<label class="form-label" for="node-listening-port-input">node listening port</label>
 												<div class="input-group">
 													<input id="node-listening-port-input" name="nodeListeningPort"
 														class="form-control" type="text" placeholder="0 - 65535"
@@ -800,7 +798,7 @@
 									</div>
 								</div>
 							</form>
-							<form id="external_network_settings_form" role="form" method="POST"
+							<form id="external_network_settings_form" aria-label="External Network Settings Form" method="POST"
 								action="/settings/node/network/external">
 								<div class="card-body pt-0 pb-0">
 									<div class="">
@@ -820,7 +818,7 @@
 									<div class="card-body pt-0">
 										<div class="row">
 											<div class="col-4">
-												<label class="form-label">public node protocol</label>
+												<label class="form-label" for="public-node-protocol-select">public node protocol</label>
 												<div class="input-group">
 													<select id="public-node-protocol-select" name="publicNodeProtocol"
 														class="multisteps-form__select form-control">
@@ -831,7 +829,7 @@
 												</div>
 											</div>
 											<div class="col-4">
-												<label class="form-label">public ip address / domain</label>
+												<label class="form-label" for="public-node-address-input">public ip address / domain</label>
 												<div class="input-group">
 													<input id="public-node-address-input" name="publicNodeAddress"
 														class="form-control" type="text"
@@ -840,7 +838,7 @@
 												</div>
 											</div>
 											<div class="col-4">
-												<label class="form-label">public node port</label>
+												<label class="form-label" for="public-node-port-input">public node port</label>
 												<div class="input-group">
 													<input id="public-node-port-input" name="publicNodePort"
 														class="form-control" type="text" placeholder="0 - 65535"
@@ -856,7 +854,7 @@
 									</div>
 								</div>
 							</form>
-							<form id="account_credentials_settings_form" role="form" method="POST"
+							<form id="account_credentials_settings_form" method="POST"
 								action="/settings/node/account">
 								<div class="card-body pt-0 pb-0">
 									<div class="">
@@ -876,17 +874,17 @@
 									<div class="card-body pt-0">
 										<div class="row">
 											<div class="col-6">
-												<label class="form-label">Username</label>
+												<label class="form-label" for="username-input">Username</label>
 												<div class="input-group">
-													<input name="username" class="form-control" type="text"
+													<input id="username-input" name="username" class="form-control" type="text"
 														placeholder="username" onfocus="focused(this)"
 														onfocusout="defocused(this)" autocomplete="off">
 												</div>
 											</div>
 											<div class="col-6">
-												<label class="form-label">Password</label>
+												<label class="form-label" for="password-input">Password</label>
 												<div class="input-group">
-													<input name="password" class="form-control" type="text"
+													<input id="password-input" name="password" class="form-control" type="text"
 														placeholder="password" onfocus="focused(this)"
 														onfocusout="defocused(this)" autocomplete="off">
 												</div>

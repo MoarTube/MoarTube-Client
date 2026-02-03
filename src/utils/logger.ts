@@ -33,6 +33,7 @@ export interface LoggerConfig {
   logFilePath?: string;
 }
 
+
 /**
  * Logger class using Pino with pino-pretty
  *
@@ -80,23 +81,19 @@ export class Logger {
   }
 
   public debug(message: string, ...args: unknown[]): void {
-    this.logger.debug(message, ...args);
+    this.logger.debug(message, ...args as never[]);
   }
 
   public info(message: string, ...args: unknown[]): void {
-    this.logger.info(message, ...args);
+    this.logger.info(message, ...args as never[]);
   }
 
   public warn(message: string, ...args: unknown[]): void {
-    this.logger.warn(message, ...args);
+    this.logger.warn(message, ...args as never[]);
   }
 
   public error(message: string, error?: unknown, ...args: unknown[]): void {
-    if (error instanceof Error) {
-      this.logger.error({ err: error }, message, ...args);
-    } else {
-      this.logger.error({ err: error }, message, ...args);
-    }
+    this.logger.error({ err: error }, message, ...args as never[]);
   }
 }
 

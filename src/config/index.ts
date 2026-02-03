@@ -7,9 +7,9 @@ import { z } from 'zod';
 
 // Minimal schema for client settings
 const ClientSettingsSchema = z.object({
-  clientPort: z.string().or(z.number()).transform(v => Number(v)),
+  clientPort: z.string().or(z.number()).transform(Number),
   nodeIp: z.string(),
-  nodePort: z.string().or(z.number()).transform(v => Number(v)),
+  nodePort: z.string().or(z.number()).transform(Number),
   nodeHttpProtocol: z.string(),
   nodeWebsocketProtocol: z.string(),
   ffmpegPath: z.string().optional(),
@@ -19,10 +19,10 @@ const ClientSettingsSchema = z.object({
       processingAgentName: z.string().optional(),
       processingAgentModel: z.string().optional()
   }).optional(),
-  videoEncoderSettings: z.record(z.unknown()).optional(),
-  liveEncoderSettings: z.record(z.unknown()).optional(),
+  videoEncoderSettings: z.record(z.string(), z.unknown()).optional(),
+  liveEncoderSettings: z.record(z.string(), z.unknown()).optional(),
   version: z.string().optional()
-}); //.passthrough(); // TODO: Deprecated, usually default for unknown keys is strip, passthough keeps them.
+});
 
 export type ClientSettings = z.infer<typeof ClientSettingsSchema>;
 
@@ -35,7 +35,7 @@ export class Config {
   private readonly _env: Env;
   private readonly _paths: Paths;
   private _clientSettings: ClientSettings;
-  private _runtime: RuntimeConfig;
+  private readonly _runtime: RuntimeConfig;
   private _settingsWatcher: fs.FSWatcher | null = null;
 
   private constructor(baseDir: string, entryPointDir?: string) {
