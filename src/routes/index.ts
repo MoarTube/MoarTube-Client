@@ -9,6 +9,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 
 
 // Import for registration
+import type { WebSocket } from 'ws';
 import { accountRoutes } from '@/routes/account.js';
 import { homeRoutes } from '@/routes/home.js';
 import { videosRoutes } from '@/routes/videos.js';
@@ -28,9 +29,11 @@ import { nodeRoutes } from '@/routes/node.js';
  */
 export function registerRoutes(fastify: FastifyInstance, container: Container): void {
   // WebSocket Route
-  fastify.get('/ws', { websocket: true }, (connection, _req) => {
+  fastify.get('/ws', { websocket: true }, (connection, req) => {
       const socketService = container.resolve('socketService');
-      socketService.handleConnection((connection as any).socket);
+      const jwtToken = req.session.jwtToken;
+
+      socketService.handleConnection((connection as unknown as { socket: WebSocket }).socket, jwtToken);
   });
 
   // Account routes (/account/*)

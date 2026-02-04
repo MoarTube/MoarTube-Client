@@ -14,10 +14,11 @@ import {
   PutBucketPolicyCommand, 
 } from '@aws-sdk/client-s3';
 import type { S3ClientConfig } from '@aws-sdk/client-s3';
-import { STSClient, GetCallerIdentityCommand } from '@aws-sdk/client-sts';
 import { Upload } from '@aws-sdk/lib-storage';
-import fs from 'node:fs';
+import { STSClient, GetCallerIdentityCommand } from '@aws-sdk/client-sts';
+import type { STSClientConfig } from '@aws-sdk/client-sts';
 import type { Readable } from 'node:stream';
+import * as fs from 'node:fs';
 import type { S3Config } from '@/types/node-api.js';
 
 /**
@@ -69,7 +70,7 @@ export class S3Service extends BaseService {
     super('s3Service', logger);
   }
 
-  private createClient(endpoint: string | undefined, accessKeyId: string, secretAccessKey: string, sessionToken?: string): S3Client {
+  private createClient(endpoint: string | undefined, accessKeyId: string, secretAccessKey: string, sessionToken?: string, region?: string): S3Client {
     const credentials: S3Credentials = {
       accessKeyId,
       secretAccessKey
@@ -79,7 +80,7 @@ export class S3Service extends BaseService {
     }
 
     const config: S3ClientConfig = {
-      region: 'us-east-1', // Placeholder region
+      region: region !== undefined && region !== '' ? region : 'us-east-1',
       credentials,
       forcePathStyle: true
     };
@@ -102,10 +103,10 @@ export class S3Service extends BaseService {
 
   public async validateS3Config(s3Config: S3ValidationConfig): Promise<void> {
       const { bucketName, s3ProviderClientConfig } = s3Config;
-      const { endpoint, credentials: { accessKeyId, secretAccessKey, sessionToken } } = s3ProviderClientConfig;
+      const { endpoint, region, credentials: { accessKeyId, secretAccessKey, sessionToken } } = s3ProviderClientConfig;
 
       this.logger.debug(`Validating S3 config for bucket: ${bucketName}`);
-      const s3Client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken);
+      const s3Client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken, region);
 
       // Check if bucket exists
       const buckets = (await s3Client.send(new ListBucketsCommand({}))).Buckets ?? [];
@@ -140,11 +141,21 @@ export class S3Service extends BaseService {
 
            // Set Policy
             try {
-                const stsClient = new STSClient({
-                     ...s3ProviderClientConfig,
-                     region: 'us-east-1',
-                     endpoint
-                });
+                const credentials = {
+                    accessKeyId,
+                    secretAccessKey,
+                    ...(sessionToken !== undefined && sessionToken !== '' ? { sessionToken } : {})
+                };
+
+                const stsConfig: STSClientConfig = {
+                     credentials,
+                     region: region ?? 'us-east-1'
+                };
+                if (endpoint !== undefined && endpoint !== '') {
+                     stsConfig.endpoint = endpoint;
+                }
+
+                const stsClient = new STSClient(stsConfig);
                 const principalArn = (await stsClient.send(new GetCallerIdentityCommand({}))).Arn;
                 
                 await s3Client.send(new PutBucketPolicyCommand({
@@ -175,20 +186,20 @@ export class S3Service extends BaseService {
 
   public async updateM3u8ManifestsWithExternalVideosBaseUrl(s3Config: S3ValidationConfig, videosData: VideoForManifestUpdate[], externalVideosBaseUrl: string): Promise<void> {
       const { bucketName, s3ProviderClientConfig } = s3Config;
-      const { endpoint, credentials: { accessKeyId, secretAccessKey, sessionToken } } = s3ProviderClientConfig; // Assuming passed structure matches what I construct
+      const { endpoint, region, credentials: { accessKeyId, secretAccessKey, sessionToken } } = s3ProviderClientConfig;
       // Note: Legacy passed structure might differ slightly. I should assume s3Config matches the legacy structure: 
       // { bucketName, s3ProviderClientConfig: { endpoint, credentials... } }
 
-      const s3Client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken);
+      const s3Client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken, region);
 
       const performUpdate = async (manifestKey: string): Promise<void> => {
           try {
               const response = await s3Client.send(new GetObjectCommand({ Bucket: bucketName, Key: manifestKey }));
               if (!response.Body) {return;}
 
-              const oldManifest = await this.streamToString(response.Body);
+              const oldManifest = await this.streamToString(response.Body as Readable);
               // Regex from legacy code
-              const newManifest = oldManifest.replace(/(https?:\/\/).*?(\/external\/)/g, externalVideosBaseUrl + "$2");
+              const newManifest = oldManifest.replaceAll(/(https?:\/\/).*?(\/external\/)/g, externalVideosBaseUrl + "$2");
               
               await s3Client.send(new PutObjectCommand({ 
                   Bucket: bucketName, 
@@ -206,7 +217,7 @@ export class S3Service extends BaseService {
               const masterManifestKey = `external/videos/${videoData.videoId}/adaptive/m3u8/static/manifests/manifest-master.m3u8`;
               await performUpdate(masterManifestKey);
 
-              for (const resolution of videoData.outputs.m3u8) {
+              for (const resolution of (videoData.outputs?.m3u8 ?? [])) {
                    const manifestKey = `external/videos/${videoData.videoId}/adaptive/m3u8/static/manifests/manifest-${resolution}.m3u8`;
                    await performUpdate(manifestKey);
               }
@@ -219,63 +230,115 @@ export class S3Service extends BaseService {
    */
   public async putObjectFromData(
     s3Config: S3FlatConfig,
-    key: string, data: Buffer | string | Readable | Blob | Uint8Array, contentType: string
+    key: string,
+    data: Buffer | string | Readable | Blob | Uint8Array,
+    contentType: string
   ): Promise<void> {
-    const { endpoint, accessKeyId, secretAccessKey, sessionToken, bucketName } = s3Config;
-    const client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken);
-    
+    const { endpoint, accessKeyId, secretAccessKey, sessionToken, bucketName, region } = s3Config;
+    const client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken, region);
+
     try {
-      const command = new PutObjectCommand({
-        Bucket: bucketName,
-        Key: key,
-        Body: data,
-        ContentType: contentType
+      const upload = new Upload({
+        client,
+        params: {
+          Bucket: bucketName,
+          Key: key,
+          Body: data,
+          ContentType: contentType,
+        },
       });
-      await client.send(command);
+
+      await upload.done();
     } catch (error) {
       this.logger.error(`Failed to put object ${key}`, error as Error);
       throw error;
     }
   }
 
-  /**
-   * Upload file with progress tracking
-   */
-  public async uploadFile(
-    endpoint: string, accessKeyId: string, secretAccessKey: string, sessionToken: string | undefined,
-    bucket: string, key: string, filePath: string, contentType: string
+  public async uploadFilesWithProgress(
+    s3Config: S3FlatConfig,
+    files: Array<{ key: string; filePath: string; contentType: string }>,
+    onProgress: (percent: number) => void
   ): Promise<void> {
-    const client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken);
-    const fileStream = fs.createReadStream(filePath);
-
-    try {
-      const upload = new Upload({
-        client,
-        params: {
-          Bucket: bucket,
-          Key: key,
-          Body: fileStream,
-          ContentType: contentType
-        }
-      });
-
-      upload.on('httpUploadProgress', (_progress) => {
-        // Logging debug progress might be too verbose, can enable if needed
-        // this.logger.debug(`Upload progress ${key}: ${progress.loaded}/${progress.total}`);
-      });
-
-      await upload.done();
-    } catch (error) {
-      this.logger.error(`Failed to upload file ${filePath} to ${key}`, error as Error);
-      throw error;
+    const { endpoint, accessKeyId, secretAccessKey, sessionToken, bucketName, region } = s3Config;
+    const client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken, region);
+    
+    // Calculate total size
+    let totalSize = 0;
+    for (const file of files) {
+        const stats = await fs.promises.stat(file.filePath);
+        totalSize += stats.size;
     }
+    
+    if (totalSize === 0) {
+        onProgress(100);
+        return;
+    }
+
+    const CONCURRENCY_LIMIT = 5;
+    const fileProgress = new Map<string, number>();
+
+    // Helper to run a single upload
+    const uploadFile = async (file: { key: string; filePath: string; contentType: string }): Promise<void> => {
+        const fileStream = fs.createReadStream(file.filePath);
+        
+        try {
+            const upload = new Upload({
+                client,
+                params: {
+                    Bucket: bucketName,
+                    Key: file.key,
+                    Body: fileStream,
+                    ContentType: file.contentType
+                }
+            });
+
+            upload.on('httpUploadProgress', (progress) => {
+                if (progress.loaded !== undefined) {
+                    fileProgress.set(file.key, progress.loaded);
+                    
+                    let currentTotal = 0;
+                    for (const size of fileProgress.values()) {
+                        currentTotal += size;
+                    }
+                    
+                    const percent = Math.min(100, Math.round((currentTotal / totalSize) * 100));
+                    onProgress(percent);
+                }
+            });
+
+            await upload.done();
+             // Ensure we mark full size done in case progress didn't fire exactly at end
+             const stats = await fs.promises.stat(file.filePath);
+             fileProgress.set(file.key, stats.size);
+        } catch (error) {
+             this.logger.error(`Failed to upload ${file.key}`, error as Error);
+             throw error;
+        }
+    };
+
+    // Worker Queue
+    const queue = [...files];
+    const workers = [];
+
+    for (let i = 0; i < CONCURRENCY_LIMIT; i++) {
+        workers.push((async (): Promise<void> => {
+            while (queue.length > 0) {
+                const file = queue.shift();
+                if (file) { await uploadFile(file); }
+            }
+        })());
+    }
+
+    await Promise.all(workers);
+    onProgress(100);
   }
 
   public async deleteObjectsWithPrefix(
       endpoint: string | undefined, accessKeyId: string, secretAccessKey: string, sessionToken: string | undefined,
-      bucket: string, prefix: string
+      bucket: string, prefix: string, region?: string
   ): Promise<void> {
-      const client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken);
+      const client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken, region);
 
       try {
           // List objects first
@@ -309,35 +372,21 @@ export class S3Service extends BaseService {
    */
   public async deleteDirectoryRecursive(s3Config: S3Config, prefix: string): Promise<void> {
       // s3Config comes from node settings, extracting credentials
-      const { endpoint, accessKeyId, secretAccessKey, sessionToken, bucket, bucketName } = s3Config;
+      const { endpoint, accessKeyId, secretAccessKey, sessionToken, bucket, bucketName, region } = s3Config;
       const actualBucket = (bucket as string) || bucketName; // Support legacy 'bucket' prop if present
       
       
-      await this.deleteObjectsWithPrefix(endpoint as string, accessKeyId, secretAccessKey, sessionToken as string, actualBucket, prefix);
+      await this.deleteObjectsWithPrefix(endpoint as string, accessKeyId, secretAccessKey, sessionToken as string, actualBucket, prefix, region);
   }
 
   /**
    * Delete a single object with specific key
    */
   public async deleteObjectWithKey(s3Config: S3Config, key: string): Promise<void> {
-      const { endpoint, accessKeyId, secretAccessKey, sessionToken, bucket, bucketName } = s3Config;
+      const { endpoint, accessKeyId, secretAccessKey, sessionToken, bucket, bucketName, region } = s3Config;
       const actualBucket = (bucket as string) || bucketName; // Support legacy 'bucket' prop if present
       
-
-      const config: S3ClientConfig = {
-          region: s3Config.region,
-          credentials: {
-              accessKeyId,
-              secretAccessKey,
-              sessionToken: sessionToken
-          },
-          forcePathStyle: true
-      };
-      if (endpoint !== undefined && endpoint !== '') {
-          config.endpoint = endpoint;
-      }
-
-      const client = new S3Client(config);
+      const client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken, region);
 
       try {
           const deleteCommand = new DeleteObjectCommand({
@@ -377,7 +426,7 @@ export class S3Service extends BaseService {
 
         let staticManifest: string;
         if (dynamicKey.includes('manifest-master.m3u8')) {
-          staticManifest = dynamicManifest.replace(/\/dynamic\//g, '/static/');
+          staticManifest = dynamicManifest.replaceAll('/dynamic/', '/static/');
         } else {
           // Convert EVENT to VOD and end list
           staticManifest = dynamicManifest.replace('#EXT-X-PLAYLIST-TYPE:EVENT', '#EXT-X-PLAYLIST-TYPE:VOD');

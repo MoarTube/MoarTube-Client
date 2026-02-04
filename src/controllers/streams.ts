@@ -12,9 +12,9 @@ import type {
 } from '@/types/requests.js';
 
 export class StreamsController extends BaseController {
-    private liveStreamService: LiveStreamService;
-    private nodeApiService: NodeApiService;
-    private s3Service: S3Service;
+    private readonly liveStreamService: LiveStreamService;
+    private readonly nodeApiService: NodeApiService;
+    private readonly s3Service: S3Service;
 
     constructor(
         liveStreamService: LiveStreamService,
@@ -37,7 +37,7 @@ export class StreamsController extends BaseController {
 
         try {
             // Check if port is available
-            const portStatus = await checkNetworkPortStatus(parseInt(rtmpPort, 10), '127.0.0.1');
+            const portStatus = await checkNetworkPortStatus(Number.parseInt(rtmpPort, 10), '127.0.0.1');
 
             if (portStatus === 'closed') {
                 const uuid = 'moartube';
@@ -54,12 +54,12 @@ export class StreamsController extends BaseController {
                     return await reply.code(401).send({ isError: true, message: 'Unauthorized' });
                 }
 
-                const response = await this.nodeApiService.streamVideo(
-                    jwtToken,
+                const response = await this.nodeApiService.streamVideo(jwtToken, {
                     title, description, tags, resolution,
                     isRecordingStreamRemotely, isRecordingStreamLocally,
-                    networkAddress, existingVideoId
-                );
+                    networkAddress,
+                    ...(existingVideoId !== undefined && existingVideoId !== '' ? { videoId: existingVideoId } : {})
+                });
 
                 if (response.isError) {
                      return await reply.send(response);
@@ -131,7 +131,7 @@ export class StreamsController extends BaseController {
                 const isStreamRecordedRemotely = videoData.isStreamRecordedRemotely;
 
                 if (isStreamRecordedRemotely === true) {
-                    const resolutions = videoData.outputs.m3u8;
+                    const resolutions = videoData.outputs?.m3u8 ?? [];
                     await this.s3Service.convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions);
                 } else {
                     const prefix = `external/videos/${videoId}/adaptive/m3u8`;
@@ -165,12 +165,12 @@ export class StreamsController extends BaseController {
             }
             
             const meta = response.videoData.meta;
-            const networkAddress = meta.networkAddress;
-            const rtmpPort = meta.rtmpPort;
-            const uuid = meta.uuid;
+            const networkAddress = meta?.networkAddress;
+            const rtmpPort = meta?.rtmpPort;
+            const uuid = meta?.uuid;
 
-            const rtmpStreamUrl = `rtmp://${networkAddress}:${String(rtmpPort)}/live/${uuid}`;
-            const rtmpServerUrl = `rtmp://${networkAddress}:${String(rtmpPort)}/live`;
+            const rtmpStreamUrl = `rtmp://${String(networkAddress)}:${String(rtmpPort)}/live/${String(uuid)}`;
+            const rtmpServerUrl = `rtmp://${String(networkAddress)}:${String(rtmpPort)}/live`;
             const rtmpStreamkey = uuid;
             
             return await reply.send({ isError: false, rtmpStreamUrl, rtmpServerUrl, rtmpStreamkey });
@@ -195,8 +195,8 @@ export class StreamsController extends BaseController {
             const meta = response.videoData.meta;
             return await reply.send({ 
                 isError: false, 
-                isChatHistoryEnabled: meta.chatSettings.isChatHistoryEnabled,
-                chatHistoryLimit: meta.chatSettings.chatHistoryLimit 
+                isChatHistoryEnabled: meta?.chatSettings.isChatHistoryEnabled ?? false,
+                chatHistoryLimit: meta?.chatSettings.chatHistoryLimit ?? 100
             });
         } catch (error) {
             this.logger.error('Error getting chat settings', error as Error);

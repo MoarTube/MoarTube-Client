@@ -102,30 +102,8 @@ export class VideosController extends BaseController {
     public postImport = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
             const jwtToken = request.session.jwtToken ?? '';
-            const parts = request.parts();
             
-            let videoId: string | undefined;
-            let tempFilePath: string | undefined;
-            let fileMimeType: string | undefined;
-
-            for await (const part of parts) {
-                if (part.type === 'file') {
-                    if (part.fieldname === 'videoFile') {
-                         // We save to temp regardless of order
-                         const tempDir = this.settingsRepository.getTempDirectoryPath();
-                         tempFilePath = path.join(tempDir, part.filename);
-                         fileMimeType = part.mimetype;
-                         await pipeline(part.file, fs.createWriteStream(tempFilePath));
-                    } else {
-                        // Consume stream to avoid hanging
-                         part.file.resume();
-                    }
-                } else {
-                    if (part.fieldname === 'videoId') {
-                        videoId = (part.value as string);
-                    }
-                }
-            }
+            const { videoId, tempFilePath, fileMimeType } = await this.handleImportMultipart(request);
 
             if (videoId === undefined || tempFilePath === undefined) {
                 if (tempFilePath !== undefined && fs.existsSync(tempFilePath)) {
@@ -162,6 +140,29 @@ export class VideosController extends BaseController {
             this.logger.error('Error in postImport', error);
             return await this.sendError(reply, 'Upload failed');
         }
+    }
+
+    private async handleImportMultipart(request: FastifyRequest): Promise<{ videoId: string | undefined; tempFilePath: string | undefined; fileMimeType: string | undefined }> {
+         const parts = request.parts();
+         let videoId: string | undefined;
+         let tempFilePath: string | undefined;
+         let fileMimeType: string | undefined;
+
+         for await (const part of parts) {
+            if (part.type === 'file') {
+                if (part.fieldname === 'videoFile') {
+                     const tempDir = this.settingsRepository.getTempDirectoryPath();
+                     tempFilePath = path.join(tempDir, part.filename);
+                     fileMimeType = part.mimetype;
+                     await pipeline(part.file, fs.createWriteStream(tempFilePath));
+                } else {
+                     part.file.resume();
+                }
+            } else if (part.fieldname === 'videoId') {
+                videoId = (part.value as string);
+            }
+         }
+         return { videoId, tempFilePath, fileMimeType };
     }
 
     public postStopImport = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {

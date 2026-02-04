@@ -2,13 +2,13 @@ import type { Logger } from 'pino';
 import { WebSocket } from 'ws';
 
 export class SocketService {
-    private clients: Set<WebSocket> = new Set();
+    private readonly clients: Map<WebSocket, string | undefined> = new Map();
 
     constructor(private readonly logger: Logger) {}
 
-    public handleConnection(socket: WebSocket): void {
-        this.clients.add(socket);
-        this.logger.info('[SocketService] Client connected');
+    public handleConnection(socket: WebSocket, key?: string): void {
+        this.clients.set(socket, key);
+        this.logger.info(`[SocketService] Client connected (Key: ${key !== undefined && key !== '' ? 'Provided' : 'None'})`);
 
         socket.on('close', () => {
              this.clients.delete(socket);
@@ -16,7 +16,7 @@ export class SocketService {
         });
         
         socket.on('error', (err) => {
-            this.logger.error('[SocketService] Socket error', err);
+            this.logger.error(`[SocketService] Socket error: ${err instanceof Error ? err.message : String(err)}`);
         });
 
         // Optional: specific messages from client
@@ -41,11 +41,11 @@ export class SocketService {
         // Legacy "echo" event passes { eventName: '...', ...payload } directly.
         // If 'event' is the eventName, we construct the payload.
         
-        let payload: unknown = data;
+        let payload: unknown;
         if (typeof data === 'object' && data !== null) {
             const dataObj = data as Record<string, unknown>;
             // Explicit check for undefined or empty string if that's what we mean, or just truthiness cast
-            const eventName = dataObj.eventName as string | undefined;
+            const eventName = dataObj['eventName'] as string | undefined;
             if (eventName === undefined || eventName === '') {
                 payload = { eventName: event, ...dataObj };
             } else {
@@ -59,7 +59,7 @@ export class SocketService {
         const message = JSON.stringify(payload);
         // this.logger.debug(`[SocketService] Broadcasting: ${message}`);
         
-        for (const client of this.clients) {
+        for (const client of this.clients.keys()) {
             if (client.readyState === WebSocket.OPEN) {
                 client.send(message);
             }
@@ -67,10 +67,29 @@ export class SocketService {
     }
 
     public broadcastToUser(key: string, event: string, data: unknown): void {
-        this.logger.debug(`[SocketService] Broadcasting event to ${key}: ${event}`, data);
-        // TODO: Implement user-specific mapping if required.
-        // For now, MoarTube Client is single-user focused (the owner), 
-        // but could have multiple tabs. Broadcast to all is usually fine for this app.
-        this.broadcast(event, data);
+        const payload = this.createPayload(event, data);
+        const message = JSON.stringify(payload);
+
+        this.logger.debug(`[SocketService] Broadcasting event to user (key provided): ${event}`);
+
+        for (const [client, clientKey] of this.clients) {
+            if (clientKey === key && client.readyState === WebSocket.OPEN) {
+                client.send(message);
+            }
+        }
+    }
+
+    private createPayload(event: string, data: unknown): unknown {
+        if (typeof data === 'object' && data !== null) {
+            const dataObj = data as Record<string, unknown>;
+            const eventName = dataObj['eventName'] as string | undefined;
+            if (eventName === undefined || eventName === '') {
+                return { eventName: event, ...dataObj };
+            } else {
+                 return data;
+            }
+        } else {
+             return { eventName: event, data };
+        }
     }
 }

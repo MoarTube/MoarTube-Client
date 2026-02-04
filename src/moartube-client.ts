@@ -5,7 +5,6 @@ import { initializeConfig, getConfig } from '@/config/index.js';
 import { createAppContainer } from '@/core/container.js';
 import { createFastifyApp } from '@/plugins/index.js';
 import { Logger, LogLevel } from '@/utils/logger.js';
-import { registerRoutes } from '@/routes/index.js';
 import { LifecycleManager } from '@/core/lifecycle.js';
 
 async function start(): Promise<void> {
@@ -29,9 +28,6 @@ async function start(): Promise<void> {
 
     // Create App
     const app = await createFastifyApp(container);
-
-    // Register Routes
-    registerRoutes(app, container);
 
     // Lifecycle Startup (Background tasks, assessments)
     const lifecycle = new LifecycleManager(container);

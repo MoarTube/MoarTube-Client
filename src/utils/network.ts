@@ -1,4 +1,4 @@
-import os from 'os';
+import os from 'node:os';
 import portscanner from 'portscanner';
 
 export function getNetworkAddresses(): string[] {
@@ -35,6 +35,6 @@ export async function checkNetworkPortStatus(port: number, host: string): Promis
 }
 
 export function isPortValid(port: string | number): boolean {
-    const portNumber = parseInt(String(port), 10);
-    return !isNaN(portNumber) && portNumber > 0 && portNumber <= 65535;
+    const portNumber = Number.parseInt(String(port), 10);
+    return !Number.isNaN(portNumber) && portNumber > 0 && portNumber <= 65535;
 }

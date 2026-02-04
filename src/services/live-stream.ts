@@ -308,7 +308,15 @@ export class LiveStreamService {
         }
 
         if (storageConfig.storageMode === 'filesystem') {
-             await this.nodeApiService.uploadStream(jwtToken, videoId, 'm3u8', resolution, processedManifestBuffer, segmentBuffer, manifestFileName, segmentFileName); 
+             await this.nodeApiService.uploadStream(jwtToken, {
+                videoId,
+                format: 'm3u8',
+                resolution,
+                manifestBuffer: processedManifestBuffer,
+                segmentBuffer,
+                manifestFileName,
+                segmentFileName
+             }); 
         } else if (storageConfig.s3Config !== undefined) {
              const segmentKey = `external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/${segmentFileName}`;
              const manifestKey = `external/videos/${videoId}/adaptive/m3u8/dynamic/manifests/manifest-${resolution}.m3u8`;

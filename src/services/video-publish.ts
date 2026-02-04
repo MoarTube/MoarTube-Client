@@ -1,10 +1,10 @@
-import type { ChildProcess } from 'child_process';
-import { spawn } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
+import type { ChildProcess } from 'node:child_process';
+import { spawn } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import type { Logger } from 'pino';
 import type { NodeApiService } from './node-api.js';
-import type { S3Service } from './s3.js';
+import type { S3Service, S3FlatConfig } from './s3.js';
 import type { SettingsRepository } from '../database/repositories/settings.js';
 import type { SocketService } from './socket.js';
 import type { ManifestService } from './manifest.js';
@@ -21,9 +21,9 @@ interface VideoPublishJob {
 export class VideoPublishService {
     private inProgressPublishingJobCount = 0;
     private maximumInProgressPublishingJobCount = 5;
-    private inProgressPublishingJobs: VideoPublishJob[] = [];
-    private pendingPublishVideoQueue: VideoPublishJob[] = [];
-    private activeEncodingJobs: Map<string, { stopping: boolean, process?: ChildProcess }> = new Map();
+    private readonly inProgressPublishingJobs: VideoPublishJob[] = [];
+    private readonly pendingPublishVideoQueue: VideoPublishJob[] = [];
+    private readonly activeEncodingJobs: Map<string, { stopping: boolean, process?: ChildProcess }> = new Map();
     private ffmpegPath = 'ffmpeg'; // Default, should be configurable
 
     constructor(
@@ -166,85 +166,82 @@ export class VideoPublishService {
         }
 
         const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(job.jwtToken);
+        const videosPath = this.settingsRepository.getVideosDirectoryPath();
+        const sourceFilePath = path.join(videosPath, job.videoId, 'source', job.videoId + job.sourceFileExtension);
+        const destinationFilePath = this.prepareDestinationDirectory(videosPath, job);
+
+        const ffmpegArguments = this.generateFfmpegVideoArguments(job.videoId, job.resolution, job.format, sourceFilePath, destinationFilePath, job.sourceFileExtension, externalVideosBaseUrl);
 
         return new Promise((resolve, reject) => {
-            const videosPath = this.settingsRepository.getVideosDirectoryPath();
-            const sourceFilePath = path.join(videosPath, job.videoId, 'source', job.videoId + job.sourceFileExtension);
-            
-            const destinationFileExtension = '.' + job.format;
-            let destinationFilePath = '';
-
-            const ensureDir = (p: string): void => { if (!fs.existsSync(p)) {fs.mkdirSync(p, { recursive: true });} };
-
-            if (job.format === 'm3u8') {
-                ensureDir(path.join(videosPath, job.videoId, 'adaptive', 'm3u8', job.resolution));
-                destinationFilePath = path.join(videosPath, job.videoId, 'adaptive', 'm3u8', 'manifest-' + job.resolution + destinationFileExtension);
-            } else if (job.format === 'mp4') {
-                ensureDir(path.join(videosPath, job.videoId, 'progressive', 'mp4'));
-                destinationFilePath = path.join(videosPath, job.videoId, 'progressive', 'mp4', job.resolution + destinationFileExtension);
-            } else if (job.format === 'webm') {
-                ensureDir(path.join(videosPath, job.videoId, 'progressive', 'webm'));
-                destinationFilePath = path.join(videosPath, job.videoId, 'progressive', 'webm', job.resolution + destinationFileExtension);
-            } else {
-                ensureDir(path.join(videosPath, job.videoId, 'progressive', 'ogv'));
-                destinationFilePath = path.join(videosPath, job.videoId, 'progressive', 'ogv', job.resolution + destinationFileExtension);
-            }
-
-            const ffmpegArguments = this.generateFfmpegVideoArguments(job.videoId, job.resolution, job.format, sourceFilePath, destinationFilePath, job.sourceFileExtension, externalVideosBaseUrl);
-
             const process = spawn(this.ffmpegPath, ffmpegArguments);
             
             const activeJob = this.activeEncodingJobs.get(job.videoId);
             if (activeJob) {activeJob.process = process;}
 
-            process.stdout.on('data', (_data) => {
-               // this.logger.debug(Buffer.from(data).toString());
-            });
+            this.monitorEncodingProcess(process, job, resolve, reject);
+        });
+    }
 
-            let lengthTimestamp = '00:00:00.00';
-            let lengthSeconds = 0;
-            let stderrOutput = '';
+    private prepareDestinationDirectory(videosPath: string, job: VideoPublishJob): string {
+        const destinationFileExtension = '.' + job.format;
+        const ensureDir = (p: string): void => { if (!fs.existsSync(p)) {fs.mkdirSync(p, { recursive: true });} };
 
-            process.stderr.on('data', (data) => {
-                if (!this.isPublishVideoEncodingStopping(job.videoId)) {
-                    const stderrTemp = Buffer.from(data).toString();
-                    
-                    if (stderrTemp.indexOf('time=') !== -1) {
-                         if (lengthSeconds === 0) {
-                            const index = stderrOutput.indexOf('Duration: ');
-                            if(index !== -1) {
-                                lengthTimestamp = stderrOutput.substring(index + 10, index + 10 + 11);
-                                lengthSeconds = this.timestampToSeconds(lengthTimestamp);
-                            }
-                        }
+        if (job.format === 'm3u8') {
+            ensureDir(path.join(videosPath, job.videoId, 'adaptive', 'm3u8', job.resolution));
+            return path.join(videosPath, job.videoId, 'adaptive', 'm3u8', 'manifest-' + job.resolution + destinationFileExtension);
+        }
+        
+        const subDir = job.format; 
+        ensureDir(path.join(videosPath, job.videoId, 'progressive', subDir));
+        return path.join(videosPath, job.videoId, 'progressive', subDir, job.resolution + destinationFileExtension);
+    }
 
-                        const index = stderrTemp.indexOf('time=');
-                        const currentTimestamp = stderrTemp.substring(index + 5, index + 5 + 11);
-                        const currentTimeSeconds = this.timestampToSeconds(currentTimestamp);
+    private monitorEncodingProcess(process: ChildProcess, job: VideoPublishJob, resolve: () => void, reject: (err: Error) => void): void {
+        process.stdout?.on('data', () => { /* Prevent buffer overflow */ });
 
-                        if (currentTimeSeconds > 0 && lengthSeconds > 0) {
-                            const encodingProgress = Math.ceil(((currentTimeSeconds / lengthSeconds) * 100) / 2);
-                            this.socketService.broadcastToUser(job.jwtToken, 'echo', { 
-                                eventName: 'video_status', 
-                                payload: { type: 'publishing', videoId: job.videoId, format: job.format, resolution: job.resolution, progress: encodingProgress } 
-                            });
-                        }
-                    } else {
-                        stderrOutput += stderrTemp;
+        let lengthTimestamp = '00:00:00.00';
+        let lengthSeconds = 0;
+        let stderrOutput = '';
+
+        process.stderr?.on('data', (data) => {
+            if (this.isPublishVideoEncodingStopping(job.videoId)) {
+                process.kill();
+                return;
+            }
+
+            const stderrTemp = Buffer.from(data).toString();
+            
+            if (stderrTemp.includes('time=')) {
+                 if (lengthSeconds === 0) {
+                    const index = stderrOutput.indexOf('Duration: ');
+                    if(index !== -1) {
+                        lengthTimestamp = stderrOutput.substring(index + 10, index + 10 + 11);
+                        lengthSeconds = this.timestampToSeconds(lengthTimestamp);
                     }
-                } else {
-                    process.kill();
                 }
-            });
 
-            process.on('exit', (code) => {
-                if (code === 0) {
-                    resolve();
-                } else {
-                    const exitCode = code ?? 'unknown';
-                    reject(new Error('encoding process ended with an error code: ' + String(exitCode)));
+                const index = stderrTemp.indexOf('time=');
+                const currentTimestamp = stderrTemp.substring(index + 5, index + 5 + 11);
+                const currentTimeSeconds = this.timestampToSeconds(currentTimestamp);
+
+                if (currentTimeSeconds > 0 && lengthSeconds > 0) {
+                    const encodingProgress = Math.ceil(((currentTimeSeconds / lengthSeconds) * 100) / 2);
+                    this.socketService.broadcastToUser(job.jwtToken, 'echo', { 
+                        eventName: 'video_status', 
+                        payload: { type: 'publishing', videoId: job.videoId, format: job.format, resolution: job.resolution, progress: encodingProgress } 
+                    });
                 }
-            });
+            } else {
+                stderrOutput += stderrTemp;
+            }
+        });
+
+        process.on('exit', (code) => {
+            if (code === 0) {
+                resolve();
+            } else {
+                reject(new Error('encoding process ended with an error code: ' + String(code ?? 'unknown')));
+            }
         });
     }
 
@@ -254,71 +251,91 @@ export class VideoPublishService {
             const videosPath = this.settingsRepository.getVideosDirectoryPath();
 
             if (nodeSettings.storageConfig?.storageMode === 'filesystem') {
-                 const paths: Array<{ fileName: string; filePath: string; contentType: string }> = [];
-                 
-                 if (job.format === 'm3u8') {
-                    const manifestFilePath = path.join(videosPath, job.videoId, 'adaptive/m3u8/manifest-' + job.resolution + '.m3u8');
-                    const segmentsDirectoryPath = path.join(videosPath, job.videoId, 'adaptive/m3u8', job.resolution);
-
-                    paths.push({ fileName: 'manifest-' + job.resolution + '.m3u8', filePath: manifestFilePath, contentType: 'application/vnd.apple.mpegurl' });
-
-                    if (fs.existsSync(segmentsDirectoryPath)) {
-                        fs.readdirSync(segmentsDirectoryPath).forEach(fileName => {
-                            const segmentFilePath = path.join(segmentsDirectoryPath, fileName);
-                            if (!fs.statSync(segmentFilePath).isDirectory()) {
-                                paths.push({ fileName: fileName, filePath: segmentFilePath, contentType: 'video/mp2t' });
-                            }
-                        });
-                    }
-                } else {
-                    const ext = job.format === 'ogv' ? 'ogg' : job.format;
-                    const fileName = `${job.resolution}.${job.format}`;
-                    const filePath = path.join(videosPath, job.videoId, 'progressive', job.format, fileName);
-                    paths.push({ fileName: fileName, filePath: filePath, contentType: `video/${ext}` });
-                }
-
-                await this.nodeApiService.uploadVideo(job.jwtToken, job.videoId, job.format, job.resolution, paths);
-
-                // Clean up local files after upload if using filesystem mode? 
-                // Legacy code deletes files after upload if storageMode is filesystem.
-                 for (const p of paths) {
-                    if (fs.existsSync(p.filePath)) {
-                        fs.unlinkSync(p.filePath);
-                    }
-                }
-
+                 await this.handleFilesystemUpload(job, videosPath);
             } else if (nodeSettings.storageConfig?.storageMode === 's3provider' && nodeSettings.storageConfig.s3Config) {
-                const paths: Array<{ key: string; filePath: string; contentType: string }> = [];
-                // S3 Logic
-                if (job.format === 'm3u8') {
-                    const manifestFilePath = path.join(videosPath, job.videoId, 'adaptive/m3u8/manifest-' + job.resolution + '.m3u8');
-                    const segmentsDirectoryPath = path.join(videosPath, job.videoId, 'adaptive/m3u8', job.resolution);
-                    const manifestKey = `external/videos/${job.videoId}/adaptive/m3u8/static/manifests/manifest-${job.resolution}.m3u8`;
-                    
-                    paths.push({ key: manifestKey, filePath: manifestFilePath, contentType: 'application/vnd.apple.mpegurl' });
-
-                    if (fs.existsSync(segmentsDirectoryPath)) {
-                        fs.readdirSync(segmentsDirectoryPath).forEach(fileName => {
-                            const segmentFilePath = path.join(segmentsDirectoryPath, fileName);
-                             if (!fs.statSync(segmentFilePath).isDirectory()) {
-                                const segmentKey = `external/videos/${job.videoId}/adaptive/m3u8/${job.resolution}/segments/${fileName}`;
-                                paths.push({ key: segmentKey, filePath: segmentFilePath, contentType: 'video/mp2t' });
-                            }
-                        });
-                    }
-                } else {
-                    const ext = job.format === 'ogv' ? 'ogg' : job.format; 
-                    const key = `external/videos/${job.videoId}/progressive/${job.format}/${job.resolution}.${job.format}`;
-                    const filePath = path.join(videosPath, job.videoId, 'progressive', job.format, `${job.resolution}.${job.format}`);
-                    paths.push({ key: key, filePath: filePath, contentType: `video/${ext}` });
-                }
-                
-                for (const p of paths) {
-                    const fileStream = fs.createReadStream(p.filePath);
-                    await this.s3Service.putObjectFromData(nodeSettings.storageConfig.s3Config, p.key, fileStream, p.contentType);
-                }
+                // To avoid complexity warnings, we can move this to a helper too, or just simplify the logic inside.
+                // The original code has S3 logic in here. 
+                // Let's verify we have access to s3Service. Yes.
+                const s3Config = nodeSettings.storageConfig.s3Config;
+                await this.handleS3Upload(job, s3Config, videosPath);
             }
         }
+    }
+
+    private async handleFilesystemUpload(job: VideoPublishJob, videosPath: string): Promise<void> {
+        const paths: Array<{ fileName: string; filePath: string; contentType: string }> = [];
+                 
+        if (job.format === 'm3u8') {
+            const manifestFilePath = path.join(videosPath, job.videoId, 'adaptive/m3u8/manifest-' + job.resolution + '.m3u8');
+            const segmentsDirectoryPath = path.join(videosPath, job.videoId, 'adaptive/m3u8', job.resolution);
+
+            paths.push({ fileName: 'manifest-' + job.resolution + '.m3u8', filePath: manifestFilePath, contentType: 'application/vnd.apple.mpegurl' });
+
+            if (fs.existsSync(segmentsDirectoryPath)) {
+                fs.readdirSync(segmentsDirectoryPath).forEach(fileName => {
+                    const segmentFilePath = path.join(segmentsDirectoryPath, fileName);
+                    if (!fs.statSync(segmentFilePath).isDirectory()) {
+                        paths.push({ fileName: fileName, filePath: segmentFilePath, contentType: 'video/mp2t' });
+                    }
+                });
+            }
+        } else {
+            const ext = job.format === 'ogv' ? 'ogg' : job.format;
+            const fileName = `${job.resolution}.${job.format}`;
+            const filePath = path.join(videosPath, job.videoId, 'progressive', job.format, fileName);
+            paths.push({ fileName: fileName, filePath: filePath, contentType: `video/${ext}` });
+        }
+
+        await this.nodeApiService.uploadVideo(job.jwtToken, job.videoId, job.format, job.resolution, paths);
+
+        // Clean up local files after upload if using filesystem mode? 
+        // Legacy code deletes files after upload if storageMode is filesystem.
+            for (const p of paths) {
+            if (fs.existsSync(p.filePath)) {
+                fs.unlinkSync(p.filePath);
+            }
+        }
+    }
+
+    private async handleS3Upload(job: VideoPublishJob, s3Config: S3FlatConfig, videosPath: string): Promise<void> {
+        const paths: Array<{ key: string; filePath: string; contentType: string }> = [];
+        // S3 Logic
+        if (job.format === 'm3u8') {
+            const manifestFilePath = path.join(videosPath, job.videoId, 'adaptive/m3u8/manifest-' + job.resolution + '.m3u8');
+            const segmentsDirectoryPath = path.join(videosPath, job.videoId, 'adaptive/m3u8', job.resolution);
+            const manifestKey = `external/videos/${job.videoId}/adaptive/m3u8/static/manifests/manifest-${job.resolution}.m3u8`;
+            
+            paths.push({ key: manifestKey, filePath: manifestFilePath, contentType: 'application/vnd.apple.mpegurl' });
+
+            if (fs.existsSync(segmentsDirectoryPath)) {
+                fs.readdirSync(segmentsDirectoryPath).forEach(fileName => {
+                    const segmentFilePath = path.join(segmentsDirectoryPath, fileName);
+                        if (!fs.statSync(segmentFilePath).isDirectory()) {
+                        const segmentKey = `external/videos/${job.videoId}/adaptive/m3u8/${job.resolution}/segments/${fileName}`;
+                        paths.push({ key: segmentKey, filePath: segmentFilePath, contentType: 'video/mp2t' });
+                    }
+                });
+            }
+        } else {
+            const ext = job.format === 'ogv' ? 'ogg' : job.format; 
+            const key = `external/videos/${job.videoId}/progressive/${job.format}/${job.resolution}.${job.format}`;
+            const filePath = path.join(videosPath, job.videoId, 'progressive', job.format, `${job.resolution}.${job.format}`);
+            paths.push({ key: key, filePath: filePath, contentType: `video/${ext}` });
+        }
+        
+        await this.s3Service.uploadFilesWithProgress(s3Config, paths, (percent) => {
+            const uploadProgress = Math.floor(percent / 2) + 50;
+            this.socketService.broadcastToUser(job.jwtToken, 'echo', { 
+                eventName: 'video_status', 
+                payload: { 
+                    type: 'publishing', 
+                    videoId: job.videoId,
+                    format: job.format,
+                    resolution: job.resolution,
+                    progress: uploadProgress 
+                }
+            });
+        });
     }
 
     private async finishVideoPublish(jwtToken: string, videoId: string): Promise<void> {
@@ -338,16 +355,19 @@ export class VideoPublishService {
     
     private generateFfmpegVideoArguments(videoId: string, resolution: string, format: string, sourceFilePath: string, destinationFilePath: string, _sourceFileExtension: string, externalVideosBaseUrl: string): string[] {
         const clientSettings = this.settingsRepository.getClientSettings();
-        let width = '1920', height = '1080';
+        let width: string;
+        let height: string;
         
         switch(resolution) {
             case '2160p': width = '3840'; height = '2160'; break;
             case '1440p': width = '2560'; height = '1440'; break;
-            case '1080p': width = '1920'; height = '1080'; break;
             case '720p': width = '1280'; height = '720'; break;
             case '480p': width = '854'; height = '480'; break;
             case '360p': width = '640'; height = '360'; break;
             case '240p': width = '426'; height = '240'; break;
+            case '1080p':
+            default:
+                width = '1920'; height = '1080'; break;
         }
 
         let bitrate = '', gop = '', framerate = '', segmentLength = '';
@@ -360,21 +380,21 @@ export class VideoPublishService {
 
          if (format === 'm3u8') {
             bitrate = String(encoderSettings.hls[resolution + '-bitrate']) + 'k';
-            gop = String(encoderSettings.hls.gop);
-            framerate = String(encoderSettings.hls.framerate);
-            segmentLength = String(encoderSettings.hls.segmentLength);
+            gop = String(encoderSettings.hls['gop']);
+            framerate = String(encoderSettings.hls['framerate']);
+            segmentLength = String(encoderSettings.hls['segmentLength']);
         } else if (format === 'mp4') {
             bitrate = String(encoderSettings.mp4[resolution + '-bitrate']) + 'k';
-            gop = String(encoderSettings.mp4.gop);
-            framerate = String(encoderSettings.mp4.framerate);
+            gop = String(encoderSettings.mp4['gop']);
+            framerate = String(encoderSettings.mp4['framerate']);
         } else if (format === 'webm') {
             bitrate = String(encoderSettings.webm[resolution + '-bitrate']) + 'k';
-            gop = String(encoderSettings.webm.gop);
-            framerate = String(encoderSettings.webm.framerate);
+            gop = String(encoderSettings.webm['gop']);
+            framerate = String(encoderSettings.webm['framerate']);
         } else if (format === 'ogv') {
             bitrate = String(encoderSettings.ogv[resolution + '-bitrate']) + 'k';
-            gop = String(encoderSettings.ogv.gop);
-            framerate = String(encoderSettings.ogv.framerate);
+            gop = String(encoderSettings.ogv['gop']);
+            framerate = String(encoderSettings.ogv['framerate']);
         }
         
         // ... (Scaling logic omitted for brevity, implementing CPU only first as fallback, add GPU logic later if needed or copy fully)
@@ -451,9 +471,9 @@ export class VideoPublishService {
 
     private timestampToSeconds(timestamp: string): number {
         const parts = timestamp.split(':');
-        const hours = parseInt(parts[0] ?? '0');
-        const minutes = parseInt(parts[1] ?? '0');
-        const seconds = parseFloat(parts[2] ?? '0');
+        const hours = Number.parseInt(parts[0] ?? '0');
+        const minutes = Number.parseInt(parts[1] ?? '0');
+        const seconds = Number.parseFloat(parts[2] ?? '0');
         return (hours * 3600) + (minutes * 60) + seconds;
     }
 

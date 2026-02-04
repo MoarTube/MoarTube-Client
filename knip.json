@@ -16,10 +16,7 @@
     "_src/**"
   ],
   "ignoreDependencies": [
-    "@types/*",
-    "@fastify/jwt",
-    "async-mutex",
-    "http-terminator"
+    "@types/*"
   ],
   "ignoreExportsUsedInFile": true
 }

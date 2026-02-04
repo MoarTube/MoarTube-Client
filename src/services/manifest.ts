@@ -22,7 +22,7 @@ export class ManifestService extends BaseService {
         const videoData = responseProxy.videoData;
         
         const isStreaming = videoData.isStreaming;
-        const resolutions = videoData.outputs.m3u8;
+        const resolutions = videoData.outputs?.m3u8 ?? [];
 
         const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(jwtToken);
         const manifestType = isStreaming ? 'dynamic' : 'static';

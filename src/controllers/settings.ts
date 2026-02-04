@@ -3,7 +3,8 @@ import { BaseController } from './base.js';
 import type { NodeApiService } from '@/services/node-api.js';
 import type { Config, ClientSettings } from '@/config/index.js';
 import type { Logger } from '@/utils/logger.js';
-import type { S3Service } from '@/services/s3.js';
+import type { S3Service, S3ValidationConfig, VideoForManifestUpdate } from '@/services/s3.js';
+import type { UploadedFile, StorageConfig, S3Config } from '@/types/node-api.js';
 import type {
     SetGpuAccelerationBody,
     SetClientEncodingBody,
@@ -239,43 +240,20 @@ export class SettingsController extends BaseController {
 
     // API: POST /settings/node/network/secure
     public apiSetSecureConnection = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        // Multipart?
-        let keyFile: { originalname: string; buffer: Buffer; encoding: string; mimetype: string; size: number } | undefined;
-        let certFile: { originalname: string; buffer: Buffer; encoding: string; mimetype: string; size: number } | undefined;
-        const caFiles: { originalname: string; buffer: Buffer; encoding: string; mimetype: string; size: number }[] = [];
+        let keyFile: UploadedFile | undefined;
+        let certFile: UploadedFile | undefined;
+        const caFiles: UploadedFile[] = [];
         let isSecure = false;
         
-        // Handling multipart with dynamic fields can be tricky if mixed with non-file fields easily.
-        // Fastify multipart parses everything if we iterate.
-        // We use request.parts() to iterate over both files and fields.
-        
         if (!request.isMultipart()) {
-             // Fallback if strictly JSON (e.g. disabling secure mode)
              const { isSecure: secure } = request.body as SetSecureConnectionBody;
              isSecure = secure;
         } else {
-             // We need to buffer the files and extract fields
-             for await (const part of request.parts()) {
-                 if (part.type === 'file') {
-                     const buf = await part.toBuffer();
-                     const fileObj = { 
-                         originalname: part.filename, 
-                         buffer: buf, 
-                         encoding: part.encoding, 
-                         mimetype: part.mimetype,
-                         size: buf.length 
-                     }; 
-                     
-                     if (part.fieldname === 'keyFile') {keyFile = fileObj;}
-                     else if (part.fieldname === 'certFile') {certFile = fileObj;}
-                     else if (part.fieldname === 'caFiles') {caFiles.push(fileObj);}
-                 } else {
-                     // Field
-                     if (part.fieldname === 'isSecure') {
-                         isSecure = (part as { value: unknown }).value === 'true';
-                     }
-                 }
-             }
+             const result = await this.processMultipartSecureConnection(request);
+             keyFile = result.keyFile;
+             certFile = result.certFile;
+             caFiles.push(...result.caFiles);
+             isSecure = result.isSecure;
         }
         
         const response = await this.nodeApiService.setSecureConnection(request.session.jwtToken ?? '', isSecure, keyFile, certFile, caFiles );
@@ -294,6 +272,36 @@ export class SettingsController extends BaseController {
         return reply.send(response);
     }
 
+    private async processMultipartSecureConnection(request: FastifyRequest): Promise<{ keyFile: UploadedFile | undefined; certFile: UploadedFile | undefined; caFiles: UploadedFile[]; isSecure: boolean }> {
+        const result = {
+            keyFile: undefined as UploadedFile | undefined,
+            certFile: undefined as UploadedFile | undefined,
+            caFiles: [] as UploadedFile[],
+            isSecure: false
+        };
+
+        for await (const part of request.parts()) {
+             if (part.type === 'file') {
+                 const buf = await part.toBuffer();
+                 const fileObj = { 
+                     originalname: part.filename, 
+                     buffer: buf, 
+                     encoding: part.encoding, 
+                     mimetype: part.mimetype,
+                     size: buf.length,
+                     filename: part.filename 
+                 }; 
+
+                 if (part.fieldname === 'keyFile') { result.keyFile = fileObj; }
+                 else if (part.fieldname === 'certFile') { result.certFile = fileObj; }
+                 else if (part.fieldname === 'caFiles') { result.caFiles.push(fileObj); }
+             } else if (part.fieldname === 'isSecure') {
+                 result.isSecure = (part as { value: unknown }).value === 'true';
+             }
+        }
+        return result;
+    }
+
     // API: POST /settings/node/network/internal
     public apiSetNetworkInternal = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
          const { nodeListeningPort } = request.body as SetNetworkInternalBody;
@@ -309,11 +317,27 @@ export class SettingsController extends BaseController {
     private async updateS3Manifests(jwtToken: string): Promise<void> {
         try {
             const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
-            if (nodeSettings.storageConfig?.storageMode === 's3provider') {
+            if (nodeSettings.storageConfig?.storageMode === 's3provider' && nodeSettings.storageConfig.s3Config) {
                 const { videosData } = await this.nodeApiService.getVideoDataAll(jwtToken);
                 const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(jwtToken);
                 
-                await this.s3Service.updateM3u8ManifestsWithExternalVideosBaseUrl(nodeSettings.storageConfig.s3Config, videosData, externalVideosBaseUrl);
+                const s3Config = nodeSettings.storageConfig.s3Config;
+
+                const s3ValidationConfig: S3ValidationConfig = {
+                    bucketName: s3Config.bucketName,
+                    s3ProviderClientConfig: {
+                        credentials: {
+                            accessKeyId: s3Config.accessKeyId,
+                            secretAccessKey: s3Config.secretAccessKey,
+                            ...(s3Config.sessionToken !== undefined && s3Config.sessionToken !== '' ? { sessionToken: s3Config.sessionToken } : {})
+                        },
+                        region: s3Config.region,
+                        ...(s3Config.endpoint !== undefined && s3Config.endpoint !== '' ? { endpoint: s3Config.endpoint } : {})
+                    }
+                };
+                
+                const videosForUpdate = videosData as VideoForManifestUpdate[];
+                await this.s3Service.updateM3u8ManifestsWithExternalVideosBaseUrl(s3ValidationConfig, videosForUpdate, externalVideosBaseUrl);
             }
         } catch (error) {
             this.logger.error('Failed to update S3 manifests', error as Error);
@@ -409,10 +433,24 @@ export class SettingsController extends BaseController {
         const jwtToken = request.session.jwtToken ?? '';
 
         if (storageConfig.storageMode === 's3provider') {
-            await this.s3Service.validateS3Config(storageConfig.s3Config);
+             const s3Config = storageConfig.s3Config as unknown as S3Config;
+             const s3ValidationConfig: S3ValidationConfig = {
+                bucketName: s3Config.bucketName,
+                s3ProviderClientConfig: {
+                    credentials: {
+                        accessKeyId: s3Config.accessKeyId,
+                        secretAccessKey: s3Config.secretAccessKey,
+                        ...(s3Config.sessionToken !== undefined && s3Config.sessionToken !== '' ? { sessionToken: s3Config.sessionToken } : {})
+                    },
+                    region: s3Config.region,
+                    ...(s3Config.endpoint !== undefined && s3Config.endpoint !== '' ? { endpoint: s3Config.endpoint } : {})
+                }
+             };
+             await this.s3Service.validateS3Config(s3ValidationConfig);
         }
 
-        const response = await this.nodeApiService.storageConfigToggle(jwtToken, storageConfig);
+        const validStorageConfig = storageConfig as StorageConfig;
+        const response = await this.nodeApiService.storageConfigToggle(jwtToken, validStorageConfig);
         
         if (!response.isError && storageConfig.storageMode === 's3provider') {
              await this.updateS3Manifests(jwtToken);

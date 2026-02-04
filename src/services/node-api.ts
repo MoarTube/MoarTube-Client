@@ -1,6 +1,9 @@
 import type { AxiosInstance } from 'axios';
 import axios from 'axios';
 import FormData from 'form-data';
+import { Agent as HttpAgent } from 'node:http';
+import { Agent as HttpsAgent } from 'node:https';
+import fs from 'node:fs';
 import { BaseService } from './base.js';
 import type { Logger } from '@/utils/logger.js';
 import type { Config } from '@/config/index.js';
@@ -31,6 +34,27 @@ import type {
     VideoBandwidthResponse
 } from '@/types/node-api.js';
 
+export interface UploadStreamOptions {
+    videoId: string;
+    format: string;
+    resolution: string;
+    manifestBuffer: Buffer;
+    segmentBuffer: Buffer;
+    manifestFileName: string;
+    segmentFileName: string;
+}
+
+export interface StreamVideoOptions {
+    title: string;
+    description: string;
+    tags: string;
+    resolution: string;
+    isRecordingStreamRemotely: boolean;
+    isRecordingStreamLocally: boolean;
+    networkAddress: string;
+    videoId?: string;
+}
+
 /**
  * Service for communicating with the MoarTube Node API
  * Replaces _src/utils/node-communications.js
@@ -38,6 +62,8 @@ import type {
 export class NodeApiService extends BaseService {
   // private readonly settingsRepo: SettingsRepository;
   private readonly config: Config;
+  private readonly httpAgent = new HttpAgent({ keepAlive: true, keepAliveMsecs: 10000 });
+  private readonly httpsAgent = new HttpsAgent({ keepAlive: true, keepAliveMsecs: 10000 });
 
   constructor(logger: Logger, config: Config) {
     super('nodeApiService', logger);
@@ -556,7 +582,7 @@ public async searchComments(jwtToken: string, videoId: string, searchTerm: strin
       return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/videos/${videoId}/unpublish`, { format, resolution });
   }
 
-  public async getVideoData(jwtToken: string | undefined, videoId: string): Promise<VideoDataResponse> {
+  public async getVideoData(_jwtToken: string | undefined, videoId: string): Promise<VideoDataResponse> {
       const client = await this.getClient();
       // Legacy behavior: GET /videos/:videoId/data
       const response = await client.get(`/videos/${videoId}/data`); 
@@ -575,21 +601,59 @@ public async getSourceFileExtension(jwtToken: string, videoId: string): Promise<
       return this.postAuthenticated(jwtToken, '/videos/published', { videoId });
   }
 
-  public uploadVideo(
-    _jwtToken: string, _videoId: string, _format: string, _resolution: string,
-    _files: Array<{ fileName: string, filePath: string, contentType: string }>
+  public async uploadVideo(
+    jwtToken: string, videoId: string, format: string, resolution: string,
+    files: Array<{ fileName: string, filePath: string, contentType: string }>
   ): Promise<unknown> {
-    // Placeholder for multipart upload
-    return Promise.resolve({ isError: false }); 
+    const formData = new FormData();
+
+    for (const file of files) {
+        const fileStream = fs.createReadStream(file.filePath);
+        formData.append('video_files', fileStream, { filename: file.fileName, contentType: file.contentType });
+    }
+
+    const client = await this.getClient();
+    const headers = formData.getHeaders();
+    headers["Authorization"] = `Bearer ${jwtToken}`;
+
+    const response = await client.post(`/videos/${videoId}/upload`, formData, {
+        params: { format, resolution },
+        headers 
+    });
+    return response.data;
+  }
+
+  public async uploadStream(jwtToken: string, options: UploadStreamOptions): Promise<unknown> {
+    const { videoId, format, resolution, manifestBuffer, segmentBuffer, manifestFileName, segmentFileName } = options;
+    const formData = new FormData();
+
+    formData.append('video_files', manifestBuffer, {
+        filename: manifestFileName,
+        contentType: 'application/vnd.apple.mpegurl',
+    });
+
+    formData.append('video_files', segmentBuffer, {
+        filename: segmentFileName,
+        contentType: 'video/mp2t',
+    });
+
+    const client = await this.getClient();
+    const headers = formData.getHeaders();
+    headers["Authorization"] = `Bearer ${jwtToken}`;
+
+    const response = await client.post(`/videos/${videoId}/stream`, formData, {
+        params: { format, resolution },
+        headers,
+        timeout: 15000,
+        httpAgent: this.httpAgent,
+        httpsAgent: this.httpsAgent
+    });
+
+    return response.data;
   }
 
   public async setVideoLengths(jwtToken: string, videoId: string, lengthSeconds: number, lengthTimestamp: string): Promise<unknown> {
       return this.postAuthenticated(jwtToken, '/video/set-lengths', { videoId, lengthSeconds, lengthTimestamp });
-  }
-
-  public uploadStream(_jwtToken: string, _videoId: string, _format: string, _resolution: string, _manifestBuffer: Buffer, _segmentBuffer: Buffer, _manifestFileName: string, _segmentFileName: string): Promise<unknown> {
-       // Placeholder
-       return Promise.resolve({ isError: false });
   }
 
   public async removeAdaptiveStreamSegment(jwtToken: string, videoId: string, format: string, resolution: string, segmentName: string): Promise<unknown> {
@@ -640,12 +704,8 @@ public async getSourceFileExtension(jwtToken: string, videoId: string): Promise<
     return response.data as BaseNodeResponse;
   }
 
-  public async streamVideo(
-    jwtToken: string,
-    title: string, description: string, tags: string, resolution: string,
-    isRecordingStreamRemotely: boolean, isRecordingStreamLocally: boolean,
-    networkAddress: string, videoId?: string
-  ): Promise<StreamVideoResponse> {
+  public async streamVideo(jwtToken: string, options: StreamVideoOptions): Promise<StreamVideoResponse> {
+      const { title, description, tags, resolution, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, videoId } = options;
       return this.postAuthenticated<StreamVideoResponse>(jwtToken, '/video/stream', {
           title, description, tags, resolution,
           isRecordingStreamRemotely, isRecordingStreamLocally,

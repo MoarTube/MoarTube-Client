@@ -1,4 +1,4 @@
-import os from 'os';
+import os from 'node:os';
 import systeminformation from 'systeminformation';
 
 export function detectOperatingSystem(): Promise<NodeJS.Platform> {

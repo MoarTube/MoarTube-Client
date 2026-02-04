@@ -136,38 +136,44 @@ export class NodeSocketService extends BaseService {
       const echoData = data as { eventName?: string; payload?: unknown };
 
       if (echoData.eventName === 'video_status') {
-          const payload = echoData.payload as { videoId: string; type: string } | undefined;
-          
-          if (!payload) {
-            return;
-          }
-
-          const { videoId, type } = payload;
-
-          if (type === 'importing_stopping') {
-               this.videoImportService.stoppingVideoImport(videoId);
-          } else if (type === 'importing_stopped') {
-               this.videoImportService.stoppedVideoImport(videoId, data);
-          } else if (type === 'publishing_stopping') {
-               this.videoPublishService.stoppingPublishVideoEncoding(videoId);
-          } else if (type === 'publishing_stopped') {
-               this.videoPublishService.stopPendingPublishVideo(videoId);
-               // Legacy: stoppedPublishVideoEncoding(videoId, data); -> broadcasts
-               this.socketService.broadcast('echo', data); 
-          } else if (type === 'streaming_stopping') {
-               this.liveStreamService.stopLiveStream(videoId); 
-          } else if (type === 'streaming_stopped') {
-               // Legacy: stoppedLiveStream(videoId, data) -> broadcasts
-               this.socketService.broadcast('echo', data);
-          } else {
-               if (typeof echoData.eventName === 'string') {
-                  this.socketService.broadcast(echoData.eventName, data); 
-               }
-          }
+          this.handleVideoStatusEcho(echoData.payload, data, echoData.eventName);
       } else if (echoData.eventName === 'video_data') {
-          if (typeof echoData.eventName === 'string') {
-             this.socketService.broadcast(echoData.eventName, data);
-          }
+          this.socketService.broadcast(echoData.eventName, data);
+      }
+  }
+
+  private handleVideoStatusEcho(payload: unknown, originalData: unknown, eventName: string): void {
+      const p = payload as { videoId: string; type: string } | undefined;
+      
+      if (!p) {
+        return;
+      }
+
+      const { videoId, type } = p;
+
+      switch (type) {
+          case 'importing_stopping':
+               this.videoImportService.stoppingVideoImport(videoId);
+               break;
+          case 'importing_stopped':
+               this.videoImportService.stoppedVideoImport(videoId, originalData);
+               break;
+          case 'publishing_stopping':
+               this.videoPublishService.stoppingPublishVideoEncoding(videoId);
+               break;
+          case 'publishing_stopped':
+               this.videoPublishService.stopPendingPublishVideo(videoId);
+               this.socketService.broadcast('echo', originalData); 
+               break;
+          case 'streaming_stopping':
+               this.liveStreamService.stopLiveStream(videoId); 
+               break;
+          case 'streaming_stopped':
+               this.socketService.broadcast('echo', originalData);
+               break;
+          default:
+               this.socketService.broadcast(eventName, originalData); 
+               break;
       }
   }
 }
