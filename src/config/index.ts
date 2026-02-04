@@ -4,6 +4,7 @@ import { getEnv, type Env } from './env.js';
 import { initializePaths, type Paths } from './paths.js';
 import { getLogger } from '@/utils/logger.js';
 import { z } from 'zod';
+import { DEFAULT_CLIENT_SETTINGS } from './defaults.js';
 
 // Minimal schema for client settings
 const ClientSettingsSchema = z.object({
@@ -83,15 +84,21 @@ export class Config {
         getLogger().error('Failed to load client settings', error);
     }
 
-    // Hard fallback defaults
-    return {
-      clientPort: 3000,
-      nodeIp: '127.0.0.1',
-      nodePort: 3000,
-      nodeHttpProtocol: 'http',
-      nodeWebsocketProtocol: 'ws',
-      isDeveloperMode: false
-    };
+    // Hard fallback: Generate default settings files
+    try {
+      const defaultContent = JSON.stringify(DEFAULT_CLIENT_SETTINGS, null, 2);
+      
+      fs.writeFileSync(this._paths.clientSettingsDefaultPath, defaultContent, 'utf8');
+      fs.writeFileSync(this._paths.clientSettingsPath, defaultContent, 'utf8');
+      
+      getLogger().info(`Generated default client settings at ${this._paths.clientSettingsPath}`);
+      return DEFAULT_CLIENT_SETTINGS;
+    } catch (writeError) {
+      getLogger().error('Failed to generate default client settings', writeError);
+    }
+
+    // In-memory fallback if write fails
+    return DEFAULT_CLIENT_SETTINGS;
   }
 
   private setupSettingsFileWatcher(): void {
