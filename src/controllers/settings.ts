@@ -177,6 +177,20 @@ export class SettingsController extends BaseController {
          return reply.send(nodeSettings);
     }
 
+    // API: GET /settings/node/avatar
+    public apiGetNodeAvatar = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
+        const avatarBuffer = await this.nodeApiService.getAvatar(request.session.jwtToken ?? '');
+
+        return await reply.type('image/png').send(avatarBuffer);
+    }
+
+    // API: GET /settings/node/banner
+    public apiGetNodeBanner = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
+        const bannerBuffer = await this.nodeApiService.getBanner(request.session.jwtToken ?? '');
+
+        return await reply.type('image/png').send(bannerBuffer);
+    }
+
     // API: POST /settings/node/avatar
     public apiSetNodeAvatar = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         const parts = request.files();

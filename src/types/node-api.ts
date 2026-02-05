@@ -39,6 +39,7 @@ export interface AuthResponse {
     isAuthenticated: boolean;
     message?: string;
     token?: string;
+    redirectUrl?: string;
 }
 
 export interface BaseNodeResponse {
@@ -118,12 +119,14 @@ export interface FinalizeVideosResponse extends BaseNodeResponse {
     nonFinalizedVideoIds: string[];
 }
 
+export interface VideoSource {
+  src: string;
+  type: string;
+}
+
 export interface VideoSourcesResponse extends BaseNodeResponse {
-    video: {
-        adaptiveSources: unknown[];
-        progressiveSources: unknown[];
-        [key: string]: unknown;
-    };
+    adaptiveSources: VideoSource[];
+    progressiveSources: VideoSource[];
 }
 
 export interface VideoTagsResponse extends BaseNodeResponse {

@@ -218,9 +218,17 @@ export class NodeApiService extends BaseService {
 
   // Settings Methods
   
-  public async getAvatar(jwtToken: string): Promise<unknown> {
+  public async getAvatar(jwtToken: string): Promise<Buffer> {
     const client = await this.getClient();
-    const response = await client.get('/settings/avatar', { headers: { Authorization: `Bearer ${jwtToken}` } });
+    const response = await client.get('/settings/avatar', { 
+        headers: { Authorization: `Bearer ${jwtToken}` },
+        responseType: 'arraybuffer'
+    });
+    
+    if (response.status !== 200) {
+        throw new Error(`Failed to retrieve avatar: ${response.status}`);
+    }
+
     return response.data;
   }
 
@@ -237,9 +245,17 @@ public async setAvatar(jwtToken: string, icon: Buffer, avatar: Buffer): Promise<
     return response.data;
   }
 
-public async getBanner(jwtToken: string): Promise<unknown> {
+public async getBanner(jwtToken: string): Promise<Buffer> {
     const client = await this.getClient();
-    const response = await client.get('/settings/banner', { headers: { Authorization: `Bearer ${jwtToken}` } });
+    const response = await client.get('/settings/banner', { 
+        headers: { Authorization: `Bearer ${jwtToken}` },
+        responseType: 'arraybuffer'
+    });
+
+    if (response.status !== 200) {
+        throw new Error(`Failed to retrieve banner: ${response.status}`);
+    }
+
     return response.data;
   }
 
@@ -548,11 +564,6 @@ public async searchComments(jwtToken: string, videoId: string, searchTerm: strin
 
   public async getVideoSources(videoId: string): Promise<VideoSourcesResponse> {
       const client = await this.getClient();
-      // This endpoint might be checking the node directly? 
-      // Legacy used node_getVideoSources without token? 
-      // Let's check legacy definition.
-      // node_getVideoSources implementation:
-      // axios.get(getMoarTubeNodeUrl() + '/videos/' + videoId + '/sources')
       const response = await client.get(`/videos/${videoId}/sources`);
       return response.data as VideoSourcesResponse;
   }

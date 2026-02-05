@@ -19,107 +19,115 @@ export function settingsRoutes(
   }, settingsController.getSettingsPage.bind(settingsController));
 
   // Client API
-  fastify.get('/settings/client', {
+  fastify.get('/client', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiGetClientSettings.bind(settingsController));
 
-  fastify.post('/settings/client/encoding', {
+  fastify.post('/client/encoding', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiSetClientEncoding.bind(settingsController));
 
-  fastify.post('/settings/client/gpu-acceleration', {
+  fastify.post('/client/gpuAcceleration', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiSetGpuAcceleration.bind(settingsController));
 
   // Node API
-  fastify.get('/settings/node', {
+  fastify.get('/node', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiGetNodeSettings.bind(settingsController));
   
-  fastify.post('/settings/node/avatar', {
+  fastify.get('/node/avatar', {
+    schema: { tags: ['Settings'] }
+  }, settingsController.apiGetNodeAvatar.bind(settingsController));
+
+  fastify.post('/node/avatar', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiSetNodeAvatar.bind(settingsController));
 
-  fastify.post('/settings/node/banner', {
+  fastify.get('/node/banner', {
+    schema: { tags: ['Settings'] }
+  }, settingsController.apiGetNodeBanner.bind(settingsController));
+
+  fastify.post('/node/banner', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiSetNodeBanner.bind(settingsController));
 
-  fastify.post('/settings/node/personalize/name', {
+  fastify.post('/node/personalize/name', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiSetNodeName.bind(settingsController));
 
-  fastify.post('/settings/node/personalize/about', {
+  fastify.post('/node/personalize/about', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiSetNodeAbout.bind(settingsController));
 
-  fastify.post('/settings/node/personalize/id', {
+  fastify.post('/node/personalize/id', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiSetNodeId.bind(settingsController));
 
-  fastify.post('/settings/node/network/secure', {
+  fastify.post('/node/network/secure', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiSetSecureConnection.bind(settingsController));
 
-  fastify.post('/settings/node/network/internal', {
+  fastify.post('/node/network/internal', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiSetNetworkInternal.bind(settingsController));
 
-  fastify.post('/settings/node/network/external', {
+  fastify.post('/node/network/external', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiSetNetworkExternal.bind(settingsController));
 
   // Cloudflare
-  fastify.post('/settings/node/cloudflare/configure', {
+  fastify.post('/node/cloudflare/configure', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiSetCloudflareConfig.bind(settingsController));
 
-  fastify.post('/settings/node/cloudflare/clear', {
+  fastify.post('/node/cloudflare/clear', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiClearCloudflareConfig.bind(settingsController));
 
-  fastify.post('/settings/node/cloudflare/turnstile/configure', {
+  fastify.post('/node/cloudflare/turnstile/configure', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiSetTurnstileConfig.bind(settingsController));
 
-  fastify.post('/settings/node/cloudflare/turnstile/clear', {
+  fastify.post('/node/cloudflare/turnstile/clear', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiClearTurnstileConfig.bind(settingsController));
 
   // Toggles
-  fastify.post('/settings/node/comments/toggle', {
+  fastify.post('/node/comments/toggle', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiToggleComments.bind(settingsController));
 
-  fastify.post('/settings/node/likes/toggle', {
+  fastify.post('/node/likes/toggle', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiToggleLikes.bind(settingsController));
 
-  fastify.post('/settings/node/dislikes/toggle', {
+  fastify.post('/node/dislikes/toggle', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiToggleDislikes.bind(settingsController));
 
-  fastify.post('/settings/node/reports/toggle', {
+  fastify.post('/node/reports/toggle', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiToggleReports.bind(settingsController));
 
-  fastify.post('/settings/node/live-chat/toggle', {
+  fastify.post('/node/live-chat/toggle', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiToggleLiveChat.bind(settingsController));
 
   // Database / Storage
-  fastify.post('/settings/node/database/config/toggle', {
+  fastify.post('/node/database/config/toggle', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiToggleDatabase.bind(settingsController));
 
-  fastify.post('/settings/node/database/config/empty', {
+  fastify.post('/node/database/config/empty', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiEmptyDatabase.bind(settingsController));
 
-  fastify.post('/settings/node/storage/config/toggle', {
+  fastify.post('/node/storage/config/toggle', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiToggleStorage.bind(settingsController));
 
-  fastify.post('/settings/node/storage/config/empty', {
+  fastify.post('/node/storage/config/empty', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiEmptyStorage.bind(settingsController));
 }

@@ -930,8 +930,8 @@
 						console.log('Error connecting to WebSocket server');
 					};
 
-					ws.onclose = () => {
-						console.log('Disconnected from WebSocket server');
+					ws.onclose = (event) => {
+						console.log('Disconnected from WebSocket server. Code:', event.code, 'Reason:', event.reason);
 
 						setTimeout(connectWebsocketClient, 1000);
 					};

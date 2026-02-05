@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import WebSocket from 'ws';
 import { BaseService } from './base.js';
 import type { Logger } from '@/utils/logger.js';
@@ -81,13 +82,11 @@ export class NodeSocketService extends BaseService {
              this.pingTimeoutTimer = setTimeout(() => {
                  this.logger.warn(`Terminating unresponsive connection to ${url}`);
                  this.disconnect();
-                 // Reconnect happens in 'close' handler or manually?
-                 // Legacy calls terminate() which triggers close.
              }, 3000);
 
              this.websocketClient?.send(JSON.stringify({ eventName: 'ping', jwtToken }));
         }
-     }, 1000);
+     }, 2000);
   }
 
   private cleanup(): void {
@@ -108,11 +107,14 @@ export class NodeSocketService extends BaseService {
           } else if (message instanceof ArrayBuffer) {
               msgStr = Buffer.from(message).toString();
           } else {
-              msgStr = message;
+              // It might be a string already
+              msgStr = message as string;
           }
 
-          const parsedMessage = JSON.parse(msgStr) as { eventName?: string; data?: unknown };
+          // this.logger.debug(`WebSocket message received: ${msgStr.substring(0, 100)}`);
 
+          const parsedMessage = JSON.parse(msgStr) as { eventName?: string; data?: unknown };
+          
           if (parsedMessage.eventName === 'pong') {
               if (this.pingTimeoutTimer) {
                   clearTimeout(this.pingTimeoutTimer);

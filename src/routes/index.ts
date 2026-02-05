@@ -32,8 +32,11 @@ export function registerRoutes(fastify: FastifyInstance, container: Container): 
   fastify.get('/ws', { websocket: true }, (connection, req) => {
       const socketService = container.resolve('socketService');
       const jwtToken = req.session.jwtToken;
-
-      socketService.handleConnection((connection as unknown as { socket: WebSocket }).socket, jwtToken);
+      
+      const connectionObj = connection as unknown as { socket: WebSocket };
+      const socket: WebSocket = connectionObj.socket || (connection as unknown as WebSocket);
+      
+      socketService.handleConnection(socket, jwtToken);
   });
 
   // Account routes (/account/*)

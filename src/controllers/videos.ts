@@ -395,7 +395,7 @@ export class VideosController extends BaseController {
             
             const response = await this.nodeApiService.getVideoSources(videoId);
             if (!response.isError) {
-                const { adaptiveSources, progressiveSources } = response.video;
+                const { adaptiveSources, progressiveSources } = response;
                 return await this.sendSuccess(reply, { sources: { adaptiveSources, progressiveSources } });
             }
             return await reply.send(response);

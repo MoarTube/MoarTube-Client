@@ -1,5 +1,6 @@
 import type { Logger } from 'pino';
 import { WebSocket } from 'ws';
+import { Buffer } from 'node:buffer';
 
 export class SocketService {
     private readonly clients: Map<WebSocket, string | undefined> = new Map();
@@ -8,11 +9,13 @@ export class SocketService {
 
     public handleConnection(socket: WebSocket, key?: string): void {
         this.clients.set(socket, key);
-        this.logger.info(`[SocketService] Client connected (Key: ${key !== undefined && key !== '' ? 'Provided' : 'None'})`);
+        this.logger.info(`[SocketService] Client connected (Key: ${key !== undefined && key !== '' ? 'Provided' : 'None'}). Total clients: ${this.clients.size}`);
 
-        socket.on('close', () => {
+        socket.on('close', (code, reason) => {
              this.clients.delete(socket);
-             this.logger.info('[SocketService] Client disconnected');
+
+             const reasonStr = reason ? reason.toString() : 'No reason';
+             this.logger.info(`[SocketService] Client disconnected. Code: ${code}, Reason: ${reasonStr}. Total clients: ${this.clients.size}`);
         });
         
         socket.on('error', (err) => {

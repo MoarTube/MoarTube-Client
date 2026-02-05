@@ -87,6 +87,8 @@ export class AccountController extends BaseController {
                 }
                 
                 delete result.token;
+                
+                result.redirectUrl = '/videos';
             }
             
             return await reply.send(result);
