@@ -90,7 +90,7 @@ export class SettingsController extends BaseController {
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            return this.sendError(reply, errorMessage);
+            return await this.sendError(reply, errorMessage);
         }
     }
 
@@ -108,7 +108,7 @@ export class SettingsController extends BaseController {
             version: this.config.clientSettings.version
          };
 
-         return reply.send({ isError: false, clientSettings: settings });
+         return await reply.send({ isError: false, clientSettings: settings });
     }
 
     // API: POST /settings/client/gpu-acceleration
@@ -140,9 +140,9 @@ export class SettingsController extends BaseController {
              }
 
              this.config.saveClientSettings(clientSettings);
-             return reply.send({ isError: false, result });
+             return await reply.send({ isError: false, result });
          } else {
-             return reply.send({ isError: true, message: 'GPU acceleration only supported on Windows' });
+             return await reply.send({ isError: true, message: 'GPU acceleration only supported on Windows' });
          }
     }
 
@@ -155,7 +155,7 @@ export class SettingsController extends BaseController {
         clientSettings.liveEncoderSettings = liveEncoderSettings;
         
         this.config.saveClientSettings(clientSettings);
-        return reply.send({ isError: false });
+        return await reply.send({ isError: false });
     }
 
     // API: GET /settings/client/encoding/default
@@ -171,7 +171,7 @@ export class SettingsController extends BaseController {
     public apiGetNodeSettings = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
          const session = request.session;
          const nodeSettings = await this.nodeApiService.getNodeSettings(session.jwtToken ?? '');
-         return reply.send(nodeSettings);
+         return await reply.send(nodeSettings);
     }
 
     // API: GET /settings/node/avatar
@@ -194,7 +194,7 @@ export class SettingsController extends BaseController {
         let avatarFile: Buffer | undefined;
 
         for await (const part of parts) {
-            if (part.fieldname === 'avatarFile') {
+            if (part.fieldname === 'avatar_file') {
                  avatarFile = await part.toBuffer();
             }
         }
@@ -204,9 +204,9 @@ export class SettingsController extends BaseController {
             const avatarBuffer = await sharp(avatarFile).resize({ width: 128 }).resize(128, 128).png({ compressionLevel: 9 }).toBuffer();
             
             const response = await this.nodeApiService.setAvatar(request.session.jwtToken ?? '', iconBuffer, avatarBuffer);
-            return reply.send(response);
+            return await reply.send(response);
         }
-        return reply.send({ isError: true, message: 'avatar file is missing' });
+        return await reply.send({ isError: true, message: 'avatar file is missing' });
     }
 
     // API: POST /settings/node/banner
@@ -215,7 +215,7 @@ export class SettingsController extends BaseController {
          let bannerFile: Buffer | undefined;
 
          for await (const part of parts) {
-             if (part.fieldname === 'bannerFile') {
+             if (part.fieldname === 'banner_file') {
                  bannerFile = await part.toBuffer();
              }
          }
@@ -223,30 +223,30 @@ export class SettingsController extends BaseController {
          if (bannerFile) {
              const bannerBuffer = await sharp(bannerFile).resize({ width: 2560 }).resize(2560, 424).png({ compressionLevel: 9 }).toBuffer();
              const response = await this.nodeApiService.setBanner(request.session.jwtToken ?? '', bannerBuffer);
-             return reply.send(response);
+             return await reply.send(response);
          }
-         return reply.send({ isError: true, message: 'banner file is missing' });
+         return await reply.send({ isError: true, message: 'banner file is missing' });
     }
-
+    
     // API: POST /settings/node/personalize/name
     public apiSetNodeName = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
          const { nodeName } = request.body as SetNodeNameBody;
          const response = await this.nodeApiService.setNodeName(request.session.jwtToken ?? '', nodeName);
-         return reply.send(response);
+         return await reply.send(response);
     }
     
     // API: POST /settings/node/personalize/about
     public apiSetNodeAbout = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
          const { nodeAbout } = request.body as SetNodeAboutBody;
          const response = await this.nodeApiService.setNodeAbout(request.session.jwtToken ?? '', nodeAbout);
-         return reply.send(response);
+         return await reply.send(response);
     }
 
     // API: POST /settings/node/personalize/id
     public apiSetNodeId = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
          const { nodeId } = request.body as SetNodeIdBody;
          const response = await this.nodeApiService.setNodeId(request.session.jwtToken ?? '', nodeId);
-         return reply.send(response);
+         return await reply.send(response);
     }
 
     // API: POST /settings/node/network/secure
@@ -280,7 +280,7 @@ export class SettingsController extends BaseController {
              }
              this.config.saveClientSettings(settings);
         }
-        return reply.send(response);
+        return await reply.send(response);
     }
 
     private async processMultipartSecureConnection(request: FastifyRequest): Promise<{ keyFile: UploadedFile | undefined; certFile: UploadedFile | undefined; caFiles: UploadedFile[]; isSecure: boolean }> {
@@ -322,7 +322,7 @@ export class SettingsController extends BaseController {
              settings.nodePort = nodeListeningPort;
              this.config.saveClientSettings(settings);
          }
-         return reply.send(response);
+         return await reply.send(response);
     }
 
     private async updateS3Manifests(jwtToken: string): Promise<void> {
@@ -364,7 +364,7 @@ export class SettingsController extends BaseController {
          if (!response.isError) {
               await this.updateS3Manifests(jwtToken);
          }
-         return reply.send(response);
+         return await reply.send(response);
     }
 
     public apiSetCloudflareConfig = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
@@ -374,7 +374,7 @@ export class SettingsController extends BaseController {
         if (!response.isError) {
              await this.updateS3Manifests(jwtToken);
         }
-        return reply.send(response);
+        return await reply.send(response);
     }
     
     public apiClearCloudflareConfig = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
@@ -383,55 +383,55 @@ export class SettingsController extends BaseController {
         if (!response.isError) {
              await this.updateS3Manifests(jwtToken);
         }
-        return reply.send(response);
+        return await reply.send(response);
     }
 
 
     public apiSetTurnstileConfig = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         const { cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey } = request.body as SetTurnstileConfigBody;
         const response = await this.nodeApiService.setCloudflareTurnstileConfiguration(request.session.jwtToken ?? '', cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey);
-        return reply.send(response);
+        return await reply.send(response);
     }
     
     public apiClearTurnstileConfig = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         const response = await this.nodeApiService.clearCloudflareTurnstileConfiguration(request.session.jwtToken ?? '');
-        return reply.send(response);
+        return await reply.send(response);
     }
 
     public apiToggleComments = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         const { isEnabled } = request.body as ToggleBooleanBody;
         const response = await this.nodeApiService.commentsToggle(request.session.jwtToken ?? '', isEnabled);
-        return reply.send(response);
+        return await reply.send(response);
     }
     
     public apiToggleLikes = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         const { isEnabled } = request.body as ToggleBooleanBody;
         const response = await this.nodeApiService.likesToggle(request.session.jwtToken ?? '', isEnabled);
-        return reply.send(response);
+        return await reply.send(response);
     }
     
     public apiToggleDislikes = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         const { isEnabled } = request.body as ToggleBooleanBody;
         const response = await this.nodeApiService.dislikesToggle(request.session.jwtToken ?? '', isEnabled);
-        return reply.send(response);
+        return await reply.send(response);
     }
 
     public apiToggleReports = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         const { isEnabled } = request.body as ToggleBooleanBody;
         const response = await this.nodeApiService.reportVideosToggle(request.session.jwtToken ?? '', isEnabled);
-        return reply.send(response);
+        return await reply.send(response);
     }
     
     public apiToggleLiveChat = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         const { isEnabled } = request.body as ToggleBooleanBody;
         const response = await this.nodeApiService.liveChatToggle(request.session.jwtToken ?? '', isEnabled);
-        return reply.send(response);
+        return await reply.send(response);
     }
     
     public apiToggleDatabase = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         const { databaseConfig } = request.body as ToggleDatabaseBody;
         const response = await this.nodeApiService.databaseConfigToggle(request.session.jwtToken ?? '', databaseConfig);
-        return reply.send(response);
+        return await reply.send(response);
     }
     
     public apiToggleStorage = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
@@ -461,14 +461,14 @@ export class SettingsController extends BaseController {
         if (!response.isError && storageConfig.storageMode === 's3provider') {
              await this.updateS3Manifests(jwtToken);
         }
-        return reply.send(response);
+        return await reply.send(response);
     }
 
     public apiSetAccountCredentials = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         const { username, password } = request.body as SetAccountBody;
         const jwtToken = request.session.jwtToken ?? '';
         const response = await this.nodeApiService.setAccountCredentials(jwtToken, username, password);
-        return reply.send(response);
+        return await reply.send(response);
     }
 
     public apiImportDatabase = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
@@ -485,9 +485,9 @@ export class SettingsController extends BaseController {
 
         if (databaseFile) {
             const response = await this.nodeApiService.settingsImportDatabase(jwtToken, databaseFile);
-            return reply.send(response);
+            return await reply.send(response);
         } else {
-            return reply.send({ isError: true, message: 'database file is missing' });
+            return await reply.send({ isError: true, message: 'database file is missing' });
         }
     }
 
@@ -496,12 +496,12 @@ export class SettingsController extends BaseController {
         const response = await this.nodeApiService.settingsExportDatabase(jwtToken);
 
         if (response.isError) {
-            return reply.status(500).send(response);
+            return await reply.status(500).send(response);
         } else {
             const databaseJsonString = JSON.stringify(response.database);
             reply.header('Content-Disposition', `attachment; filename=database-${Date.now()}.json`);
             reply.header('Content-Type', 'application/json');
-            return reply.send(databaseJsonString);
+            return await reply.send(databaseJsonString);
         }
     }
 }
