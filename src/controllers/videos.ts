@@ -332,7 +332,8 @@ export class VideosController extends BaseController {
     public postVideoData = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
             const jwtToken = request.session.jwtToken ?? '';
-            const { videoId, title, description, tags } = request.body as VideoDataBody;
+            const { videoId } = request.params as VideoIdParams;
+            const { title, description, tags } = request.body as VideoDataBody;
             const response = await this.nodeApiService.setVideoData(jwtToken, videoId, title, description, tags);
             return await reply.send(response);
         } catch (error) {
@@ -380,7 +381,8 @@ export class VideosController extends BaseController {
     public postVideoPermissions = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
             const jwtToken = request.session.jwtToken ?? '';
-            const { videoId, type, isEnabled } = request.body as VideoPermissionsBody;
+            const { videoId } = request.params as VideoIdParams;
+            const { type, isEnabled } = request.body as VideoPermissionsBody;
             const response = await this.nodeApiService.postVideoPermissions(jwtToken, videoId, type, isEnabled);
             return await reply.send(response);
         } catch (error) {

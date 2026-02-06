@@ -13,6 +13,7 @@ export class NodeSocketService extends BaseService {
   private pingIntervalTimer: NodeJS.Timeout | null = null;
   private pingTimeoutTimer: NodeJS.Timeout | null = null;
   private _isConnected = false;
+  private shouldReconnect = false;
 
   constructor(
     logger: Logger,
@@ -33,6 +34,7 @@ export class NodeSocketService extends BaseService {
     if (this.websocketClient) {
       this.disconnect();
     }
+    this.shouldReconnect = true;
 
     const settings = this.config.clientSettings;
     const url = `${settings.nodeWebsocketProtocol}://${settings.nodeIp}:${String(settings.nodePort)}`;
@@ -59,8 +61,10 @@ export class NodeSocketService extends BaseService {
     this.websocketClient.on('close', () => {
       this.logger.info(`Disconnected from Node: ${url}`);
       this.cleanup();
-      // Auto-reconnect logic? Legacy does: setTimeout(connectWebsocketClient, 1000);
-      setTimeout(() => { this.connect(jwtToken); }, 1000);
+      
+      if (this.shouldReconnect) {
+        setTimeout(() => { this.connect(jwtToken); }, 1000);
+      }
     });
 
     this.websocketClient.on('error', (err) => {
@@ -69,6 +73,7 @@ export class NodeSocketService extends BaseService {
   }
 
   public disconnect(): void {
+    this.shouldReconnect = false;
     if (this.websocketClient) {
       this.websocketClient.terminate();
       this.websocketClient = null;
@@ -121,7 +126,7 @@ export class NodeSocketService extends BaseService {
                   this.pingTimeoutTimer = null;
               }
           } else if (parsedMessage.eventName === 'registered') {
-              this.logger.info('Registered with MoarTube Node');
+              this.logger.info('Registered websocket connection with MoarTube Node');
           } else if (parsedMessage.eventName === 'echo') {
               this.handleEchoEvent(parsedMessage.data);
           }

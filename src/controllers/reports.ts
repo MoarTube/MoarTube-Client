@@ -36,6 +36,9 @@ export class ReportsController {
       const videoReports = videoReportsResponse.reports;
       const videoReportsArchive = videoReportsArchiveResponse.reports;
 
+      // Mark video reports as checked
+      await this.nodeApiService.setContentChecked(jwtToken, 'videoReports');
+
       return await reply.view('reports-videos', {
         model: {
             nodeSettings,
@@ -147,6 +150,9 @@ export class ReportsController {
       const newContentCounts = newContentCountsResponse.newContentCounts;
       const commentReports = commentReportsResponse.reports;
       const commentReportsArchive = commentReportsArchiveResponse.reports;
+
+      // Mark comment reports as checked
+      await this.nodeApiService.setContentChecked(jwtToken, 'commentReports');
 
       return await reply.view('reports-comments', {
         model: {

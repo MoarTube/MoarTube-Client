@@ -55,7 +55,7 @@
 								<a class="nav-link " href="/comments">
 									<span class="sidenav-mini-icon"> C </span>
 									<span class="sidenav-normal"> Comments </span>
-									<span id="new-comments-count" class="badge badge-primary ms-1"></span>
+									<span id="new-comments-count-badge" class="badge badge-primary ms-1"></span>
 								</a>
 							</li>
 							<li class="nav-item ">
@@ -63,7 +63,7 @@
 									href="#reports">
 									<span class="sidenav-mini-icon"> R </span>
 									<span class="sidenav-normal"> Reports <b class="caret"></b></span>
-									<span id="new-reports-count" class="badge badge-primary ms-1"></span>
+									<span id="new-reports-count-badge" class="badge badge-primary ms-1"></span>
 								</a>
 								<div class="collapse" id="reports">
 									<ul class="nav nav-sm flex-column">
@@ -71,7 +71,7 @@
 											<a class="nav-link " href="/reports/videos">
 												<span class="sidenav-mini-icon text-xs"> V </span>
 												<span class="sidenav-normal"> Videos </span>
-												<span id="new-video-reports-count"
+												<span id="new-video-reports-count-badge"
 													class="badge badge-primary ms-1"></span>
 											</a>
 										</li>
@@ -79,7 +79,7 @@
 											<a class="nav-link " href="/reports/comments">
 												<span class="sidenav-mini-icon text-xs"> C </span>
 												<span class="sidenav-normal"> Comments </span>
-												<span id="new-comment-reports-count"
+												<span id="new-comment-reports-count-badge"
 													class="badge badge-primary ms-1"></span>
 											</a>
 										</li>
@@ -331,19 +331,19 @@
 			const newReportsCount = newVideoReportsCount + newCommentReportsCount;
 
 			if (newCommentsCount > 0) {
-				$('#new-comments-count').text(newCommentsCount);
+				$('#new-comments-count-badge').text(newCommentsCount);
 			}
 
 			if (newReportsCount > 0) {
-				$('#new-reports-count').text(newReportsCount);
+				$('#new-reports-count-badge').text(newReportsCount);
 			}
 
 			if (newVideoReportsCount > 0) {
-				$('#new-video-reports-count').text(newVideoReportsCount);
+				$('#new-video-reports-count-badge').text(newVideoReportsCount);
 			}
 
 			if (newCommentReportsCount > 0) {
-				$('#new-comment-reports-count').text(newCommentReportsCount);
+				$('#new-comment-reports-count-badge').text(newCommentReportsCount);
 			}
 		}
 
@@ -394,7 +394,7 @@
 			return tableData;
 		}
 
-		function populateCryptoWalletAddressesTable(data) {
+		function populateCryptoWalletAddressesTable(data, prepend = false) {
 			if (DATA_TABLE == null) {
 				DATA_TABLE = new simpleDatatables.DataTable(
 					"#crypto-wallet-addresses-table",
@@ -407,7 +407,21 @@
 				);
 			}
 
-			DATA_TABLE.insert(data);
+			if (prepend) {
+				const rows = DATA_TABLE.rows();
+				
+				for (let i = data.data.length - 1; i >= 0; i--) {
+					const rowData = data.data[i];
+					const row = rows.build(rowData);
+					DATA_TABLE.data.unshift(row);
+				}
+
+				DATA_TABLE.hasRows = true;
+				DATA_TABLE.update();
+				DATA_TABLE.columns().rebuild();
+			} else {
+				DATA_TABLE.insert(data);
+			}
 		}
 
 		function deleteCryptoWalletAddress(button) {
@@ -559,7 +573,7 @@
 
 									const tableData = parseCryptoWalletAddresses([cryptoWalletAddress]);
 
-									populateCryptoWalletAddressesTable(tableData);
+									populateCryptoWalletAddressesTable(tableData, true);
 
 									refreshHoverTooltips();
 								}

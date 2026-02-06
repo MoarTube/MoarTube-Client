@@ -87,7 +87,7 @@ export class AccountController extends BaseController {
                 }
                 
                 delete result.token;
-                
+
                 result.redirectUrl = '/videos';
             }
             
@@ -101,7 +101,7 @@ export class AccountController extends BaseController {
     getSignOut = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
          await request.session.destroy();
          this.nodeSocketService.disconnect();
-         return await this.sendSuccess(reply);
+         return await reply.redirect('/account/signin');
     }
 }
 

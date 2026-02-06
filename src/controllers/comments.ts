@@ -31,6 +31,9 @@ export class CommentsController {
 
       const newContentCounts = newContentCountsResponse.newContentCounts;
 
+      // Mark comments as checked
+      await this.nodeApiService.setContentChecked(jwtToken, 'comments');
+
       return await reply.view('comments', {
         model: {
             nodeSettings,

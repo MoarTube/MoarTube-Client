@@ -50,6 +50,7 @@ export function videosRoutes(
     fastify.post('/publish/stop', {
         schema: { tags: ['Videos'] }
     }, controller.postStopPublish.bind(controller));
+    
     fastify.post('/unpublish', {
         schema: { tags: ['Videos'] }
     }, controller.postUnpublish.bind(controller));
