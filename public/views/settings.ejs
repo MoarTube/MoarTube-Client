@@ -1652,50 +1652,41 @@
 							showCloseButton: true,
 							showConfirmButton: true,
 							confirmButtonText: 'Enable',
-							willOpen: () => {
-
-							},
-							didOpen: () => {
-
-							},
+							showLoaderOnConfirm: true,
 							preConfirm: () => {
-								Swal.showLoading();
-
 								const cloudflareEmailAddress = $('#cloudflareEmailAddress').val();
 								const cloudflareZoneId = $('#cloudflareZoneId').val();
 								const cloudflareGlobalApiKey = $('#cloudflareGlobalApiKey').val();
 
-								Swal.fire({
-									title: 'please wait',
-									html: '...enabling Cloudflare CDN...',
-									showConfirmButton: false,
-									allowOutsideClick: false,
-									willOpen: () => {
-										Swal.showLoading();
-									},
-									didOpen: () => {
-										$.post('/settings/node/cloudflare/configure', { cloudflareEmailAddress: cloudflareEmailAddress, cloudflareZoneId: cloudflareZoneId, cloudflareGlobalApiKey: cloudflareGlobalApiKey })
-											.done(function (data, textStatus, xhr) {
-												if (data.isError) {
-													$(checkbox).prop('checked', !isCheckboxChecked);
+								if (!cloudflareEmailAddress || !cloudflareZoneId || !cloudflareGlobalApiKey) {
+									Swal.showValidationMessage('Please enter email, zone ID, and global API key');
+									return false;
+								}
 
-													showAlert(true, data.message);
-												}
-												else {
-													showAlert(false, 'Cloudflare CDN Enabled');
-												}
-											})
-											.fail(function () {
-												showAlert(true, 'an error occurred, please try again');
-											});
-									}
-								});
-
-								return false;
+								return $.post('/settings/node/cloudflare/configure', {
+									cloudflareEmailAddress: cloudflareEmailAddress,
+									cloudflareZoneId: cloudflareZoneId,
+									cloudflareGlobalApiKey: cloudflareGlobalApiKey
+								})
+									.then(response => {
+										if (response.isError) {
+											Swal.showValidationMessage(response.message);
+											return false;
+										}
+										return response;
+									})
+									.catch(error => {
+										Swal.showValidationMessage(error.message || 'An error occurred');
+										return false;
+									});
 							}
 						})
 							.then((result) => {
-								$(checkbox).prop('checked', !isCheckboxChecked);
+								if (result.isConfirmed) {
+									showAlert(false, 'Cloudflare CDN Enabled');
+								} else {
+									$(checkbox).prop('checked', !isCheckboxChecked);
+								}
 							});
 					}
 					else {
@@ -1762,49 +1753,39 @@
 							showCloseButton: true,
 							showConfirmButton: true,
 							confirmButtonText: 'Enable',
-							willOpen: () => {
-
-							},
-							didOpen: () => {
-
-							},
+							showLoaderOnConfirm: true,
 							preConfirm: () => {
-								Swal.showLoading();
-
 								const cloudflareTurnstileSiteKey = $('#cloudflareTurnstileSiteKey').val();
 								const cloudflareTurnstileSecretKey = $('#cloudflareTurnstileSecretKey').val();
 
-								Swal.fire({
-									title: 'please wait',
-									html: '...enabling Cloudflare Turnstile...',
-									showConfirmButton: false,
-									allowOutsideClick: false,
-									willOpen: () => {
-										Swal.showLoading();
-									},
-									didOpen: () => {
-										$.post('/settings/node/cloudflare/turnstile/configure', { cloudflareTurnstileSiteKey: cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey: cloudflareTurnstileSecretKey })
-											.done(function (data, textStatus, xhr) {
-												if (data.isError) {
-													$(checkbox).prop('checked', !isCheckboxChecked);
+								if (!cloudflareTurnstileSiteKey || !cloudflareTurnstileSecretKey) {
+									Swal.showValidationMessage('Please enter both keys');
+									return false;
+								}
 
-													showAlert(true, data.message);
-												}
-												else {
-													showAlert(false, 'Cloudflare Turnstile Enabled');
-												}
-											})
-											.fail(function () {
-												showAlert(true, 'an error occurred, please try again');
-											});
-									}
-								});
-
-								return false;
+								return $.post('/settings/node/cloudflare/turnstile/configure', {
+									cloudflareTurnstileSiteKey: cloudflareTurnstileSiteKey,
+									cloudflareTurnstileSecretKey: cloudflareTurnstileSecretKey
+								})
+									.then(response => {
+										if (response.isError) {
+											Swal.showValidationMessage(response.message);
+											return false;
+										}
+										return response;
+									})
+									.catch(error => {
+										Swal.showValidationMessage(error.message || 'An error occurred');
+										return false;
+									});
 							}
 						})
 							.then((result) => {
-								$(checkbox).prop('checked', !isCheckboxChecked);
+								if (result.isConfirmed) {
+									showAlert(false, 'Cloudflare Turnstile Enabled');
+								} else {
+									$(checkbox).prop('checked', !isCheckboxChecked);
+								}
 							});
 					}
 					else {
