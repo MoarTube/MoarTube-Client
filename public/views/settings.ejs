@@ -1552,7 +1552,7 @@
 						Swal.fire({
 							title: 'please wait',
 							html: '...enabling secure HTTPS mode...',
-							timer: 5000,
+							timer: 20000,
 							timerProgressBar: true,
 							allowOutsideClick: false,
 							didOpen: () => {
@@ -1589,7 +1589,7 @@
 				Swal.fire({
 					title: 'please wait',
 					html: '...enabling non-secure HTTP mode...',
-					timer: 5000,
+					timer: 20000,
 					timerProgressBar: true,
 					allowOutsideClick: false,
 					didOpen: () => {
@@ -1926,7 +1926,7 @@
 				Swal.fire({
 					title: 'please wait',
 					html: '...applying your settings...',
-					timer: 10000,
+					timer: 20000,
 					timerProgressBar: true,
 					showConfirmButton: false,
 					allowOutsideClick: false,
@@ -1934,7 +1934,7 @@
 						Swal.showLoading();
 					},
 					didOpen: () => {
-						$.ajax({ type: 'POST', url: '/settings/node/databaseConfig/toggle', data: JSON.stringify({ databaseConfig: databaseConfig }), contentType: 'application/json; charset=utf-8' })
+						$.ajax({ type: 'POST', url: '/settings/node/database/config/toggle', data: JSON.stringify({ databaseConfig: databaseConfig }), contentType: 'application/json; charset=utf-8' })
 							.always(function () {
 								$('#database-dialect-sqlite-radio').prop('disabled', false);
 								$('#database-dialect-postgres-radio').prop('disabled', false);
@@ -2097,7 +2097,7 @@
 				Swal.fire({
 					title: 'please wait',
 					html: '...applying your settings...',
-					timer: 10000,
+					timer: 20000,
 					timerProgressBar: true,
 					showConfirmButton: false,
 					allowOutsideClick: false,
@@ -2105,7 +2105,7 @@
 						Swal.showLoading();
 					},
 					didOpen: () => {
-						$.ajax({ type: 'POST', url: '/settings/node/storageConfig/toggle', data: JSON.stringify({ storageConfig: storageConfig }), contentType: 'application/json; charset=utf-8' })
+						$.ajax({ type: 'POST', url: '/settings/node/storage/config/toggle', data: JSON.stringify({ storageConfig: storageConfig }), contentType: 'application/json; charset=utf-8' })
 							.always(function () {
 								$('#storage-configuration-filesystem-radio').prop('disabled', false);
 								$('#storage-configuration-s3provider-radio').prop('disabled', false);
@@ -2275,7 +2275,7 @@
 			Swal.fire({
 				title: 'please wait',
 				html: '...changing node listening port...',
-				timer: 5000,
+				timer: 20000,
 				timerProgressBar: true,
 				allowOutsideClick: false,
 				didOpen: () => {

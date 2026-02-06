@@ -434,11 +434,6 @@ export class SettingsController extends BaseController {
         return reply.send(response);
     }
     
-    public apiEmptyDatabase = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const response = await this.nodeApiService.databaseConfigEmpty(request.session.jwtToken ?? '');
-        return reply.send(response);
-    }
-    
     public apiToggleStorage = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         const { storageConfig } = request.body as ToggleStorageBody;
         const jwtToken = request.session.jwtToken ?? '';
@@ -466,11 +461,6 @@ export class SettingsController extends BaseController {
         if (!response.isError && storageConfig.storageMode === 's3provider') {
              await this.updateS3Manifests(jwtToken);
         }
-        return reply.send(response);
-    }
-    
-    public apiEmptyStorage = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const response = await this.nodeApiService.storageConfigEmpty(request.session.jwtToken ?? '');
         return reply.send(response);
     }
 

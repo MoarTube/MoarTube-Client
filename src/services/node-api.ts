@@ -343,16 +343,8 @@ public async setNodeName(jwtToken: string, nodeName: string): Promise<BaseNodeRe
       return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/database/config/toggle', { databaseConfig });
   }
 
-  public async databaseConfigEmpty(jwtToken: string): Promise<BaseNodeResponse> {
-      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/database/config/empty');
-  }
-
   public async storageConfigToggle(jwtToken: string, storageConfig: StorageConfig): Promise<BaseNodeResponse> {
       return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/storage/config/toggle', { storageConfig });
-  }
-
-  public async storageConfigEmpty(jwtToken: string): Promise<BaseNodeResponse> {
-      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/storage/config/empty');
   }
 
   public async setAccountCredentials(jwtToken: string, username: string, password: string): Promise<BaseNodeResponse> {

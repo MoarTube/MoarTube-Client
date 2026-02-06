@@ -119,17 +119,9 @@ export function settingsRoutes(
     schema: { tags: ['Settings'] }
   }, settingsController.apiToggleDatabase.bind(settingsController));
 
-  fastify.post('/node/database/config/empty', {
-    schema: { tags: ['Settings'] }
-  }, settingsController.apiEmptyDatabase.bind(settingsController));
-
   fastify.post('/node/storage/config/toggle', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiToggleStorage.bind(settingsController));
-
-  fastify.post('/node/storage/config/empty', {
-    schema: { tags: ['Settings'] }
-  }, settingsController.apiEmptyStorage.bind(settingsController));
 
   fastify.post('/node/account', {
     schema: { tags: ['Settings'] }
