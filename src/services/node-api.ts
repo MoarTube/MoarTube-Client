@@ -351,6 +351,26 @@ public async setNodeName(jwtToken: string, nodeName: string): Promise<BaseNodeRe
       return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/account', { username, password });
   }
 
+  public async settingsImportDatabase(jwtToken: string, databaseFile: Buffer): Promise<BaseNodeResponse> {
+      const formData = new FormData();
+      formData.append('databaseFile', databaseFile, 'database.json');
+
+      const client = await this.getClient();
+      const headers = formData.getHeaders();
+      headers["Authorization"] = `Bearer ${jwtToken}`;
+
+      const response = await client.post('/settings/import/database', formData, { headers });
+      return response.data as BaseNodeResponse;
+  }
+
+  public async settingsExportDatabase(jwtToken: string): Promise<unknown> {
+      const client = await this.getClient();
+      const response = await client.get('/settings/export/database', {
+          headers: { Authorization: `Bearer ${jwtToken}` }
+      });
+      return response.data;
+  }
+
   public async commentsToggle(jwtToken: string, isEnabled: boolean): Promise<BaseNodeResponse> {
       return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/comments/toggle', { isEnabled });
   }

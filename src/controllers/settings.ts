@@ -470,5 +470,39 @@ export class SettingsController extends BaseController {
         const response = await this.nodeApiService.setAccountCredentials(jwtToken, username, password);
         return reply.send(response);
     }
+
+    public apiImportDatabase = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
+        const jwtToken = request.session.jwtToken ?? '';
+        const parts = request.files();
+        let databaseFile: Buffer | undefined;
+
+        for await (const part of parts) {
+            if (part.fieldname === 'database_file') {
+                databaseFile = await part.toBuffer();
+                break;
+            }
+        }
+
+        if (databaseFile) {
+            const response = await this.nodeApiService.settingsImportDatabase(jwtToken, databaseFile);
+            return reply.send(response);
+        } else {
+            return reply.send({ isError: true, message: 'database file is missing' });
+        }
+    }
+
+    public apiExportDatabase = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
+        const jwtToken = request.session.jwtToken ?? '';
+        const response = await this.nodeApiService.settingsExportDatabase(jwtToken);
+
+        if (response.isError) {
+            return reply.status(500).send(response);
+        } else {
+            const databaseJsonString = JSON.stringify(response.database);
+            reply.header('Content-Disposition', `attachment; filename=database-${Date.now()}.json`);
+            reply.header('Content-Type', 'application/json');
+            return reply.send(databaseJsonString);
+        }
+    }
 }
 

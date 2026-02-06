@@ -126,4 +126,12 @@ export function settingsRoutes(
   fastify.post('/node/account', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiSetAccountCredentials.bind(settingsController));
+
+  fastify.post('/node/import/database', {
+    schema: { tags: ['Settings'] }
+  }, settingsController.apiImportDatabase.bind(settingsController));
+
+  fastify.get('/node/export/database', {
+    schema: { tags: ['Settings'] }
+  }, settingsController.apiExportDatabase.bind(settingsController));
 }
