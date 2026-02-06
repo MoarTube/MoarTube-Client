@@ -1527,18 +1527,21 @@
 					title: 'upload SSL files',
 					html: html,
 					showCloseButton: true,
-					willOpen: () => {
-
-					},
-					didOpen: () => {
-
-					},
+					showLoaderOnConfirm: true,
 					preConfirm: () => {
-						Swal.showLoading();
-
 						const keyFile = $('#key-file-input').get(0).files[0];
 						const certFile = $('#cert-file-input').get(0).files[0];
 						const caFiles = $('#ca-files-input').get(0).files;
+
+						if (!keyFile) {
+							Swal.showValidationMessage('Key file is missing');
+							return false;
+						}
+						
+						if (!certFile) {
+							Swal.showValidationMessage('Certificate file is missing');
+							return false;
+						}
 
 						const formData = new FormData();
 
@@ -1549,48 +1552,33 @@
 							formData.append('caFiles', caFiles[i]);
 						}
 
-						Swal.fire({
-							title: 'please wait',
-							html: '...enabling secure HTTPS mode...',
-							timer: 20000,
-							timerProgressBar: true,
-							allowOutsideClick: false,
-							didOpen: () => {
-								Swal.showLoading();
-
-								$.ajax({ type: 'POST', url: '/settings/node/secure?isSecure=' + isCheckboxChecked, data: formData, processData: false, contentType: false })
-									.done(function (data, textStatus, xhr) {
-										if (data.isError) {
-											$(checkbox).prop('checked', !isCheckboxChecked);
-
-											showAlert(true, data.message);
-										}
-									})
-									.fail(function () {
-										$(checkbox).prop('checked', !isCheckboxChecked);
-
-										showAlert(true, 'an error occurred, please try again');
-									});
-							}
-						}).then((result) => {
-							if (result.dismiss === Swal.DismissReason.timer) {
-								showAlert(false);
-							}
-						});
-
-						return false;
+						return $.ajax({ type: 'POST', url: '/settings/node/secure?isSecure=' + isCheckboxChecked, data: formData, processData: false, contentType: false })
+							.then(function (data) {
+								if (data.isError) {
+									Swal.showValidationMessage(data.message);
+									return false;
+								}
+								return data;
+							})
+							.catch(function () {
+								Swal.showValidationMessage('an error occurred, please try again');
+								return false;
+							});
 					}
 				})
 					.then((result) => {
-						$(checkbox).prop('checked', !isCheckboxChecked);
+						if (result.isConfirmed) {
+							showAlert(false, 'Secure Mode Enabled. Your node is restarting...');
+						} else {
+							$(checkbox).prop('checked', !isCheckboxChecked);
+						}
 					});
 			}
 			else {
 				Swal.fire({
 					title: 'please wait',
 					html: '...enabling non-secure HTTP mode...',
-					timer: 20000,
-					timerProgressBar: true,
+					showConfirmButton: false,
 					allowOutsideClick: false,
 					didOpen: () => {
 						Swal.showLoading();
@@ -1603,6 +1591,8 @@
 									$(checkbox).prop('checked', !isCheckboxChecked);
 
 									showAlert(true, data.message);
+								} else {
+									showAlert(false, 'Secure Mode Disabled. Your node is restarting...');
 								}
 							})
 							.fail(function () {
@@ -1610,10 +1600,6 @@
 
 								showAlert(true, 'an error occurred, please try again');
 							});
-					}
-				}).then((result) => {
-					if (result.dismiss === Swal.DismissReason.timer) {
-						showAlert(false);
 					}
 				});
 			}
@@ -1683,7 +1669,7 @@
 						})
 							.then((result) => {
 								if (result.isConfirmed) {
-									showAlert(false, 'Cloudflare CDN Enabled');
+									showAlert(false, 'Cloudflare CDN Enabled. Your node is restarting...');
 								} else {
 									$(checkbox).prop('checked', !isCheckboxChecked);
 								}
@@ -1711,7 +1697,7 @@
 									showAlert(true, data.message);
 								}
 								else {
-									showAlert(false, 'Cloudflare CDN Disabled');
+									showAlert(false, 'Cloudflare CDN Disabled. Your node is restarting...');
 								}
 							})
 							.fail(function () {
@@ -1782,7 +1768,7 @@
 						})
 							.then((result) => {
 								if (result.isConfirmed) {
-									showAlert(false, 'Cloudflare Turnstile Enabled');
+									showAlert(false, 'Cloudflare Turnstile Enabled. Your node is restarting...');
 								} else {
 									$(checkbox).prop('checked', !isCheckboxChecked);
 								}
@@ -1810,7 +1796,7 @@
 									showAlert(true, data.message);
 								}
 								else {
-									showAlert(false, 'Cloudflare Turnstile Disabled');
+									showAlert(false, 'Cloudflare Turnstile Disabled. Your node is restarting...');
 								}
 							})
 							.fail(function () {
@@ -1907,14 +1893,11 @@
 				Swal.fire({
 					title: 'please wait',
 					html: '...applying your settings...',
-					timer: 20000,
-					timerProgressBar: true,
 					showConfirmButton: false,
 					allowOutsideClick: false,
-					willOpen: () => {
-						Swal.showLoading();
-					},
 					didOpen: () => {
+						Swal.showLoading();
+
 						$.ajax({ type: 'POST', url: '/settings/node/database/config/toggle', data: JSON.stringify({ databaseConfig: databaseConfig }), contentType: 'application/json; charset=utf-8' })
 							.always(function () {
 								$('#database-dialect-sqlite-radio').prop('disabled', false);
@@ -1934,6 +1917,8 @@
 									$('#database-dialect-postgres-radio').removeData('selected');
 
 									$(radio).data('selected', 'selected');
+
+									showAlert(false, 'Database configuration saved. Your node is restarting...');
 								}
 							})
 							.fail(function () {
@@ -2078,14 +2063,11 @@
 				Swal.fire({
 					title: 'please wait',
 					html: '...applying your settings...',
-					timer: 20000,
-					timerProgressBar: true,
 					showConfirmButton: false,
 					allowOutsideClick: false,
-					willOpen: () => {
-						Swal.showLoading();
-					},
 					didOpen: () => {
+						Swal.showLoading();
+
 						$.ajax({ type: 'POST', url: '/settings/node/storage/config/toggle', data: JSON.stringify({ storageConfig: storageConfig }), contentType: 'application/json; charset=utf-8' })
 							.always(function () {
 								$('#storage-configuration-filesystem-radio').prop('disabled', false);
@@ -2105,6 +2087,8 @@
 									$('#storage-configuration-s3provider-radio').removeData('selected');
 
 									$(radio).data('selected', 'selected');
+
+									showAlert(false, 'Storage configuration saved. Your node is restarting...');
 								}
 							})
 							.fail(function () {
@@ -2256,8 +2240,7 @@
 			Swal.fire({
 				title: 'please wait',
 				html: '...changing node listening port...',
-				timer: 20000,
-				timerProgressBar: true,
+				showConfirmButton: false,
 				allowOutsideClick: false,
 				didOpen: () => {
 					Swal.showLoading()
@@ -2268,16 +2251,12 @@
 								showAlert(true, data.message);
 							}
 							else {
-
+								showAlert(false);
 							}
 						})
 						.fail(function () {
 							showAlert(true, 'an error occurred, please try again');
 						});
-				}
-			}).then((result) => {
-				if (result.dismiss === Swal.DismissReason.timer) {
-					showAlert(false);
 				}
 			});
 		});
