@@ -118,7 +118,7 @@ export class NodeSocketService extends BaseService {
 
           // this.logger.debug(`WebSocket message received: ${msgStr.substring(0, 100)}`);
 
-          const parsedMessage = JSON.parse(msgStr) as { eventName?: string; data?: unknown };
+          const parsedMessage = JSON.parse(msgStr) as { eventName?: string; data?: unknown; error?: string };
           
           if (parsedMessage.eventName === 'pong') {
               if (this.pingTimeoutTimer) {
@@ -127,6 +127,14 @@ export class NodeSocketService extends BaseService {
               }
           } else if (parsedMessage.eventName === 'registered') {
               this.logger.info('Registered websocket connection with MoarTube Node');
+          } else if (parsedMessage.eventName === 'error') {
+              this.logger.error('Received error from Node', { error: parsedMessage.error });
+              // Stop reconnecting on authentication errors
+              if (parsedMessage.error === 'Invalid JWT token. Please re-authenticate.') {
+                  this.logger.warn('Authentication failed, stopping reconnection attempts');
+                  this.shouldReconnect = false;
+                  this.disconnect();
+              }
           } else if (parsedMessage.eventName === 'echo') {
               this.handleEchoEvent(parsedMessage.data);
           }
