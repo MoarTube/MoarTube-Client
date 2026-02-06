@@ -355,16 +355,20 @@ public async setNodeName(jwtToken: string, nodeName: string): Promise<BaseNodeRe
       return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/storage/config/empty');
   }
 
-  public async commentsToggle(jwtToken: string, isCommentsEnabled: boolean): Promise<BaseNodeResponse> {
-      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/comments/toggle', { isCommentsEnabled });
+  public async setAccountCredentials(jwtToken: string, username: string, password: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/account', { username, password });
   }
 
-  public async likesToggle(jwtToken: string, isLikesEnabled: boolean): Promise<BaseNodeResponse> {
-      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/likes/toggle', { isLikesEnabled });
+  public async commentsToggle(jwtToken: string, isEnabled: boolean): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/comments/toggle', { isEnabled });
   }
 
-  public async dislikesToggle(jwtToken: string, isDislikesEnabled: boolean): Promise<BaseNodeResponse> {
-      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/dislikes/toggle', { isDislikesEnabled });
+  public async likesToggle(jwtToken: string, isEnabled: boolean): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/likes/toggle', { isEnabled });
+  }
+
+  public async dislikesToggle(jwtToken: string, isEnabled: boolean): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/dislikes/toggle', { isEnabled });
   }
 
   // Links Methods
@@ -504,8 +508,8 @@ public async searchComments(jwtToken: string, videoId: string, searchTerm: strin
       return response.data as BaseNodeResponse;
   }
   
-  public async reportVideosToggle(jwtToken: string, isReportsEnabled: boolean): Promise<BaseNodeResponse> {
-      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/reports/toggle', { isReportsEnabled });
+  public async reportVideosToggle(jwtToken: string, isEnabled: boolean): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/reports/toggle', { isEnabled });
   }
 
   // Videos Methods
@@ -569,8 +573,8 @@ public async searchComments(jwtToken: string, videoId: string, searchTerm: strin
   }
 
 
-  public async liveChatToggle(jwtToken: string, isLiveChatEnabled: boolean): Promise<BaseNodeResponse> {
-      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/live-chat/toggle', { isLiveChatEnabled });
+  public async liveChatToggle(jwtToken: string, isEnabled: boolean): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/liveChat/toggle', { isEnabled });
   }
 
   public async setSourceFileExtension(jwtToken: string, videoId: string, extension: string): Promise<BaseNodeResponse> {

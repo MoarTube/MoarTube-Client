@@ -118,6 +118,11 @@ export interface SetNetworkExternalBody {
     publicNodePort: number;
 }
 
+export interface SetAccountBody {
+    username: string;
+    password: string;
+}
+
 export interface SetCloudflareConfigBody {
     cloudflareEmailAddress: string;
     cloudflareZoneId: string;
@@ -129,24 +134,8 @@ export interface SetTurnstileConfigBody {
     cloudflareTurnstileSecretKey: string;
 }
 
-export interface ToggleCommentsBody {
-    isCommentsEnabled: boolean;
-}
-
-export interface ToggleLikesBody {
-    isLikesEnabled: boolean;
-}
-
-export interface ToggleDislikesBody {
-    isDislikesEnabled: boolean;
-}
-
-export interface ToggleReportsBody {
-    isReportsEnabled: boolean;
-}
-
-export interface ToggleLiveChatBody {
-    isLiveChatEnabled: boolean;
+export interface ToggleBooleanBody {
+    isEnabled: boolean;
 }
 
 export interface ToggleDatabaseBody {

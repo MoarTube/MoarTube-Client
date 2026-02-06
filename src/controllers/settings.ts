@@ -14,15 +14,12 @@ import type {
     SetSecureConnectionBody,
     SetNetworkInternalBody,
     SetNetworkExternalBody,
+    SetAccountBody,
     SetCloudflareConfigBody,
     SetTurnstileConfigBody,
-    ToggleCommentsBody,
-    ToggleLikesBody,
-    ToggleDislikesBody,
-    ToggleReportsBody,
-    ToggleLiveChatBody,
     ToggleDatabaseBody,
-    ToggleStorageBody
+    ToggleStorageBody,
+    ToggleBooleanBody
 } from '@/types/requests.js';
 import { detectOperatingSystem, detectSystemCpu, detectSystemGpu } from '@/utils/hardware.js';
 import sharp from 'sharp';
@@ -402,32 +399,32 @@ export class SettingsController extends BaseController {
     }
 
     public apiToggleComments = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const { isCommentsEnabled } = request.body as ToggleCommentsBody;
-        const response = await this.nodeApiService.commentsToggle(request.session.jwtToken ?? '', isCommentsEnabled);
+        const { isEnabled } = request.body as ToggleBooleanBody;
+        const response = await this.nodeApiService.commentsToggle(request.session.jwtToken ?? '', isEnabled);
         return reply.send(response);
     }
     
     public apiToggleLikes = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const { isLikesEnabled } = request.body as ToggleLikesBody;
-        const response = await this.nodeApiService.likesToggle(request.session.jwtToken ?? '', isLikesEnabled);
+        const { isEnabled } = request.body as ToggleBooleanBody;
+        const response = await this.nodeApiService.likesToggle(request.session.jwtToken ?? '', isEnabled);
         return reply.send(response);
     }
     
     public apiToggleDislikes = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const { isDislikesEnabled } = request.body as ToggleDislikesBody;
-        const response = await this.nodeApiService.dislikesToggle(request.session.jwtToken ?? '', isDislikesEnabled);
+        const { isEnabled } = request.body as ToggleBooleanBody;
+        const response = await this.nodeApiService.dislikesToggle(request.session.jwtToken ?? '', isEnabled);
         return reply.send(response);
     }
 
     public apiToggleReports = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const { isReportsEnabled } = request.body as ToggleReportsBody;
-        const response = await this.nodeApiService.reportVideosToggle(request.session.jwtToken ?? '', isReportsEnabled);
+        const { isEnabled } = request.body as ToggleBooleanBody;
+        const response = await this.nodeApiService.reportVideosToggle(request.session.jwtToken ?? '', isEnabled);
         return reply.send(response);
     }
     
     public apiToggleLiveChat = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        const { isLiveChatEnabled } = request.body as ToggleLiveChatBody;
-        const response = await this.nodeApiService.liveChatToggle(request.session.jwtToken ?? '', isLiveChatEnabled);
+        const { isEnabled } = request.body as ToggleBooleanBody;
+        const response = await this.nodeApiService.liveChatToggle(request.session.jwtToken ?? '', isEnabled);
         return reply.send(response);
     }
     
@@ -474,6 +471,13 @@ export class SettingsController extends BaseController {
     
     public apiEmptyStorage = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         const response = await this.nodeApiService.storageConfigEmpty(request.session.jwtToken ?? '');
+        return reply.send(response);
+    }
+
+    public apiSetAccountCredentials = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
+        const { username, password } = request.body as SetAccountBody;
+        const jwtToken = request.session.jwtToken ?? '';
+        const response = await this.nodeApiService.setAccountCredentials(jwtToken, username, password);
         return reply.send(response);
     }
 }

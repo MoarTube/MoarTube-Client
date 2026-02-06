@@ -110,7 +110,7 @@ export function settingsRoutes(
     schema: { tags: ['Settings'] }
   }, settingsController.apiToggleReports.bind(settingsController));
 
-  fastify.post('/node/live-chat/toggle', {
+  fastify.post('/node/liveChat/toggle', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiToggleLiveChat.bind(settingsController));
 
@@ -130,4 +130,8 @@ export function settingsRoutes(
   fastify.post('/node/storage/config/empty', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiEmptyStorage.bind(settingsController));
+
+  fastify.post('/node/account', {
+    schema: { tags: ['Settings'] }
+  }, settingsController.apiSetAccountCredentials.bind(settingsController));
 }
