@@ -15,6 +15,7 @@ import type {
     VideoDataAllResponse,
     BaseNodeResponse,
     StreamVideoResponse,
+    CreateVideoResponse,
     SourceFileExtensionResponse,
     VideoDataResponse,
     DeleteVideosResponse,
@@ -166,6 +167,10 @@ export class NodeApiService extends BaseService {
 
   public async setVideoPublishing(jwtToken: string, videoId: string): Promise<unknown> {
       return this.postAuthenticated(jwtToken, '/videos/publishing', { videoId });
+  }
+
+  public async createVideo(jwtToken: string, title: string, description: string, tags: string): Promise<CreateVideoResponse> {
+      return this.postAuthenticated<CreateVideoResponse>(jwtToken, '/videos/import', { title, description, tags });
   }
 
   public async getExternalVideosBaseUrl(jwtToken: string): Promise<string> {
@@ -557,11 +562,11 @@ public async searchComments(jwtToken: string, videoId: string, searchTerm: strin
   }
 
   public async addVideoToIndex(jwtToken: string, videoId: string, containsAdultContent: boolean, termsOfServiceAgreed: boolean, cloudflareTurnstileToken: string): Promise<BaseNodeResponse> {
-    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/videos/index/add', { videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken });
+    return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/videos/${videoId}/index/add`, { containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken });
   }
 
   public async removeVideoFromIndex(jwtToken: string, videoId: string, cloudflareTurnstileToken: string): Promise<BaseNodeResponse> {
-    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/videos/index/remove', { videoId, cloudflareTurnstileToken });
+    return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/videos/${videoId}/index/remove`, { cloudflareTurnstileToken });
   }
 
   public async setIsIndexOutdated(jwtToken: string, videoId: string): Promise<BaseNodeResponse> {
@@ -680,19 +685,23 @@ public async getSourceFileExtension(jwtToken: string, videoId: string): Promise<
   }
 
   public async setVideoLengths(jwtToken: string, videoId: string, lengthSeconds: number, lengthTimestamp: string): Promise<unknown> {
-      return this.postAuthenticated(jwtToken, '/video/set-lengths', { videoId, lengthSeconds, lengthTimestamp });
+      return this.postAuthenticated(jwtToken, `/videos/${videoId}/lengths`, { lengthSeconds, lengthTimestamp });
   }
 
   public async removeAdaptiveStreamSegment(jwtToken: string, videoId: string, format: string, resolution: string, segmentName: string): Promise<unknown> {
-      return this.postAuthenticated(jwtToken, '/video/remove-adaptive-stream-segment', { videoId, format, resolution, segmentName });
+      return this.postAuthenticated(jwtToken, `/streams/${videoId}/adaptive/${format}/${resolution}/segments/remove`, { segmentName });
   }
   
   public async getVideoBandwidth(jwtToken: string, videoId: string): Promise<VideoBandwidthResponse> {
-      return this.postAuthenticated<VideoBandwidthResponse>(jwtToken, '/video/get-bandwidth', { videoId });
+      const client = await this.getClient();
+      const response = await client.get(`/streams/${videoId}/bandwidth`, {
+          headers: { Authorization: `Bearer ${jwtToken}` }
+      });
+      return response.data as VideoBandwidthResponse;
   }
 
   public async stopVideoStreaming(jwtToken: string, videoId: string): Promise<unknown> {
-      return this.postAuthenticated(jwtToken, '/video/stop-streaming', { videoId });
+      return this.postAuthenticated(jwtToken, `/streams/${videoId}/stop`, {});
   }
 
   public async setThumbnail(jwtToken: string, videoId: string, buffer: Buffer): Promise<BaseNodeResponse> {
@@ -733,7 +742,7 @@ public async getSourceFileExtension(jwtToken: string, videoId: string): Promise<
 
   public async streamVideo(jwtToken: string, options: StreamVideoOptions): Promise<StreamVideoResponse> {
       const { title, description, tags, resolution, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, videoId } = options;
-      return this.postAuthenticated<StreamVideoResponse>(jwtToken, '/video/stream', {
+      return this.postAuthenticated<StreamVideoResponse>(jwtToken, '/streams/start', {
           title, description, tags, resolution,
           isRecordingStreamRemotely, isRecordingStreamLocally,
           networkAddress, videoId
@@ -741,7 +750,7 @@ public async getSourceFileExtension(jwtToken: string, videoId: string): Promise<
   }
 
   public async setVideoChatSettings(jwtToken: string, videoId: string, isChatHistoryEnabled: boolean, chatHistoryLimit: number): Promise<BaseNodeResponse> {
-      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/video/set-chat-settings', { videoId, isChatHistoryEnabled, chatHistoryLimit });
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/streams/${videoId}/chat/settings`, { isChatHistoryEnabled, chatHistoryLimit });
   }
 
   public async uploadM3u8MasterManifest(jwtToken: string, videoId: string, type: string, masterManifest: string): Promise<BaseNodeResponse> {

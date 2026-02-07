@@ -52,6 +52,10 @@ export interface StreamVideoResponse extends BaseNodeResponse {
     videoId: string;
 }
 
+export interface CreateVideoResponse extends BaseNodeResponse {
+    videoId: string;
+}
+
 export interface Video {
     id: string;
     title: string;

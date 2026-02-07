@@ -39,19 +39,19 @@ export function videosRoutes(
         schema: { tags: ['Videos'] }
     }, controller.postImport.bind(controller));
 
-    fastify.post('/import/stop', {
+    fastify.post('/:videoId/importing/stop', {
         schema: { tags: ['Videos'] }
     }, controller.postStopImport.bind(controller));
 
-    fastify.post('/publish', {
+    fastify.post('/:videoId/publish', {
         schema: { tags: ['Videos'] }
     }, controller.postPublish.bind(controller));
 
-    fastify.post('/publish/stop', {
+    fastify.post('/:videoId/publishing/stop', {
         schema: { tags: ['Videos'] }
     }, controller.postStopPublish.bind(controller));
     
-    fastify.post('/unpublish', {
+    fastify.post('/:videoId/unpublish', {
         schema: { tags: ['Videos'] }
     }, controller.postUnpublish.bind(controller));
 
@@ -83,11 +83,11 @@ export function videosRoutes(
         schema: { tags: ['Videos'] }
     }, controller.postFinalize.bind(controller));
 
-    fastify.post('/index/add', {
+    fastify.post('/:videoId/index/add', {
         schema: { tags: ['Videos'] }
     }, controller.postAddToIndex.bind(controller));
 
-    fastify.post('/index/remove', {
+    fastify.post('/:videoId/index/remove', {
         schema: { tags: ['Videos'] }
     }, controller.postRemoveFromIndex.bind(controller));
 

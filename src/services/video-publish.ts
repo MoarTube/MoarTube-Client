@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Logger } from 'pino';
+import ffmpegStatic from 'ffmpeg-static';
 import type { NodeApiService } from './node-api.js';
 import type { S3Service, S3FlatConfig } from './s3.js';
 import type { SettingsRepository } from '../database/repositories/settings.js';
@@ -24,7 +25,7 @@ export class VideoPublishService {
     private readonly inProgressPublishingJobs: VideoPublishJob[] = [];
     private readonly pendingPublishVideoQueue: VideoPublishJob[] = [];
     private readonly activeEncodingJobs: Map<string, { stopping: boolean, process?: ChildProcess }> = new Map();
-    private ffmpegPath = 'ffmpeg'; // Default, should be configurable
+    private ffmpegPath = (ffmpegStatic as unknown as string | null) ?? 'ffmpeg';
 
     constructor(
         private readonly logger: Logger,
@@ -112,8 +113,8 @@ export class VideoPublishService {
                                 this.maximumInProgressPublishingJobCount = 5;
                             }
                         })
-                        .catch((error: unknown) => {
-                            this.logger.error(error, `[VideoPublishService] Failed publishing job: ${job.videoId}`);
+                        .catch((error: any) => {
+                            this.logger.error({ err: error, errMsg: error.message, stack: error.stack }, `[VideoPublishService] Failed publishing job: ${job.videoId}`);
                             
                             const index = this.findInProgressPublishJobIndex(job);
                             if (index !== -1) {this.inProgressPublishingJobs.splice(index, 1);}
@@ -173,8 +174,15 @@ export class VideoPublishService {
         const ffmpegArguments = this.generateFfmpegVideoArguments(job.videoId, job.resolution, job.format, sourceFilePath, destinationFilePath, job.sourceFileExtension, externalVideosBaseUrl);
 
         return new Promise((resolve, reject) => {
+            this.logger.info(`[VideoPublishService] Spawning ffmpeg: ${this.ffmpegPath} with args: ${ffmpegArguments.join(' ')}`);
+            
             const process = spawn(this.ffmpegPath, ffmpegArguments);
             
+            process.on('error', (err) => {
+                 this.logger.error(err, `[VideoPublishService] Failed to spawn ffmpeg for job ${job.videoId}`);
+                 reject(err);
+            });
+
             const activeJob = this.activeEncodingJobs.get(job.videoId);
             if (activeJob) {activeJob.process = process;}
 
@@ -240,7 +248,7 @@ export class VideoPublishService {
             if (code === 0) {
                 resolve();
             } else {
-                reject(new Error('encoding process ended with an error code: ' + String(code ?? 'unknown')));
+                reject(new Error(`encoding process ended with an error code: ${code}. stderr: ${stderrOutput}`));
             }
         });
     }
@@ -253,9 +261,6 @@ export class VideoPublishService {
             if (nodeSettings.storageConfig?.storageMode === 'filesystem') {
                  await this.handleFilesystemUpload(job, videosPath);
             } else if (nodeSettings.storageConfig?.storageMode === 's3provider' && nodeSettings.storageConfig.s3Config) {
-                // To avoid complexity warnings, we can move this to a helper too, or just simplify the logic inside.
-                // The original code has S3 logic in here. 
-                // Let's verify we have access to s3Service. Yes.
                 const s3Config = nodeSettings.storageConfig.s3Config;
                 await this.handleS3Upload(job, s3Config, videosPath);
             }
@@ -353,12 +358,12 @@ export class VideoPublishService {
     
     // Helper methods
     
-    private generateFfmpegVideoArguments(videoId: string, resolution: string, format: string, sourceFilePath: string, destinationFilePath: string, _sourceFileExtension: string, externalVideosBaseUrl: string): string[] {
+    private generateFfmpegVideoArguments(videoId: string, resolution: string, format: string, sourceFilePath: string, destinationFilePath: string, sourceFileExtension: string, externalVideosBaseUrl: string): string[] {
         const clientSettings = this.settingsRepository.getClientSettings();
         let width: string;
         let height: string;
-        
-        switch(resolution) {
+
+        switch (resolution) {
             case '2160p': width = '3840'; height = '2160'; break;
             case '1440p': width = '2560'; height = '1440'; break;
             case '720p': width = '1280'; height = '720'; break;
@@ -378,7 +383,7 @@ export class VideoPublishService {
             ogv: Record<string, string>;
         };
 
-         if (format === 'm3u8') {
+        if (format === 'm3u8') {
             bitrate = String(encoderSettings.hls[resolution + '-bitrate']) + 'k';
             gop = String(encoderSettings.hls['gop']);
             framerate = String(encoderSettings.hls['framerate']);
@@ -396,74 +401,199 @@ export class VideoPublishService {
             gop = String(encoderSettings.ogv['gop']);
             framerate = String(encoderSettings.ogv['framerate']);
         }
-        
-        // ... (Scaling logic omitted for brevity, implementing CPU only first as fallback, add GPU logic later if needed or copy fully)
-        // Copying logic from legacy
-        let scale = 'scale';
-        if (clientSettings.processingAgent?.processingAgentType === 'gpu' && (format === 'm3u8' || format === 'mp4')) {
-             if (clientSettings.processingAgent.processingAgentName === 'NVIDIA') {scale = 'scale_cuda';}
+
+        // Determine scale filter based on processing agent and format
+        let scale: string;
+        if (clientSettings.processingAgent?.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
+            scale = 'scale';
+        } else if (clientSettings.processingAgent?.processingAgentType === 'gpu' && (format === 'm3u8' || format === 'mp4')) {
+            if (clientSettings.processingAgent.processingAgentName === 'NVIDIA') {
+                scale = 'scale_cuda';
+            } else {
+                // AMD and others use standard scale
+                scale = 'scale';
+            }
+        } else {
+            scale = 'scale';
         }
 
+        // Build filter complex string
         let filterComplex = `${scale}='if(gt(ih,iw),-1,${width})':'if(gt(ih,iw),${height},-1)',`;
-        if (clientSettings.processingAgent?.processingAgentType === 'cpu') {
-             filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
+        if (clientSettings.processingAgent?.processingAgentType === 'cpu' || format === 'webm' || format === 'ogv') {
+            filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
+        } else if (clientSettings.processingAgent?.processingAgentType === 'gpu' && (format === 'm3u8' || format === 'mp4')) {
+            if (clientSettings.processingAgent.processingAgentName === 'NVIDIA') {
+                filterComplex += 'hwdownload,format=nv12,crop=trunc(iw/2)*2:trunc(ih/2)*2,hwupload_cuda';
+            } else {
+                // AMD and others
+                filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
+            }
         }
 
-        // Arguments construction matching legacy structure
-        let args: string[] = [];
         const hlsSegmentOutputPath = path.join(this.settingsRepository.getVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
 
-        // CPU Implementation (simplified)
-         if (format === 'm3u8') {
-            args = [
-                '-i', sourceFilePath,
-                '-c:a', 'aac',
-                '-c:v', 'libx264', '-b:v', bitrate,
-                '-sc_threshold', '0',
-                '-vf', filterComplex,
-                '-g', gop,
-                '-r', framerate,
-                '-f', 'hls',
-                '-hls_time', segmentLength,
-                '-hls_segment_filename', hlsSegmentOutputPath,
-                '-hls_base_url', `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
-                '-hls_playlist_type', 'vod',
-                destinationFilePath
-            ];
-        } else if (format === 'mp4') {
-             args = [
-                '-i', sourceFilePath,
-                '-c:a', 'aac',
-                '-c:v', 'libx264', '-b:v', bitrate,
-                '-vf', filterComplex,
-                '-g', gop,
-                '-r', framerate,
-                '-movflags', 'faststart',
-                '-y',
-                destinationFilePath
-            ];
-        } else if (format === 'webm') {
-             args = [
-                '-i', sourceFilePath,
-                '-c:a', 'libopus',
-                '-c:v', 'libvpx-vp9', '-b:v', bitrate,
-                '-vf', filterComplex,
-                '-g', gop,
-                '-r', framerate,
-                '-y',
-                destinationFilePath
-            ];
-        } else if (format === 'ogv') {
-             args = [
-                '-i', sourceFilePath,
-                '-c:a', 'libopus',
-                '-c:v', 'libvpx', '-b:v', bitrate,
-                '-vf', filterComplex,
-                '-g', gop,
-                '-r', framerate,
-                '-y',
-                destinationFilePath
-            ];
+        let args: string[] = [];
+        const agentType = clientSettings.processingAgent?.processingAgentType ?? 'cpu';
+        const agentName = clientSettings.processingAgent?.processingAgentName ?? '';
+
+        if (agentType === 'cpu') {
+            // CPU encoding
+            if (format === 'm3u8') {
+                args = [
+                    '-i', sourceFilePath,
+                    '-c:a', 'aac',
+                    '-c:v', 'libx264', '-b:v', bitrate,
+                    '-sc_threshold', '0',
+                    '-vf', filterComplex,
+                    '-g', gop, '-r', framerate,
+                    '-f', 'hls',
+                    '-hls_time', segmentLength,
+                    '-hls_segment_filename', hlsSegmentOutputPath,
+                    '-hls_base_url', `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+                    '-hls_playlist_type', 'vod',
+                    destinationFilePath
+                ];
+            } else if (format === 'mp4') {
+                args = [
+                    '-i', sourceFilePath,
+                    '-c:a', 'aac',
+                    '-c:v', 'libx264', '-b:v', bitrate,
+                    '-vf', filterComplex,
+                    '-g', gop, '-r', framerate,
+                    '-movflags', 'faststart',
+                    '-y', destinationFilePath
+                ];
+            } else if (format === 'webm') {
+                args = [
+                    '-i', sourceFilePath,
+                    '-c:a', 'libopus',
+                    '-c:v', 'libvpx-vp9', '-b:v', bitrate,
+                    '-vf', filterComplex,
+                    '-g', gop, '-r', framerate,
+                    '-y', destinationFilePath
+                ];
+            } else if (format === 'ogv') {
+                args = [
+                    '-i', sourceFilePath,
+                    '-c:a', 'libopus',
+                    '-c:v', 'libvpx', '-b:v', bitrate,
+                    '-vf', filterComplex,
+                    '-g', gop, '-r', framerate,
+                    '-y', destinationFilePath
+                ];
+            }
+        } else if (agentType === 'gpu') {
+            if (agentName === 'NVIDIA') {
+                // NVIDIA GPU encoding
+                if (format === 'm3u8') {
+                    const [decoderParam1, decoderParam2] = sourceFileExtension === '.ts'
+                        ? ['-c:v', 'h264_cuvid']
+                        : ['-hwaccel_output_format', 'cuda'];
+
+                    args = [
+                        '-hwaccel', 'cuvid',
+                        decoderParam1, decoderParam2,
+                        '-i', sourceFilePath,
+                        '-c:a', 'aac',
+                        '-c:v', 'h264_nvenc', '-b:v', bitrate,
+                        '-sc_threshold', '0',
+                        '-g', gop, '-r', framerate,
+                        '-vf', filterComplex,
+                        '-f', 'hls',
+                        '-hls_time', segmentLength,
+                        '-hls_segment_filename', hlsSegmentOutputPath,
+                        '-hls_base_url', `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+                        '-hls_playlist_type', 'vod',
+                        destinationFilePath
+                    ];
+                } else if (format === 'mp4') {
+                    const [decoderParam1, decoderParam2] = sourceFileExtension === '.ts'
+                        ? ['-c:v', 'h264_cuvid']
+                        : ['-hwaccel_output_format', 'cuda'];
+
+                    args = [
+                        '-hwaccel', 'cuvid',
+                        decoderParam1, decoderParam2,
+                        '-i', sourceFilePath,
+                        '-c:a', 'aac',
+                        '-c:v', 'h264_nvenc', '-b:v', bitrate,
+                        '-vf', filterComplex,
+                        '-g', gop, '-r', framerate,
+                        '-movflags', 'faststart',
+                        '-y', destinationFilePath
+                    ];
+                } else if (format === 'webm') {
+                    // webm/ogv always use CPU codecs, even on NVIDIA GPU
+                    args = [
+                        '-i', sourceFilePath,
+                        '-c:a', 'libopus',
+                        '-c:v', 'libvpx-vp9', '-b:v', bitrate,
+                        '-vf', filterComplex,
+                        '-g', gop, '-r', framerate,
+                        '-y', destinationFilePath
+                    ];
+                } else if (format === 'ogv') {
+                    args = [
+                        '-i', sourceFilePath,
+                        '-c:a', 'libopus',
+                        '-c:v', 'libvpx', '-b:v', bitrate,
+                        '-vf', filterComplex,
+                        '-g', gop, '-r', framerate,
+                        '-y', destinationFilePath
+                    ];
+                }
+            } else if (agentName === 'AMD') {
+                // AMD GPU encoding
+                if (format === 'm3u8') {
+                    args = [
+                        '-hwaccel', 'dxva2',
+                        '-hwaccel_device', '0',
+                        '-i', sourceFilePath,
+                        '-c:a', 'aac',
+                        '-c:v', 'h264_amf', '-b:v', bitrate,
+                        '-sc_threshold', '0',
+                        '-g', gop, '-r', framerate,
+                        '-vf', filterComplex,
+                        '-f', 'hls',
+                        '-hls_time', segmentLength,
+                        '-hls_segment_filename', hlsSegmentOutputPath,
+                        '-hls_base_url', `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+                        '-hls_playlist_type', 'vod',
+                        destinationFilePath
+                    ];
+                } else if (format === 'mp4') {
+                    args = [
+                        '-hwaccel', 'dxva2',
+                        '-hwaccel_device', '0',
+                        '-i', sourceFilePath,
+                        '-c:a', 'aac',
+                        '-c:v', 'h264_amf', '-b:v', bitrate,
+                        '-vf', filterComplex,
+                        '-g', gop, '-r', framerate,
+                        '-movflags', 'faststart',
+                        '-y', destinationFilePath
+                    ];
+                } else if (format === 'webm') {
+                    // webm/ogv always use CPU codecs, even on AMD GPU
+                    args = [
+                        '-i', sourceFilePath,
+                        '-c:a', 'libopus',
+                        '-c:v', 'libvpx-vp9', '-b:v', bitrate,
+                        '-vf', filterComplex,
+                        '-g', gop, '-r', framerate,
+                        '-y', destinationFilePath
+                    ];
+                } else if (format === 'ogv') {
+                    args = [
+                        '-i', sourceFilePath,
+                        '-c:a', 'libopus',
+                        '-c:v', 'libvpx', '-b:v', bitrate,
+                        '-vf', filterComplex,
+                        '-g', gop, '-r', framerate,
+                        '-y', destinationFilePath
+                    ];
+                }
+            }
         }
 
         return args;

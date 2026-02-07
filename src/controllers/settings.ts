@@ -23,6 +23,8 @@ import type {
 } from '@/types/requests.js';
 import { detectOperatingSystem, detectSystemCpu, detectSystemGpu } from '@/utils/hardware.js';
 import sharp from 'sharp';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // Disable sharp cache
 sharp.cache(false);
@@ -159,11 +161,29 @@ export class SettingsController extends BaseController {
     }
 
     // API: GET /settings/client/encoding/default
-    // Note: Assuming we have defaults stored or available. 
-    // Legacy calls getClientSettingsDefault().
-    // We should implement get defaults in Config or Repository.
-    // For now, I'll return empty or current if defaults not available.
-
+    public apiGetClientSettingsDefault = async (_request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
+        try {
+            const defaultSettingsPath = path.join(process.cwd(), 'data', '_client_settings_default.json');
+            if (fs.existsSync(defaultSettingsPath)) {
+                const defaults = JSON.parse(await fs.promises.readFile(defaultSettingsPath, 'utf-8')) as ClientSettings;
+                
+                // Return just the encoding parts to match legacy expectation if helpful, 
+                // or the whole object. Legacy code:
+                // var response = { "videoEncoderSettings": defaultSettings.videoEncoderSettings, "liveEncoderSettings": defaultSettings.liveEncoderSettings };
+                
+                const response = {
+                    videoEncoderSettings: defaults.videoEncoderSettings,
+                    liveEncoderSettings: defaults.liveEncoderSettings
+                };
+                
+                return await reply.send(response);
+            }
+            return await reply.send({});
+        } catch (error) {
+             this.logger.error('Error getting default settings', error);
+             return await this.sendError(reply, 'Failed to get defaults');
+        }
+    }
     
     // --- Node Settings Section ---
 
@@ -493,13 +513,13 @@ export class SettingsController extends BaseController {
 
     public apiExportDatabase = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         const jwtToken = request.session.jwtToken ?? '';
-        const response = await this.nodeApiService.settingsExportDatabase(jwtToken);
+        const response = await this.nodeApiService.settingsExportDatabase(jwtToken) as { isError: boolean, database: unknown, message?: string };
 
         if (response.isError) {
             return await reply.status(500).send(response);
         } else {
             const databaseJsonString = JSON.stringify(response.database);
-            reply.header('Content-Disposition', `attachment; filename=database-${Date.now()}.json`);
+            reply.header('Content-Disposition', `attachment; filename=database-${String(Date.now())}.json`);
             reply.header('Content-Type', 'application/json');
             return await reply.send(databaseJsonString);
         }

@@ -6,6 +6,12 @@ export interface VideoSearchQuery {
     timestamp?: number;
 }
 
+export interface VideoImportQuery {
+    title: string;
+    description: string;
+    tags: string;
+}
+
 export interface StartStreamBody {
     title: string;
     description: string;

@@ -31,6 +31,11 @@ export function settingsRoutes(
     schema: { tags: ['Settings'] }
   }, settingsController.apiSetGpuAcceleration.bind(settingsController));
 
+  // Client Encoding Default
+  fastify.get('/client/encoding/default', {
+    schema: { tags: ['Settings'] }
+  }, settingsController.apiGetClientSettingsDefault.bind(settingsController));
+
   // Node API
   fastify.get('/node', {
     schema: { tags: ['Settings'] }
@@ -64,7 +69,7 @@ export function settingsRoutes(
     schema: { tags: ['Settings'] }
   }, settingsController.apiSetNodeId.bind(settingsController));
 
-  fastify.post('/node/network/secure', {
+  fastify.post('/node/secure', {
     schema: { tags: ['Settings'] }
   }, settingsController.apiSetSecureConnection.bind(settingsController));
 

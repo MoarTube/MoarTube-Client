@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { pipeline } from 'node:stream/promises';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -13,10 +14,9 @@ import type { S3Service } from '@/services/s3.js';
 import type { SocketService } from '@/services/socket.js';
 import type {
     VideoSearchQuery,
+    VideoImportQuery,
     VideoIdParams,
-    StopImportBody,
     PublishBody,
-    StopPublishBody,
     UnpublishBody,
     VideoDataBody,
     AddToIndexBody,
@@ -100,75 +100,137 @@ export class VideosController extends BaseController {
         }
     }
     public postImport = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
-        try {
-            const jwtToken = request.session.jwtToken ?? '';
-            
-            const { videoId, tempFilePath, fileMimeType } = await this.handleImportMultipart(request);
+        let tempFilePath: string | undefined;
+        let createdVideoId: string | undefined;
 
-            if (videoId === undefined || tempFilePath === undefined) {
-                if (tempFilePath !== undefined && fs.existsSync(tempFilePath)) {
-                    await fs.promises.unlink(tempFilePath);
-                }
-                return await this.sendError(reply, 'Missing videoId or videoFile');
+        const jwtToken = request.session.jwtToken ?? '';
+
+        try {
+            // 1. Parse Metadata from Query
+            const { title, description, tags } = request.query as VideoImportQuery;
+
+            // 2. Create Video Entry on Node (Get ID) FIRST
+            const createResponse = await this.nodeApiService.createVideo(jwtToken, title, description, tags);
+            
+            if (createResponse.isError) {
+                 return await reply.send(createResponse);
+            }
+            createdVideoId = createResponse.videoId;
+            const videoId = createdVideoId;
+
+            // 3. Handle File Upload to Temp (With Progress)
+            const { tempFilePath: importedPath, fileMimeType } = await this.handleImportMultipart(request, jwtToken, videoId);
+            tempFilePath = importedPath;
+
+            if (tempFilePath === undefined) {
+                 throw new Error('Video file is missing');
             }
 
-            // Move to correct source location
+            // Validation: Only allow .mp4 or .webm
+            let ext = path.extname(tempFilePath).toLowerCase();
+            if (ext === '' && fileMimeType !== undefined) {
+                 if (fileMimeType === 'video/mp4') {
+                    ext = '.mp4';
+                }
+                 else if (fileMimeType === 'video/webm') {
+                    ext = '.webm';
+                }
+            }
+
+            if (ext !== '.mp4' && ext !== '.webm') {
+                 throw new Error('Invalid file type. Only .mp4 and .webm are supported.');
+            }
+
+            // 4. Move to Source Directory
             const videosDir = this.settingsRepository.getVideosDirectoryPath();
             const videoSourceDir = path.join(videosDir, videoId, 'source');
             await fs.promises.mkdir(videoSourceDir, { recursive: true });
-
-            let ext = path.extname(tempFilePath);
-            if (ext === '' && fileMimeType !== undefined) {
-                 if (fileMimeType === 'video/mp4') {ext = '.mp4';}
-                 else if (fileMimeType === 'video/webm') {ext = '.webm';}
-            }
             
             const destPath = path.join(videoSourceDir, videoId + ext);
             await fs.promises.rename(tempFilePath, destPath);
+            tempFilePath = undefined; // Cleared success
 
-            // Trigger Import Service
-            // We mock the "file" object expected by service
+            // 5. Trigger Import Service
             const fileObj = {
                 path: destPath,
-                mimetype: fileMimeType ?? 'application/octet-stream' // Should be detected
+                mimetype: fileMimeType ?? 'application/octet-stream'
             };
 
             const result = await this.videoImportService.importVideo(jwtToken, videoId, fileObj);
             
             return await reply.send(result);
+
         } catch (error) {
             this.logger.error('Error in postImport', error);
-            return await this.sendError(reply, 'Upload failed');
+
+            if (tempFilePath !== undefined && fs.existsSync(tempFilePath)) {
+                await fs.promises.unlink(tempFilePath);
+            }
+
+            if (createdVideoId !== undefined) {
+                try {
+                    await this.nodeApiService.deleteVideos(jwtToken, [createdVideoId]);
+
+                    const videosDir = this.settingsRepository.getVideosDirectoryPath();
+                    const videoSourceDir = path.join(videosDir, createdVideoId);
+                    if (fs.existsSync(videoSourceDir)) {
+                        await fs.promises.rm(videoSourceDir, { recursive: true, force: true });
+                    }
+                } catch (cleanupError) {
+                    this.logger.error(`Failed to cleanup ghost video ${createdVideoId}`, cleanupError);
+                }
+            }
+
+            const err = error as Error;
+            return await this.sendError(reply, err.message || 'Upload failed');
         }
     }
 
-    private async handleImportMultipart(request: FastifyRequest): Promise<{ videoId: string | undefined; tempFilePath: string | undefined; fileMimeType: string | undefined }> {
+    private async handleImportMultipart(request: FastifyRequest, jwtToken: string, videoId: string): Promise<{ tempFilePath: string | undefined; fileMimeType: string | undefined }> {
          const parts = request.parts();
-         let videoId: string | undefined;
          let tempFilePath: string | undefined;
          let fileMimeType: string | undefined;
+         
+         const totalFileSize = Number.parseInt(request.headers['content-length'] ?? '0', 10);
+         let receivedFileSize = 0;
+         let lastProgressTime = 0;
 
          for await (const part of parts) {
             if (part.type === 'file') {
-                if (part.fieldname === 'videoFile') {
+                if (part.fieldname === 'video_file') {
                      const tempDir = this.settingsRepository.getTempDirectoryPath();
-                     tempFilePath = path.join(tempDir, part.filename);
+                     const uniqueName = `${randomUUID()}${path.extname(part.filename)}`;
+                     tempFilePath = path.join(tempDir, uniqueName);
                      fileMimeType = part.mimetype;
+
+                     part.file.on('data', (chunk: Buffer) => {
+                        receivedFileSize += chunk.length;
+                        if (totalFileSize > 0) {
+                            const currentTime = Date.now();
+                            if (currentTime - lastProgressTime >= 100) {
+                                lastProgressTime = currentTime;
+                                const progress = Math.floor((receivedFileSize / totalFileSize) * 100);
+                                this.socketService.broadcastToUser(jwtToken, 'echo', { 
+                                    eventName: 'video_status', 
+                                    payload: { type: 'importing', videoId: videoId, progress: progress } 
+                                });
+                            }
+                        }
+                     });
+
                      await pipeline(part.file, fs.createWriteStream(tempFilePath));
                 } else {
                      part.file.resume();
                 }
-            } else if (part.fieldname === 'videoId') {
-                videoId = (part.value as string);
             }
          }
-         return { videoId, tempFilePath, fileMimeType };
+         return { tempFilePath, fileMimeType };
     }
 
     public postStopImport = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
          try {
              const jwtToken = request.session.jwtToken ?? '';
-             const { videoId } = request.body as StopImportBody;
+             const { videoId } = request.params as VideoIdParams;
              const result = await this.videoImportService.stopImporting(jwtToken, videoId);
              return await reply.send(result);
          } catch(error) {
@@ -180,7 +242,8 @@ export class VideosController extends BaseController {
     public postPublish = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
             const jwtToken = request.session.jwtToken ?? '';
-            const { videoId, publishings: publishingsStr } = request.body as PublishBody;
+            const { videoId } = request.params as VideoIdParams;
+            const { publishings: publishingsStr } = request.body as PublishBody;
             const publishings = JSON.parse(publishingsStr) as { format: string, resolution: string }[];
 
             const response1 = await this.nodeApiService.getVideoData(jwtToken, videoId);
@@ -231,7 +294,7 @@ export class VideosController extends BaseController {
     public postStopPublish = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
              const jwtToken = request.session.jwtToken ?? '';
-             const { videoId } = request.body as StopPublishBody;
+             const { videoId } = request.params as VideoIdParams;
              
              // Stop local
              this.videoPublishService.stopPendingPublishVideo(videoId);
@@ -248,7 +311,8 @@ export class VideosController extends BaseController {
     public postUnpublish = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
             const jwtToken = request.session.jwtToken ?? '';
-            const { videoId, format, resolution } = request.body as UnpublishBody;
+            const { videoId } = request.params as VideoIdParams;
+            const { format, resolution } = request.body as UnpublishBody;
 
             const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
             const storageConfig = nodeSettings.storageConfig;
@@ -345,7 +409,8 @@ export class VideosController extends BaseController {
     public postAddToIndex = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
             const jwtToken = request.session.jwtToken ?? '';
-            const { videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken } = request.body as AddToIndexBody;
+            const { videoId } = request.params as VideoIdParams;
+            const { containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken } = request.body as AddToIndexBody;
             const response = await this.nodeApiService.addVideoToIndex(jwtToken, videoId, containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken);
             return await reply.send(response);
         } catch (error) {
@@ -357,7 +422,8 @@ export class VideosController extends BaseController {
     public postRemoveFromIndex = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         try {
             const jwtToken = request.session.jwtToken ?? '';
-            const { videoId, cloudflareTurnstileToken } = request.body as RemoveFromIndexBody;
+            const { videoId } = request.params as VideoIdParams;
+            const { cloudflareTurnstileToken } = request.body as RemoveFromIndexBody;
             const response = await this.nodeApiService.removeVideoFromIndex(jwtToken, videoId, cloudflareTurnstileToken);
             return await reply.send(response);
         } catch (error) {
