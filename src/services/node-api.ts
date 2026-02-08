@@ -352,6 +352,10 @@ public async setNodeName(jwtToken: string, nodeName: string): Promise<BaseNodeRe
       return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/storage/config/toggle', { storageConfig });
   }
 
+  public async restartNode(jwtToken: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/restart', {});
+  }
+
   public async setAccountCredentials(jwtToken: string, username: string, password: string): Promise<BaseNodeResponse> {
       return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/account', { username, password });
   }

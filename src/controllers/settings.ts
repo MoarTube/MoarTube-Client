@@ -299,6 +299,12 @@ export class SettingsController extends BaseController {
                  settings.nodeWebsocketProtocol = 'ws';
              }
              this.config.saveClientSettings(settings);
+
+             try {
+                 await this.nodeApiService.restartNode(request.session.jwtToken ?? '');
+             } catch (error) {
+                 this.logger.error('Failed to restart node after secure connection change', error as Error);
+             }
         }
         return await reply.send(response);
     }
@@ -336,11 +342,18 @@ export class SettingsController extends BaseController {
     // API: POST /settings/node/network/internal
     public apiSetNetworkInternal = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
          const { nodeListeningPort } = request.body as SetNetworkInternalBody;
-         const response = await this.nodeApiService.setNetworkInternal(request.session.jwtToken ?? '', nodeListeningPort);
+         const jwtToken = request.session.jwtToken ?? '';
+         const response = await this.nodeApiService.setNetworkInternal(jwtToken, nodeListeningPort);
          if (!response.isError) {
              const settings = this.config.clientSettings;
              settings.nodePort = nodeListeningPort;
              this.config.saveClientSettings(settings);
+
+             try {
+                 await this.nodeApiService.restartNode(jwtToken);
+             } catch (error) {
+                 this.logger.error('Failed to restart node after network internal change', error as Error);
+             }
          }
          return await reply.send(response);
     }
@@ -438,7 +451,17 @@ export class SettingsController extends BaseController {
     
     public apiToggleDatabase = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
         const { databaseConfig } = request.body as ToggleDatabaseBody;
-        const response = await this.nodeApiService.databaseConfigToggle(request.session.jwtToken ?? '', databaseConfig);
+        const jwtToken = request.session.jwtToken ?? '';
+        const response = await this.nodeApiService.databaseConfigToggle(jwtToken, databaseConfig);
+
+        if (!response.isError) {
+            try {
+                await this.nodeApiService.restartNode(jwtToken);
+            } catch (error) {
+                this.logger.error('Failed to restart node after database toggle', error as Error);
+            }
+        }
+
         return await reply.send(response);
     }
     
@@ -454,19 +477,28 @@ export class SettingsController extends BaseController {
         }
 
         const videosData = (await this.nodeApiService.getVideoDataAll(jwtToken))['videosData'];
-        const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(jwtToken);
 
         const validStorageConfig = storageConfig as StorageConfig;
         const response = await this.nodeApiService.storageConfigToggle(jwtToken, validStorageConfig);
         
         if (!response.isError && storageConfig.storageMode === 's3provider' && s3ValidationConfig) {
              try {
+                 const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(jwtToken);
                  const videosForUpdate = videosData as VideoForManifestUpdate[];
                  await this.s3Service.updateM3u8ManifestsWithExternalVideosBaseUrl(s3ValidationConfig, videosForUpdate, externalVideosBaseUrl);
              } catch (error) {
                  this.logger.error('Failed to update S3 manifests after storage toggle', error as Error);
              }
         }
+
+        if (!response.isError) {
+            try {
+                await this.nodeApiService.restartNode(jwtToken);
+            } catch (error) {
+                this.logger.error('Failed to restart node after storage toggle', error as Error);
+            }
+        }
+
         return await reply.send(response);
     }
 

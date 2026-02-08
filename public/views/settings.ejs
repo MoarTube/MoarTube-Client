@@ -1888,42 +1888,32 @@
 			}
 
 			function submitDatabaseConfig(databaseConfig, radio) {
-				Swal.fire({
-					title: 'please wait',
-					html: '...applying your settings...',
-					showConfirmButton: false,
-					allowOutsideClick: false,
-					didOpen: () => {
-						Swal.showLoading();
+				$.ajax({ type: 'POST', url: '/settings/node/database/config/toggle', data: JSON.stringify({ databaseConfig: databaseConfig }), contentType: 'application/json; charset=utf-8' })
+					.always(function () {
+						$('#database-dialect-sqlite-radio').prop('disabled', false);
+						$('#database-dialect-postgres-radio').prop('disabled', false);
+					})
+					.done(function (data, textStatus, xhr) {
+						if (data.isError) {
+							showAlert(true, data.message);
+						}
+						else {
+							$(radio).prop('checked', true);
 
-						$.ajax({ type: 'POST', url: '/settings/node/database/config/toggle', data: JSON.stringify({ databaseConfig: databaseConfig }), contentType: 'application/json; charset=utf-8' })
-							.always(function () {
-								$('#database-dialect-sqlite-radio').prop('disabled', false);
-								$('#database-dialect-postgres-radio').prop('disabled', false);
-							})
-							.done(function (data, textStatus, xhr) {
-								if (data.isError) {
-									showAlert(true, data.message);
-								}
-								else {
-									$(radio).prop('checked', true);
+							$('#database-dialect-sqlite-radio').removeAttr('data-selected');
+							$('#database-dialect-postgres-radio').removeAttr('data-selected');
 
-									$('#database-dialect-sqlite-radio').removeAttr('data-selected');
-									$('#database-dialect-postgres-radio').removeAttr('data-selected');
+							$('#database-dialect-sqlite-radio').removeData('selected');
+							$('#database-dialect-postgres-radio').removeData('selected');
 
-									$('#database-dialect-sqlite-radio').removeData('selected');
-									$('#database-dialect-postgres-radio').removeData('selected');
+							$(radio).data('selected', 'selected');
 
-									$(radio).data('selected', 'selected');
-
-									showAlert(false, 'Database configuration saved. Your node is restarting...');
-								}
-							})
-							.fail(function () {
-								showAlert(true, 'an error occurred, please try again');
-							});
-					}
-				});
+							showAlert(false, 'Database configuration saved. Your node is restarting...');
+						}
+					})
+					.fail(function () {
+						showAlert(true, 'an error occurred, please try again');
+					});
 			}
 		}
 
@@ -2058,42 +2048,32 @@
 			}
 
 			function submitStorageConfig(storageConfig, radio) {
-				Swal.fire({
-					title: 'please wait',
-					html: '...applying your settings...',
-					showConfirmButton: false,
-					allowOutsideClick: false,
-					didOpen: () => {
-						Swal.showLoading();
+				$.ajax({ type: 'POST', url: '/settings/node/storage/config/toggle', data: JSON.stringify({ storageConfig: storageConfig }), contentType: 'application/json; charset=utf-8' })
+					.always(function () {
+						$('#storage-configuration-filesystem-radio').prop('disabled', false);
+						$('#storage-configuration-s3provider-radio').prop('disabled', false);
+					})
+					.done(function (data, textStatus, xhr) {
+						if (data.isError) {
+							showAlert(true, data.message);
+						}
+						else {
+							$(radio).prop('checked', true);
 
-						$.ajax({ type: 'POST', url: '/settings/node/storage/config/toggle', data: JSON.stringify({ storageConfig: storageConfig }), contentType: 'application/json; charset=utf-8' })
-							.always(function () {
-								$('#storage-configuration-filesystem-radio').prop('disabled', false);
-								$('#storage-configuration-s3provider-radio').prop('disabled', false);
-							})
-							.done(function (data, textStatus, xhr) {
-								if (data.isError) {
-									showAlert(true, data.message);
-								}
-								else {
-									$(radio).prop('checked', true);
+							$('#storage-configuration-filesystem-radio').removeAttr('data-selected');
+							$('#storage-configuration-s3provider-radio').removeAttr('data-selected');
 
-									$('#storage-configuration-filesystem-radio').removeAttr('data-selected');
-									$('#storage-configuration-s3provider-radio').removeAttr('data-selected');
+							$('#storage-configuration-filesystem-radio').removeData('selected');
+							$('#storage-configuration-s3provider-radio').removeData('selected');
 
-									$('#storage-configuration-filesystem-radio').removeData('selected');
-									$('#storage-configuration-s3provider-radio').removeData('selected');
+							$(radio).data('selected', 'selected');
 
-									$(radio).data('selected', 'selected');
-
-									showAlert(false, 'Storage configuration saved. Your node is restarting...');
-								}
-							})
-							.fail(function () {
-								showAlert(true, 'an error occurred, please try again');
-							});
-					}
-				});
+							showAlert(false, 'Storage configuration saved. Your node is restarting...');
+						}
+					})
+					.fail(function () {
+						showAlert(true, 'an error occurred, please try again');
+					});
 			}
 		}
 
