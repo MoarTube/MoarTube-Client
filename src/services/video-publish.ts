@@ -3,12 +3,12 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Logger } from 'pino';
-import ffmpegStatic from 'ffmpeg-static';
 import type { NodeApiService } from './node-api.js';
 import type { S3Service, S3ValidationConfig } from './s3.js';
 import type { SettingsRepository } from '../database/repositories/settings.js';
 import type { SocketService } from './socket.js';
 import type { ManifestService } from './manifest.js';
+import type { FfmpegService } from './ffmpeg.js';
 
 interface VideoPublishJob {
     jwtToken: string;
@@ -25,7 +25,6 @@ export class VideoPublishService {
     private readonly inProgressPublishingJobs: VideoPublishJob[] = [];
     private readonly pendingPublishVideoQueue: VideoPublishJob[] = [];
     private readonly activeEncodingJobs: Map<string, { stopping: boolean, process?: ChildProcess }> = new Map();
-    private ffmpegPath = (ffmpegStatic as unknown as string | null) ?? 'ffmpeg';
 
     constructor(
         private readonly logger: Logger,
@@ -33,13 +32,10 @@ export class VideoPublishService {
         private readonly s3Service: S3Service,
         private readonly settingsRepository: SettingsRepository,
         private readonly socketService: SocketService,
-        private readonly manifestService: ManifestService
+        private readonly manifestService: ManifestService,
+        private readonly ffmpegService: FfmpegService
     ) {
         this.startVideoPublishInterval();
-    }
-
-    public setFfmpegPath(path: string): void {
-        this.ffmpegPath = path;
     }
 
     public enqueuePendingPublishVideo(job: VideoPublishJob): void {
@@ -174,9 +170,9 @@ export class VideoPublishService {
         const ffmpegArguments = this.generateFfmpegVideoArguments(job.videoId, job.resolution, job.format, sourceFilePath, destinationFilePath, job.sourceFileExtension, externalVideosBaseUrl);
 
         return new Promise((resolve, reject) => {
-            this.logger.info(`[VideoPublishService] Spawning ffmpeg: ${this.ffmpegPath} with args: ${ffmpegArguments.join(' ')}`);
+            this.logger.info(`[VideoPublishService] Spawning ffmpeg: ${this.ffmpegService.getPath()} with args: ${ffmpegArguments.join(' ')}`);
             
-            const process = spawn(this.ffmpegPath, ffmpegArguments);
+            const process = spawn(this.ffmpegService.getPath(), ffmpegArguments);
             
             process.on('error', (err) => {
                  this.logger.error(err, `[VideoPublishService] Failed to spawn ffmpeg for job ${job.videoId}`);

@@ -10,6 +10,7 @@ import type { StorageConfig } from '@/types/node-api.js';
 import type { SettingsRepository } from '../database/repositories/settings.js';
 import type { SocketService } from './socket.js';
 import type { ManifestService } from './manifest.js';
+import type { FfmpegService } from './ffmpeg.js';
 import axios from 'axios';
 
 interface StreamContext {
@@ -51,7 +52,6 @@ interface HandleStreamDataOptions {
 
 export class LiveStreamService {
     private readonly activeStreams: Map<string, { process?: ChildProcess, stopping: boolean }> = new Map();
-    private ffmpegPath = 'ffmpeg';
     private uploadingImages = { thumbnail: false, preview: false, poster: false };
     private lastVideoImagesUpdateTimestamp = 0;
 
@@ -61,12 +61,9 @@ export class LiveStreamService {
         private readonly s3Service: S3Service,
         private readonly settingsRepository: SettingsRepository,
         private readonly socketService: SocketService,
-        private readonly manifestService: ManifestService
+        private readonly manifestService: ManifestService,
+        private readonly ffmpegService: FfmpegService
     ) {}
-
-    public setFfmpegPath(path: string): void {
-        this.ffmpegPath = path;
-    }
 
     public addProcessToLiveStreamTracker(videoId: string, process: ChildProcess): void {
         this.activeStreams.set(videoId, { process, stopping: false });
@@ -78,6 +75,13 @@ export class LiveStreamService {
     
     public liveStreamExists(videoId: string): boolean {
         return this.activeStreams.has(videoId);
+    }
+
+    public markLiveStreamStopping(videoId: string): void {
+        if (this.activeStreams.has(videoId)) {
+            const stream = this.activeStreams.get(videoId); if (!stream) { return; }
+            stream.stopping = true;
+        }
     }
     
     public stopLiveStream(videoId: string): void {
@@ -102,9 +106,9 @@ export class LiveStreamService {
         const isCloudflareCdnEnabled = nodeSettings.isCloudflareCdnEnabled ?? false;
         const videosPath = this.settingsRepository.getVideosDirectoryPath();
 
-        if (storageConfig.s3Config !== undefined) {
+        if (storageConfig.storageMode === 's3provider' && storageConfig.s3Config) {
             const prefix = `external/videos/${videoId}/adaptive/m3u8`;
-            await this.s3Service.deleteDirectoryRecursive(storageConfig.s3Config, prefix); // Assuming implementation in S3Service
+            await this.s3Service.deleteDirectoryRecursive(storageConfig.s3Config, prefix);
         }
 
         await this.manifestService.refreshMasterManifest(jwtToken, videoId);
@@ -119,7 +123,7 @@ export class LiveStreamService {
         
         const ffmpegArguments = this.generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl, isRecordingStreamRemotely, externalVideosBaseUrl);
 
-        const process = spawn(this.ffmpegPath, ffmpegArguments);
+        const process = spawn(this.ffmpegService.getPath(), ffmpegArguments);
         this.addProcessToLiveStreamTracker(videoId, process);
 
         let lengthSeconds = 0;
@@ -175,16 +179,38 @@ export class LiveStreamService {
              this.logger.info(`[LiveStreamService] Stream process exited with code ${String(code)}`);
              if (this.liveStreamExists(videoId)) {
                  if (!this.isLiveStreamStopping(videoId)) {
-                     // Stopped externally
-                     this.socketService.broadcastToUser(jwtToken, 'echo', { eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId } });
-                     // Handle cleanup/finalization similar to legacy
-                     if (storageConfig.s3Config !== undefined) {
-                         if (!isRecordingStreamRemotely) {
-                              // cleanup S3
+                     // Stopped externally (e.g. OBS stopped streaming)
+                     // Finalize cleanup similar to controller stopStream
+                     try {
+                         this.socketService.broadcastToUser(jwtToken, 'echo', { eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId } });
+
+                         const exitNodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
+                         const exitStorageConfig = exitNodeSettings.storageConfig;
+
+                         if (exitStorageConfig?.storageMode === 's3provider' && exitStorageConfig.s3Config) {
+                             const s3Config = exitStorageConfig.s3Config;
+
+                             const videoDataResponse = await this.nodeApiService.getVideoData(jwtToken, videoId);
+                             const videoData = videoDataResponse.videoData;
+                             const isStreamRecordedRemotely = videoData.isStreamRecordedRemotely;
+
+                             if (isStreamRecordedRemotely) {
+                                 const resolutions = videoData.outputs?.m3u8 ?? [];
+                                 await this.s3Service.convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions);
+                             } else {
+                                 const prefix = `external/videos/${videoId}/adaptive/m3u8`;
+                                 await this.s3Service.deleteDirectoryRecursive(s3Config, prefix);
+                             }
                          }
+
+                         const response = await this.nodeApiService.stopVideoStreaming(jwtToken, videoId);
+
+                         if (!response.isError) {
+                             this.socketService.broadcastToUser(jwtToken, 'echo', { eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId } });
+                         }
+                     } catch (exitError) {
+                         this.logger.error(exitError instanceof Error ? exitError : new Error(String(exitError)), 'Error during stream exit cleanup');
                      }
-                     await this.nodeApiService.stopVideoStreaming(jwtToken, videoId);
-                     this.socketService.broadcastToUser(jwtToken, 'echo', { eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId } });
                  }
                  this.activeStreams.delete(videoId);
              }
@@ -273,12 +299,15 @@ export class LiveStreamService {
                 fs.appendFileSync(sourceFilePath, segmentBuffer);
             }
 
-            if (!isRecordingStreamRemotely && !isRecordingStreamLocally) {
+            if (!isRecordingStreamRemotely) {
                     const segmentIndexToRemove = currentSegmentCounter - 20;
                     if(segmentIndexToRemove >= 0) {
                     const segmentName = `segment-${resolution}-${String(segmentIndexToRemove)}.ts`;
                     if (storageConfig.storageMode === 'filesystem') {
                          void this.nodeApiService.removeAdaptiveStreamSegment(jwtToken, videoId, format, resolution, segmentName).catch(()=>{});
+                    } else if (storageConfig.storageMode === 's3provider' && storageConfig.s3Config) {
+                         const segmentKey = `external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/${segmentName}`;
+                         void this.s3Service.deleteObjectWithKey(storageConfig.s3Config, segmentKey).catch(()=>{});
                     }
                     }
             }
@@ -337,9 +366,16 @@ export class LiveStreamService {
             const imagesDir = path.join(this.settingsRepository.getVideosDirectoryPath(), videoId, 'images');
             const sourceImagePath = path.join(imagesDir, 'source.jpg');
             
-            const process = spawn(this.ffmpegPath, ['-i', 'pipe:0', '-ss', '0.5', '-q', '18', '-frames:v', '1', '-y', sourceImagePath]);
-            process.stdin.write(segmentBuffer);
-            process.stdin.end();
+            const process = spawn(this.ffmpegService.getPath(), ['-i', 'pipe:0', '-ss', '0.5', '-q', '18', '-frames:v', '1', '-y', sourceImagePath]);
+
+            // FFmpeg triggers a write EOF error when piping live mpeg-ts segments
+            // because they lack trailer data. This is benign on Windows; swallow it
+            // to prevent an unhandled 'error' event from crashing the process.
+            process.stdin.on('error', () => {});
+
+            process.stdin.write(segmentBuffer, () => {
+                process.stdin.end();
+            });
 
         process.on('exit', (code): void => {
             void (async (): Promise<void> => {
@@ -390,30 +426,79 @@ export class LiveStreamService {
         }
 
         let args: string[] = [];
-        // const hlsSegmentOutputPath = path.join(this.settingsRepository.getVideosDirectoryPath(), videoId + '/adaptive/m3u8/' + resolution + '/segment-' + resolution + '-%d.ts');
 
-         if (clientSettings.processingAgent?.processingAgentType === 'cpu' && format === 'm3u8') {
-            args = [
-                '-listen', '1',
-                '-timeout', '10000',
-                '-f', 'flv',
-                '-i', rtmpUrl,
-                '-c:v', 'libx264', '-b:v', bitrate,
-                '-sc_threshold', '0',
-                '-g', gop,
-                '-r', framerate,
-                '-c:a', 'aac',
-                '-f', 'hls',
-                '-hls_time', segmentLength, '-hls_list_size', '20',
-                '-hls_base_url', `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
-                '-hls_playlist_type', 'event',
-                'pipe:1'
-            ];
+        const processingAgent = clientSettings.processingAgent as { processingAgentType?: string; processingAgentName?: string } | undefined;
+
+        if (processingAgent?.processingAgentType === 'cpu') {
+            if (format === 'm3u8') {
+                args = [
+                    '-listen', '1',
+                    '-timeout', '10000',
+                    '-f', 'flv',
+                    '-i', rtmpUrl,
+                    '-c:v', 'libx264', '-b:v', bitrate,
+                    '-sc_threshold', '0',
+                    '-g', gop,
+                    '-r', framerate,
+                    '-c:a', 'aac',
+                    '-f', 'hls',
+                    '-hls_time', segmentLength, '-hls_list_size', '20',
+                    '-hls_base_url', `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+                    '-hls_playlist_type', 'event',
+                    'pipe:1'
+                ];
+            }
+        } else if (processingAgent?.processingAgentType === 'gpu') {
+            if (processingAgent.processingAgentName === 'NVIDIA') {
+                if (format === 'm3u8') {
+                    args = [
+                        '-listen', '1',
+                        '-timeout', '10000',
+                        '-hwaccel', 'cuvid',
+                        '-hwaccel_output_format', 'cuda',
+                        '-f', 'flv',
+                        '-i', rtmpUrl,
+                        '-c:v', 'h264_nvenc', '-b:v', bitrate,
+                        '-sc_threshold', '0',
+                        '-g', gop,
+                        '-r', framerate,
+                        '-c:a', 'aac',
+                        '-f', 'hls',
+                        '-hls_time', segmentLength, '-hls_list_size', '20',
+                        '-hls_base_url', `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+                        '-hls_playlist_type', 'event',
+                        'pipe:1'
+                    ];
+                }
+            } else if (processingAgent.processingAgentName === 'AMD') {
+                if (format === 'm3u8') {
+                    args = [
+                        '-listen', '1',
+                        '-timeout', '10000',
+                        '-hwaccel', 'dxva2',
+                        '-hwaccel_device', '0',
+                        '-f', 'flv',
+                        '-i', rtmpUrl,
+                        '-c:v', 'h264_amf', '-b:v', bitrate,
+                        '-sc_threshold', '0',
+                        '-g', gop,
+                        '-r', framerate,
+                        '-c:a', 'aac',
+                        '-f', 'hls',
+                        '-hls_time', segmentLength, '-hls_list_size', '20',
+                        '-hls_base_url', `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+                        '-hls_playlist_type', 'event',
+                        'pipe:1'
+                    ];
+                }
+            }
         }
 
         if (!isRecordingStreamRemotely) {
-             const idx = args.indexOf('-hls_playlist_type');
-             if(idx !== -1) {args.splice(idx, 2);}
+            const hlsPlaylistTypeIdx = args.indexOf('-hls_playlist_type');
+            if (hlsPlaylistTypeIdx !== -1) {
+                args.splice(hlsPlaylistTypeIdx, 2);
+            }
         }
 
         return args;

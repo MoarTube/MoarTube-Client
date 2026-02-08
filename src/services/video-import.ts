@@ -2,7 +2,6 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { spawn, type ChildProcess } from 'node:child_process';
 import sharp from 'sharp';
-import ffmpegStatic from 'ffmpeg-static';
 import { BaseService } from './base.js';
 import type { Logger } from '@/utils/logger.js';
 import type { SettingsRepository } from '@/database/repositories/settings.js';
@@ -11,6 +10,7 @@ import type { NodeApiService } from './node-api.js';
 // import type { NodeSocketService } from './node-socket.js';
 import type { S3Service } from './s3.js';
 import type { SocketService } from './socket.js';
+import type { FfmpegService } from './ffmpeg.js';
 
 export class VideoImportService extends BaseService {
   private readonly activeImports: Map<string, ChildProcess> = new Map();
@@ -21,16 +21,11 @@ export class VideoImportService extends BaseService {
     private readonly settingsRepository: SettingsRepository,
     private readonly nodeApiService: NodeApiService,
     private readonly socketService: SocketService,
-    private readonly s3Service: S3Service
+    private readonly s3Service: S3Service,
+    private readonly ffmpegService: FfmpegService
   ) {
     super('videoImportService', logger);
     sharp.cache(false);
-  }
-
-  private getFfmpegPath(): string {
-      const settings = this.settingsRepository.getClientSettings();
-      if (settings.ffmpegPath !== undefined && settings.ffmpegPath !== '') { return settings.ffmpegPath; }
-      return (ffmpegStatic as unknown as string | null) ?? 'ffmpeg';
   }
 
   private timestampToSeconds(timestamp: string): number {
@@ -47,8 +42,7 @@ export class VideoImportService extends BaseService {
       }
 
       return new Promise((resolve, reject) => {
-          const ffmpegPath = this.getFfmpegPath();
-          const process = spawn(ffmpegPath, args);
+          const process = spawn(this.ffmpegService.getPath(), args);
           
           this.activeImports.set(videoId, process);
 

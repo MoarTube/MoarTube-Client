@@ -30,6 +30,12 @@ export class NodeSocketService extends BaseService {
       return this._isConnected;
   }
 
+  public send(message: Record<string, unknown>): void {
+      if (this.websocketClient && this._isConnected) {
+          this.websocketClient.send(JSON.stringify(message));
+      }
+  }
+
   public connect(jwtToken: string): void {
     if (this.websocketClient) {
       this.disconnect();
@@ -180,9 +186,10 @@ export class NodeSocketService extends BaseService {
                this.socketService.broadcast('echo', originalData); 
                break;
           case 'streaming_stopping':
-               this.liveStreamService.stopLiveStream(videoId); 
+               this.liveStreamService.markLiveStreamStopping(videoId); 
                break;
           case 'streaming_stopped':
+               this.liveStreamService.stopLiveStream(videoId);
                this.socketService.broadcast('echo', originalData);
                break;
           default:

@@ -20,6 +20,7 @@ import { NodeSocketService } from '@/services/node-socket.js';
 import { VideoImportService } from '@/services/video-import.js';
 import { StreamsTrackerService } from '@/services/streams-tracker.js';
 import { ManifestService } from '@/services/manifest.js';
+import { FfmpegService } from '@/services/ffmpeg.js';
 
 /**
  * Container cradle type - defines all registered dependencies
@@ -42,6 +43,7 @@ export interface ContainerCradle {
   videoImportService: VideoImportService;
   streamsTrackerService: StreamsTrackerService;
   manifestService: ManifestService;
+  ffmpegService: FfmpegService;
 }
 
 export type Container = AwilixContainer<ContainerCradle>;
@@ -78,6 +80,7 @@ export function createAppContainer(): Promise<Container> {
       videoImportService: asClass(VideoImportService).singleton(),
       streamsTrackerService: asClass(StreamsTrackerService).singleton(),
       manifestService: asClass(ManifestService).singleton(),
+      ffmpegService: asClass(FfmpegService).singleton(),
   });
 
   return Promise.resolve(container);

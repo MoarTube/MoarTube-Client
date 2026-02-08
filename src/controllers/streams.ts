@@ -4,6 +4,7 @@ import type { LiveStreamService } from '@/services/live-stream.js';
 import type { NodeApiService } from '@/services/node-api.js';
 import { checkNetworkPortStatus, isPortValid } from '@/utils/network.js';
 import type { S3Service } from '@/services/s3.js';
+import type { NodeSocketService } from '@/services/node-socket.js';
 import type {
     StartStreamBody,
     StopStreamParams,
@@ -15,16 +16,19 @@ export class StreamsController extends BaseController {
     private readonly liveStreamService: LiveStreamService;
     private readonly nodeApiService: NodeApiService;
     private readonly s3Service: S3Service;
+    private readonly nodeSocketService: NodeSocketService;
 
     constructor(
         liveStreamService: LiveStreamService,
         nodeApiService: NodeApiService,
-        s3Service: S3Service
+        s3Service: S3Service,
+        nodeSocketService: NodeSocketService
     ) {
         super('streamsController');
         this.liveStreamService = liveStreamService;
         this.nodeApiService = nodeApiService;
         this.s3Service = s3Service;
+        this.nodeSocketService = nodeSocketService;
     }
 
     public async startStream(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
@@ -36,26 +40,14 @@ export class StreamsController extends BaseController {
         }
 
         try {
-            // Check if port is available
             const portStatus = await checkNetworkPortStatus(Number.parseInt(rtmpPort, 10), '127.0.0.1');
 
             if (portStatus === 'closed') {
                 const uuid = 'moartube';
-                
-                // Get JWT token from request or session
-                // Assuming request is authenticated and has user/token? 
-                // Or maybe passed in body? Legacy passes jwtToken as first arg to start_POST.
-                // In Fastify, usually handled by middleware, but if NodeAPI needs it, we extract it.
-                // Assuming bearer token in header.
-                const authHeader = request.headers.authorization;
-                const jwtToken = authHeader?.replace('Bearer ', '') ?? '';
-
-                if (jwtToken === '') {
-                    return await reply.code(401).send({ isError: true, message: 'Unauthorized' });
-                }
+                const jwtToken = request.session.jwtToken ?? '';
 
                 const response = await this.nodeApiService.streamVideo(jwtToken, {
-                    title, description, tags, resolution,
+                    title, description, tags, rtmpPort: Number.parseInt(rtmpPort, 10), uuid, resolution,
                     isRecordingStreamRemotely, isRecordingStreamLocally,
                     networkAddress,
                     ...(existingVideoId !== undefined && existingVideoId !== '' ? { videoId: existingVideoId } : {})
@@ -65,27 +57,29 @@ export class StreamsController extends BaseController {
                      return await reply.send(response);
                 }
 
-                const newVideoId = response.videoId; 
+                const newVideoId = response.videoId;
 
-                // Construct RTMP URL
-                const rtmpUrl = `rtmp://0.0.0.0:${rtmpPort}/live/${uuid}`;
-                const format = 'm3u8';
+                const setExtResponse = await this.nodeApiService.setSourceFileExtension(jwtToken, newVideoId, '.ts');
+
+                if (setExtResponse.isError) {
+                    return await reply.send(setExtResponse);
+                }
+
+                const rtmpUrl = `rtmp://${networkAddress}:${rtmpPort}/live/${uuid}`;
 
                 await this.liveStreamService.performStreamingJob(
                     jwtToken,
                     newVideoId,
                     rtmpUrl,
-                    format,
+                    'm3u8',
                     resolution,
                     isRecordingStreamRemotely,
                     isRecordingStreamLocally
                 );
-                
-                // LiveStreamService tracks the process internally by videoId
-                
-                return await reply.send({ isError: false, videoId: newVideoId });
+
+                return await reply.send({ isError: false, rtmpUrl: rtmpUrl });
             } else {
-                 return await reply.send({ isError: true, message: 'RTMP port is already in use' });
+                 return await reply.send({ isError: true, message: `port ${rtmpPort} is not available` });
             }
 
         } catch (error) {
@@ -97,28 +91,16 @@ export class StreamsController extends BaseController {
     public async stopStream(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
         const params = request.params as StopStreamParams;
         const { videoId } = params;
-        
-        const authHeader = request.headers.authorization;
-        const jwtToken = authHeader?.replace('Bearer ', '') ?? '';
-        
-        if (jwtToken === '') {
-             return reply.code(401).send({ isError: true, message: 'Unauthorized' });
-        }
+        const jwtToken = request.session.jwtToken ?? '';
 
         try {
-            // Stop process via service
-            // Note: LiveStreamService manages via videoId.
-            // But legacy tracker managed via 'moartube' (uuid).
-            // If strictly following legacy, we kill 'moartube' process.
-            // If LiveStreamService keyed by videoId, we use videoId.
-            // In startStream above: `this.addProcessToLiveStreamTracker(videoId, process)` (in LiveStreamService)
-            // So LiveStreamService uses videoId.
-            // I should use videoId.
-            
-            // Also notify WebSocket? `websocketClientBroadcast`
-            // Should be in `LiveStreamService` or Controller.
-            // Controller is better for response-related logic.
-            
+            // Broadcast streaming_stopping to Node (Node will echo back to all clients)
+            this.nodeSocketService.send({
+                eventName: 'echo',
+                jwtToken: jwtToken,
+                data: { eventName: 'video_status', payload: { type: 'streaming_stopping', videoId: videoId } }
+            });
+
             // S3 Conversion Logic
             const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
             const storageConfig = nodeSettings.storageConfig;
@@ -135,15 +117,21 @@ export class StreamsController extends BaseController {
                     await this.s3Service.convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions);
                 } else {
                     const prefix = `external/videos/${videoId}/adaptive/m3u8`;
-                     
                     await this.s3Service.deleteDirectoryRecursive(s3Config, prefix);
                 }
             }
-            
-            this.liveStreamService.stopLiveStream(videoId); // managed in service
 
             const stopResponse = await this.nodeApiService.stopVideoStreaming(jwtToken, videoId);
-            
+
+            if (!stopResponse.isError) {
+                // Broadcast streaming_stopped to Node (Node will echo back to all clients)
+                this.nodeSocketService.send({
+                    eventName: 'echo',
+                    jwtToken: jwtToken,
+                    data: { eventName: 'video_status', payload: { type: 'streaming_stopped', videoId: videoId } }
+                });
+            }
+
             return await reply.send(stopResponse);
         } catch (error) {
             this.logger.error('Error stopping stream', error as Error);
@@ -154,9 +142,7 @@ export class StreamsController extends BaseController {
     public async getStreamRtmpInfo(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
         const params = request.params as VideoIdParams;
         const { videoId } = params;
-        const authHeader = request.headers.authorization;
-        const jwtToken = authHeader?.replace('Bearer ', '') ?? '';
-        if (jwtToken === '') {return reply.code(401).send({ isError: true, message: 'Unauthorized' });}
+        const jwtToken = request.session.jwtToken ?? '';
 
         try {
             const response = await this.nodeApiService.getVideoData(jwtToken, videoId);
@@ -183,9 +169,7 @@ export class StreamsController extends BaseController {
     public async getChatSettings(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
         const params = request.params as VideoIdParams;
         const { videoId } = params;
-        const authHeader = request.headers.authorization;
-        const jwtToken = authHeader?.replace('Bearer ', '') ?? '';
-        if (jwtToken === '') {return reply.code(401).send({ isError: true, message: 'Unauthorized' });}
+        const jwtToken = request.session.jwtToken ?? '';
 
         try {
             const response = await this.nodeApiService.getVideoData(jwtToken, videoId);
@@ -196,7 +180,7 @@ export class StreamsController extends BaseController {
             return await reply.send({ 
                 isError: false, 
                 isChatHistoryEnabled: meta?.chatSettings.isChatHistoryEnabled ?? false,
-                chatHistoryLimit: meta?.chatSettings.chatHistoryLimit ?? 100
+                chatHistoryLimit: meta?.chatSettings.chatHistoryLimit ?? 0
             });
         } catch (error) {
             this.logger.error('Error getting chat settings', error as Error);
@@ -209,10 +193,7 @@ export class StreamsController extends BaseController {
         const { videoId } = params;
         const body = request.body as UpdateChatSettingsBody;
         const { isChatHistoryEnabled, chatHistoryLimit } = body;
-        
-        const authHeader = request.headers.authorization;
-        const jwtToken = authHeader?.replace('Bearer ', '') ?? '';
-        if (jwtToken === '') {return reply.code(401).send({ isError: true, message: 'Unauthorized' });}
+        const jwtToken = request.session.jwtToken ?? '';
 
         try {
             const response = await this.nodeApiService.setVideoChatSettings(jwtToken, videoId, isChatHistoryEnabled, chatHistoryLimit);

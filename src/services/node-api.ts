@@ -49,6 +49,8 @@ export interface StreamVideoOptions {
     title: string;
     description: string;
     tags: string;
+    rtmpPort: number;
+    uuid: string;
     resolution: string;
     isRecordingStreamRemotely: boolean;
     isRecordingStreamLocally: boolean;
@@ -704,8 +706,8 @@ public async getSourceFileExtension(jwtToken: string, videoId: string): Promise<
       return response.data as VideoBandwidthResponse;
   }
 
-  public async stopVideoStreaming(jwtToken: string, videoId: string): Promise<unknown> {
-      return this.postAuthenticated(jwtToken, `/streams/${videoId}/stop`, {});
+  public async stopVideoStreaming(jwtToken: string, videoId: string): Promise<BaseNodeResponse> {
+      return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/streams/${videoId}/stop`, {});
   }
 
   public async setThumbnail(jwtToken: string, videoId: string, buffer: Buffer): Promise<BaseNodeResponse> {
@@ -745,9 +747,9 @@ public async getSourceFileExtension(jwtToken: string, videoId: string): Promise<
   }
 
   public async streamVideo(jwtToken: string, options: StreamVideoOptions): Promise<StreamVideoResponse> {
-      const { title, description, tags, resolution, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, videoId } = options;
+      const { title, description, tags, rtmpPort, uuid, resolution, isRecordingStreamRemotely, isRecordingStreamLocally, networkAddress, videoId } = options;
       return this.postAuthenticated<StreamVideoResponse>(jwtToken, '/streams/start', {
-          title, description, tags, resolution,
+          title, description, tags, rtmpPort, uuid, resolution,
           isRecordingStreamRemotely, isRecordingStreamLocally,
           networkAddress, videoId
       });

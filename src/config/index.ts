@@ -27,16 +27,11 @@ const ClientSettingsSchema = z.object({
 
 export type ClientSettings = z.infer<typeof ClientSettingsSchema>;
 
-export interface RuntimeConfig {
-  ffmpegPath: string;
-}
-
 export class Config {
   private static instance: Config | null = null;
   private readonly _env: Env;
   private readonly _paths: Paths;
   private _clientSettings: ClientSettings;
-  private readonly _runtime: RuntimeConfig;
   private _settingsWatcher: fs.FSWatcher | null = null;
 
   private constructor(baseDir: string, entryPointDir?: string) {
@@ -50,12 +45,6 @@ export class Config {
 
     // Load Settings
     this._clientSettings = this.loadClientSettings();
-
-    // Initialize Runtime
-    const ffmpegSettingsPath = this._clientSettings.ffmpegPath;
-    this._runtime = {
-      ffmpegPath: (ffmpegSettingsPath !== undefined && ffmpegSettingsPath !== '') ? ffmpegSettingsPath : 'ffmpeg'
-    };
 
     this.setupSettingsFileWatcher();
   }
@@ -125,11 +114,6 @@ export class Config {
   public get env(): Env { return this._env; }
   public get paths(): Paths { return this._paths; }
   public get clientSettings(): ClientSettings { return this._clientSettings; }
-  public get runtime(): RuntimeConfig { return this._runtime; }
-  
-  public setFfmpegPath(path: string): void {
-      this._runtime.ffmpegPath = path;
-  }
   
   public saveClientSettings(settings: Partial<ClientSettings>): void {
       // Merge updates
