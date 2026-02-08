@@ -19,33 +19,17 @@ import { STSClient, GetCallerIdentityCommand } from '@aws-sdk/client-sts';
 import type { STSClientConfig } from '@aws-sdk/client-sts';
 import type { Readable } from 'node:stream';
 import * as fs from 'node:fs';
-import type { S3Config } from '@/types/node-api.js';
+import type { S3ProviderClientConfig as S3ProviderClientConfigType } from '@/types/node-api.js';
 
 /**
  * Service for S3 Operations
  * Replaces _src/utils/s3-communications.js
  */
 
-interface S3Credentials {
-  accessKeyId: string;
-  secretAccessKey: string;
-  sessionToken?: string;
-}
 
-interface S3ProviderClientConfig {
-  endpoint?: string;
-  credentials: S3Credentials;
-  region?: string;
-}
-
-
-export interface S3FlatConfig {
-    bucketName: string;
-    endpoint?: string;
-    accessKeyId: string;
-    secretAccessKey: string;
-    sessionToken?: string;
-    region?: string;
+export interface S3ValidationConfig {
+  bucketName: string;
+  s3ProviderClientConfig: S3ProviderClientConfigType;
 }
 
 export interface VideoForManifestUpdate {
@@ -59,33 +43,23 @@ export interface VideoForManifestUpdate {
 }
 
 
-export interface S3ValidationConfig {
-  bucketName: string;
-  s3ProviderClientConfig: S3ProviderClientConfig;
-}
-
-
 export class S3Service extends BaseService {
   constructor(logger: Logger) {
     super('s3Service', logger);
   }
 
-  private createClient(endpoint: string | undefined, accessKeyId: string, secretAccessKey: string, sessionToken?: string, region?: string): S3Client {
-    const credentials: S3Credentials = {
-      accessKeyId,
-      secretAccessKey
-    };
-    if (sessionToken !== undefined && sessionToken !== '') {
-      credentials.sessionToken = sessionToken;
-    }
-
+  private createClientFromConfig(s3ProviderClientConfig: S3ProviderClientConfigType): S3Client {
     const config: S3ClientConfig = {
-      region: region !== undefined && region !== '' ? region : 'us-east-1',
-      credentials,
-      forcePathStyle: true
+      region: s3ProviderClientConfig.region ?? 'us-east-1',
+      credentials: {
+        accessKeyId: s3ProviderClientConfig.credentials.accessKeyId,
+        secretAccessKey: s3ProviderClientConfig.credentials.secretAccessKey,
+        ...(s3ProviderClientConfig.credentials.sessionToken ? { sessionToken: s3ProviderClientConfig.credentials.sessionToken } : {})
+      },
+      forcePathStyle: s3ProviderClientConfig.forcePathStyle ?? true
     };
-    if (endpoint !== undefined && endpoint !== '') {
-        config.endpoint = endpoint;
+    if (s3ProviderClientConfig.endpoint !== undefined && s3ProviderClientConfig.endpoint !== '') {
+        config.endpoint = s3ProviderClientConfig.endpoint;
     }
 
     return new S3Client(config);
@@ -103,10 +77,8 @@ export class S3Service extends BaseService {
 
   public async validateS3Config(s3Config: S3ValidationConfig): Promise<void> {
       const { bucketName, s3ProviderClientConfig } = s3Config;
-      const { endpoint, region, credentials: { accessKeyId, secretAccessKey, sessionToken } } = s3ProviderClientConfig;
-
       this.logger.debug(`Validating S3 config for bucket: ${bucketName}`);
-      const s3Client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken, region);
+      const s3Client = this.createClientFromConfig(s3ProviderClientConfig);
 
       // Check if bucket exists
       const buckets = (await s3Client.send(new ListBucketsCommand({}))).Buckets ?? [];
@@ -141,14 +113,14 @@ export class S3Service extends BaseService {
 
            // Set Policy
             try {
-                const credentials = {
-                    accessKeyId,
-                    secretAccessKey,
-                    ...(sessionToken !== undefined && sessionToken !== '' ? { sessionToken } : {})
-                };
+                const { endpoint, region, credentials } = s3ProviderClientConfig;
 
                 const stsConfig: STSClientConfig = {
-                     credentials,
+                     credentials: {
+                         accessKeyId: credentials.accessKeyId,
+                         secretAccessKey: credentials.secretAccessKey,
+                         ...(credentials.sessionToken !== undefined && credentials.sessionToken !== '' ? { sessionToken: credentials.sessionToken } : {})
+                     },
                      region: region ?? 'us-east-1'
                 };
                 if (endpoint !== undefined && endpoint !== '') {
@@ -186,11 +158,7 @@ export class S3Service extends BaseService {
 
   public async updateM3u8ManifestsWithExternalVideosBaseUrl(s3Config: S3ValidationConfig, videosData: VideoForManifestUpdate[], externalVideosBaseUrl: string): Promise<void> {
       const { bucketName, s3ProviderClientConfig } = s3Config;
-      const { endpoint, region, credentials: { accessKeyId, secretAccessKey, sessionToken } } = s3ProviderClientConfig;
-      // Note: Legacy passed structure might differ slightly. I should assume s3Config matches the legacy structure: 
-      // { bucketName, s3ProviderClientConfig: { endpoint, credentials... } }
-
-      const s3Client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken, region);
+      const s3Client = this.createClientFromConfig(s3ProviderClientConfig);
 
       const performUpdate = async (manifestKey: string): Promise<void> => {
           try {
@@ -229,13 +197,13 @@ export class S3Service extends BaseService {
    * Upload data directly
    */
   public async putObjectFromData(
-    s3Config: S3FlatConfig,
+    s3Config: S3ValidationConfig,
     key: string,
     data: Buffer | string | Readable | Blob | Uint8Array,
     contentType: string
   ): Promise<void> {
-    const { endpoint, accessKeyId, secretAccessKey, sessionToken, bucketName, region } = s3Config;
-    const client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken, region);
+    const { bucketName, s3ProviderClientConfig } = s3Config;
+    const client = this.createClientFromConfig(s3ProviderClientConfig);
 
     try {
       const upload = new Upload({
@@ -256,12 +224,12 @@ export class S3Service extends BaseService {
   }
 
   public async uploadFilesWithProgress(
-    s3Config: S3FlatConfig,
+    s3Config: S3ValidationConfig,
     files: Array<{ key: string; filePath: string; contentType: string }>,
     onProgress: (percent: number) => void
   ): Promise<void> {
-    const { endpoint, accessKeyId, secretAccessKey, sessionToken, bucketName, region } = s3Config;
-    const client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken, region);
+    const { bucketName, s3ProviderClientConfig } = s3Config;
+    const client = this.createClientFromConfig(s3ProviderClientConfig);
     
     // Calculate total size
     let totalSize = 0;
@@ -335,10 +303,10 @@ export class S3Service extends BaseService {
   }
 
   public async deleteObjectsWithPrefix(
-      endpoint: string | undefined, accessKeyId: string, secretAccessKey: string, sessionToken: string | undefined,
-      bucket: string, prefix: string, region?: string
+      s3Config: S3ValidationConfig, prefix: string
   ): Promise<void> {
-      const client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken, region);
+      const { bucketName: bucket, s3ProviderClientConfig } = s3Config;
+      const client = this.createClientFromConfig(s3ProviderClientConfig);
 
       try {
           // List objects first
@@ -370,27 +338,20 @@ export class S3Service extends BaseService {
   /**
    * Delete "directory" (objects with prefix) in S3
    */
-  public async deleteDirectoryRecursive(s3Config: S3Config, prefix: string): Promise<void> {
-      // s3Config comes from node settings, extracting credentials
-      const { endpoint, accessKeyId, secretAccessKey, sessionToken, bucket, bucketName, region } = s3Config;
-      const actualBucket = (bucket as string) || bucketName; // Support legacy 'bucket' prop if present
-      
-      
-      await this.deleteObjectsWithPrefix(endpoint as string, accessKeyId, secretAccessKey, sessionToken as string, actualBucket, prefix, region);
+  public async deleteDirectoryRecursive(s3Config: S3ValidationConfig, prefix: string): Promise<void> {
+      await this.deleteObjectsWithPrefix(s3Config, prefix);
   }
 
   /**
    * Delete a single object with specific key
    */
-  public async deleteObjectWithKey(s3Config: S3Config, key: string): Promise<void> {
-      const { endpoint, accessKeyId, secretAccessKey, sessionToken, bucket, bucketName, region } = s3Config;
-      const actualBucket = (bucket as string) || bucketName; // Support legacy 'bucket' prop if present
-      
-      const client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken, region);
+  public async deleteObjectWithKey(s3Config: S3ValidationConfig, key: string): Promise<void> {
+      const { bucketName, s3ProviderClientConfig } = s3Config;
+      const client = this.createClientFromConfig(s3ProviderClientConfig);
 
       try {
           const deleteCommand = new DeleteObjectCommand({
-              Bucket: actualBucket,
+              Bucket: bucketName,
               Key: key
           });
           
@@ -405,18 +366,16 @@ export class S3Service extends BaseService {
    * Convert dynamic HLS manifests to static VOD manifests
    */
   public async convertM3u8DynamicManifestsToStatic(
-    s3Config: S3Config,
+    s3Config: S3ValidationConfig,
     videoId: string,
     resolutions: string[]
   ): Promise<void> {
-    const { endpoint, accessKeyId, secretAccessKey, sessionToken, bucketName, bucket } = s3Config;
-    const actualBucket = bucketName || bucket;
-    
-    const client = this.createClient(endpoint, accessKeyId, secretAccessKey, sessionToken);
+    const { bucketName, s3ProviderClientConfig } = s3Config;
+    const client = this.createClientFromConfig(s3ProviderClientConfig);
 
     const performConversion = async (dynamicKey: string, staticKey: string): Promise<void> => {
       try {
-        const response = await client.send(new GetObjectCommand({ Bucket: actualBucket, Key: dynamicKey }));
+        const response = await client.send(new GetObjectCommand({ Bucket: bucketName, Key: dynamicKey }));
 
         if (!response.Body) {
           throw new Error('Empty response body');
@@ -435,14 +394,14 @@ export class S3Service extends BaseService {
 
         this.logger.debug(`Uploading static manifest: ${staticKey}`);
         await client.send(new PutObjectCommand({
-          Bucket: actualBucket,
+          Bucket: bucketName,
           Key: staticKey,
           Body: staticManifest,
           ContentType: 'application/vnd.apple.mpegurl'
         }));
 
         this.logger.debug(`Deleting dynamic manifest: ${dynamicKey}`);
-        await client.send(new DeleteObjectCommand({ Bucket: actualBucket, Key: dynamicKey }));
+        await client.send(new DeleteObjectCommand({ Bucket: bucketName, Key: dynamicKey }));
 
       } catch (error) {
         // Log but continue

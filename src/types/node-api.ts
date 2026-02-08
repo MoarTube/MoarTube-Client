@@ -1,11 +1,20 @@
-export interface S3Config {
-    bucketName: string;
-    region: string;
-    endpoint?: string;
-    sessionToken?: string;
-    bucket?: string;
+export interface S3ProviderCredentials {
     accessKeyId: string;
     secretAccessKey: string;
+    sessionToken?: string;
+}
+
+export interface S3ProviderClientConfig {
+    credentials: S3ProviderCredentials;
+    region?: string;
+    endpoint?: string;
+    forcePathStyle?: boolean;
+    [key: string]: unknown;
+}
+
+export interface S3Config {
+    bucketName: string;
+    s3ProviderClientConfig: S3ProviderClientConfig;
     [key: string]: unknown;
 }
 

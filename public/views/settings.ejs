@@ -1638,7 +1638,6 @@
 							showCloseButton: true,
 							showConfirmButton: true,
 							confirmButtonText: 'Enable',
-							showLoaderOnConfirm: true,
 							preConfirm: () => {
 								const cloudflareEmailAddress = $('#cloudflareEmailAddress').val();
 								const cloudflareZoneId = $('#cloudflareZoneId').val();
@@ -1649,27 +1648,33 @@
 									return false;
 								}
 
-								return $.post('/settings/node/cloudflare/configure', {
-									cloudflareEmailAddress: cloudflareEmailAddress,
-									cloudflareZoneId: cloudflareZoneId,
-									cloudflareGlobalApiKey: cloudflareGlobalApiKey
-								})
-									.then(response => {
-										if (response.isError) {
-											Swal.showValidationMessage(response.message);
-											return false;
-										}
-										return response;
-									})
-									.catch(error => {
-										Swal.showValidationMessage(error.message || 'An error occurred');
-										return false;
-									});
+								return { cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey };
 							}
 						})
 							.then((result) => {
 								if (result.isConfirmed) {
-									showAlert(false, 'Cloudflare CDN Enabled. Your node is restarting...');
+									$(checkbox).prop('disabled', true);
+
+									$.post('/settings/node/cloudflare/configure', {
+										cloudflareEmailAddress: result.value.cloudflareEmailAddress,
+										cloudflareZoneId: result.value.cloudflareZoneId,
+										cloudflareGlobalApiKey: result.value.cloudflareGlobalApiKey
+									})
+										.always(function () {
+											$(checkbox).prop('disabled', false);
+										})
+										.done(function (data) {
+											if (data.isError) {
+												$(checkbox).prop('checked', !isCheckboxChecked);
+
+												showAlert(true, data.message);
+											}
+										})
+										.fail(function () {
+											$(checkbox).prop('checked', !isCheckboxChecked);
+
+											showAlert(true, 'an error occurred, please try again');
+										});
 								} else {
 									$(checkbox).prop('checked', !isCheckboxChecked);
 								}
@@ -1681,30 +1686,24 @@
 				});
 			}
 			else {
-				Swal.fire({
-					title: 'please wait',
-					html: '...disabling Cloudflare CDN...',
-					showConfirmButton: false,
-					allowOutsideClick: false,
-					didOpen: () => {
-						Swal.showLoading();
+				$(checkbox).prop('disabled', true);
 
-						$.post('/settings/node/cloudflare/clear', {})
-							.done(function (data) {
-								if (data.isError) {
-									$(checkbox).prop('checked', !isCheckboxChecked);
+				$.post('/settings/node/cloudflare/clear', {})
+					.always(function () {
+						$(checkbox).prop('disabled', false);
+					})
+					.done(function (data) {
+						if (data.isError) {
+							$(checkbox).prop('checked', !isCheckboxChecked);
 
-									showAlert(true, data.message);
-								}
-								else {
-									showAlert(false, 'Cloudflare CDN Disabled. Your node is restarting...');
-								}
-							})
-							.fail(function () {
-								showAlert(true, 'an error occurred, please try again');
-							});
-					}
-				});
+							showAlert(true, data.message);
+						}
+					})
+					.fail(function () {
+						$(checkbox).prop('checked', !isCheckboxChecked);
+
+						showAlert(true, 'an error occurred, please try again');
+					});
 			}
 		}
 
@@ -1739,7 +1738,6 @@
 							showCloseButton: true,
 							showConfirmButton: true,
 							confirmButtonText: 'Enable',
-							showLoaderOnConfirm: true,
 							preConfirm: () => {
 								const cloudflareTurnstileSiteKey = $('#cloudflareTurnstileSiteKey').val();
 								const cloudflareTurnstileSecretKey = $('#cloudflareTurnstileSecretKey').val();
@@ -1749,26 +1747,32 @@
 									return false;
 								}
 
-								return $.post('/settings/node/cloudflare/turnstile/configure', {
-									cloudflareTurnstileSiteKey: cloudflareTurnstileSiteKey,
-									cloudflareTurnstileSecretKey: cloudflareTurnstileSecretKey
-								})
-									.then(response => {
-										if (response.isError) {
-											Swal.showValidationMessage(response.message);
-											return false;
-										}
-										return response;
-									})
-									.catch(error => {
-										Swal.showValidationMessage(error.message || 'An error occurred');
-										return false;
-									});
+								return { cloudflareTurnstileSiteKey, cloudflareTurnstileSecretKey };
 							}
 						})
 							.then((result) => {
 								if (result.isConfirmed) {
-									showAlert(false, 'Cloudflare Turnstile Enabled. Your node is restarting...');
+									$(checkbox).prop('disabled', true);
+
+									$.post('/settings/node/cloudflare/turnstile/configure', {
+										cloudflareTurnstileSiteKey: result.value.cloudflareTurnstileSiteKey,
+										cloudflareTurnstileSecretKey: result.value.cloudflareTurnstileSecretKey
+									})
+										.always(function () {
+											$(checkbox).prop('disabled', false);
+										})
+										.done(function (data) {
+											if (data.isError) {
+												$(checkbox).prop('checked', !isCheckboxChecked);
+
+												showAlert(true, data.message);
+											}
+										})
+										.fail(function () {
+											$(checkbox).prop('checked', !isCheckboxChecked);
+
+											showAlert(true, 'an error occurred, please try again');
+										});
 								} else {
 									$(checkbox).prop('checked', !isCheckboxChecked);
 								}
@@ -1780,30 +1784,24 @@
 				});
 			}
 			else {
-				Swal.fire({
-					title: 'please wait',
-					html: '...disabling Cloudflare Turnstile...',
-					showConfirmButton: false,
-					allowOutsideClick: false,
-					didOpen: () => {
-						Swal.showLoading();
+				$(checkbox).prop('disabled', true);
 
-						$.post('/settings/node/cloudflare/turnstile/clear', {})
-							.done(function (data) {
-								if (data.isError) {
-									$(checkbox).prop('checked', !isCheckboxChecked);
+				$.post('/settings/node/cloudflare/turnstile/clear', {})
+					.always(function () {
+						$(checkbox).prop('disabled', false);
+					})
+					.done(function (data) {
+						if (data.isError) {
+							$(checkbox).prop('checked', !isCheckboxChecked);
 
-									showAlert(true, data.message);
-								}
-								else {
-									showAlert(false, 'Cloudflare Turnstile Disabled. Your node is restarting...');
-								}
-							})
-							.fail(function () {
-								showAlert(true, 'an error occurred, please try again');
-							});
-					}
-				});
+							showAlert(true, data.message);
+						}
+					})
+					.fail(function () {
+						$(checkbox).prop('checked', !isCheckboxChecked);
+
+						showAlert(true, 'an error occurred, please try again');
+					});
 			}
 		}
 
@@ -2390,7 +2388,7 @@
 				const swalObject = {
 					icon: 'success',
 					showConfirmButton: false,
-					timer: 1500
+					timer: 3000
 				};
 
 				if (text) {

@@ -4,7 +4,7 @@ import type { NodeApiService } from '@/services/node-api.js';
 import type { Config, ClientSettings } from '@/config/index.js';
 import type { Logger } from '@/utils/logger.js';
 import type { S3Service, S3ValidationConfig, VideoForManifestUpdate } from '@/services/s3.js';
-import type { UploadedFile, StorageConfig, S3Config } from '@/types/node-api.js';
+import type { UploadedFile, StorageConfig } from '@/types/node-api.js';
 import type {
     SetGpuAccelerationBody,
     SetClientEncodingBody,
@@ -352,20 +352,8 @@ export class SettingsController extends BaseController {
                 const { videosData } = await this.nodeApiService.getVideoDataAll(jwtToken);
                 const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(jwtToken);
                 
-                const s3Config = nodeSettings.storageConfig.s3Config;
-
-                const s3ValidationConfig: S3ValidationConfig = {
-                    bucketName: s3Config.bucketName,
-                    s3ProviderClientConfig: {
-                        credentials: {
-                            accessKeyId: s3Config.accessKeyId,
-                            secretAccessKey: s3Config.secretAccessKey,
-                            ...(s3Config.sessionToken !== undefined && s3Config.sessionToken !== '' ? { sessionToken: s3Config.sessionToken } : {})
-                        },
-                        region: s3Config.region,
-                        ...(s3Config.endpoint !== undefined && s3Config.endpoint !== '' ? { endpoint: s3Config.endpoint } : {})
-                    }
-                };
+                // s3Config from Node already has nested shape: { bucketName, s3ProviderClientConfig }
+                const s3ValidationConfig = nodeSettings.storageConfig.s3Config as unknown as S3ValidationConfig;
                 
                 const videosForUpdate = videosData as VideoForManifestUpdate[];
                 await this.s3Service.updateM3u8ManifestsWithExternalVideosBaseUrl(s3ValidationConfig, videosForUpdate, externalVideosBaseUrl);
@@ -458,28 +446,26 @@ export class SettingsController extends BaseController {
         const { storageConfig } = request.body as ToggleStorageBody;
         const jwtToken = request.session.jwtToken ?? '';
 
+        let s3ValidationConfig: S3ValidationConfig | undefined;
+
         if (storageConfig.storageMode === 's3provider') {
-             const s3Config = storageConfig.s3Config as unknown as S3Config;
-             const s3ValidationConfig: S3ValidationConfig = {
-                bucketName: s3Config.bucketName,
-                s3ProviderClientConfig: {
-                    credentials: {
-                        accessKeyId: s3Config.accessKeyId,
-                        secretAccessKey: s3Config.secretAccessKey,
-                        ...(s3Config.sessionToken !== undefined && s3Config.sessionToken !== '' ? { sessionToken: s3Config.sessionToken } : {})
-                    },
-                    region: s3Config.region,
-                    ...(s3Config.endpoint !== undefined && s3Config.endpoint !== '' ? { endpoint: s3Config.endpoint } : {})
-                }
-             };
+             s3ValidationConfig = storageConfig.s3Config as unknown as S3ValidationConfig;
              await this.s3Service.validateS3Config(s3ValidationConfig);
         }
+
+        const videosData = (await this.nodeApiService.getVideoDataAll(jwtToken))['videosData'];
+        const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(jwtToken);
 
         const validStorageConfig = storageConfig as StorageConfig;
         const response = await this.nodeApiService.storageConfigToggle(jwtToken, validStorageConfig);
         
-        if (!response.isError && storageConfig.storageMode === 's3provider') {
-             await this.updateS3Manifests(jwtToken);
+        if (!response.isError && storageConfig.storageMode === 's3provider' && s3ValidationConfig) {
+             try {
+                 const videosForUpdate = videosData as VideoForManifestUpdate[];
+                 await this.s3Service.updateM3u8ManifestsWithExternalVideosBaseUrl(s3ValidationConfig, videosForUpdate, externalVideosBaseUrl);
+             } catch (error) {
+                 this.logger.error('Failed to update S3 manifests after storage toggle', error as Error);
+             }
         }
         return await reply.send(response);
     }

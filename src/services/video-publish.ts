@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import type { Logger } from 'pino';
 import ffmpegStatic from 'ffmpeg-static';
 import type { NodeApiService } from './node-api.js';
-import type { S3Service, S3FlatConfig } from './s3.js';
+import type { S3Service, S3ValidationConfig } from './s3.js';
 import type { SettingsRepository } from '../database/repositories/settings.js';
 import type { SocketService } from './socket.js';
 import type { ManifestService } from './manifest.js';
@@ -302,7 +302,7 @@ export class VideoPublishService {
         }
     }
 
-    private async handleS3Upload(job: VideoPublishJob, s3Config: S3FlatConfig, videosPath: string): Promise<void> {
+    private async handleS3Upload(job: VideoPublishJob, s3Config: S3ValidationConfig, videosPath: string): Promise<void> {
         const paths: Array<{ key: string; filePath: string; contentType: string }> = [];
         // S3 Logic
         if (job.format === 'm3u8') {
