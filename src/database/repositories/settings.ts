@@ -41,10 +41,6 @@ export class SettingsRepository extends BaseService {
   public async getSettings(): Promise<ClientSettingsModel> {
     try {
       if (!fs.existsSync(this.settingsPath)) {
-        // If the primary file doesn't exist, we might have loaded defaults in Config
-        // But for repository "read", we try to read the actual file or return the config's loaded version
-        // Let's rely on the file system for "freshness" or use the cache in Config if we want
-        // But Repository implies data access. 
         if (fs.existsSync(this.config.paths.clientSettingsDefaultPath)) {
              const data = await fs.promises.readFile(this.config.paths.clientSettingsDefaultPath, 'utf-8');
              return JSON.parse(data) as ClientSettingsModel;
