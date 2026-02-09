@@ -11,7 +11,6 @@ import type {
     SetNodeNameBody,
     SetNodeAboutBody,
     SetNodeIdBody,
-    SetSecureConnectionBody,
     SetNetworkInternalBody,
     SetNetworkExternalBody,
     SetAccountBody,
@@ -269,26 +268,36 @@ export class SettingsController extends BaseController {
          return await reply.send(response);
     }
 
-    // API: POST /settings/node/network/secure
+    // API: POST /settings/node/secure?isSecure=true|false
     public apiSetSecureConnection = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
+        // isSecure comes from query string (EJS sends ?isSecure=true/false)
+        const { isSecure: isSecureParam } = request.query as { isSecure: string };
+        const isSecure = isSecureParam === 'true';
+
         let keyFile: UploadedFile | undefined;
         let certFile: UploadedFile | undefined;
         const caFiles: UploadedFile[] = [];
-        let isSecure = false;
-        
-        if (!request.isMultipart()) {
-             const { isSecure: secure } = request.body as SetSecureConnectionBody;
-             isSecure = secure;
-        } else {
-             const result = await this.processMultipartSecureConnection(request);
-             keyFile = result.keyFile;
-             certFile = result.certFile;
-             caFiles.push(...result.caFiles);
-             isSecure = result.isSecure;
+
+        if (isSecure) {
+            // When enabling, extract certificate files from multipart
+            if (request.isMultipart()) {
+                const result = await this.processMultipartFiles(request);
+                keyFile = result.keyFile;
+                certFile = result.certFile;
+                caFiles.push(...result.caFiles);
+            }
+
+            // Validate required files are present (matches legacy validation)
+            if (!keyFile || !certFile) {
+                return await reply.send({ isError: true, message: 'invalid parameters' });
+            }
         }
-        
-        const response = await this.nodeApiService.setSecureConnection(request.session.jwtToken ?? '', isSecure, keyFile, certFile, caFiles );
-        
+
+        const response = await this.nodeApiService.setSecureConnection(
+            request.session.jwtToken ?? '', isSecure, keyFile, certFile,
+            caFiles.length > 0 ? caFiles : undefined
+        );
+
         if (!response.isError) {
              const settings = this.config.clientSettings;
              if (isSecure) {
@@ -309,32 +318,31 @@ export class SettingsController extends BaseController {
         return await reply.send(response);
     }
 
-    private async processMultipartSecureConnection(request: FastifyRequest): Promise<{ keyFile: UploadedFile | undefined; certFile: UploadedFile | undefined; caFiles: UploadedFile[]; isSecure: boolean }> {
+    private async processMultipartFiles(request: FastifyRequest): Promise<{ keyFile: UploadedFile | undefined; certFile: UploadedFile | undefined; caFiles: UploadedFile[] }> {
         const result = {
             keyFile: undefined as UploadedFile | undefined,
             certFile: undefined as UploadedFile | undefined,
-            caFiles: [] as UploadedFile[],
-            isSecure: false
+            caFiles: [] as UploadedFile[]
         };
 
         for await (const part of request.parts()) {
-             if (part.type === 'file') {
-                 const buf = await part.toBuffer();
-                 const fileObj = { 
-                     originalname: part.filename, 
-                     buffer: buf, 
-                     encoding: part.encoding, 
-                     mimetype: part.mimetype,
-                     size: buf.length,
-                     filename: part.filename 
-                 }; 
-
-                 if (part.fieldname === 'keyFile') { result.keyFile = fileObj; }
-                 else if (part.fieldname === 'certFile') { result.certFile = fileObj; }
-                 else if (part.fieldname === 'caFiles') { result.caFiles.push(fileObj); }
-             } else if (part.fieldname === 'isSecure') {
-                 result.isSecure = (part as { value: unknown }).value === 'true';
+             if (part.type !== 'file') {
+                 continue;
              }
+
+             const buf = await part.toBuffer();
+             const fileObj = { 
+                 originalname: part.filename, 
+                 buffer: buf, 
+                 encoding: part.encoding, 
+                 mimetype: part.mimetype,
+                 size: buf.length,
+                 filename: part.filename 
+             }; 
+
+             if (part.fieldname === 'keyFile') { result.keyFile = fileObj; }
+             else if (part.fieldname === 'certFile') { result.certFile = fileObj; }
+             else if (part.fieldname === 'caFiles') { result.caFiles.push(fileObj); }
         }
         return result;
     }
