@@ -293,338 +293,385 @@
 	<script>
 		const INCOMING_PARAMETERS = <%- JSON.stringify(model) %>;
 
-		let NODE_BASE_URL;
+		class MoarTubeClientReportsComments {
+			constructor() {
+				this.INCOMING_PARAMETERS = INCOMING_PARAMETERS;
+				this.NODE_BASE_URL = '';
+				this.DATA_TABLE_COMMENT_REPORTS = null;
+				this.DATA_TABLE_COMMENT_REPORTS_ARCHIVE = null;
+			}
 
-		let DATA_TABLE_COMMENT_REPORTS;
-		let DATA_TABLE_COMMENT_REPORTS_ARCHIVE;
+			init() {
+				const nodeSettings = this.INCOMING_PARAMETERS.nodeSettings;
+				const newContentCounts = this.INCOMING_PARAMETERS.newContentCounts;
+				const commentReports = this.INCOMING_PARAMETERS.commentReports;
+				const commentReportsArchive = this.INCOMING_PARAMETERS.commentReportsArchive;
 
-		$(document).ready(async function () {
-			const nodeSettings = INCOMING_PARAMETERS.nodeSettings;
-			const newContentCounts = INCOMING_PARAMETERS.newContentCounts;
-			const commentReports = INCOMING_PARAMETERS.commentReports;
-			const commentReportsArchive = INCOMING_PARAMETERS.commentReportsArchive;
+				this.setContentChecked('commentReports');
+				this.loadNodeSettings(nodeSettings);
+				this.loadNewContentCounts(newContentCounts);
+				this.loadCommentReports(commentReports);
+				this.loadCommentReportsArchive(commentReportsArchive);
+				this.setupEventListeners();
+			}
 
-			setContentChecked('commentReports');
-
-			loadNodeSettings(nodeSettings);
-			loadNewContentCounts(newContentCounts);
-			loadCommentReports(commentReports);
-			loadCommentReportsArchive(commentReportsArchive);
-		});
-
-		function setContentChecked(contentType) {
-			$.ajax({ type: 'POST', url: '/node/contentChecked', data: { contentType: contentType } })
-				.done(function (data, textStatus, xhr) {
-					if (data.isError) {
-						showAlert(true, data.message);
-					}
-				})
-				.fail(function () {
-					console.log('unable to communicate with node');
+			setupEventListeners() {
+				$(document).off('click', '.archive-report-button').on('click', '.archive-report-button', (e) => {
+					this.archiveReport(e.currentTarget);
 				});
-		}
 
-		function loadNodeSettings(nodeSettings) {
-			const nodeProtocol = nodeSettings.publicNodeProtocol;
-			const nodeAddress = nodeSettings.publicNodeAddress;
-			const nodePort = nodeSettings.publicNodePort;
-
-			NODE_BASE_URL = nodeProtocol + '://' + nodeAddress + ':' + nodePort;
-
-			$('#node-link').attr('href', NODE_BASE_URL);
-		}
-
-		function loadNewContentCounts(newContentCounts) {
-			const newCommentsCount = newContentCounts.newCommentsCount;
-			const newVideoReportsCount = newContentCounts.newVideoReportsCount;
-			const newCommentReportsCount = newContentCounts.newCommentReportsCount;
-
-			if (newCommentsCount > 0) {
-				$('#new-comments-count-badge').text(newCommentsCount);
-			}
-
-			if (newVideoReportsCount > 0) {
-				$('#new-reports-count-badge').text(newVideoReportsCount);
-				$('#new-video-reports-count-badge').text(newVideoReportsCount);
-			}
-		}
-
-		function loadCommentReports(commentReports) {
-			const parsedCommentReports = parseCommentReports(commentReports);
-
-			populateCommentReportsTable(parsedCommentReports);
-
-			refreshHoverTooltips();
-		}
-
-		function loadCommentReportsArchive(commentReportsArchive) {
-			const parsedCommentReportsArchive = parseCommentReportsArchive(commentReportsArchive);
-
-			populateCommentReportsArchiveTable(parsedCommentReportsArchive);
-
-			refreshHoverTooltips();
-		}
-
-		function parseCommentReports(reports) {
-			const data = [];
-
-			for (const report of reports) {
-				const reportId = report.report_id;
-				const timestamp = report.timestamp;
-				const commentTimestamp = report.comment_timestamp;
-				const videoId = report.video_id;
-				const commentId = report.comment_id;
-				const email = report.email;
-				const type = report.type;
-				const message = report.message;
-
-				const timestampFormatted = createDateTimestamp(timestamp);
-				const commentTimestampFormatted = createDateTimestamp(commentTimestamp);
-
-				const deleteCommentButton = '<button type="button" class="btn btn-icon btn-2 btn-primary me-1" onclick="deleteComment(this)" data-videoid="' + videoId + '" data-commentid="' + commentId + '" data-commenttimestamp="' + commentTimestamp + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>';
-				const archiveReportButton = '<button type="button" class="btn btn-icon btn-2 btn-primary me-1" onclick="archiveReport(this)" data-reportid="' + reportId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="archive report" data-bs-original-title="archive report"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-archive" viewBox="0 0 16 16"><path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1V2zm2 3v7.5A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5H2zm13-3H1v2h14V2zM5 7.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/></svg></span></button>';
-				const deleteReportButton = '<button type="button" class="btn btn-icon btn-2 btn-primary" onclick="deleteReport(this)" data-reportid="' + reportId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete report" data-bs-original-title="delete report"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/></svg></span></button>';
-
-				data.push([
-					deleteCommentButton + archiveReportButton + deleteReportButton,
-					timestampFormatted,
-					commentTimestampFormatted,
-					reportId.toString(),
-					'<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '" target="_blank">' + videoId + '</a>',
-					'<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '#p' + commentId + '" target="_blank">' + commentId + '</a>',
-					email,
-					type,
-					message
-				]);
-			}
-
-			let tableData = {
-				headings: ["actions", "report date", 'comment date', "report id", "video id", "comment id", "email", "type", "message"],
-				data: data
-			};
-
-			return tableData;
-		}
-
-		function parseCommentReportsArchive(reports) {
-			const data = [];
-
-			for (const report of reports) {
-				const archiveId = report.archive_id;
-				const reportId = report.report_id;
-				const timestamp = report.timestamp;
-				const commentTimestamp = report.comment_timestamp;
-				const videoId = report.video_id;
-				const commentId = report.comment_id;
-				const email = report.email;
-				const type = report.type;
-				const message = report.message;
-
-				const timestampFormatted = createDateTimestamp(timestamp);
-				const commentTimestampFormatted = createDateTimestamp(commentTimestamp);
-
-				const deleteCommentButton = '<button class="btn btn-icon btn-2 btn-primary me-1" onclick="deleteComment(this)" data-videoid="' + videoId + '" data-commentid="' + commentId + '" data-commenttimestamp="' + commentTimestamp + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>';
-				const deleteArchiveButton = '<button class="btn btn-icon btn-2 btn-primary" onclick="deleteArchive(this)" data-archiveid="' + archiveId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete archive" data-bs-original-title="delete archive"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/></svg></span></button>';
-
-				data.push([
-					deleteCommentButton + deleteArchiveButton,
-					timestampFormatted,
-					commentTimestampFormatted,
-					archiveId.toString(),
-					reportId.toString(),
-					'<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '" target="_blank">' + videoId + '</a>',
-					'<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '#p' + commentId + '" target="_blank">' + commentId + '</a>',
-					email,
-					type,
-					message
-				]);
-			}
-
-			let tableData = {
-				headings: ["actions", "report date", 'comment date', "archive id", "report id", "video id", "comment id", "email", "type", "message"],
-				data: data
-			};
-
-			return tableData;
-		}
-
-		function getCommentReportsArchive() {
-			$.ajax({ type: 'GET', url: '/reports/comments/archive/all' })
-				.done(function (data, textStatus, xhr) {
-					if (data.isError) {
-						showAlert(true, data.message);
-					}
-					else {
-						let reports = data.reports;
-
-						loadCommentReportsArchive(reports);
-					}
-				})
-				.fail(function () {
-					console.log('unable to communicate with node');
+				$(document).off('click', '.delete-report-button').on('click', '.delete-report-button', (e) => {
+					this.deleteReport(e.currentTarget);
 				});
-		}
 
-		function populateCommentReportsTable(parsedCommentReports) {
-			if (DATA_TABLE_COMMENT_REPORTS != null) {
-				DATA_TABLE_COMMENT_REPORTS.destroy();
+				$(document).off('click', '.delete-archive-button').on('click', '.delete-archive-button', (e) => {
+					this.deleteArchive(e.currentTarget);
+				});
+
+				$(document).off('click', '.delete-comment-button').on('click', '.delete-comment-button', (e) => {
+					this.deleteComment(e.currentTarget);
+				});
 			}
 
-			DATA_TABLE_COMMENT_REPORTS = new simpleDatatables.DataTable(
-				"#comment-reports-table",
-				{
-					searchable: true,
-					fixedHeight: true
+			setContentChecked(contentType) {
+				$.ajax({
+					type: 'POST',
+					url: '/node/contentChecked',
+					data: JSON.stringify({ contentType: contentType }),
+					contentType: 'application/json; charset=utf-8'
+				})
+					.done((data, textStatus, xhr) => {
+						if (data.isError) {
+							this.showAlert(true, data.message);
+						}
+					})
+					.fail(() => {
+						console.log('unable to communicate with node');
+					});
+			}
+
+			loadNodeSettings(nodeSettings) {
+				const nodeProtocol = nodeSettings.publicNodeProtocol;
+				const nodeAddress = nodeSettings.publicNodeAddress;
+				const nodePort = nodeSettings.publicNodePort;
+
+				this.NODE_BASE_URL = nodeProtocol + '://' + nodeAddress + ':' + nodePort;
+
+				$('#node-link').attr('href', this.NODE_BASE_URL);
+			}
+
+			loadNewContentCounts(newContentCounts) {
+				const newCommentsCount = newContentCounts.newCommentsCount;
+				const newVideoReportsCount = newContentCounts.newVideoReportsCount;
+				const newCommentReportsCount = newContentCounts.newCommentReportsCount;
+
+				if (newCommentsCount > 0) {
+					$('#new-comments-count-badge').text(newCommentsCount);
 				}
-			);
 
-			DATA_TABLE_COMMENT_REPORTS.insert(parsedCommentReports);
-		}
-
-		function populateCommentReportsArchiveTable(parsedCommentReportArchives) {
-			if (DATA_TABLE_COMMENT_REPORTS_ARCHIVE != null) {
-				DATA_TABLE_COMMENT_REPORTS_ARCHIVE.destroy();
+				if (newVideoReportsCount > 0) {
+					$('#new-reports-count-badge').text(newVideoReportsCount);
+					$('#new-video-reports-count-badge').text(newVideoReportsCount);
+				}
 			}
 
-			DATA_TABLE_COMMENT_REPORTS_ARCHIVE = new simpleDatatables.DataTable(
-				"#comment-reports-archive-table",
-				{
-					searchable: true,
-					fixedHeight: true
+			loadCommentReports(commentReports) {
+				const parsedCommentReports = this.parseCommentReports(commentReports);
+
+				this.populateCommentReportsTable(parsedCommentReports);
+
+				this.refreshHoverTooltips();
+			}
+
+			loadCommentReportsArchive(commentReportsArchive) {
+				const parsedCommentReportsArchive = this.parseCommentReportsArchive(commentReportsArchive);
+
+				this.populateCommentReportsArchiveTable(parsedCommentReportsArchive);
+
+				this.refreshHoverTooltips();
+			}
+
+			parseCommentReports(reports) {
+				const data = [];
+
+				for (const report of reports) {
+					const reportId = report.report_id;
+					const timestamp = report.timestamp;
+					const commentTimestamp = report.comment_timestamp;
+					const videoId = report.video_id;
+					const commentId = report.comment_id;
+					const email = report.email;
+					const type = report.type;
+					const message = report.message;
+
+					const timestampFormatted = this.createDateTimestamp(timestamp);
+					const commentTimestampFormatted = this.createDateTimestamp(commentTimestamp);
+
+					const deleteCommentButton = '<button type="button" class="btn btn-icon btn-2 btn-primary me-1 delete-comment-button" data-videoid="' + videoId + '" data-commentid="' + commentId + '" data-commenttimestamp="' + commentTimestamp + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>';
+					const archiveReportButton = '<button type="button" class="btn btn-icon btn-2 btn-primary me-1 archive-report-button" data-reportid="' + reportId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="archive report" data-bs-original-title="archive report"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-archive" viewBox="0 0 16 16"><path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1V2zm2 3v7.5A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5H2zm13-3H1v2h14V2zM5 7.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/></svg></span></button>';
+					const deleteReportButton = '<button type="button" class="btn btn-icon btn-2 btn-primary delete-report-button" data-reportid="' + reportId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete report" data-bs-original-title="delete report"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/></svg></span></button>';
+
+					data.push([
+						deleteCommentButton + archiveReportButton + deleteReportButton,
+						timestampFormatted,
+						commentTimestampFormatted,
+						reportId.toString(),
+						'<a href="' + this.NODE_BASE_URL + '/watch?v=' + videoId + '" target="_blank">' + videoId + '</a>',
+						'<a href="' + this.NODE_BASE_URL + '/watch?v=' + videoId + '#p' + commentId + '" target="_blank">' + commentId + '</a>',
+						email,
+						type,
+						message
+					]);
 				}
-			);
 
-			DATA_TABLE_COMMENT_REPORTS_ARCHIVE.insert(parsedCommentReportArchives);
-		}
+				let tableData = {
+					headings: ["actions", "report date", 'comment date', "report id", "video id", "comment id", "email", "type", "message"],
+					data: data
+				};
 
+				return tableData;
+			}
 
-		function archiveReport(button) {
-			const reportId = $(button).data('reportid');
+			parseCommentReportsArchive(reports) {
+				const data = [];
 
-			$.ajax({ type: 'POST', url: '/reports/comments/archive', data: { reportId: reportId } })
-				.done(function (data, textStatus, xhr) {
-					if (data.isError) {
-						showAlert(true, data.message);
+				for (const report of reports) {
+					const archiveId = report.archive_id;
+					const reportId = report.report_id;
+					const timestamp = report.timestamp;
+					const commentTimestamp = report.comment_timestamp;
+					const videoId = report.video_id;
+					const commentId = report.comment_id;
+					const email = report.email;
+					const type = report.type;
+					const message = report.message;
+
+					const timestampFormatted = this.createDateTimestamp(timestamp);
+					const commentTimestampFormatted = this.createDateTimestamp(commentTimestamp);
+
+					const deleteCommentButton = '<button class="btn btn-icon btn-2 btn-primary me-1 delete-comment-button" data-videoid="' + videoId + '" data-commentid="' + commentId + '" data-commenttimestamp="' + commentTimestamp + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>';
+					const deleteArchiveButton = '<button class="btn btn-icon btn-2 btn-primary delete-archive-button" data-archiveid="' + archiveId + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete archive" data-bs-original-title="delete archive"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/></svg></span></button>';
+
+					data.push([
+						deleteCommentButton + deleteArchiveButton,
+						timestampFormatted,
+						commentTimestampFormatted,
+						archiveId.toString(),
+						reportId.toString(),
+						'<a href="' + this.NODE_BASE_URL + '/watch?v=' + videoId + '" target="_blank">' + videoId + '</a>',
+						'<a href="' + this.NODE_BASE_URL + '/watch?v=' + videoId + '#p' + commentId + '" target="_blank">' + commentId + '</a>',
+						email,
+						type,
+						message
+					]);
+				}
+
+				let tableData = {
+					headings: ["actions", "report date", 'comment date', "archive id", "report id", "video id", "comment id", "email", "type", "message"],
+					data: data
+				};
+
+				return tableData;
+			}
+
+			getCommentReportsArchive() {
+				$.ajax({ type: 'GET', url: '/reports/comments/archive/all' })
+					.done((data, textStatus, xhr) => {
+						if (data.isError) {
+							this.showAlert(true, data.message);
+						}
+						else {
+							let reports = data.reports;
+
+							this.loadCommentReportsArchive(reports);
+						}
+					})
+					.fail(() => {
+						console.log('unable to communicate with node');
+					});
+			}
+
+			populateCommentReportsTable(parsedCommentReports) {
+				if (this.DATA_TABLE_COMMENT_REPORTS != null) {
+					this.DATA_TABLE_COMMENT_REPORTS.destroy();
+				}
+
+				this.DATA_TABLE_COMMENT_REPORTS = new simpleDatatables.DataTable(
+					"#comment-reports-table",
+					{
+						searchable: true,
+						fixedHeight: true
 					}
-					else {
-						const row = button.closest('tr');
+				);
 
-						DATA_TABLE_COMMENT_REPORTS.rows().remove(parseInt(row.dataIndex));
+				this.DATA_TABLE_COMMENT_REPORTS.insert(parsedCommentReports);
+			}
 
-						getCommentReportsArchive();
+			populateCommentReportsArchiveTable(parsedCommentReportArchives) {
+				if (this.DATA_TABLE_COMMENT_REPORTS_ARCHIVE != null) {
+					this.DATA_TABLE_COMMENT_REPORTS_ARCHIVE.destroy();
+				}
+
+				this.DATA_TABLE_COMMENT_REPORTS_ARCHIVE = new simpleDatatables.DataTable(
+					"#comment-reports-archive-table",
+					{
+						searchable: true,
+						fixedHeight: true
 					}
+				);
+
+				this.DATA_TABLE_COMMENT_REPORTS_ARCHIVE.insert(parsedCommentReportArchives);
+			}
+
+			archiveReport(button) {
+				const reportId = $(button).data('reportid');
+
+				$.ajax({
+					type: 'POST',
+					url: '/reports/comments/archive',
+					data: JSON.stringify({ reportId: reportId }),
+					contentType: 'application/json; charset=utf-8'
 				})
-				.fail(function () {
-					console.log('unable to communicate with node');
-				});
-		}
+					.done((data, textStatus, xhr) => {
+						if (data.isError) {
+							this.showAlert(true, data.message);
+						}
+						else {
+							const row = button.closest('tr');
 
+							this.DATA_TABLE_COMMENT_REPORTS.rows().remove(parseInt(row.dataIndex));
 
-		function deleteReport(button) {
-			const reportId = $(button).data('reportid');
+							this.getCommentReportsArchive();
+						}
+					})
+					.fail(() => {
+						console.log('unable to communicate with node');
+					});
+			}
 
-			$.ajax({ type: 'POST', url: '/reports/comments/delete', data: { reportId: reportId } })
-				.done(function (data, textStatus, xhr) {
-					if (data.isError) {
-						showAlert(true, data.message);
-					}
-					else {
-						const row = button.closest('tr');
+			deleteReport(button) {
+				const reportId = $(button).data('reportid');
 
-						DATA_TABLE_COMMENT_REPORTS.rows().remove(parseInt(row.dataIndex));
-					}
+				$.ajax({
+					type: 'POST',
+					url: '/reports/comments/delete',
+					data: JSON.stringify({ reportId: reportId }),
+					contentType: 'application/json; charset=utf-8'
 				})
-				.fail(function () {
-					console.log('unable to communicate with node');
-				});
-		}
+					.done((data, textStatus, xhr) => {
+						if (data.isError) {
+							this.showAlert(true, data.message);
+						}
+						else {
+							const row = button.closest('tr');
 
-		function deleteArchive(button) {
-			const archiveId = $(button).data('archiveid');
+							this.DATA_TABLE_COMMENT_REPORTS.rows().remove(parseInt(row.dataIndex));
+						}
+					})
+					.fail(() => {
+						console.log('unable to communicate with node');
+					});
+			}
 
-			$.ajax({ type: 'POST', url: '/reports/comments/archive/delete', data: { archiveId: archiveId } })
-				.done(function (data, textStatus, xhr) {
-					if (data.isError) {
-						showAlert(true, data.message);
-					}
-					else {
-						const row = button.closest('tr');
+			deleteArchive(button) {
+				const archiveId = $(button).data('archiveid');
 
-						DATA_TABLE_COMMENT_REPORTS_ARCHIVE.rows().remove(parseInt(row.dataIndex));
-					}
+				$.ajax({
+					type: 'POST',
+					url: '/reports/comments/archive/delete',
+					data: JSON.stringify({ archiveId: archiveId }),
+					contentType: 'application/json; charset=utf-8'
 				})
-				.fail(function () {
-					console.log('unable to communicate with node');
-				});
-		}
+					.done((data, textStatus, xhr) => {
+						if (data.isError) {
+							this.showAlert(true, data.message);
+						}
+						else {
+							const row = button.closest('tr');
 
-		function deleteComment(button) {
-			Swal.fire({
-				title: 'Delete Comment',
-				text: 'Are you sure?',
-				showCloseButton: true,
-				showConfirmButton: true,
-				showCancelButton: true,
-				confirmButtonText: 'confirm',
-			}).then((result) => {
-				if (result.isConfirmed) {
-					const videoId = $(button).data('videoid');
-					const commentId = $(button).data('commentid');
-					const timestamp = $(button).data('commenttimestamp');
+							this.DATA_TABLE_COMMENT_REPORTS_ARCHIVE.rows().remove(parseInt(row.dataIndex));
+						}
+					})
+					.fail(() => {
+						console.log('unable to communicate with node');
+					});
+			}
 
-					$.ajax({ type: 'POST', url: '/comments/delete', data: { videoId: videoId, commentId: commentId, timestamp: timestamp } })
-						.done(function (data, textStatus, xhr) {
-							if (data.isError) {
-								showAlert(true, data.message);
-							}
-							else {
-								showAlert(false, 'comment deleted');
-							}
+			deleteComment(button) {
+				Swal.fire({
+					title: 'Delete Comment',
+					text: 'Are you sure?',
+					showCloseButton: true,
+					showConfirmButton: true,
+					showCancelButton: true,
+					confirmButtonText: 'confirm',
+				}).then((result) => {
+					if (result.isConfirmed) {
+						const videoId = $(button).data('videoid');
+						const commentId = $(button).data('commentid');
+						const timestamp = $(button).data('commenttimestamp');
+
+						$.ajax({
+							type: 'POST',
+							url: '/comments/delete',
+							data: JSON.stringify({ videoId: videoId, commentId: commentId, timestamp: timestamp }),
+							contentType: 'application/json; charset=utf-8'
 						})
-						.fail(function () {
-							console.log('unable to communicate with node');
-						});
+							.done((data, textStatus, xhr) => {
+								if (data.isError) {
+									this.showAlert(true, data.message);
+								}
+								else {
+									this.showAlert(false, 'comment deleted');
+								}
+							})
+							.fail(() => {
+								console.log('unable to communicate with node');
+							});
+					}
+				});
+			}
+
+			refreshHoverTooltips() {
+				$(function () {
+					$('[data-bs-toggle="tooltip"]').tooltip({
+						trigger: 'hover'
+					});
+
+					$('[data-bs-toggle="tooltip"]').on('click', function () {
+						$(this).tooltip('hide')
+					});
+				});
+			}
+
+			showAlert(isError, message) {
+				if (isError) {
+					Swal.fire({
+						icon: 'warning',
+						text: message
+					});
 				}
-			});
-		}
-
-		function refreshHoverTooltips() {
-			$(function () {
-				$('[data-bs-toggle="tooltip"]').tooltip({
-					trigger: 'hover'
-				});
-
-				$('[data-bs-toggle="tooltip"]').on('click', function () {
-					$(this).tooltip('hide')
-				});
-			});
-		}
-
-		function showAlert(isError, message) {
-			if (isError) {
-				Swal.fire({
-					icon: 'warning',
-					html: message,
-					confirmButtonColor: '#3085d6',
-					confirmButtonText: 'Ok'
-				});
+				else {
+					Swal.fire({
+						icon: 'success',
+						text: message
+					});
+				}
 			}
-			else {
-				Swal.fire({
-					icon: 'success',
-					html: message,
-					showConfirmButton: false,
-					timer: 1500
-				})
+
+			createDateTimestamp(timestamp) {
+				let date = new Date(timestamp);
+				let weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+				return ('0' + (date.getMonth() + 1).toString()).substr(-2) + '/' + ('0' + date.getDate().toString()).substr(-2) + '/' + (date.getFullYear().toString()).substr(2) + '(' + weekday[date.getDay()] + ')' + date.toTimeString().split(' ')[0];
 			}
 		}
 
-		function createDateTimestamp(timestamp) {
-			let date = new Date(timestamp);
-			let weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+		const moarTubeClientReportsComments = new MoarTubeClientReportsComments();
 
-			return ('0' + (date.getMonth() + 1).toString()).substr(-2) + '/' + ('0' + date.getDate().toString()).substr(-2) + '/' + (date.getFullYear().toString()).substr(2) + '(' + weekday[date.getDay()] + ')' + date.toTimeString().split(' ')[0];
-		}
+		$(document).ready(function () {
+			moarTubeClientReportsComments.init();
+		});
 	</script>
 </body>
 

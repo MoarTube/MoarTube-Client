@@ -111,78 +111,82 @@
 	<script src="/javascript/sweetalert-11.0.11.min.js"></script>
 
 	<script>
-		$(document).ready(function () {
-			$("#sign-in-form").submit(function (event) {
-				event.preventDefault();
+		class MoarTubeClientSignIn {
+			constructor() {
 
-				let form = $(this);
+			}
 
-				let url = form.attr('action');
+			init() {
+				this.setupEventListeners();
+			}
 
-				let username = form.find('input[name="username"]').val();
-				let password = form.find('input[name="password"]').val();
-				let moarTubeNodeIp = form.find('input[name="moarTubeNodeIp"]').val();
-				let moarTubeNodePort = form.find('input[name="moarTubeNodePort"]').val();
-				let rememberMe = form.find('input[name="rememberMe"]').prop('checked');
+			setupEventListeners() {
+				$('#sign-in-form').off('submit').on('submit', (event) => {
+					event.preventDefault();
 
-				disableInputs();
+					const form = $(event.currentTarget);
 
-				performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe)
-					.then(response => {
-						let loginOutcome = handleloginResponse(response);
+					const url = form.attr('action');
 
-						if (loginOutcome.isLoggedIn) {
-							$('#sign-in-button').text('...redirecting...');
+					const username = form.find('input[name="username"]').val();
+					const password = form.find('input[name="password"]').val();
+					const moarTubeNodeIp = form.find('input[name="moarTubeNodeIp"]').val();
+					const moarTubeNodePort = form.find('input[name="moarTubeNodePort"]').val();
+					const rememberMe = form.find('input[name="rememberMe"]').prop('checked');
 
-							window.location.href = loginOutcome.redirectUrl;
-						}
-						else {
-							if (loginOutcome.reason === 'error') {
-								Swal.fire({
-									icon: 'error',
-									title: 'hmmm',
-									html: response.message
-								});
+					this.disableInputs();
+
+					this.performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe)
+						.then(response => {
+							const loginOutcome = this.handleLoginResponse(response);
+
+							if (loginOutcome.isLoggedIn) {
+								$('#sign-in-button').text('...redirecting...');
+
+								window.location.href = loginOutcome.redirectUrl;
 							}
-							else if (loginOutcome.reason === 'password') {
-								Swal.fire({
-									icon: 'error',
-									html: 'username/password not correct'
-								});
-							}
+							else {
+								if (loginOutcome.reason === 'error') {
+									this.showAlert(true, response.message);
+								}
+								else if (loginOutcome.reason === 'password') {
+									this.showAlert(true, 'username/password not correct');
+								}
 
-							enableInputs();
-						}
-					})
-					.catch(error => {
-						Swal.fire({
-							icon: 'error',
-							title: 'hmmm',
-							html: error
+								this.enableInputs();
+							}
+						})
+						.catch(error => {
+							this.showAlert(true, error);
+
+							this.enableInputs();
 						});
+				});
+			}
 
-						enableInputs();
-					});
-			});
-
-			function disableInputs() {
+			disableInputs() {
 				$('#sign-in-button').text('...signing in...');
 
 				$('input').prop('disabled', true);
 				$('button').prop('disabled', true);
 			}
 
-			function enableInputs() {
+			enableInputs() {
 				$('#sign-in-button').text('sign in');
 
 				$('input').prop('disabled', false);
 				$('button').prop('disabled', false);
 			}
 
-			function performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe) {
+			performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort, rememberMe) {
 				return new Promise(function (resolve, reject) {
 					if (username != '' && password != '' && moarTubeNodeIp != '' && moarTubeNodePort != '') {
-						$.post({ url: url, data: JSON.stringify({ username: username, password: password, moarTubeNodeIp: moarTubeNodeIp, moarTubeNodePort: moarTubeNodePort, rememberMe: rememberMe }), contentType: 'application/json; charset=utf-8' })
+						$.ajax({
+							type: 'POST',
+							url: url,
+							data: JSON.stringify({ username: username, password: password, moarTubeNodeIp: moarTubeNodeIp, moarTubeNodePort: moarTubeNodePort, rememberMe: rememberMe }),
+							contentType: 'application/json; charset=utf-8'
+						})
 							.done(function (response) {
 								resolve(response);
 							})
@@ -196,8 +200,8 @@
 				});
 			}
 
-			function handleloginResponse(response) {
-				let result = {};
+			handleLoginResponse(response) {
+				const result = {};
 
 				if (response.isError) {
 					result.isLoggedIn = false;
@@ -216,6 +220,27 @@
 
 				return result;
 			}
+
+			showAlert(isError, message) {
+				if (isError) {
+					Swal.fire({
+						icon: 'warning',
+						text: message
+					});
+				}
+				else {
+					Swal.fire({
+						icon: 'success',
+						text: message
+					});
+				}
+			}
+		}
+
+		const moarTubeClientSignIn = new MoarTubeClientSignIn();
+
+		$(document).ready(function () {
+			moarTubeClientSignIn.init();
 		});
 	</script>
 

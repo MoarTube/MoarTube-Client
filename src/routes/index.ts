@@ -7,7 +7,6 @@ import type { FastifyInstance } from 'fastify';
 import type { Container } from '@/core/index.js';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 
-
 // Import for registration
 import type { WebSocket } from 'ws';
 import { accountRoutes } from '@/routes/account.js';
@@ -30,13 +29,13 @@ import { nodeRoutes } from '@/routes/node.js';
 export function registerRoutes(fastify: FastifyInstance, container: Container): void {
   // WebSocket Route
   fastify.get('/ws', { websocket: true }, (connection, req) => {
-      const socketService = container.resolve('socketService');
-      const jwtToken = req.session.jwtToken;
-      
-      const connectionObj = connection as unknown as { socket: WebSocket };
-      const socket: WebSocket = connectionObj.socket || (connection as unknown as WebSocket);
-      
-      socketService.handleConnection(socket, jwtToken);
+    const socketService = container.resolve('socketService');
+    const jwtToken = req.session.jwtToken;
+
+    const connectionObj = connection as unknown as { socket: WebSocket };
+    const socket: WebSocket = connectionObj.socket;
+
+    socketService.handleConnection(socket, jwtToken);
   });
 
   // Account routes (/account/*)
@@ -47,7 +46,7 @@ export function registerRoutes(fastify: FastifyInstance, container: Container): 
     },
     { prefix: '/account' }
   );
-  
+
   // Settings routes (/settings/*)
   fastify.register(
     (instance, _opts, done) => {
@@ -60,8 +59,8 @@ export function registerRoutes(fastify: FastifyInstance, container: Container): 
   // Links routes (/links/*)
   fastify.register(
     (instance, _opts, done) => {
-        linksRoutes(instance.withTypeProvider<ZodTypeProvider>(), container);
-        done();
+      linksRoutes(instance.withTypeProvider<ZodTypeProvider>(), container);
+      done();
     },
     { prefix: '/links' }
   );
@@ -69,8 +68,8 @@ export function registerRoutes(fastify: FastifyInstance, container: Container): 
   // Monetization routes (/monetization/*)
   fastify.register(
     (instance, _opts, done) => {
-        monetizationRoutes(instance.withTypeProvider<ZodTypeProvider>(), container);
-        done();
+      monetizationRoutes(instance.withTypeProvider<ZodTypeProvider>(), container);
+      done();
     },
     { prefix: '/monetization' }
   );
@@ -78,8 +77,8 @@ export function registerRoutes(fastify: FastifyInstance, container: Container): 
   // Comments routes (/comments/*)
   fastify.register(
     (instance, _opts, done) => {
-        commentsRoutes(instance.withTypeProvider<ZodTypeProvider>(), container);
-        done();
+      commentsRoutes(instance.withTypeProvider<ZodTypeProvider>(), container);
+      done();
     },
     { prefix: '/comments' }
   );
@@ -88,8 +87,8 @@ export function registerRoutes(fastify: FastifyInstance, container: Container): 
   // Handles /reports/videos and /reports/comments internally
   fastify.register(
     (instance, _opts, done) => {
-        reportsRoutes(instance.withTypeProvider<ZodTypeProvider>(), container);
-        done();
+      reportsRoutes(instance.withTypeProvider<ZodTypeProvider>(), container);
+      done();
     },
     { prefix: '/reports' }
   );
@@ -97,8 +96,8 @@ export function registerRoutes(fastify: FastifyInstance, container: Container): 
   // Node routes (/node/*)
   fastify.register(
     (instance, _opts, done) => {
-        nodeRoutes(instance.withTypeProvider<ZodTypeProvider>(), container);
-        done();
+      nodeRoutes(instance.withTypeProvider<ZodTypeProvider>(), container);
+      done();
     },
     { prefix: '/node' }
   );
@@ -121,7 +120,7 @@ export function registerRoutes(fastify: FastifyInstance, container: Container): 
     { prefix: '/videos' }
   );
 
-    // Home routes (Root)
-    // Note: Home routes are mounted at root, so no prefix or '/' prefix
-    homeRoutes(fastify.withTypeProvider<ZodTypeProvider>(), container);
+  // Home routes (Root)
+  // Note: Home routes are mounted at root, so no prefix or '/' prefix
+  homeRoutes(fastify.withTypeProvider<ZodTypeProvider>(), container);
 }

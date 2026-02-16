@@ -249,7 +249,7 @@
 								</output>
 							</span>
 							<input type="text" id="search-input" class="form-control" placeholder="Search here..."
-								onfocus="focused(this)" onfocusout="defocused(this)" oninput="searchInputEntered(this)">
+								onfocus="focused(this)" onfocusout="defocused(this)">
 						</div>
 					</div>
 					<ul class="navbar-nav justify-content-end">
@@ -306,294 +306,306 @@
 	<script>
 		const INCOMING_PARAMETERS = <%- JSON.stringify(model) %>;
 
-		let VIDEO_ID;
-		let NODE_BASE_URL;
+		class MoarTubeClientComments {
+			constructor() {
+				this.INCOMING_PARAMETERS = INCOMING_PARAMETERS;
+				this.VIDEO_ID = null;
+				this.NODE_BASE_URL = null;
+				this.OLDEST_COMMENT_VISIBLE_TIMESTAMP = null;
+				this.COMMENTS_LOADER_INTERVAL = null;
+				this.DATA_TABLE = null;
+				this.searchInputTimer = null;
+			}
 
-		let OLDEST_COMMENT_VISIBLE_TIMESTAMP;
+			init() {
+				const params = new URL(window.location.href).searchParams;
 
-		let COMMENTS_LOADER_INTERVAL;
+				this.VIDEO_ID = params.get('v');
 
-		let DATA_TABLE;
+				const nodeSettings = this.INCOMING_PARAMETERS.nodeSettings;
+				const newContentCounts = this.INCOMING_PARAMETERS.newContentCounts;
 
-		$(document).ready(async function () {
-			const params = new URL(window.location.href).searchParams;
+				this.setContentChecked('comments');
 
-			VIDEO_ID = params.get('v');
+				this.loadNodeSettings(nodeSettings);
+				this.loadNewContentCounts(newContentCounts);
 
-			const nodeSettings = INCOMING_PARAMETERS.nodeSettings;
-			const newContentCounts = INCOMING_PARAMETERS.newContentCounts;
+				this.startCommentsLoaderInterval('', 10, Date.now());
 
-			setContentChecked('comments');
+				this.setupEventListeners();
+			}
 
-			loadNodeSettings(nodeSettings);
-			loadNewContentCounts(newContentCounts);
+			setupEventListeners() {
+				$('#search-input').off('input').on('input', (event) => this.searchInputEntered(event.target));
 
-			startCommentsLoaderInterval('', 10, Date.now());
-		});
-
-		function setContentChecked(contentType) {
-			$.ajax({ type: 'POST', url: '/node/contentChecked', data: { contentType: contentType } })
-				.done(function (data, textStatus, xhr) {
-					if (data.isError) {
-						showAlert(true, data.message);
-					}
-				})
-				.fail(function () {
-					console.log('unable to communicate with node');
+				$('#comments-table').off('click', '.delete-comment-button').on('click', '.delete-comment-button', (event) => {
+					this.deleteComment(event.currentTarget);
 				});
-		}
-
-		function loadNodeSettings(nodeSettings) {
-			const nodeProtocol = nodeSettings.publicNodeProtocol;
-			const nodeAddress = nodeSettings.publicNodeAddress;
-			const nodePort = nodeSettings.publicNodePort;
-
-			NODE_BASE_URL = nodeProtocol + '://' + nodeAddress + ':' + nodePort;
-
-			$('#node-link').attr('href', NODE_BASE_URL);
-		}
-
-		function loadNewContentCounts(newContentCounts) {
-			const newVideoReportsCount = newContentCounts.newVideoReportsCount;
-			const newCommentReportsCount = newContentCounts.newCommentReportsCount;
-
-			const newReportsCount = newVideoReportsCount + newCommentReportsCount;
-
-			if (newReportsCount > 0) {
-				$('#new-reports-count').text(newReportsCount);
 			}
 
-			if (newVideoReportsCount > 0) {
-				$('#new-video-reports-count').text(newVideoReportsCount);
-			}
-
-			if (newCommentReportsCount > 0) {
-				$('#new-comment-reports-count').text(newCommentReportsCount);
-			}
-		}
-
-		let searchInputTimer;
-		function searchInputEntered(input) {
-			const searchTerm = input.value;
-
-			clearTimeout(searchInputTimer);
-
-			$('#search_input_icon').addClass('hidden-elem');
-			$('#search_input_spinner').removeClass('hidden-elem');
-			searchInputTimer = setTimeout(async function () {
-				$('#videos_table tbody').empty();
-
-				if (DATA_TABLE != null) {
-					DATA_TABLE.destroy();
-					DATA_TABLE = null;
-				}
-
-				startCommentsLoaderInterval(searchTerm, 10, Date.now());
-
-				$('#search_input_spinner').addClass('hidden-elem');
-				$('#search_input_icon').removeClass('hidden-elem');
-
-			}, 500);
-		}
-
-		async function startCommentsLoaderInterval(searchTerm, limit, timestamp) {
-			clearInterval(COMMENTS_LOADER_INTERVAL);
-
-			OLDEST_COMMENT_VISIBLE_TIMESTAMP = timestamp;
-
-			try {
-				const commentsTableLoadingSpinner = $('#comments-scroller-loading-spinner');
-
-				$(commentsTableLoadingSpinner).removeClass('hidden-elem');
-
-				await getComments(searchTerm, limit, OLDEST_COMMENT_VISIBLE_TIMESTAMP);
-
-				let blocked = false;
-
-				COMMENTS_LOADER_INTERVAL = setInterval(async function () {
-					const commentsTableLoadingSpinnerRect = $(commentsTableLoadingSpinner)[0].getBoundingClientRect();
-
-					if (commentsTableLoadingSpinnerRect.top >= 0 && commentsTableLoadingSpinnerRect.bottom <= (window.innerHeight || document.documentElement.clientHeight)) {
-						if (!blocked) {
-							blocked = true;
-							await getComments(searchTerm, limit, OLDEST_COMMENT_VISIBLE_TIMESTAMP);
-							blocked = false;
-						}
-					}
-				}, 500);
-			}
-			catch (error) {
-				console.log(error);
-			}
-		}
-
-		function getComments(searchTerm, limit, timestamp) {
-			return new Promise(function (resolve, reject) {
-				let data = {
-					limit: limit,
-					timestamp: timestamp
-				};
-
-				if(VIDEO_ID != null) {
-					data.videoId = VIDEO_ID;
-				}
-
-				if(searchTerm.length > 0) {
-					data.searchTerm = searchTerm;
-				}
-
-				$.ajax({ type: 'GET', url: '/comments/search', data: data })
-					.done(function (data, textStatus, xhr) {
+			setContentChecked(contentType) {
+				$.ajax({ type: 'POST', url: '/node/contentChecked', data: JSON.stringify({ contentType: contentType }), contentType: 'application/json; charset=utf-8' })
+					.done((data, textStatus, xhr) => {
 						if (data.isError) {
-							// showAlert(true, data.message);
+							this.showAlert(true, data.message);
 						}
-						else {
-							let comments = data.comments;
-
-							const tableData = parseComments(comments);
-
-							populateCommentsTable(tableData);
-
-							refreshHoverTooltips();
-
-							if (comments.length === 0) {
-								clearInterval(COMMENTS_LOADER_INTERVAL);
-
-								$('#comments-scroller-loading-spinner').addClass('hidden-elem');
-							}
-						}
-
-						resolve();
 					})
 					.fail(function () {
 						console.log('unable to communicate with node');
-
-						resolve();
 					});
-			});
-		}
+			}
 
-		function parseComments(comments) {
-			const data = [];
+			loadNodeSettings(nodeSettings) {
+				const nodeProtocol = nodeSettings.publicNodeProtocol;
+				const nodeAddress = nodeSettings.publicNodeAddress;
+				const nodePort = nodeSettings.publicNodePort;
 
-			for (const comment of comments) {
-				const videoId = comment.video_id;
-				const commentId = comment.comment_id;
-				const message = comment.comment_plain_text_sanitized;
-				const timestamp = comment.timestamp;
+				this.NODE_BASE_URL = nodeProtocol + '://' + nodeAddress + ':' + nodePort;
 
-				const timestampFormatted = createDateTimestamp(timestamp);
-				const videoIdFormatted = '<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '" target="_blank">' + videoId + '</a>';
-				const commentIdFormatted = '<a href="' + NODE_BASE_URL + '/watch?v=' + videoId + '#p' + commentId + '" target="_blank">' + commentId + '</a>';
+				$('#node-link').attr('href', this.NODE_BASE_URL);
+			}
 
-				data.push([
-					'<button type="button" class="btn btn-icon btn-2 btn-primary" onclick="deleteComment(this)" data-videoid="' + videoId + '" data-commentid="' + commentId + '" data-timestamp="' + timestamp + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>',
-					timestampFormatted,
-					videoIdFormatted,
-					commentIdFormatted,
-					message
-				]);
+			loadNewContentCounts(newContentCounts) {
+				const newVideoReportsCount = newContentCounts.newVideoReportsCount;
+				const newCommentReportsCount = newContentCounts.newCommentReportsCount;
 
-				if (OLDEST_COMMENT_VISIBLE_TIMESTAMP == null || timestamp < OLDEST_COMMENT_VISIBLE_TIMESTAMP) {
-					OLDEST_COMMENT_VISIBLE_TIMESTAMP = timestamp;
+				const newReportsCount = newVideoReportsCount + newCommentReportsCount;
+
+				if (newReportsCount > 0) {
+					$('#new-reports-count').text(newReportsCount);
+				}
+
+				if (newVideoReportsCount > 0) {
+					$('#new-video-reports-count').text(newVideoReportsCount);
+				}
+
+				if (newCommentReportsCount > 0) {
+					$('#new-comment-reports-count').text(newCommentReportsCount);
 				}
 			}
 
-			let tableData = {
-				headings: ["actions", 'comment date', "video id", "comment id", "message"],
-				data: data
-			};
+			searchInputEntered(input) {
+				const searchTerm = input.value;
 
-			return tableData;
-		}
+				clearTimeout(this.searchInputTimer);
 
-		function populateCommentsTable(data) {
-			if (DATA_TABLE == null) {
-				DATA_TABLE = new simpleDatatables.DataTable(
-					"#comments-table",
-					{
-						searchable: false,
-						sortable: false,
-						fixedHeight: true,
-						paging: false
+				$('#search_input_icon').addClass('hidden-elem');
+				$('#search_input_spinner').removeClass('hidden-elem');
+				this.searchInputTimer = setTimeout(() => {
+					$('#comments-table tbody').empty();
+
+					if (this.DATA_TABLE != null) {
+						this.DATA_TABLE.destroy();
+						this.DATA_TABLE = null;
 					}
-				);
+
+					this.startCommentsLoaderInterval(searchTerm, 10, Date.now());
+
+					$('#search_input_spinner').addClass('hidden-elem');
+					$('#search_input_icon').removeClass('hidden-elem');
+
+				}, 500);
 			}
 
-			DATA_TABLE.insert(data);
-		}
+			async startCommentsLoaderInterval(searchTerm, limit, timestamp) {
+				clearInterval(this.COMMENTS_LOADER_INTERVAL);
 
-		function deleteComment(button) {
-			Swal.fire({
-				title: 'Delete Comment',
-				text: 'Are you sure?',
-				showCloseButton: true,
-				showConfirmButton: true,
-				showCancelButton: true,
-				confirmButtonText: 'confirm',
-			}).then((result) => {
-				if (result.isConfirmed) {
-					const row = button.closest('tr');
+				this.OLDEST_COMMENT_VISIBLE_TIMESTAMP = timestamp;
 
-					const videoId = $(button).data('videoid');
-					const commentId = $(button).data('commentid');
-					const timestamp = $(button).data('timestamp');
+				try {
+					const commentsTableLoadingSpinner = $('#comments-scroller-loading-spinner');
 
-					$.ajax({ type: 'POST', url: '/comments/delete', data: { videoId: videoId, commentId: commentId, timestamp: timestamp } })
-						.done(function (data, textStatus, xhr) {
+					$(commentsTableLoadingSpinner).removeClass('hidden-elem');
+
+					await this.getComments(searchTerm, limit, this.OLDEST_COMMENT_VISIBLE_TIMESTAMP);
+
+					let blocked = false;
+
+					this.COMMENTS_LOADER_INTERVAL = setInterval(async () => {
+						const commentsTableLoadingSpinnerRect = $(commentsTableLoadingSpinner)[0].getBoundingClientRect();
+
+						if (commentsTableLoadingSpinnerRect.top >= 0 && commentsTableLoadingSpinnerRect.bottom <= (window.innerHeight || document.documentElement.clientHeight)) {
+							if (!blocked) {
+								blocked = true;
+								await this.getComments(searchTerm, limit, this.OLDEST_COMMENT_VISIBLE_TIMESTAMP);
+								blocked = false;
+							}
+						}
+					}, 500);
+				}
+				catch (error) {
+					console.log(error);
+				}
+			}
+
+			getComments(searchTerm, limit, timestamp) {
+				return new Promise((resolve, reject) => {
+					const data = {
+						limit: limit,
+						timestamp: timestamp
+					};
+
+					if (this.VIDEO_ID != null) {
+						data.videoId = this.VIDEO_ID;
+					}
+
+					if (searchTerm.length > 0) {
+						data.searchTerm = searchTerm;
+					}
+
+					$.ajax({ type: 'GET', url: '/comments/search', data: data })
+						.done((data, textStatus, xhr) => {
 							if (data.isError) {
-								showAlert(true, data.message);
+								// this.showAlert(true, data.message);
 							}
 							else {
-								const row = button.closest('tr');
+								const comments = data.comments;
 
-								DATA_TABLE.rows().remove(parseInt(row.dataIndex));
+								const tableData = this.parseComments(comments);
+
+								this.populateCommentsTable(tableData);
+
+								this.refreshHoverTooltips();
+
+								if (comments.length === 0) {
+									clearInterval(this.COMMENTS_LOADER_INTERVAL);
+
+									$('#comments-scroller-loading-spinner').addClass('hidden-elem');
+								}
 							}
+
+							resolve();
 						})
 						.fail(function () {
 							console.log('unable to communicate with node');
+
+							resolve();
 						});
+				});
+			}
+
+			parseComments(comments) {
+				const data = [];
+
+				for (const comment of comments) {
+					const videoId = comment.video_id;
+					const commentId = comment.comment_id;
+					const message = comment.comment_plain_text_sanitized;
+					const timestamp = comment.timestamp;
+
+					const timestampFormatted = this.createDateTimestamp(timestamp);
+					const videoIdFormatted = '<a href="' + this.NODE_BASE_URL + '/watch?v=' + videoId + '" target="_blank">' + videoId + '</a>';
+					const commentIdFormatted = '<a href="' + this.NODE_BASE_URL + '/watch?v=' + videoId + '#p' + commentId + '" target="_blank">' + commentId + '</a>';
+
+					data.push([
+						'<button type="button" class="btn btn-icon btn-2 btn-primary delete-comment-button" data-videoid="' + videoId + '" data-commentid="' + commentId + '" data-timestamp="' + timestamp + '" data-bs-toggle="tooltip" data-bs-placement="top" data-container="body" data-animation="true" aria-label="delete comment" data-bs-original-title="delete comment"><span class="btn-inner--icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg></span></button>',
+						timestampFormatted,
+						videoIdFormatted,
+						commentIdFormatted,
+						message
+					]);
+
+					if (this.OLDEST_COMMENT_VISIBLE_TIMESTAMP == null || timestamp < this.OLDEST_COMMENT_VISIBLE_TIMESTAMP) {
+						this.OLDEST_COMMENT_VISIBLE_TIMESTAMP = timestamp;
+					}
 				}
-			});
-		}
 
-		function refreshHoverTooltips() {
-			$(function () {
-				$('[data-bs-toggle="tooltip"]').tooltip({
-					trigger: 'hover'
-				});
+				const tableData = {
+					headings: ["actions", 'comment date', "video id", "comment id", "message"],
+					data: data
+				};
 
-				$('[data-bs-toggle="tooltip"]').on('click', function () {
-					$(this).tooltip('hide')
-				});
-			});
-		}
+				return tableData;
+			}
 
-		function showAlert(isError, message) {
-			if (isError) {
+			populateCommentsTable(data) {
+				if (this.DATA_TABLE == null) {
+					this.DATA_TABLE = new simpleDatatables.DataTable(
+						"#comments-table",
+						{
+							searchable: false,
+							sortable: false,
+							fixedHeight: true,
+							paging: false
+						}
+					);
+				}
+
+				this.DATA_TABLE.insert(data);
+			}
+
+			deleteComment(button) {
 				Swal.fire({
-					icon: 'warning',
-					html: message,
-					confirmButtonColor: '#3085d6',
-					confirmButtonText: 'Ok'
+					title: 'Delete Comment',
+					text: 'Are you sure?',
+					showCloseButton: true,
+					showConfirmButton: true,
+					showCancelButton: true,
+					confirmButtonText: 'confirm',
+				}).then((result) => {
+					if (result.isConfirmed) {
+						const videoId = $(button).data('videoid');
+						const commentId = $(button).data('commentid');
+						const timestamp = $(button).data('timestamp');
+
+						$.ajax({ type: 'POST', url: '/comments/delete', data: JSON.stringify({ videoId: videoId, commentId: commentId, timestamp: timestamp }), contentType: 'application/json; charset=utf-8' })
+							.done((data, textStatus, xhr) => {
+								if (data.isError) {
+									this.showAlert(true, data.message);
+								}
+								else {
+									const row = button.closest('tr');
+
+									this.DATA_TABLE.rows().remove(parseInt(row.dataIndex));
+								}
+							})
+							.fail(function () {
+								console.log('unable to communicate with node');
+							});
+					}
 				});
 			}
-			else {
-				Swal.fire({
-					icon: 'success',
-					html: message,
-					showConfirmButton: false,
-					timer: 1500
-				})
+
+			refreshHoverTooltips() {
+				$(function () {
+					$('[data-bs-toggle="tooltip"]').tooltip({
+						trigger: 'hover'
+					});
+
+					$('[data-bs-toggle="tooltip"]').on('click', function () {
+						$(this).tooltip('hide')
+					});
+				});
+			}
+
+			showAlert(isError, message) {
+				if (isError) {
+					Swal.fire({
+						icon: 'warning',
+						text: message
+					});
+				}
+				else {
+					Swal.fire({
+						icon: 'success',
+						text: message
+					});
+				}
+			}
+
+			createDateTimestamp(timestamp) {
+				const date = new Date(timestamp);
+				const weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+				return ('0' + (date.getMonth() + 1).toString()).substr(-2) + '/' + ('0' + date.getDate().toString()).substr(-2) + '/' + (date.getFullYear().toString()).substr(2) + '(' + weekday[date.getDay()] + ')' + date.toTimeString().split(' ')[0];
 			}
 		}
 
-		function createDateTimestamp(timestamp) {
-			let date = new Date(timestamp);
-			let weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+		const moarTubeClientComments = new MoarTubeClientComments();
 
-			return ('0' + (date.getMonth() + 1).toString()).substr(-2) + '/' + ('0' + date.getDate().toString()).substr(-2) + '/' + (date.getFullYear().toString()).substr(2) + '(' + weekday[date.getDay()] + ')' + date.toTimeString().split(' ')[0];
-		}
+		$(document).ready(function () {
+			moarTubeClientComments.init();
+		});
 	</script>
 </body>
 

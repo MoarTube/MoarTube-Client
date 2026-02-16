@@ -27,20 +27,16 @@ export class NodeSocketService extends BaseService {
   }
 
   public get isConnected(): boolean {
-      return this._isConnected;
-  }
-
-  public send(message: Record<string, unknown>): void {
-      if (this.websocketClient && this._isConnected) {
-          this.websocketClient.send(JSON.stringify(message));
-      }
+    return this._isConnected;
   }
 
   public connect(jwtToken: string): void {
+    this.shouldReconnect = true;
+
     if (this.websocketClient) {
       this.disconnect();
+      this.shouldReconnect = true;
     }
-    this.shouldReconnect = true;
 
     const settings = this.config.clientSettings;
     const url = `${settings.nodeWebsocketProtocol}://${settings.nodeIp}:${String(settings.nodePort)}`;
@@ -51,11 +47,13 @@ export class NodeSocketService extends BaseService {
     this.websocketClient.on('open', () => {
       this.logger.info(`Validating connection to Node: ${url}`);
       this._isConnected = true;
-      this.websocketClient?.send(JSON.stringify({ 
-        eventName: 'register', 
-        socketType: 'moartube_client', 
-        jwtToken: jwtToken 
-      }));
+      this.websocketClient?.send(
+        JSON.stringify({
+          eventName: 'register',
+          socketType: 'moartube_client',
+          jwtToken: jwtToken,
+        })
+      );
 
       this.startPingPong(jwtToken, url);
     });
@@ -66,10 +64,13 @@ export class NodeSocketService extends BaseService {
 
     this.websocketClient.on('close', () => {
       this.logger.info(`Disconnected from Node: ${url}`);
+      this.websocketClient = null;
       this.cleanup();
-      
+
       if (this.shouldReconnect) {
-        setTimeout(() => { this.connect(jwtToken); }, 1000);
+        setTimeout(() => {
+          this.connect(jwtToken);
+        }, 1000);
       }
     });
 
@@ -80,121 +81,133 @@ export class NodeSocketService extends BaseService {
 
   public disconnect(): void {
     this.shouldReconnect = false;
+
     if (this.websocketClient) {
+      this.websocketClient.removeAllListeners('close');
       this.websocketClient.terminate();
       this.websocketClient = null;
     }
     this.cleanup();
   }
 
-  private startPingPong(jwtToken: string, url: string): void {
-     this.pingIntervalTimer = setInterval(() => {
-        if (!this.pingTimeoutTimer) {
-             this.pingTimeoutTimer = setTimeout(() => {
-                 this.logger.warn(`Terminating unresponsive connection to ${url}`);
-                 this.disconnect();
-             }, 3000);
+  public send(message: unknown): void {
+    if (
+      !this.websocketClient ||
+      !this.isConnected ||
+      this.websocketClient.readyState !== WebSocket.OPEN
+    ) {
+      this.logger.warn('Cannot send WebSocket message: Node connection is not open');
+      return;
+    }
 
-             this.websocketClient?.send(JSON.stringify({ eventName: 'ping', jwtToken }));
-        }
-     }, 2000);
+    this.websocketClient.send(JSON.stringify(message));
+  }
+
+  private startPingPong(jwtToken: string, url: string): void {
+    this.pingIntervalTimer = setInterval(() => {
+      if (!this.pingTimeoutTimer) {
+        this.pingTimeoutTimer = setTimeout(() => {
+          this.logger.warn(`Terminating unresponsive connection to ${url}`);
+          this.disconnect();
+        }, 3000);
+
+        this.logger.info(`Sending ping... Token starts with: ${jwtToken.substring(0, 5)}`);
+        this.websocketClient?.send(JSON.stringify({ eventName: 'ping', jwtToken }));
+      }
+    }, 1000);
   }
 
   private cleanup(): void {
-      this._isConnected = false;
-      if (this.pingIntervalTimer) {clearInterval(this.pingIntervalTimer);}
-      if (this.pingTimeoutTimer) {clearTimeout(this.pingTimeoutTimer);}
-      this.pingIntervalTimer = null;
-      this.pingTimeoutTimer = null;
+    this._isConnected = false;
+    if (this.pingIntervalTimer) {
+      clearInterval(this.pingIntervalTimer);
+    }
+    if (this.pingTimeoutTimer) {
+      clearTimeout(this.pingTimeoutTimer);
+    }
+    this.pingIntervalTimer = null;
+    this.pingTimeoutTimer = null;
   }
 
   private handleMessage(message: WebSocket.Data): void {
-      try {
-          let msgStr: string;
-          if (Buffer.isBuffer(message)) {
-              msgStr = message.toString();
-          } else if (Array.isArray(message)) {
-              msgStr = Buffer.concat(message).toString();
-          } else if (message instanceof ArrayBuffer) {
-              msgStr = Buffer.from(message).toString();
-          } else {
-              // It might be a string already
-              msgStr = message as string;
-          }
-
-          // this.logger.debug(`WebSocket message received: ${msgStr.substring(0, 100)}`);
-
-          const parsedMessage = JSON.parse(msgStr) as { eventName?: string; errorType?: string; data?: unknown; error?: string };
-          
-          if (parsedMessage.eventName === 'pong') {
-              if (this.pingTimeoutTimer) {
-                  clearTimeout(this.pingTimeoutTimer);
-                  this.pingTimeoutTimer = null;
-              }
-          } else if (parsedMessage.eventName === 'registered') {
-              this.logger.info('Registered websocket connection with MoarTube Node');
-          } else if (parsedMessage.eventName === 'error') {
-              this.logger.error('Received error from Node', { error: parsedMessage.error });
-              if(parsedMessage.errorType === 'register') {
-                  this.logger.warn('Registration failed, stopping reconnection attempts');
-                  this.shouldReconnect = false;
-              }
-              this.disconnect();
-          } else if (parsedMessage.eventName === 'echo') {
-              this.handleEchoEvent(parsedMessage.data);
-          }
-      } catch (err) {
-          this.logger.error('Error parsing WebSocket message', err);
+    try {
+      let msgStr: string;
+      if (Buffer.isBuffer(message)) {
+        msgStr = message.toString();
+      } else if (Array.isArray(message)) {
+        msgStr = Buffer.concat(message).toString();
+      } else if (message instanceof ArrayBuffer) {
+        msgStr = Buffer.from(message).toString();
+      } else {
+        msgStr = message;
       }
+
+      this.logger.info(`WebSocket message received: ${msgStr.substring(0, 200)}`);
+
+      const parsedMessage = JSON.parse(msgStr) as { eventName?: string; data?: unknown };
+
+      if (parsedMessage.eventName === 'pong') {
+        this.logger.info('Received pong from Node');
+        if (this.pingTimeoutTimer) {
+          clearTimeout(this.pingTimeoutTimer);
+          this.pingTimeoutTimer = null;
+        }
+      } else if (parsedMessage.eventName === 'registered') {
+        this.logger.info('Registered with MoarTube Node');
+      } else if (parsedMessage.eventName === 'echo') {
+        this.handleEchoEvent(parsedMessage.data);
+      }
+    } catch (err) {
+      this.logger.error('Error parsing WebSocket message', err);
+    }
   }
 
   private handleEchoEvent(data: unknown): void {
-      if (data === undefined || data === null || typeof data !== 'object') {
-        return;
-      }
-      
-      const echoData = data as { eventName?: string; payload?: unknown };
+    if (data === undefined || data === null || typeof data !== 'object') {
+      return;
+    }
 
-      if (echoData.eventName === 'video_status') {
-          this.handleVideoStatusEcho(echoData.payload, data, echoData.eventName);
-      } else if (echoData.eventName === 'video_data') {
-          this.socketService.broadcast(echoData.eventName, data);
-      }
+    const echoData = data as { eventName?: string; payload?: unknown };
+
+    if (echoData.eventName === 'video_status') {
+      this.handleVideoStatusEcho(echoData.payload, data, echoData.eventName);
+    } else if (echoData.eventName === 'video_data') {
+      this.socketService.broadcast(echoData.eventName, data);
+    }
   }
 
   private handleVideoStatusEcho(payload: unknown, originalData: unknown, eventName: string): void {
-      const p = payload as { videoId: string; type: string } | undefined;
-      
-      if (!p) {
-        return;
-      }
+    const p = payload as { videoId: string; type: string } | undefined;
 
-      const { videoId, type } = p;
+    if (!p) {
+      return;
+    }
 
-      switch (type) {
-          case 'importing_stopping':
-               this.videoImportService.stoppingVideoImport(videoId);
-               break;
-          case 'importing_stopped':
-               this.videoImportService.stoppedVideoImport(videoId, originalData);
-               break;
-          case 'publishing_stopping':
-               this.videoPublishService.stoppingPublishVideoEncoding(videoId);
-               break;
-          case 'publishing_stopped':
-               this.videoPublishService.stopPendingPublishVideo(videoId);
-               this.socketService.broadcast('echo', originalData); 
-               break;
-          case 'streaming_stopping':
-               this.liveStreamService.markLiveStreamStopping(videoId); 
-               break;
-          case 'streaming_stopped':
-               this.liveStreamService.stopLiveStream(videoId);
-               this.socketService.broadcast('echo', originalData);
-               break;
-          default:
-               this.socketService.broadcast(eventName, originalData); 
-               break;
-      }
+    const { videoId, type } = p;
+
+    switch (type) {
+      case 'importing_stopping':
+        this.videoImportService.stoppingVideoImport(videoId);
+        break;
+      case 'importing_stopped':
+        this.videoImportService.stoppedVideoImport(videoId, originalData);
+        break;
+      case 'publishing_stopping':
+        this.videoPublishService.stoppingPublishVideoEncoding(videoId);
+        break;
+      case 'publishing_stopped':
+        this.videoPublishService.stopPendingPublishVideo(videoId);
+        this.socketService.broadcast('echo', originalData);
+        break;
+      case 'streaming_stopping':
+        this.liveStreamService.markLiveStreamStopping(videoId);
+        break;
+      case 'streaming_stopped':
+        this.socketService.broadcast('echo', originalData);
+        break;
+      default:
+        this.socketService.broadcast(eventName, originalData);
+        break;
+    }
   }
 }
