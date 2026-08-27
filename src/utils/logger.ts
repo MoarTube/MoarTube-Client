@@ -13,8 +13,6 @@ import pinoPretty from 'pino-pretty';
 export enum LogLevel {
   DEBUG = 'debug',
   INFO = 'info',
-  WARN = 'warn',
-  ERROR = 'error',
 }
 
 /**
@@ -33,7 +31,6 @@ export interface LoggerConfig {
   logFilePath?: string;
 }
 
-
 /**
  * Logger class using Pino with pino-pretty
  *
@@ -51,7 +48,10 @@ export class Logger {
         colorize: true,
         translateTime: 'SYS:standard',
         ignore: 'pid,hostname',
-        messageFormat: (config.prefix !== undefined && config.prefix !== '') ? `[${config.prefix}] {msg}` : '{msg}',
+        messageFormat:
+          config.prefix !== undefined && config.prefix !== ''
+            ? `[${config.prefix}] {msg}`
+            : '{msg}',
       });
 
       this.logger = pino(
@@ -81,19 +81,19 @@ export class Logger {
   }
 
   public debug(message: string, ...args: unknown[]): void {
-    this.logger.debug(message, ...args as never[]);
+    this.logger.debug(message, ...(args as never[]));
   }
 
   public info(message: string, ...args: unknown[]): void {
-    this.logger.info(message, ...args as never[]);
+    this.logger.info(message, ...(args as never[]));
   }
 
   public warn(message: string, ...args: unknown[]): void {
-    this.logger.warn(message, ...args as never[]);
+    this.logger.warn(message, ...(args as never[]));
   }
 
   public error(message: string, error?: unknown, ...args: unknown[]): void {
-    this.logger.error({ err: error }, message, ...args as never[]);
+    this.logger.error({ err: error }, message, ...(args as never[]));
   }
 }
 

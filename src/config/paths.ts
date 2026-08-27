@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 export interface Paths {
@@ -12,23 +14,49 @@ export interface Paths {
   clientSettingsDefaultPath: string;
 }
 
-export function initializePaths(rootPath: string, isDevelopment: boolean, entryPointDir?: string): Paths {
-  // If running from dist (entryPointDir provided), use that to resolve public/views
-  const currentRoot = entryPointDir ?? rootPath;
-  
-  // In dev specific paths might differ if we want to run from src but use data from root
-  const projectRoot = isDevelopment ? path.resolve(currentRoot, '..') : rootPath; 
+// A package installed via npm (global or as a dependency) always lives inside a
+// node_modules folder; a git checkout run directly does not.
+function isInstalledPackage(rootPath: string): boolean {
+  return rootPath.split(path.sep).includes('node_modules');
+}
 
-  // In development, public is in the project root. In production (dist), it's relative to the entry script (dist/public)
-  const rootForAssets = isDevelopment ? projectRoot : currentRoot;
+// OS-standard per-user data directory, matching the legacy client's location so
+// upgrades from the pre-rewrite client keep using the same data.
+function discoverOsDataDirectory(): string {
+  const base =
+    process.env['APPDATA'] ??
+    (process.platform === 'darwin'
+      ? path.join(os.homedir(), 'Library', 'Preferences')
+      : path.join(os.homedir(), '.local', 'share'));
 
-  const publicPath = path.join(rootForAssets, 'public');
+  return path.join(base, 'moartube-client');
+}
+
+export function initializePaths(rootPath: string, entryPointDir?: string): Paths {
+  const projectRoot = rootPath;
+
+  // Public assets are copied next to the entry point in a build (dist/public);
+  // fall back to the project root's public folder when running from source.
+  const entryPublicPath =
+    entryPointDir !== undefined ? path.join(entryPointDir, 'public') : undefined;
+  const publicPath =
+    entryPublicPath !== undefined && fs.existsSync(entryPublicPath)
+      ? entryPublicPath
+      : path.join(projectRoot, 'public');
+
   const viewsPath = path.join(publicPath, 'views');
-  const dataPath = path.join(projectRoot, 'data');
-  const tempPath = path.join(projectRoot, 'temp');
-  const videosPath = path.join(dataPath, 'media', 'videos');
   const distPath = path.join(projectRoot, 'dist');
-  
+
+  // When installed via npm (global or as a dependency), user data must not live inside
+  // node_modules: it would be lost on reinstall/upgrade and may require elevated
+  // permissions to write. Use the OS-standard per-user data directory instead. When run
+  // from a git checkout, keep data alongside the source, as before.
+  const installedAsPackage = isInstalledPackage(projectRoot);
+  const dataRoot = installedAsPackage ? discoverOsDataDirectory() : projectRoot;
+  const dataPath = installedAsPackage ? dataRoot : path.join(dataRoot, 'data');
+  const tempPath = path.join(dataRoot, 'temp');
+  const videosPath = path.join(dataPath, 'media', 'videos');
+
   const clientSettingsPath = path.join(dataPath, '_client_settings.json');
   const clientSettingsDefaultPath = path.join(dataPath, '_client_settings_default.json');
 
@@ -41,6 +69,6 @@ export function initializePaths(rootPath: string, isDevelopment: boolean, entryP
     dist: distPath,
     videos: videosPath,
     clientSettingsPath,
-    clientSettingsDefaultPath
+    clientSettingsDefaultPath,
   };
 }

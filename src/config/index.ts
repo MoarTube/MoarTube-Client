@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 // import path from 'node:path';
-import { getEnv, type Env } from './env.js';
 import { initializePaths, type Paths } from './paths.js';
 import { getLogger } from '@/utils/logger.js';
 import { z } from 'zod';
@@ -14,30 +13,29 @@ const ClientSettingsSchema = z.object({
   nodeHttpProtocol: z.string(),
   nodeWebsocketProtocol: z.string(),
   ffmpegPath: z.string().optional(),
-  isDeveloperMode: z.boolean().default(false),
-  processingAgent: z.object({
+  processingAgent: z
+    .object({
       processingAgentType: z.string(),
       processingAgentName: z.string().optional(),
-      processingAgentModel: z.string().optional()
-  }).optional(),
+      processingAgentModel: z.string().optional(),
+    })
+    .optional(),
   videoEncoderSettings: z.record(z.string(), z.unknown()).optional(),
   liveEncoderSettings: z.record(z.string(), z.unknown()).optional(),
-  version: z.string().optional()
+  version: z.string().optional(),
 });
 
 export type ClientSettings = z.infer<typeof ClientSettingsSchema>;
 
 export class Config {
   private static instance: Config | null = null;
-  private readonly _env: Env;
   private readonly _paths: Paths;
   private _clientSettings: ClientSettings;
   private _settingsWatcher: fs.FSWatcher | null = null;
 
   private constructor(baseDir: string, entryPointDir?: string) {
-    this._env = getEnv();
-    this._paths = initializePaths(baseDir, this._env.isDevelopment, entryPointDir);
-    
+    this._paths = initializePaths(baseDir, entryPointDir);
+
     // Ensure critical directories
     this.ensureDirectory(this._paths.data);
     this.ensureDirectory(this._paths.videos);
@@ -62,7 +60,7 @@ export class Config {
         const parsed: unknown = JSON.parse(content);
         return ClientSettingsSchema.parse(parsed);
       }
-      
+
       // Fallback to default if exists
       if (fs.existsSync(this._paths.clientSettingsDefaultPath)) {
         const content = fs.readFileSync(this._paths.clientSettingsDefaultPath, 'utf8');
@@ -70,16 +68,16 @@ export class Config {
         return ClientSettingsSchema.parse(parsed);
       }
     } catch (error) {
-        getLogger().error('Failed to load client settings', error);
+      getLogger().error('Failed to load client settings', error);
     }
 
     // Hard fallback: Generate default settings files
     try {
       const defaultContent = JSON.stringify(DEFAULT_CLIENT_SETTINGS, null, 2);
-      
+
       fs.writeFileSync(this._paths.clientSettingsDefaultPath, defaultContent, 'utf8');
       fs.writeFileSync(this._paths.clientSettingsPath, defaultContent, 'utf8');
-      
+
       getLogger().info(`Generated default client settings at ${this._paths.clientSettingsPath}`);
       return DEFAULT_CLIENT_SETTINGS;
     } catch (writeError) {
@@ -93,12 +91,12 @@ export class Config {
   private setupSettingsFileWatcher(): void {
     try {
       if (fs.existsSync(this._paths.clientSettingsPath)) {
-         this._settingsWatcher = fs.watch(this._paths.clientSettingsPath, (eventType) => {
-            if (eventType === 'change') {
-                getLogger().info('Client settings file changed, reloading...');
-                this._clientSettings = this.loadClientSettings();
-            }
-         });
+        this._settingsWatcher = fs.watch(this._paths.clientSettingsPath, (eventType) => {
+          if (eventType === 'change') {
+            getLogger().info('Client settings file changed, reloading...');
+            this._clientSettings = this.loadClientSettings();
+          }
+        });
       }
     } catch (e) {
       getLogger().warn('Could not setup settings file watcher', e);
@@ -111,22 +109,25 @@ export class Config {
     }
   }
 
-  public get env(): Env { return this._env; }
-  public get paths(): Paths { return this._paths; }
-  public get clientSettings(): ClientSettings { return this._clientSettings; }
-  
+  public get paths(): Paths {
+    return this._paths;
+  }
+  public get clientSettings(): ClientSettings {
+    return this._clientSettings;
+  }
+
   public saveClientSettings(settings: Partial<ClientSettings>): void {
-      // Merge updates
-      const updatedSettings = { ...this._clientSettings, ...settings };
-      
-      try {
-          fs.writeFileSync(this._paths.clientSettingsPath, JSON.stringify(updatedSettings, null, 4));
-          this._clientSettings = updatedSettings; // Update memory immediately
-          getLogger().info('Client settings saved successfully.');
-      } catch (error) {
-          getLogger().error('Failed to save client settings', error);
-          throw error;
-      }
+    // Merge updates
+    const updatedSettings = { ...this._clientSettings, ...settings };
+
+    try {
+      fs.writeFileSync(this._paths.clientSettingsPath, JSON.stringify(updatedSettings, null, 4));
+      this._clientSettings = updatedSettings; // Update memory immediately
+      getLogger().info('Client settings saved successfully.');
+    } catch (error) {
+      getLogger().error('Failed to save client settings', error);
+      throw error;
+    }
   }
 
   public static initialize(baseDir: string, entryPointDir?: string): Config {

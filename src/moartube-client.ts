@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { initializeConfig, getConfig } from '@/config/index.js';
 import { createAppContainer } from '@/core/container.js';
 import { createFastifyApp } from '@/plugins/index.js';
-import { Logger, LogLevel } from '@/utils/logger.js';
+import { Logger } from '@/utils/logger.js';
 import { LifecycleManager } from '@/core/lifecycle.js';
 
 async function start(): Promise<void> {
@@ -18,9 +18,7 @@ async function start(): Promise<void> {
   const config = getConfig();
 
   // Initialize Logger
-  const logger = Logger.getInstance({
-      level: config.env.isDevelopment ? LogLevel.DEBUG : LogLevel.INFO
-  });
+  const logger = Logger.getInstance();
 
   try {
     // Create Container
@@ -38,10 +36,8 @@ async function start(): Promise<void> {
     const host = '0.0.0.0';
 
     await app.listen({ port, host });
-    
+
     logger.info(`Server listening on ${host}:${String(port)}`);
-    logger.info(`Environment: ${config.env.nodeEnv}`);
-    
   } catch (err) {
     logger.error('Failed to start server', err);
     process.exit(1);

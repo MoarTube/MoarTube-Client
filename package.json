@@ -14,6 +14,10 @@
   "bin": {
     "moartube-client": "./bin/moartube-client-start"
   },
+  "files": [
+    "dist",
+    "bin"
+  ],
   "keywords": [
     "alternative",
     "youtube",
@@ -29,6 +33,7 @@
   "scripts": {
     "dev": "tsx watch src/moartube-client.ts",
     "build": "tsup",
+    "prepack": "npm run build",
     "start": "node dist/moartube-client.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests --ext .ts",

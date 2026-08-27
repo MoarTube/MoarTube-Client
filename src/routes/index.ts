@@ -28,12 +28,9 @@ import { nodeRoutes } from '@/routes/node.js';
  */
 export function registerRoutes(fastify: FastifyInstance, container: Container): void {
   // WebSocket Route
-  fastify.get('/ws', { websocket: true }, (connection, req) => {
+  fastify.get('/ws', { websocket: true }, (socket: WebSocket, req) => {
     const socketService = container.resolve('socketService');
     const jwtToken = req.session.jwtToken;
-
-    const connectionObj = connection as unknown as { socket: WebSocket };
-    const socket: WebSocket = connectionObj.socket;
 
     socketService.handleConnection(socket, jwtToken);
   });

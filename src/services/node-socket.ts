@@ -111,7 +111,7 @@ export class NodeSocketService extends BaseService {
           this.disconnect();
         }, 3000);
 
-        this.logger.info(`Sending ping... Token starts with: ${jwtToken.substring(0, 5)}`);
+        // this.logger.info(`Sending ping... Token starts with: ${jwtToken.substring(0, 5)}`);
         this.websocketClient?.send(JSON.stringify({ eventName: 'ping', jwtToken }));
       }
     }, 1000);
@@ -142,12 +142,12 @@ export class NodeSocketService extends BaseService {
         msgStr = message;
       }
 
-      this.logger.info(`WebSocket message received: ${msgStr.substring(0, 200)}`);
+      // this.logger.info(`WebSocket message received: ${msgStr.substring(0, 200)}`);
 
       const parsedMessage = JSON.parse(msgStr) as { eventName?: string; data?: unknown };
 
       if (parsedMessage.eventName === 'pong') {
-        this.logger.info('Received pong from Node');
+        // this.logger.info('Received pong from Node');
         if (this.pingTimeoutTimer) {
           clearTimeout(this.pingTimeoutTimer);
           this.pingTimeoutTimer = null;

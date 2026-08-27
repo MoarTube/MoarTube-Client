@@ -1404,7 +1404,7 @@
 							else {
 								const publishes = data.publishes;
 
-								for (publish of publishes) {
+								for (const publish of publishes) {
 									const format = publish.format;
 									const resolution = publish.resolution;
 									const isPublished = publish.isPublished;
@@ -1446,7 +1446,7 @@
 						publishings.push({ format: format, resolution: resolution, checkboxParentContainer: $(this).parent() });
 					});
 
-					for (publishing of publishings) {
+					for (const publishing of publishings) {
 						const format = publishing.format;
 						const resolution = publishing.resolution;
 						const checkboxParentContainer = publishing.checkboxParentContainer;
@@ -1546,7 +1546,7 @@
 											const adaptiveSources = sources.adaptiveSources;
 											const progressiveSources = sources.progressiveSources;
 
-											for (adaptiveSource of adaptiveSources) {
+											for (const adaptiveSource of adaptiveSources) {
 												const src = adaptiveSource.src;
 
 												const html = '<option value="' + src + '">' + src + '</option>';
@@ -1554,7 +1554,7 @@
 												$('#direct-source-links-select').append(html);
 											}
 
-											for (progressiveSource of progressiveSources) {
+											for (const progressiveSource of progressiveSources) {
 												const src = progressiveSource.src;
 
 												const html = '<option value="' + src + '">' + src + '</option>';
@@ -1776,7 +1776,7 @@
 								$('#importDescriptionInput').val(data.videoData.description);
 								$('#importTagsInput').val(data.videoData.tags);
 
-								choices = updateTagsInput(document.getElementById('importTagsInput'));
+								choices = self.updateTagsInput(document.getElementById('importTagsInput'));
 
 								$('.moving-tab-selector-1').click(function () {
 									const type = $(this).data('type');
@@ -1818,7 +1818,7 @@
 												else {
 													const publishes = data.publishes;
 
-													for (publish of publishes) {
+													for (const publish of publishes) {
 														const format = publish.format;
 														const resolution = publish.resolution;
 														const isPublished = publish.isPublished;
@@ -2375,7 +2375,7 @@
 								const deletedVideoIds = data.deletedVideoIds;
 								const nonDeletedVideoIds = data.nonDeletedVideoIds;
 
-								for (deletedVideoId of deletedVideoIds) {
+								for (const deletedVideoId of deletedVideoIds) {
 									$('#videos_table_row_' + deletedVideoId).remove();
 								}
 
@@ -2446,7 +2446,7 @@
 								const finalizedVideoIds = data.finalizedVideoIds;
 								const nonFinalizedVideoIds = data.nonFinalizedVideoIds;
 
-								for (finalizedVideoId of finalizedVideoIds) {
+								for (const finalizedVideoId of finalizedVideoIds) {
 									$('#videos_table_row_' + finalizedVideoId).find('.videos-table-select-video').prop('checked', false);
 								}
 
@@ -2587,7 +2587,7 @@
 							Swal.showLoading();
 
 							try {
-								const cloudflareTurnstileToken = await getCloudflareTurnstileToken();
+								const cloudflareTurnstileToken = await self.getCloudflareTurnstileToken();
 
 								const data = { containsAdultContent: containsAdultContent, termsOfServiceAgreed: termsOfServiceAgreed, cloudflareTurnstileToken: cloudflareTurnstileToken };
 
@@ -2640,7 +2640,7 @@
 					didOpen: async () => {
 						Swal.showLoading();
 
-						const cloudflareTurnstileToken = await getCloudflareTurnstileToken();
+						const cloudflareTurnstileToken = await self.getCloudflareTurnstileToken();
 
 						$.ajax({ type: 'POST', url: '/videos/' + videoId + '/index/remove', data: { cloudflareTurnstileToken: cloudflareTurnstileToken } })
 							.done(function (data, textStatus, xhr) {
