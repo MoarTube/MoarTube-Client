@@ -84,7 +84,7 @@ export class AccountController extends BaseController {
       if (!result.isError && result.isAuthenticated) {
         if (result.token !== undefined && result.token !== '') {
           request.session.jwtToken = result.token;
-          this.nodeSocketService.disconnect();
+          // connect() replaces any existing socket and cancels reconnect attempts.
           this.nodeSocketService.connect(result.token);
         }
 

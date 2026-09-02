@@ -12,6 +12,7 @@ export class NodeSocketService extends BaseService {
   private websocketClient: WebSocket | null = null;
   private pingIntervalTimer: NodeJS.Timeout | null = null;
   private pingTimeoutTimer: NodeJS.Timeout | null = null;
+  private reconnectTimer: NodeJS.Timeout | null = null;
   private _isConnected = false;
   private shouldReconnect = false;
 
@@ -31,23 +32,31 @@ export class NodeSocketService extends BaseService {
   }
 
   public connect(jwtToken: string): void {
+    // A new connection always replaces the previous one. This also cancels a
+    // reconnect that may have been scheduled by an older connection.
+    this.disconnect();
     this.shouldReconnect = true;
 
-    if (this.websocketClient) {
-      this.disconnect();
-      this.shouldReconnect = true;
-    }
+    this.openConnection(jwtToken);
+  }
 
+  private openConnection(jwtToken: string): void {
     const settings = this.config.clientSettings;
     const url = `${settings.nodeWebsocketProtocol}://${settings.nodeIp}:${String(settings.nodePort)}`;
     this.logger.info(`Connecting to Node WebSocket at ${url}`);
 
-    this.websocketClient = new WebSocket(url);
+    const websocketClient = new WebSocket(url);
+    this.websocketClient = websocketClient;
 
-    this.websocketClient.on('open', () => {
+    websocketClient.on('open', () => {
+      if (this.websocketClient !== websocketClient || !this.shouldReconnect) {
+        websocketClient.terminate();
+        return;
+      }
+
       this.logger.info(`Validating connection to Node: ${url}`);
       this._isConnected = true;
-      this.websocketClient?.send(
+      websocketClient.send(
         JSON.stringify({
           eventName: 'register',
           socketType: 'moartube_client',
@@ -55,37 +64,57 @@ export class NodeSocketService extends BaseService {
         })
       );
 
-      this.startPingPong(jwtToken, url);
+      this.startPingPong(jwtToken, url, websocketClient);
     });
 
-    this.websocketClient.on('message', (message: WebSocket.Data) => {
-      this.handleMessage(message);
+    websocketClient.on('message', (message: WebSocket.Data) => {
+      if (this.websocketClient === websocketClient) {
+        this.handleMessage(message);
+      }
     });
 
-    this.websocketClient.on('close', () => {
+    websocketClient.on('close', () => {
+      // A replaced socket may still emit close after its replacement has been
+      // created. It must not clear or reconnect the active socket.
+      if (this.websocketClient !== websocketClient) {
+        return;
+      }
+
       this.logger.info(`Disconnected from Node: ${url}`);
       this.websocketClient = null;
       this.cleanup();
 
       if (this.shouldReconnect) {
-        setTimeout(() => {
-          this.connect(jwtToken);
+        this.reconnectTimer = setTimeout(() => {
+          this.reconnectTimer = null;
+          if (!this.shouldReconnect) {
+            return;
+          }
+          this.openConnection(jwtToken);
         }, 1000);
       }
     });
 
-    this.websocketClient.on('error', (err) => {
-      this.logger.error('WebSocket error', err);
+    websocketClient.on('error', (err) => {
+      if (this.websocketClient === websocketClient) {
+        this.logger.error('WebSocket error', err);
+      }
     });
   }
 
   public disconnect(): void {
     this.shouldReconnect = false;
 
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
     if (this.websocketClient) {
-      this.websocketClient.removeAllListeners('close');
-      this.websocketClient.terminate();
+      const websocketClient = this.websocketClient;
       this.websocketClient = null;
+      websocketClient.removeAllListeners('close');
+      websocketClient.terminate();
     }
     this.cleanup();
   }
@@ -121,8 +150,12 @@ export class NodeSocketService extends BaseService {
     });
   }
 
-  private startPingPong(jwtToken: string, url: string): void {
+  private startPingPong(jwtToken: string, url: string, websocketClient: WebSocket): void {
     this.pingIntervalTimer = setInterval(() => {
+      if (this.websocketClient !== websocketClient) {
+        return;
+      }
+
       if (!this.pingTimeoutTimer) {
         this.pingTimeoutTimer = setTimeout(() => {
           this.logger.warn(`Terminating unresponsive connection to ${url}`);
@@ -130,7 +163,7 @@ export class NodeSocketService extends BaseService {
         }, 3000);
 
         // this.logger.info(`Sending ping... Token starts with: ${jwtToken.substring(0, 5)}`);
-        this.websocketClient?.send(JSON.stringify({ eventName: 'ping', jwtToken }));
+        websocketClient.send(JSON.stringify({ eventName: 'ping', jwtToken }));
       }
     }, 1000);
   }
