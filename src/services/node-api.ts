@@ -65,8 +65,6 @@ export interface StreamVideoOptions {
 export class NodeApiService extends BaseService {
   // private readonly settingsRepo: SettingsRepository;
   private readonly config: Config;
-  private readonly httpAgent = new HttpAgent({ keepAlive: true, keepAliveMsecs: 10000 });
-  private readonly httpsAgent = new HttpsAgent({ keepAlive: true, keepAliveMsecs: 10000 });
 
   constructor(logger: Logger, config: Config) {
     super('nodeApiService', logger);
@@ -84,9 +82,15 @@ export class NodeApiService extends BaseService {
 
   private async getClient(): Promise<AxiosInstance> {
     const baseURL = await this.getBaseUrl();
+
+    const httpAgent = new HttpAgent({ keepAlive: true, keepAliveMsecs: 10000 });
+    const httpsAgent = new HttpsAgent({ keepAlive: true, keepAliveMsecs: 10000 });
+
     return axios.create({
       baseURL,
-      timeout: 10000,
+      timeout: 0,
+      httpAgent: httpAgent,
+      httpsAgent: httpsAgent,
       validateStatus: () => true, // Handle status codes manually
     });
   }
@@ -120,14 +124,7 @@ export class NodeApiService extends BaseService {
     return response.data as GetLinksResponse;
   }
 
-  /**
-   * Sign In
-   */
-  public async signIn(
-    username: string,
-    password: string,
-    rememberMe: boolean
-  ): Promise<AuthResponse> {
+  public async signIn(username: string, password: string): Promise<AuthResponse> {
     const client = await this.getClient();
     const settings = this.config.clientSettings;
 
@@ -137,7 +134,6 @@ export class NodeApiService extends BaseService {
       moarTubeNodeHttpProtocol: settings.nodeHttpProtocol,
       moarTubeNodeIp: settings.nodeIp,
       moarTubeNodePort: settings.nodePort,
-      rememberMe,
     };
 
     const response = await client.post('/account/signin', payload);
@@ -185,6 +181,22 @@ export class NodeApiService extends BaseService {
     return response.data as T;
   }
 
+  /**
+   * Because the shared axios client resolves every HTTP status normally
+   * (validateStatus always returns true), an error response from the Node
+   * (`{ isError: true, message }`) flows through like any other response. For
+   * methods whose declared return type doesn't itself expose `isError` (so
+   * callers have no way to detect an error), unwrap defensively here and throw
+   * instead of silently returning an object with missing/undefined fields.
+   */
+  private unwrapOrThrow(data: unknown, context: string): unknown {
+    const response = data as { isError?: boolean; message?: string } | undefined;
+    if (response?.isError === true) {
+      throw new Error(response.message ?? `Node API returned an error for ${context}`);
+    }
+    return data;
+  }
+
   public async setVideoPublishing(jwtToken: string, videoId: string): Promise<unknown> {
     return this.postAuthenticated(jwtToken, '/videos/publishing', { videoId });
   }
@@ -207,7 +219,10 @@ export class NodeApiService extends BaseService {
     const response = await client.get('/external/videos/baseUrl', {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
-    return (response.data as { externalVideosBaseUrl: string }).externalVideosBaseUrl;
+    const data = this.unwrapOrThrow(response.data, 'getExternalVideosBaseUrl') as {
+      externalVideosBaseUrl: string;
+    };
+    return data.externalVideosBaseUrl;
   }
 
   public async getNodeSettings(jwtToken: string): Promise<NodeSettings> {
@@ -215,7 +230,10 @@ export class NodeApiService extends BaseService {
     const response = await client.get('/settings', {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
-    return (response.data as { nodeSettings: NodeSettings }).nodeSettings;
+    const data = this.unwrapOrThrow(response.data, 'getNodeSettings') as {
+      nodeSettings: NodeSettings;
+    };
+    return data.nodeSettings;
   }
 
   public async searchVideosAll(
@@ -239,7 +257,9 @@ export class NodeApiService extends BaseService {
     const response = await client.get('/node/newContentCounts', {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
-    return response.data as { newContentCounts: NewContentCounts };
+    return this.unwrapOrThrow(response.data, 'getNewContentCounts') as {
+      newContentCounts: NewContentCounts;
+    };
   }
 
   public async setContentChecked(jwtToken: string, contentType: string): Promise<BaseNodeResponse> {
@@ -265,7 +285,7 @@ export class NodeApiService extends BaseService {
     const response = await client.get('/videos/data/all', {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
-    return response.data as VideoDataAllResponse;
+    return this.unwrapOrThrow(response.data, 'getVideoDataAll') as VideoDataAllResponse;
   }
 
   // Settings Methods
@@ -893,12 +913,38 @@ export class NodeApiService extends BaseService {
     videoId: string,
     format: string,
     resolution: string,
-    files: Array<{ fileName: string; filePath: string; contentType: string }>
+    files: Array<{ fileName: string; filePath: string; contentType: string }>,
+    onProgress?: (percent: number) => void
   ): Promise<unknown> {
     const formData = new FormData();
 
+    // Track upload progress by counting bytes read from each source file as it
+    // streams into the multipart body, rather than relying on axios's
+    // onUploadProgress (unreliable for Node's stream-based FormData bodies,
+    // since the request's total Content-Length isn't known upfront the same
+    // way it is for a browser-originated XHR upload).
+    let totalSize = 0;
+    for (const file of files) {
+      totalSize += fs.statSync(file.filePath).size;
+    }
+
+    let bytesSent = 0;
+    let lastProgressTime = 0;
+
     for (const file of files) {
       const fileStream = fs.createReadStream(file.filePath);
+
+      if (onProgress && totalSize > 0) {
+        fileStream.on('data', (chunk: Buffer) => {
+          bytesSent += chunk.length;
+          const now = Date.now();
+          if (now - lastProgressTime >= 100) {
+            lastProgressTime = now;
+            onProgress(Math.min(100, Math.floor((bytesSent / totalSize) * 100)));
+          }
+        });
+      }
+
       formData.append('video_files', fileStream, {
         filename: file.fileName,
         contentType: file.contentType,
@@ -913,6 +959,9 @@ export class NodeApiService extends BaseService {
       params: { format, resolution },
       headers,
     });
+
+    onProgress?.(100);
+
     return response.data;
   }
 
@@ -945,9 +994,6 @@ export class NodeApiService extends BaseService {
     const response = await client.post(`/videos/${videoId}/stream`, formData, {
       params: { format, resolution },
       headers,
-      timeout: 15000,
-      httpAgent: this.httpAgent,
-      httpsAgent: this.httpsAgent,
     });
 
     return response.data;

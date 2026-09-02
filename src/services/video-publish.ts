@@ -19,13 +19,18 @@ interface VideoPublishJob {
   idleInterval?: NodeJS.Timeout;
 }
 
+interface EncodingJobState {
+  stopping: boolean;
+  processes: Set<ChildProcess>;
+  activeJobCount: number;
+}
+
 export class VideoPublishService {
   private inProgressPublishingJobCount = 0;
   private maximumInProgressPublishingJobCount = 5;
   private readonly inProgressPublishingJobs: VideoPublishJob[] = [];
   private readonly pendingPublishVideoQueue: VideoPublishJob[] = [];
-  private readonly activeEncodingJobs: Map<string, { stopping: boolean; process?: ChildProcess }> =
-    new Map();
+  private readonly activeEncodingJobs: Map<string, EncodingJobState> = new Map();
 
   constructor(
     private readonly logger: Logger,
@@ -45,14 +50,24 @@ export class VideoPublishService {
   }
 
   public stopPendingPublishVideo(videoId: string): void {
-    const index = this.pendingPublishVideoQueue.findIndex((job) => job.videoId === videoId);
-    if (index !== -1) {
-      const job = this.pendingPublishVideoQueue[index];
-      if (job?.idleInterval) {
-        clearInterval(job.idleInterval);
+    // Remove every pending job for this video, not just the first match - a
+    // single "stop publishing" action is expected to cancel all queued
+    // formats/resolutions for the video.
+    let removedCount = 0;
+    for (let i = this.pendingPublishVideoQueue.length - 1; i >= 0; i--) {
+      const job = this.pendingPublishVideoQueue[i];
+      if (job?.videoId === videoId) {
+        if (job.idleInterval) {
+          clearInterval(job.idleInterval);
+        }
+        this.pendingPublishVideoQueue.splice(i, 1);
+        removedCount++;
       }
-      this.pendingPublishVideoQueue.splice(index, 1);
-      this.logger.info(`[VideoPublishService] Removed pending job for video ${videoId}`);
+    }
+    if (removedCount > 0) {
+      this.logger.info(
+        `[VideoPublishService] Removed ${String(removedCount)} pending job(s) for video ${videoId}`
+      );
     }
   }
 
@@ -61,11 +76,11 @@ export class VideoPublishService {
   }
 
   public stoppingPublishVideoEncoding(videoId: string): void {
-    const job = this.activeEncodingJobs.get(videoId);
-    if (job) {
-      job.stopping = true;
-      if (job.process) {
-        job.process.kill();
+    const state = this.activeEncodingJobs.get(videoId);
+    if (state) {
+      state.stopping = true;
+      for (const activeProcess of state.processes) {
+        activeProcess.kill();
       }
       this.logger.info(`[VideoPublishService] Stopping encoding for video ${videoId}`);
     }
@@ -119,12 +134,24 @@ export class VideoPublishService {
               }
 
               if (!videoIdHasPending && !videoIdHasInProgress) {
-                await this.finishVideoPublish(job.jwtToken, job.videoId);
-                this.logger.info(
-                  `[VideoPublishService] Completed publishing job for video: ${job.videoId}`
-                );
+                try {
+                  await this.finishVideoPublish(job.jwtToken, job.videoId);
+                  this.logger.info(
+                    `[VideoPublishService] Completed publishing job for video: ${job.videoId}`
+                  );
+                } catch (error) {
+                  // The encode+upload already succeeded here; a failure in this
+                  // finalization step (e.g. the setVideoPublished call) shouldn't
+                  // cause the whole job to be treated as failed and re-run from
+                  // scratch by the outer .catch() below.
+                  this.logger.error(
+                    error,
+                    `[VideoPublishService] Failed to finalize publish for video ${job.videoId}`
+                  );
+                }
               }
 
+              this.releaseEncodingJobSlot(job.videoId);
               this.inProgressPublishingJobCount--;
 
               if (
@@ -147,7 +174,15 @@ export class VideoPublishService {
                 this.inProgressPublishingJobs.splice(index, 1);
               }
 
-              if (!this.isPublishVideoEncodingStopping(job.videoId)) {
+              // Check the stopping flag before releasing this job's slot - releasing
+              // may delete the shared per-videoId state entry (and its "stopping"
+              // flag) if this was the last active job for that video, which would
+              // otherwise make a legitimately-stopped job look like a plain failure
+              // and cause it to be incorrectly re-enqueued below.
+              const wasStopping = this.isPublishVideoEncodingStopping(job.videoId);
+              this.releaseEncodingJobSlot(job.videoId);
+
+              if (!wasStopping) {
                 job.idleInterval = setInterval(() => {
                   this.socketService.broadcastToUser(job.jwtToken, 'echo', {
                     eventName: 'video_status',
@@ -181,6 +216,16 @@ export class VideoPublishService {
     );
   }
 
+  private releaseEncodingJobSlot(videoId: string): void {
+    const state = this.activeEncodingJobs.get(videoId);
+    if (state) {
+      state.activeJobCount--;
+      if (state.activeJobCount <= 0) {
+        this.activeEncodingJobs.delete(videoId);
+      }
+    }
+  }
+
   private async startPublishingJob(job: VideoPublishJob): Promise<void> {
     if (job.idleInterval) {
       clearInterval(job.idleInterval);
@@ -190,12 +235,22 @@ export class VideoPublishService {
       isError: boolean;
     };
     if (!response.isError) {
-      this.activeEncodingJobs.set(job.videoId, { stopping: false });
+      // Share one state entry per videoId (get-or-create, never overwrite) since
+      // multiple format/resolution jobs for the same video may be encoding at
+      // once; reference-count so this job finishing doesn't delete tracking a
+      // sibling job for the same video still needs. The slot is released by the
+      // caller (startVideoPublishInterval's .then()/.catch() handlers) rather
+      // than here, so the "stopping" flag on this entry is still observable to
+      // the .catch() handler's retry decision after a killed job rejects.
+      let state = this.activeEncodingJobs.get(job.videoId);
+      if (!state) {
+        state = { stopping: false, processes: new Set(), activeJobCount: 0 };
+        this.activeEncodingJobs.set(job.videoId, state);
+      }
+      state.activeJobCount++;
 
       await this.performEncodingJob(job);
       await this.performUploadingJob(job);
-
-      this.activeEncodingJobs.delete(job.videoId);
     }
   }
 
@@ -230,21 +285,23 @@ export class VideoPublishService {
       );
 
       const process = spawn(this.ffmpegService.getPath(), ffmpegArguments);
+      const state = this.activeEncodingJobs.get(job.videoId);
+      state?.processes.add(process);
+
+      const untrackProcess = (): void => {
+        state?.processes.delete(process);
+      };
 
       process.on('error', (err) => {
         this.logger.error(
           err,
           `[VideoPublishService] Failed to spawn ffmpeg for job ${job.videoId}`
         );
+        untrackProcess();
         reject(err);
       });
 
-      const activeJob = this.activeEncodingJobs.get(job.videoId);
-      if (activeJob) {
-        activeJob.process = process;
-      }
-
-      this.monitorEncodingProcess(process, job, resolve, reject);
+      this.monitorEncodingProcess(process, job, resolve, reject, untrackProcess);
     });
   }
 
@@ -282,7 +339,8 @@ export class VideoPublishService {
     process: ChildProcess,
     job: VideoPublishJob,
     resolve: () => void,
-    reject: (err: Error) => void
+    reject: (err: Error) => void,
+    untrackProcess: () => void
   ): void {
     process.stdout?.on('data', () => {
       /* Prevent buffer overflow */
@@ -332,6 +390,7 @@ export class VideoPublishService {
     });
 
     process.on('exit', (code) => {
+      untrackProcess();
       if (code === 0) {
         resolve();
       } else {
@@ -407,7 +466,20 @@ export class VideoPublishService {
       job.videoId,
       job.format,
       job.resolution,
-      paths
+      paths,
+      (percent) => {
+        const uploadProgress = Math.floor(percent / 2) + 50;
+        this.socketService.broadcastToUser(job.jwtToken, 'echo', {
+          eventName: 'video_status',
+          payload: {
+            type: 'publishing',
+            videoId: job.videoId,
+            format: job.format,
+            resolution: job.resolution,
+            progress: uploadProgress,
+          },
+        });
+      }
     );
 
     // Clean up local files after upload if using filesystem mode?
@@ -720,16 +792,19 @@ export class VideoPublishService {
       if (agentName === 'NVIDIA') {
         // NVIDIA GPU encoding
         if (format === 'm3u8') {
-          const [decoderParam1, decoderParam2] =
+          // Always request CUDA hardware frames from the decoder so the scale_cuda
+          // filter (built above) has a valid hw-frame input. For .ts sources (e.g.
+          // recordings of live streams) also pin the explicit cuvid decoder, since
+          // format auto-detection is less reliable for raw mpeg-ts.
+          const decoderArgs =
             sourceFileExtension === '.ts'
-              ? ['-c:v', 'h264_cuvid']
+              ? ['-hwaccel_output_format', 'cuda', '-c:v', 'h264_cuvid']
               : ['-hwaccel_output_format', 'cuda'];
 
           args = [
             '-hwaccel',
             'cuvid',
-            decoderParam1,
-            decoderParam2,
+            ...decoderArgs,
             '-i',
             sourceFilePath,
             '-c:a',
@@ -759,16 +834,17 @@ export class VideoPublishService {
             destinationFilePath,
           ];
         } else if (format === 'mp4') {
-          const [decoderParam1, decoderParam2] =
+          // See the m3u8 branch above: -hwaccel_output_format cuda must always be
+          // present for scale_cuda to receive valid hardware frames.
+          const decoderArgs =
             sourceFileExtension === '.ts'
-              ? ['-c:v', 'h264_cuvid']
+              ? ['-hwaccel_output_format', 'cuda', '-c:v', 'h264_cuvid']
               : ['-hwaccel_output_format', 'cuda'];
 
           args = [
             '-hwaccel',
             'cuvid',
-            decoderParam1,
-            decoderParam2,
+            ...decoderArgs,
             '-i',
             sourceFilePath,
             '-c:a',

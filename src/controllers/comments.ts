@@ -21,11 +21,6 @@ export class CommentsController extends BaseController {
         return await reply.redirect('/account/signin');
       }
 
-      if (!jwtToken) {
-        await request.session.destroy();
-        return await reply.redirect('/account/signin');
-      }
-
       const [nodeSettings, newContentCountsResponse] = await Promise.all([
         this.nodeApiService.getNodeSettings(jwtToken),
         this.nodeApiService.getNewContentCounts(jwtToken),

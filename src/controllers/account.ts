@@ -35,7 +35,6 @@ export class AccountController extends BaseController {
       password: z.string(),
       moarTubeNodeIp: z.string(),
       moarTubeNodePort: z.coerce.number(), // Ensure number
-      rememberMe: z.boolean().optional(),
     });
 
     try {
@@ -80,15 +79,12 @@ export class AccountController extends BaseController {
         nodeWebsocketProtocol: websocketProtocol,
       });
 
-      const result = await this.nodeApiService.signIn(
-        body.username,
-        body.password,
-        body.rememberMe ?? false
-      );
+      const result = await this.nodeApiService.signIn(body.username, body.password);
 
       if (!result.isError && result.isAuthenticated) {
         if (result.token !== undefined && result.token !== '') {
           request.session.jwtToken = result.token;
+          this.nodeSocketService.disconnect();
           this.nodeSocketService.connect(result.token);
         }
 

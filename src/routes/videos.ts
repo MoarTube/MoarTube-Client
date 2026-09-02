@@ -16,6 +16,7 @@ export function videosRoutes(
   const manifestService = container.resolve('manifestService');
   const s3Service = container.resolve('s3Service');
   const socketService = container.resolve('socketService');
+  const nodeSocketService = container.resolve('nodeSocketService');
 
   const controller = new VideosController(
     nodeApiService,
@@ -24,7 +25,8 @@ export function videosRoutes(
     settingsRepository,
     manifestService,
     s3Service,
-    socketService
+    socketService,
+    nodeSocketService
   );
 
   fastify.get(

@@ -78,16 +78,6 @@ export class LiveStreamService {
     return this.activeStreams.has(videoId);
   }
 
-  public markLiveStreamStopping(videoId: string): void {
-    if (this.activeStreams.has(videoId)) {
-      const stream = this.activeStreams.get(videoId);
-      if (!stream) {
-        return;
-      }
-      stream.stopping = true;
-    }
-  }
-
   public stopLiveStream(videoId: string): void {
     if (this.activeStreams.has(videoId)) {
       const stream = this.activeStreams.get(videoId);
@@ -263,7 +253,15 @@ export class LiveStreamService {
     const { data, context } = options;
     context.accumulatedBuffer = Buffer.concat([context.accumulatedBuffer, data]);
 
-    if (this.isSegmentBoundary(data)) {
+    // Check the tail of the full accumulated buffer, not just the newly-arrived
+    // chunk: Node's stream chunking doesn't align with ffmpeg's internal writes,
+    // so the ".ts\n" boundary marker can be split across two (or more) separate
+    // 'data' events - e.g. a chunk ending in ".t" followed by a short chunk
+    // containing just "s\n". Checking the accumulated buffer's tail instead
+    // still matches every case the old per-chunk check matched (its tail is
+    // identical to the new chunk's tail whenever the chunk is >= 4 bytes), while
+    // also correctly detecting boundaries split across small trailing chunks.
+    if (this.isSegmentBoundary(context.accumulatedBuffer)) {
       const manifestIndex = context.accumulatedBuffer.indexOf('#EXTM3U');
       const startingSegmentIndex = context.accumulatedBuffer.indexOf('#EXT-X-MEDIA-SEQUENCE');
 

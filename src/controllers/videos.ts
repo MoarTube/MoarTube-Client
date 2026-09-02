@@ -12,6 +12,7 @@ import type { SettingsRepository } from '@/database/repositories/settings.js';
 import type { ManifestService } from '@/services/manifest.js';
 import type { S3Service } from '@/services/s3.js';
 import type { SocketService } from '@/services/socket.js';
+import type { NodeSocketService } from '@/services/node-socket.js';
 import type {
   VideoSearchQuery,
   VideoImportQuery,
@@ -34,7 +35,8 @@ export class VideosController extends BaseController {
     private readonly settingsRepository: SettingsRepository,
     private readonly manifestService: ManifestService,
     private readonly s3Service: S3Service,
-    private readonly socketService: SocketService
+    private readonly socketService: SocketService,
+    private readonly nodeSocketService: NodeSocketService
   ) {
     super('VideosController');
   }
@@ -128,6 +130,11 @@ export class VideosController extends BaseController {
       createdVideoId = createResponse.videoId;
       const videoId = createdVideoId;
 
+      // Clear any stale cancellation flag before the upload starts (not just
+      // before ffmpeg processing starts) - a "stop" click during the upload
+      // itself must be observable to the upload handler below.
+      this.videoImportService.beginImport(videoId);
+
       // 3. Handle File Upload to Temp (With Progress)
       const { tempFilePath: importedPath, fileMimeType } = await this.handleImportMultipart(
         request,
@@ -138,6 +145,14 @@ export class VideosController extends BaseController {
 
       if (tempFilePath === undefined) {
         throw new Error('Video file is missing');
+      }
+
+      // The upload may have completed normally right as cancellation was
+      // requested (a narrow race the abort-on-cancel logic in
+      // handleImportMultipart can't always win) - check once more before
+      // committing to processing the file.
+      if (this.videoImportService.isImportCancelled(videoId)) {
+        throw new Error('Import cancelled');
       }
 
       // Validation: Only allow .mp4 or .webm
@@ -179,7 +194,14 @@ export class VideosController extends BaseController {
         await fs.promises.unlink(tempFilePath);
       }
 
-      if (createdVideoId !== undefined) {
+      const err = error as Error;
+      const wasCancelled = err.message === 'Import cancelled';
+
+      // A user-initiated cancel (via the stop button) shouldn't delete the
+      // video record - stopImporting() only marks the Node's video as
+      // not-importing, matching that behavior here too. Only clean up the
+      // "ghost" video for genuine upload/processing errors.
+      if (createdVideoId !== undefined && !wasCancelled) {
         try {
           await this.nodeApiService.deleteVideos(jwtToken, [createdVideoId]);
 
@@ -193,8 +215,10 @@ export class VideosController extends BaseController {
         }
       }
 
-      const err = error as Error;
-      return await this.sendError(reply, err.message || 'Upload failed');
+      return await this.sendError(
+        reply,
+        wasCancelled ? 'Cancelled' : err.message || 'Upload failed'
+      );
     }
   };
 
@@ -220,6 +244,20 @@ export class VideosController extends BaseController {
           fileMimeType = part.mimetype;
 
           part.file.on('data', (chunk: Buffer) => {
+            // Skip progress broadcasts once cancelled - this is what stopped the
+            // "importing X%" broadcasts from reappearing after the UI shows
+            // "stopping". Deliberately NOT destroying/aborting the stream here:
+            // prematurely tearing down a multipart file stream before the
+            // browser has finished sending it can leave the HTTP connection in
+            // an inconsistent state (the remaining unread upload bytes have
+            // nowhere to go), which can surface much later as a bizarre,
+            // seemingly "automatic" retry. Safer to let the upload drain
+            // normally to completion; the isImportCancelled() check right after
+            // handleImportMultipart() returns is what actually stops processing.
+            if (this.videoImportService.isImportCancelled(videoId)) {
+              return;
+            }
+
             receivedFileSize += chunk.length;
             if (totalFileSize > 0) {
               const currentTime = Date.now();
@@ -331,11 +369,29 @@ export class VideosController extends BaseController {
       const jwtToken = request.session.jwtToken ?? '';
       const { videoId } = request.params as VideoIdParams;
 
-      // Stop local
+      // Kill any in-progress encoding job for this video immediately/locally -
+      // don't rely solely on the echo round-trip below, which takes a real
+      // (if small) amount of time over the network. Without this, ffmpeg's
+      // stderr progress handler (which gates on this same "stopping" flag) can
+      // still fire and re-broadcast "publishing" progress in that window,
+      // which the UI interprets as the job having restarted.
+      this.videoPublishService.stoppingPublishVideoEncoding(videoId);
+
+      // Also broadcast publishing_stopping to the Node (which echoes it back to
+      // all connected clients) for parity with legacy behavior and so any other
+      // connected admin clients are kept in sync.
+      this.nodeSocketService.sendVideoStatusEcho(jwtToken, 'publishing_stopping', videoId);
+
+      // Stop local (removes any not-yet-started jobs for this video from the queue)
       this.videoPublishService.stopPendingPublishVideo(videoId);
 
       // Tell node
       const response = await this.nodeApiService.stopVideoPublishing(jwtToken, videoId);
+
+      if (!response.isError) {
+        this.nodeSocketService.sendVideoStatusEcho(jwtToken, 'publishing_stopped', videoId);
+      }
+
       return await reply.send(response);
     } catch (error) {
       this.logger.error('Error in postStopPublish', error);
@@ -574,6 +630,11 @@ export class VideosController extends BaseController {
       const { videoIds } = request.body as DeleteVideosBody;
 
       const nodeResponse = await this.nodeApiService.deleteVideos(jwtToken, videoIds);
+
+      if (nodeResponse.isError) {
+        return await reply.send(nodeResponse);
+      }
+
       const { deletedVideoIds, nonDeletedVideoIds } = nodeResponse;
 
       for (const deletedVideoId of deletedVideoIds) {

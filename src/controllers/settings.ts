@@ -131,7 +131,7 @@ export class SettingsController extends BaseController {
     reply: FastifyReply
   ): Promise<FastifyReply> => {
     const { isGpuAccelerationEnabled } = request.body as SetGpuAccelerationBody;
-    const operatingSystem = await detectOperatingSystem();
+    const operatingSystem = detectOperatingSystem();
     const clientSettings = this.config.clientSettings;
     const result: { isGpuAccelerationEnabled?: boolean; gpuVendor?: string; gpuModel?: string } =
       {};
@@ -398,9 +398,7 @@ export class SettingsController extends BaseController {
     return await reply.send(response);
   };
 
-  private async processMultipartFiles(
-    request: FastifyRequest
-  ): Promise<{
+  private async processMultipartFiles(request: FastifyRequest): Promise<{
     keyFile: UploadedFile | undefined;
     certFile: UploadedFile | undefined;
     caFiles: UploadedFile[];

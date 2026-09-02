@@ -121,15 +121,8 @@ export class StreamsController extends BaseController {
     const jwtToken = request.session.jwtToken ?? '';
 
     try {
-      // Broadcast streaming_stopping to Node (Node will echo back to all clients)
-      this.nodeSocketService.send({
-        eventName: 'echo',
-        jwtToken: jwtToken,
-        data: {
-          eventName: 'video_status',
-          payload: { type: 'streaming_stopping', videoId: videoId },
-        },
-      });
+      this.liveStreamService.stopLiveStream(videoId);
+      this.nodeSocketService.sendVideoStatusEcho(jwtToken, 'streaming_stopping', videoId);
 
       // S3 Conversion Logic
       const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
@@ -155,14 +148,7 @@ export class StreamsController extends BaseController {
 
       if (!stopResponse.isError) {
         // Broadcast streaming_stopped to Node (Node will echo back to all clients)
-        this.nodeSocketService.send({
-          eventName: 'echo',
-          jwtToken: jwtToken,
-          data: {
-            eventName: 'video_status',
-            payload: { type: 'streaming_stopped', videoId: videoId },
-          },
-        });
+        this.nodeSocketService.sendVideoStatusEcho(jwtToken, 'streaming_stopped', videoId);
       }
 
       return await reply.send(stopResponse);

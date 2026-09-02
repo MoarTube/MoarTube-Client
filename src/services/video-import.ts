@@ -7,7 +7,6 @@ import type { Logger } from '@/utils/logger.js';
 import type { SettingsRepository } from '@/database/repositories/settings.js';
 import type { BaseNodeResponse } from '@/types/node-api.js';
 import type { NodeApiService } from './node-api.js';
-// import type { NodeSocketService } from './node-socket.js';
 import type { S3Service } from './s3.js';
 import type { SocketService } from './socket.js';
 import type { FfmpegService } from './ffmpeg.js';
@@ -15,6 +14,7 @@ import type { FfmpegService } from './ffmpeg.js';
 export class VideoImportService extends BaseService {
   private readonly activeImports: Map<string, ChildProcess> = new Map();
   private readonly cancelledImports: Set<string> = new Set();
+  private readonly cancellationRejectors: Map<string, (err: Error) => void> = new Map();
 
   constructor(
     logger: Logger,
@@ -28,202 +28,278 @@ export class VideoImportService extends BaseService {
     sharp.cache(false);
   }
 
+  public beginImport(videoId: string): void {
+    this.cancelledImports.delete(videoId);
+  }
+
+  public isImportCancelled(videoId: string): boolean {
+    return this.cancelledImports.has(videoId);
+  }
+
   private timestampToSeconds(timestamp: string): number {
     const parts = timestamp.split(':');
     const hours = Number.parseInt(parts[0] ?? '0', 10);
     const minutes = Number.parseInt(parts[1] ?? '0', 10);
     const seconds = Number.parseFloat(parts[2] ?? '0');
-    return (hours * 3600) + (minutes * 60) + seconds;
+    return hours * 3600 + minutes * 60 + seconds;
   }
 
   private async runFfmpeg(videoId: string, args: string[]): Promise<string> {
-      if (this.cancelledImports.has(videoId)) {
-          throw new Error('Import cancelled');
-      }
+    if (this.cancelledImports.has(videoId)) {
+      throw new Error('Import cancelled');
+    }
 
-      return new Promise((resolve, reject) => {
-          const process = spawn(this.ffmpegService.getPath(), args);
-          
-          this.activeImports.set(videoId, process);
+    const ffmpegPromise = new Promise<string>((resolve, reject) => {
+      const process = spawn(this.ffmpegService.getPath(), args);
 
-          let stderr = '';
-          
-          process.stderr.on('data', (data: Buffer) => {
-              stderr += data.toString();
-          });
+      this.activeImports.set(videoId, process);
 
-          process.on('close', (_code) => {
-              this.activeImports.delete(videoId);
-              
-              if (this.cancelledImports.has(videoId)) {
-                  reject(new Error('Import cancelled'));
-                  return;
-              }
+      let stderr = '';
 
-              resolve(stderr); 
-          });
-
-          process.on('error', (err) => {
-             this.activeImports.delete(videoId);
-             reject(err);
-          });
+      process.stderr.on('data', (data: Buffer) => {
+        stderr += data.toString();
       });
+
+      process.on('close', (_code) => {
+        this.activeImports.delete(videoId);
+
+        if (this.cancelledImports.has(videoId)) {
+          reject(new Error('Import cancelled'));
+          return;
+        }
+
+        resolve(stderr);
+      });
+
+      process.on('error', (err) => {
+        this.activeImports.delete(videoId);
+        reject(err);
+      });
+    });
+
+    // Race against an explicit cancellation signal so a stop request arriving
+    // at (almost) the same moment the process closes naturally can't lose to
+    // the 'close' handler having already read a stale, not-yet-set flag.
+    const cancellationPromise = new Promise<string>((_resolve, reject) => {
+      this.cancellationRejectors.set(videoId, reject);
+    });
+
+    try {
+      return await Promise.race([ffmpegPromise, cancellationPromise]);
+    } finally {
+      this.cancellationRejectors.delete(videoId);
+    }
   }
 
-  private async generateImages(jwtToken: string, videoId: string, videoFilePath: string, imageExtractionTimestamp: number): Promise<void> {
-      const imagesDirectoryPath = path.join(this.settingsRepository.getVideosDirectoryPath(), videoId, 'images');
-      fs.mkdirSync(imagesDirectoryPath, { recursive: true });
+  private async generateImages(
+    jwtToken: string,
+    videoId: string,
+    videoFilePath: string,
+    imageExtractionTimestamp: number
+  ): Promise<void> {
+    const imagesDirectoryPath = path.join(
+      this.settingsRepository.getVideosDirectoryPath(),
+      videoId,
+      'images'
+    );
+    fs.mkdirSync(imagesDirectoryPath, { recursive: true });
 
-      const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
-      
-      await this.runFfmpeg(videoId, ['-ss', String(imageExtractionTimestamp), '-i', videoFilePath, '-vframes', '1', sourceImagePath]);
+    const sourceImagePath = path.join(imagesDirectoryPath, 'source.jpg');
 
-      if (this.cancelledImports.has(videoId)) {
-          throw new Error('Import cancelled');
-      }
+    await this.runFfmpeg(videoId, [
+      '-ss',
+      String(imageExtractionTimestamp),
+      '-i',
+      videoFilePath,
+      '-vframes',
+      '1',
+      sourceImagePath,
+    ]);
 
-      if (!fs.existsSync(sourceImagePath)) {
-           this.logger.warn(`Failed to extract source image for ${videoId}`);
-           return;
-      } 
-      
-      const thumbnailBuffer = await sharp(sourceImagePath).resize({ width: 100, height: 100, fit: 'cover' }).jpeg({ quality: 90 }).toBuffer();
-      const previewFileBuffer = await sharp(sourceImagePath).resize({ width: 512, height: 288, fit: 'cover' }).jpeg({ quality: 90 }).toBuffer();
-      const posterFileBuffer = await sharp(sourceImagePath).resize({ width: 1280, height: 720, fit: 'cover' }).jpeg({ quality: 90 }).toBuffer();
+    if (this.cancelledImports.has(videoId)) {
+      throw new Error('Import cancelled');
+    }
 
-      if (this.cancelledImports.has(videoId)) {
-           throw new Error('Import cancelled');
-      }
+    if (!fs.existsSync(sourceImagePath)) {
+      this.logger.warn(`Failed to extract source image for ${videoId}`);
+      return;
+    }
 
-      const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
-      const storageConfig = nodeSettings.storageConfig;
-      const storageMode = storageConfig?.storageMode;
+    const thumbnailBuffer = await sharp(sourceImagePath)
+      .resize({ width: 100, height: 100, fit: 'cover' })
+      .jpeg({ quality: 90 })
+      .toBuffer();
+    const previewFileBuffer = await sharp(sourceImagePath)
+      .resize({ width: 512, height: 288, fit: 'cover' })
+      .jpeg({ quality: 90 })
+      .toBuffer();
+    const posterFileBuffer = await sharp(sourceImagePath)
+      .resize({ width: 1280, height: 720, fit: 'cover' })
+      .jpeg({ quality: 90 })
+      .toBuffer();
 
-      if (storageMode === 'filesystem') {
-           await this.nodeApiService.setThumbnail(jwtToken, videoId, thumbnailBuffer);
-           await this.nodeApiService.setPreview(jwtToken, videoId, previewFileBuffer);
-           await this.nodeApiService.setPoster(jwtToken, videoId, posterFileBuffer);
-      } else if (storageMode === 's3provider' && storageConfig?.s3Config) {
-           const s3Config = storageConfig.s3Config;
-           const thumbnailImageKey = `external/videos/${videoId}/images/thumbnail.jpg`;
-           const previewImageKey = `external/videos/${videoId}/images/preview.jpg`;
-           const posterImageKey = `external/videos/${videoId}/images/poster.jpg`;
+    if (this.cancelledImports.has(videoId)) {
+      throw new Error('Import cancelled');
+    }
 
-           await this.s3Service.putObjectFromData(s3Config, thumbnailImageKey, thumbnailBuffer, 'image/jpeg');
-           await this.s3Service.putObjectFromData(s3Config, previewImageKey, previewFileBuffer, 'image/jpeg');
-           await this.s3Service.putObjectFromData(s3Config, posterImageKey, posterFileBuffer, 'image/jpeg');
-      }
+    const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
+    const storageConfig = nodeSettings.storageConfig;
+    const storageMode = storageConfig?.storageMode;
+
+    if (storageMode === 'filesystem') {
+      await this.nodeApiService.setThumbnail(jwtToken, videoId, thumbnailBuffer);
+      await this.nodeApiService.setPreview(jwtToken, videoId, previewFileBuffer);
+      await this.nodeApiService.setPoster(jwtToken, videoId, posterFileBuffer);
+    } else if (storageMode === 's3provider' && storageConfig?.s3Config) {
+      const s3Config = storageConfig.s3Config;
+      const thumbnailImageKey = `external/videos/${videoId}/images/thumbnail.jpg`;
+      const previewImageKey = `external/videos/${videoId}/images/preview.jpg`;
+      const posterImageKey = `external/videos/${videoId}/images/poster.jpg`;
+
+      await this.s3Service.putObjectFromData(
+        s3Config,
+        thumbnailImageKey,
+        thumbnailBuffer,
+        'image/jpeg'
+      );
+      await this.s3Service.putObjectFromData(
+        s3Config,
+        previewImageKey,
+        previewFileBuffer,
+        'image/jpeg'
+      );
+      await this.s3Service.putObjectFromData(
+        s3Config,
+        posterImageKey,
+        posterFileBuffer,
+        'image/jpeg'
+      );
+    }
   }
 
-  public async importVideo(jwtToken: string, videoId: string, videoFile: unknown): Promise<{ isError: boolean; message?: string }> {
-      const file = videoFile as { path: string; mimetype: string } | undefined;
+  public async importVideo(
+    jwtToken: string,
+    videoId: string,
+    videoFile: unknown
+  ): Promise<{ isError: boolean; message?: string }> {
+    const file = videoFile as { path: string; mimetype: string } | undefined;
 
-      if (file === undefined) {
-          return { isError: true, message: 'video file is missing' };
+    if (file === undefined) {
+      return { isError: true, message: 'video file is missing' };
+    }
+
+    const videoFilePath = file.path;
+    const mimetype = file.mimetype;
+    let sourceFileExtension = '';
+
+    if (mimetype === 'video/mp4') {
+      sourceFileExtension = '.mp4';
+    } else if (mimetype === 'video/webm') {
+      sourceFileExtension = '.webm';
+    } else {
+      return { isError: true, message: 'unexpected source file type: ' + mimetype };
+    }
+
+    try {
+      const stderr = await this.runFfmpeg(videoId, ['-i', videoFilePath]);
+
+      const durationIndex = stderr.indexOf('Duration: ');
+      if (durationIndex === -1) {
+        this.logger.warn(`Could not determine duration for video ${videoId}`);
       }
 
-      const videoFilePath = file.path;
-      const mimetype = file.mimetype;
-      let sourceFileExtension = '';
+      const lengthTimestamp =
+        durationIndex !== -1
+          ? stderr.substring(durationIndex + 10, durationIndex + 21)
+          : '00:00:00.00';
+      const lengthSeconds = this.timestampToSeconds(lengthTimestamp);
+      const imageExtractionTimestamp = Math.floor(lengthSeconds * 0.25);
 
-      if (mimetype === 'video/mp4') {
-          sourceFileExtension = '.mp4';
-      } else if (mimetype === 'video/webm') {
-          sourceFileExtension = '.webm';
-      } else {
-          return { isError: true, message: 'unexpected source file type: ' + mimetype };
+      this.logger.debug(
+        `Video ${videoId}: Duration ${lengthTimestamp} (${String(lengthSeconds)}s)`
+      );
+
+      if (this.cancelledImports.has(videoId)) {
+        throw new Error('Import cancelled');
       }
 
+      await this.nodeApiService.setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp);
+      await this.nodeApiService.setSourceFileExtension(jwtToken, videoId, sourceFileExtension);
+
+      // Generate Images
+      await this.generateImages(jwtToken, videoId, videoFilePath, imageExtractionTimestamp);
+
+      if (this.cancelledImports.has(videoId)) {
+        throw new Error('Import cancelled');
+      }
+
+      await this.nodeApiService.setVideoImported(jwtToken, videoId);
+
+      this.socketService.broadcastToUser(jwtToken, 'echo', {
+        eventName: 'video_status',
+        payload: { type: 'imported', videoId: videoId, lengthTimestamp: lengthTimestamp },
+      });
+
+      return { isError: false };
+    } catch (error) {
+      const err = error as Error;
+      if (err.message === 'Import cancelled') {
+        this.logger.info(`Import process for ${videoId} was cancelled cleanly.`);
+        return { isError: true, message: 'Cancelled' };
+      }
+      this.logger.error('Import failed', error);
+      return { isError: true, message: err.message };
+    } finally {
+      this.activeImports.delete(videoId);
       this.cancelledImports.delete(videoId);
 
+      const imagesDirectoryPath = path.join(
+        this.settingsRepository.getVideosDirectoryPath(),
+        videoId,
+        'images'
+      );
       try {
-          const stderr = await this.runFfmpeg(videoId, ['-i', videoFilePath]);
-
-          const durationIndex = stderr.indexOf('Duration: ');
-          if (durationIndex === -1) {
-              this.logger.warn(`Could not determine duration for video ${videoId}`);
-          }
-          
-          const lengthTimestamp = durationIndex !== -1 ? stderr.substring(durationIndex + 10, durationIndex + 21) : '00:00:00.00';
-          const lengthSeconds = this.timestampToSeconds(lengthTimestamp);
-          const imageExtractionTimestamp = Math.floor(lengthSeconds * 0.25);
-
-          this.logger.debug(`Video ${videoId}: Duration ${lengthTimestamp} (${String(lengthSeconds)}s)`);
-
-          if (this.cancelledImports.has(videoId)) {
-              throw new Error('Import cancelled');
-          }
-
-          await this.nodeApiService.setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp);
-          await this.nodeApiService.setSourceFileExtension(jwtToken, videoId, sourceFileExtension);
-
-          // Generate Images
-          await this.generateImages(jwtToken, videoId, videoFilePath, imageExtractionTimestamp);
-
-          if (this.cancelledImports.has(videoId)) {
-              throw new Error('Import cancelled');
-          }
-
-          await this.nodeApiService.setVideoImported(jwtToken, videoId);
-          
-          this.socketService.broadcastToUser(jwtToken, 'echo', { 
-            eventName: 'video_status', 
-            payload: { type: 'imported', videoId: videoId, lengthTimestamp: lengthTimestamp } 
-          });
-
-          return { isError: false };
-
-      } catch (error) {
-          const err = error as Error;
-          if (err.message === 'Import cancelled') {
-             this.logger.info(`Import process for ${videoId} was cancelled cleanly.`);
-             return { isError: true, message: 'Cancelled' };
-          }
-          this.logger.error('Import failed', error);
-          return { isError: true, message: err.message };
-      } finally {
-          this.activeImports.delete(videoId);
-          this.cancelledImports.delete(videoId);
-          
-          const imagesDirectoryPath = path.join(this.settingsRepository.getVideosDirectoryPath(), videoId, 'images');
-          try {
-            await fs.promises.rm(imagesDirectoryPath, { recursive: true, force: true });
-          } catch { /* ignore */ }
+        await fs.promises.rm(imagesDirectoryPath, { recursive: true, force: true });
+      } catch {
+        /* ignore */
       }
+    }
   }
 
   public async stopImporting(jwtToken: string, videoId: string): Promise<BaseNodeResponse> {
-       this.socketService.broadcastToUser(jwtToken, 'echo', { 
-            eventName: 'video_status', 
-            payload: { type: 'importing_stopping', videoId: videoId } 
-       });
+    this.socketService.broadcastToUser(jwtToken, 'echo', {
+      eventName: 'video_status',
+      payload: { type: 'importing_stopping', videoId: videoId },
+    });
 
-       this.stoppingVideoImport(videoId);
+    this.stoppingVideoImport(videoId);
 
-       const response = await this.nodeApiService.stopVideoImporting(jwtToken, videoId);
+    const response = await this.nodeApiService.stopVideoImporting(jwtToken, videoId);
 
-       if (!response.isError) {
-             this.socketService.broadcastToUser(jwtToken, 'echo', { 
-                eventName: 'video_status', 
-                payload: { type: 'importing_stopped', videoId: videoId } 
-           });
-       }
-       return response;
+    if (!response.isError) {
+      this.socketService.broadcastToUser(jwtToken, 'echo', {
+        eventName: 'video_status',
+        payload: { type: 'importing_stopped', videoId: videoId },
+      });
+    }
+    return response;
   }
 
   public stoppingVideoImport(videoId: string): void {
-      this.logger.info(`Received stop import signal for ${videoId}`);
-      this.cancelledImports.add(videoId);
-      
-      const process = this.activeImports.get(videoId);
-      if (process) {
-          this.logger.info(`Killing active ffmpeg process for ${videoId}`);
-          process.kill('SIGKILL');
-          this.activeImports.delete(videoId);
-      }
+    this.logger.info(`Received stop import signal for ${videoId}`);
+    this.cancelledImports.add(videoId);
+
+    this.cancellationRejectors.get(videoId)?.(new Error('Import cancelled'));
+
+    const process = this.activeImports.get(videoId);
+    if (process) {
+      this.logger.info(`Killing active ffmpeg process for ${videoId}`);
+      process.kill('SIGKILL');
+      this.activeImports.delete(videoId);
+    }
   }
 
   public stoppedVideoImport(_videoId: string, data: unknown): void {
-      this.socketService.broadcast('echo', data);
+    this.socketService.broadcast('echo', data);
   }
 }

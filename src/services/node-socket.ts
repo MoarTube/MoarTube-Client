@@ -103,6 +103,24 @@ export class NodeSocketService extends BaseService {
     this.websocketClient.send(JSON.stringify(message));
   }
 
+  /**
+   * Broadcast a video_status echo to the Node, which relays it back to every
+   * connected client (see handleVideoStatusEcho below). Used for status
+   * transitions such as "publishing_stopping"/"streaming_stopping" so any
+   * other connected admin clients stay in sync, and for the "_stopped"
+   * transitions the browser UI listens for directly.
+   */
+  public sendVideoStatusEcho(jwtToken: string, type: string, videoId: string): void {
+    this.send({
+      eventName: 'echo',
+      jwtToken,
+      data: {
+        eventName: 'video_status',
+        payload: { type, videoId },
+      },
+    });
+  }
+
   private startPingPong(jwtToken: string, url: string): void {
     this.pingIntervalTimer = setInterval(() => {
       if (!this.pingTimeoutTimer) {
@@ -200,7 +218,7 @@ export class NodeSocketService extends BaseService {
         this.socketService.broadcast('echo', originalData);
         break;
       case 'streaming_stopping':
-        this.liveStreamService.markLiveStreamStopping(videoId);
+        this.liveStreamService.stopLiveStream(videoId);
         break;
       case 'streaming_stopped':
         this.socketService.broadcast('echo', originalData);

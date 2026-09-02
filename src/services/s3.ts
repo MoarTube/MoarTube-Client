@@ -12,6 +12,7 @@ import {
   PutPublicAccessBlockCommand,
   PutBucketOwnershipControlsCommand,
   PutBucketPolicyCommand,
+  PutBucketCorsCommand,
 } from '@aws-sdk/client-s3';
 import type { S3ClientConfig } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
@@ -175,7 +176,10 @@ export class S3Service extends BaseService {
           })
         );
       } catch {
-        // Fallback policy
+        // Fallback policy: some non-AWS S3-compatible providers (e.g. DigitalOcean
+        // Spaces, Minio) don't support STS GetCallerIdentity, so we can't scope
+        // delete/put to a specific principal. Grant only public read in that case -
+        // never public write/delete - matching the legacy security posture.
         await s3Client.send(
           new PutBucketPolicyCommand({
             Bucket: bucketName,
@@ -186,7 +190,7 @@ export class S3Service extends BaseService {
                   Sid: 'PublicFullAccess',
                   Effect: 'Allow',
                   Principal: '*',
-                  Action: 's3:*',
+                  Action: 's3:GetObject',
                   Resource: `arn:aws:s3:::${bucketName}/*`,
                 },
               ],
@@ -194,7 +198,48 @@ export class S3Service extends BaseService {
           })
         );
       }
+
+      // Configure CORS so browsers can fetch video segments/manifests directly
+      // from the bucket when served cross-origin.
+      try {
+        await s3Client.send(
+          new PutBucketCorsCommand({
+            Bucket: bucketName,
+            CORSConfiguration: {
+              CORSRules: [
+                {
+                  AllowedHeaders: ['*'],
+                  AllowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'HEAD'],
+                  AllowedOrigins: ['*'],
+                  ExposeHeaders: [],
+                },
+              ],
+            },
+          })
+        );
+      } catch {
+        /* Ignore */
+      }
     }
+
+    // Verify the supplied credentials actually have read/write/delete access by
+    // round-tripping a test object. Run this unconditionally (not just for newly
+    // created buckets) so misconfigured credentials are caught immediately here
+    // rather than later during video publishing/uploading.
+    this.logger.debug('Verifying MoarTube Client can put/get/delete a test object in the bucket');
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: bucketName,
+        Key: 'Moartube-Client-Test',
+        Body: 'testing',
+        ContentType: 'text/plain; charset=utf-8',
+      })
+    );
+    await s3Client.send(new GetObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test' }));
+    await s3Client.send(
+      new DeleteObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test' })
+    );
+    this.logger.debug('S3 provider credentials validated');
   }
 
   public async updateM3u8ManifestsWithExternalVideosBaseUrl(
@@ -372,28 +417,41 @@ export class S3Service extends BaseService {
     const client = this.createClientFromConfig(s3ProviderClientConfig);
 
     try {
-      // List objects first
-      const listCommand = new ListObjectsV2Command({
-        Bucket: bucket,
-        Prefix: prefix,
-      });
-      const listResponse = await client.send(listCommand);
+      // ListObjectsV2 returns at most 1000 keys per page, so we must page through
+      // the full listing (via ContinuationToken) before we can be sure everything
+      // under this prefix has been deleted.
+      let continuationToken: string | undefined;
 
-      if (!listResponse.Contents || listResponse.Contents.length === 0) {
-        return;
-      }
+      do {
+        const listResponse = await client.send(
+          new ListObjectsV2Command({
+            Bucket: bucket,
+            Prefix: prefix,
+            ContinuationToken: continuationToken,
+          })
+        );
 
-      const objectsToDelete = listResponse.Contents.map((obj) => ({ Key: obj.Key }));
+        const contents = listResponse.Contents ?? [];
 
-      const deleteCommand = new DeleteObjectsCommand({
-        Bucket: bucket,
-        Delete: {
-          Objects: objectsToDelete,
-          Quiet: true,
-        },
-      });
+        if (contents.length > 0) {
+          // DeleteObjectsCommand also accepts at most 1000 keys per call, which
+          // matches the page size returned above, so one delete call per page suffices.
+          const objectsToDelete = contents.map((obj) => ({ Key: obj.Key }));
 
-      await client.send(deleteCommand);
+          await client.send(
+            new DeleteObjectsCommand({
+              Bucket: bucket,
+              Delete: {
+                Objects: objectsToDelete,
+                Quiet: true,
+              },
+            })
+          );
+        }
+
+        continuationToken =
+          listResponse.IsTruncated === true ? listResponse.NextContinuationToken : undefined;
+      } while (continuationToken !== undefined);
     } catch (error) {
       this.logger.error(`Failed to delete prefix ${prefix}`, error as Error);
       throw error;

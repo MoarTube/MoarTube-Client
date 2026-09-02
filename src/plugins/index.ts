@@ -17,8 +17,9 @@ import { registerRoutes } from '@/routes/index.js';
 import { type AwilixContainer } from 'awilix';
 import { type ContainerCradle } from '@/core/container.js';
 
-export async function createFastifyApp(container: AwilixContainer<ContainerCradle>): Promise<FastifyInstance> {
-
+export async function createFastifyApp(
+  container: AwilixContainer<ContainerCradle>
+): Promise<FastifyInstance> {
   const app = fastify({
     logger: false, // We use our own logger
     trustProxy: true,
@@ -33,7 +34,7 @@ export async function createFastifyApp(container: AwilixContainer<ContainerCradl
   // Register Plugins
   await app.register(corsPlugin);
   await app.register(bodyParserPlugin);
-  await app.register(sessionPlugin);
+  await app.register(sessionPlugin, { container });
   await app.register(websocketPlugin);
   await app.register(staticPlugin);
   await app.register(viewPlugin);
@@ -44,5 +45,3 @@ export async function createFastifyApp(container: AwilixContainer<ContainerCradl
 
   return app;
 }
-
-
