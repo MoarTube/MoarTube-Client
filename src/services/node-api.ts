@@ -570,7 +570,7 @@ export class NodeApiService extends BaseService {
 
   public async deleteMonetizationAddress(
     jwtToken: string,
-    cryptoWalletAddressId: string
+    cryptoWalletAddressId: number
   ): Promise<BaseNodeResponse> {
     return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/monetization/delete', {
       cryptoWalletAddressId,

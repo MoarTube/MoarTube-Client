@@ -7,4 +7,7 @@ user
 _client_log.txt
 dist/
 coverage/
+playwright-report/
+test-results/
+blob-report/
 node_modules/

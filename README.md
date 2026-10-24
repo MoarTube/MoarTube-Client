@@ -25,7 +25,33 @@ When you’re ready, make sure to check out the [MoarTube Node](https://github.c
   - [Default Login Credentials](#default-login-credentials)
   - [Get MoarTube Node](#get-moartube-node)
 
+## Clean startup
+
+From a source checkout with development dependencies installed, run
+`npm start -- --clean`. This permanently deletes the
+client's `data`, `dist`, `playwright-report`, `temp`, and `test-results` directories,
+including saved settings and imported videos. Cleanup finishes before the client
+is rebuilt and startup provisions fresh data. Missing directories are ignored;
+cleanup or build failures stop startup. Paths are relative to the client
+installation, regardless of the terminal's working directory.
+
+The CLI also accepts `moartube-client --clean` when running from a source checkout.
+Published packages require a source checkout for clean startup because they do not
+include the sources and build tools needed to recreate `dist`.
+
+## Development testing
+
+The client includes Playwright UI integration, media-processing and streaming tests
+against a real MoarTube Node that the developer must already have running at
+`http://localhost:9090`. The suite errors out if it is unavailable and never
+prepares, starts, resets or substitutes the Node.
+Run `npm run test:e2e:install` once, then `npm run test:e2e` for Chromium or
+`npm run test:e2e:all` for Chromium, Firefox and WebKit. Tests are also available
+in the VS Code Playwright extension. See [the E2E guide](tests/e2e/README.md)
+for prerequisites, coverage, debugging and integration-test limits.
+
 # Features
+
 ## 🖥️ Platform Support
 - Cross-platform compatibility: **Windows**, **macOS**, and **Linux**
 - Capable of running on a **[Raspberry Pi Zero 2 W](https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/)**

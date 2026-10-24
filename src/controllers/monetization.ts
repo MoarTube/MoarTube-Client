@@ -83,7 +83,7 @@ export class MonetizationController extends BaseController {
   };
 
   public postDelete = async (
-    request: FastifyRequest<{ Body: { cryptoWalletAddressId: string } }>,
+    request: FastifyRequest<{ Body: { cryptoWalletAddressId: number } }>,
     reply: FastifyReply
   ): Promise<FastifyReply> => {
     try {

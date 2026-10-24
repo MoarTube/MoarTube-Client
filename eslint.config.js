@@ -86,4 +86,16 @@ export default tseslint.config(
       'curly': ['error', 'all'],
     },
   },
+  {
+    // Playwright response.json() is intentionally untyped at the HTTP boundary.
+    // Keep syntax/style linting here; typecheck:e2e checks the complete test project.
+    ...tseslint.configs.disableTypeChecked,
+    files: ['tests/e2e/**/*.ts'],
+    languageOptions: { parserOptions: { project: false } },
+    rules: {
+      ...tseslint.configs.disableTypeChecked.rules,
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/explicit-function-return-type': 'off',
+    },
+  },
 );

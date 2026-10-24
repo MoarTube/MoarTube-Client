@@ -15,6 +15,17 @@
             "runtimeExecutable": "npm",
             "runtimeArgs": ["run", "start"],
             "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch Program (Clean)",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "start", "--", "--clean"],
+            "console": "integratedTerminal"
         }
     ]
 }

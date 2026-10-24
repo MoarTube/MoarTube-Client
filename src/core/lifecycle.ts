@@ -20,9 +20,6 @@ export class LifecycleManager {
     // Eager load background services
     this.container.resolve('videoPublishService');
 
-    // streamsTrackerService might need eager loading if it has intervals, but usually it's reactive.
-    // legacy main.js didn't seemingly start a streams interval, just videoPublish.
-
     this.logger.info('[LifecycleManager] Startup tasks completed.');
   }
 
