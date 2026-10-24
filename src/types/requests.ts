@@ -86,10 +86,6 @@ export interface SetNodeAboutBody {
   nodeAbout: string;
 }
 
-export interface SetNodeIdBody {
-  nodeId: string;
-}
-
 export interface SetNetworkInternalBody {
   nodeListeningPort: number;
 }

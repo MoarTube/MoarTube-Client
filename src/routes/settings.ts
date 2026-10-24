@@ -113,14 +113,6 @@ export function settingsRoutes(
   );
 
   fastify.post(
-    '/node/personalize/id',
-    {
-      schema: { tags: ['Settings'] },
-    },
-    settingsController.apiSetNodeId.bind(settingsController)
-  );
-
-  fastify.post(
     '/node/secure',
     {
       schema: { tags: ['Settings'] },

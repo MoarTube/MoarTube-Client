@@ -9,7 +9,6 @@ import type {
   SetClientEncodingBody,
   SetNodeNameBody,
   SetNodeAboutBody,
-  SetNodeIdBody,
   SetNetworkInternalBody,
   SetNetworkExternalBody,
   SetAccountBody,
@@ -329,16 +328,6 @@ export class SettingsController extends BaseController {
       request.session.jwtToken ?? '',
       nodeAbout
     );
-    return await reply.send(response);
-  };
-
-  // API: POST /settings/node/personalize/id
-  public apiSetNodeId = async (
-    request: FastifyRequest,
-    reply: FastifyReply
-  ): Promise<FastifyReply> => {
-    const { nodeId } = request.body as SetNodeIdBody;
-    const response = await this.nodeApiService.setNodeId(request.session.jwtToken ?? '', nodeId);
     return await reply.send(response);
   };
 

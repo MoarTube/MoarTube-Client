@@ -357,12 +357,6 @@ export class NodeApiService extends BaseService {
     });
   }
 
-  public async setNodeId(jwtToken: string, nodeId: string): Promise<BaseNodeResponse> {
-    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/personalize/id', {
-      nodeId,
-    });
-  }
-
   public async setSecureConnection(
     jwtToken: string,
     isSecure: boolean,

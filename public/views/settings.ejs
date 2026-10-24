@@ -469,30 +469,6 @@
 								</div>
 							</form>
 
-							<form id="personalize_settings_node_id_form" aria-label="Node ID Form" method="POST"
-								action="/settings/node/personalize/id">
-								<div class="card-body pt-0 pb-0">
-									<div class="card-body pt-0">
-										<div class="row mt-3">
-											<div class="col-12">
-												<label class="form-label" for="node-id-input">Node ID</label>
-												<div class="input-group">
-													<input id="node-id-input" class="form-control" name="nodeId"
-														type="text" placeholder="node id" onfocus="focused(this)"
-														onfocusout="defocused(this)">
-												</div>
-											</div>
-										</div>
-									</div>
-									<div class="card-body d-sm-flex pt-0">
-										<div class="d-flex align-items-center mb-sm-0 mb-4 ms-auto">
-											<button class="btn btn-primary mb-0" type="submit"
-												name="button">Save</button>
-										</div>
-									</div>
-								</div>
-							</form>
-
 							<div class="card-body pt-0 pb-0">
 								<div class="">
 									<a href="https://www.moartube.com/guides/how-to-secure-your-node-with-https"
@@ -979,10 +955,6 @@
 				self.handlePersonalizeNodeAboutForm($(this));
 			});
 
-			$('#personalize_settings_node_id_form').off('submit').on('submit', function (event) {
-				event.preventDefault();
-				self.handlePersonalizeNodeIdForm($(this));
-			});
 
 			$('#internal_network_settings_form').off('submit').on('submit', function (event) {
 				event.preventDefault();
@@ -1036,7 +1008,6 @@
 
 			$('#node-name-input').val(nodeSettings.nodeName);
 			$('#node-about-textarea').val(nodeSettings.nodeAbout);
-			$('#node-id-input').val(nodeSettings.nodeId);
 
 			$('#node-setting-secure-mode-checkbox').prop('checked', nodeSettings.isSecure);
 			$('#cloudflare-one-click-cdn-checkbox').prop('checked', nodeSettings.isCloudflareCdnEnabled);
@@ -1272,35 +1243,6 @@
 					Swal.showLoading();
 
 					$.ajax({ type: 'POST', url: url, data: JSON.stringify({ nodeAbout: nodeAbout }), contentType: 'application/json; charset=utf-8' })
-						.done(function (data) {
-							if (data.isError) {
-								self.showAlert(true, data.message);
-							}
-							else {
-								self.showAlert(false);
-							}
-						})
-						.fail(function () {
-							self.showAlert(true, 'an error occurred, please try again');
-						});
-				}
-			});
-		}
-
-		handlePersonalizeNodeIdForm(form) {
-			const self = this;
-
-			let url = form.attr('action');
-			let nodeId = form.find('input[name="nodeId"]').val();
-
-			Swal.fire({
-				title: 'please wait',
-				html: '...applying your settings...',
-				allowOutsideClick: false,
-				didOpen: () => {
-					Swal.showLoading();
-
-					$.ajax({ type: 'POST', url: url, data: JSON.stringify({ nodeId: nodeId }), contentType: 'application/json; charset=utf-8' })
 						.done(function (data) {
 							if (data.isError) {
 								self.showAlert(true, data.message);

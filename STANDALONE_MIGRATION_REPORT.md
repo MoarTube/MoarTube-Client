@@ -12,3 +12,7 @@ The active Client communicates directly with the standalone Node. The `_src` ref
 Regression tests cover removed routes, each filesystem/S3 image-upload branch, and rendered video-page script syntax. Manual transcoding/live-streaming and browser interaction have not been exercised. Direct S3 uploads do not have a separate image-cache invalidation endpoint in the current Node API; CDN cache expiration remains relevant.
 
 Validation: source TypeScript checking, source ESLint, production bundling, and the standalone regression suite pass. Page coverage includes all eight EJS views and execution of video table-row generation with the standalone fields. The previous `_src` tree remains unmodified.
+
+## Node ID retirement
+
+Removed Node ID generation, settings controls, update endpoints, request types, and response/template fields from the active applications. Existing Node settings ignore the obsolete key and omit it on their next normal save. `_src` remains unchanged as reference code.
