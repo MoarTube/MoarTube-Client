@@ -12,6 +12,34 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import ffmpeg from 'ffmpeg-static';
 
+for (const viewport of [
+  { width: 1280, height: 720 },
+  { width: 1920, height: 1080 },
+  { width: 390, height: 844 },
+]) {
+  test(`recording switches work at ${viewport.width}x${viewport.height}`, async ({
+    signedInPage: page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await page.locator('#live-button').click();
+    const dialog = await page.locator('.swal2-popup').boundingBox();
+    expect(dialog).not.toBeNull();
+    expect(dialog!.x).toBeGreaterThanOrEqual(0);
+    expect(dialog!.x + dialog!.width).toBeLessThanOrEqual(viewport.width);
+    for (const kind of ['Remotely', 'Locally']) {
+      const checkbox = page.locator(`#recordStream${kind}Checkbox`);
+      await checkbox.check();
+      await expect(checkbox).toBeChecked();
+      await page.locator(`label[for="recordStream${kind}Checkbox"]`).click();
+      await expect(checkbox).not.toBeChecked();
+      await checkbox.focus();
+      await checkbox.press('Space');
+      await expect(checkbox).toBeChecked();
+    }
+    await closeDialog(page);
+  });
+}
+
 test('live dialog discovers real network addresses and validates required fields', async ({
   signedInPage: page,
 }) => {

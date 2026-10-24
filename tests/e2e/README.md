@@ -109,10 +109,14 @@ the Node or Postgres. Browser/report tooling from the earlier suite is retained.
   WebKit (6 targeted checks) on 2026-10-24. Tests also assert the actual UI request's
   numeric ID and verify deletion remains effective after reload. Addresses left by
   runs before this fix can remain on the Node.
-- Live stream recording controls: at the desktop viewport, the sidebar intercepts
-  pointer clicks on the recording checkbox in the live modal. The test uses normal
-  clicks; it does not force the click, hide the sidebar, or set checkbox state using
-  JavaScript. Actual streaming coverage requires the workflow to be usable first.
+- Live stream recording controls originally failed because the sidebar's z-index
+  placed it above the dialog. The sidebar now sits below modal backdrops, and the
+  live dialog uses a bounded responsive width, wrapping resolution choices, and
+  standard switches with associated labels. Normal checkbox clicks, label clicks,
+  keyboard toggling and dialog bounds passed at 1280x720, 1920x1080 and 390x844 in
+  Chromium, Firefox and WebKit. The real RTMP start/stop workflow also passed in
+  all three browsers (15 targeted checks total) on 2026-10-24. These tests never
+  force clicks, hide the sidebar or inject checkbox state.
 
 These are observations from the real Client UI. The suite does not label these cases
 as expected failures or claim that a successful test discovery/type check validates
@@ -121,8 +125,10 @@ the integration.
 Initial verification on 2026-10-24: the converted Chromium suite ran 70 scenarios
 against the developer's running Node: 67 passed and 3 failed (the two wallet
 deletions and the recording-control obstruction above). Type checks, E2E lint,
-the existing Vitest test and the application build passed. Firefox and WebKit
-remain selectable projects; only their wallet workflows have subsequently been
-revalidated. The full 70-scenario suite has not been rerun following the wallet fix.
+the existing Vitest test and the application build passed. Subsequent verification on 2026-10-24 after the wallet and live-dialog fixes:
+the complete Chromium suite passed all 73 scenarios (including three added
+viewport regressions). All 15 targeted stream checks passed across Chromium,
+Firefox and WebKit. E2E typechecking, E2E lint and the application build also passed.
+The complete Firefox and WebKit suites have not been rerun.
 The report includes created-wallet addresses and created-video IDs so failed
 workflows can be located without direct database cleanup.

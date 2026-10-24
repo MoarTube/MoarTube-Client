@@ -16,6 +16,27 @@
 	<link href="/css/pickr-nano-theme-1.9.0.min.css" rel="stylesheet">
 	<link id="pagestyle" href="/css/soft-ui-dashboard-1.1.0.min.css" rel="stylesheet">
 	<style>
+		.stream-video-dialog {
+			width: 52rem;
+			min-width: 0;
+			max-width: 100%;
+		}
+
+		.stream-video-dialog .stream-resolutions {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: center;
+			gap: 0.5rem 1rem;
+		}
+
+		.stream-video-dialog .stream-resolutions .form-check {
+			margin-bottom: 0;
+		}
+
+		.stream-video-dialog .form-switch {
+			text-align: left;
+		}
+
 		.circle {
 			width: 50px;
 			margin: 0px;
@@ -1086,6 +1107,7 @@
 
 			const i = Swal.mixin({
 				customClass: {
+					popup: "stream-video-dialog",
 					confirmButton: "btn bg-gradient-success",
 					cancelButton: "btn bg-gradient-danger"
 				},
@@ -1107,48 +1129,44 @@
 					</div> \
 					<div class="input-group mb-3"> \
 						<label class="custom-control-label float-start">incoming stream resolution</label>\
-						<div class="input-group justify-content-center">\
+						<div class="stream-resolutions">\
 							<div class="form-check mb-3"> \
-							  <label class="custom-control-label" for="streamResolution2160p">2160p(4K)&nbsp&nbsp&nbsp</label>\
+							  <label class="custom-control-label" for="streamResolution2160p">2160p(4K)</label>\
 							  <input id="streamResolution2160p" class="form-check-input" type="radio" name="streamResolutionRadioButton" value="2160p">\
 							</div>\
 							<div class="form-check mb-3">\
-							  <label class="custom-control-label" for="streamResolution1440p">1440p(QHD)&nbsp&nbsp&nbsp</label>\
+							  <label class="custom-control-label" for="streamResolution1440p">1440p(QHD)</label>\
 							  <input id="streamResolution1440p" class="form-check-input" type="radio" name="streamResolutionRadioButton" value="1440p">\
 							</div>\
 							<div class="form-check mb-3">\
-							  <label class="custom-control-label" for="streamResolution1080p">1080p(FHD)&nbsp&nbsp&nbsp</label>\
+							  <label class="custom-control-label" for="streamResolution1080p">1080p(FHD)</label>\
 							  <input id="streamResolution1080p" class="form-check-input" type="radio" name="streamResolutionRadioButton" value="1080p">\
 							</div>\
 							<div class="form-check">\
-							  <label class="custom-control-label" for="streamResolution720p">720p(HD)&nbsp&nbsp&nbsp</label>\
+							  <label class="custom-control-label" for="streamResolution720p">720p(HD)</label>\
 							  <input id="streamResolution720p" class="form-check-input" type="radio" name="streamResolutionRadioButton" value="720p">\
 							</div>\
 							<div class="form-check">\
-							  <label class="custom-control-label" for="streamResolution480p">480p(SD)&nbsp&nbsp&nbsp</label>\
+							  <label class="custom-control-label" for="streamResolution480p">480p(SD)</label>\
 							  <input id="streamResolution480p" class="form-check-input" type="radio" name="streamResolutionRadioButton" value="480p">\
 							</div>\
 							<div class="form-check">\
-							  <label class="custom-control-label" for="streamResolution360p">360p&nbsp&nbsp&nbsp</label>\
+							  <label class="custom-control-label" for="streamResolution360p">360p</label>\
 							  <input id="streamResolution360p" class="form-check-input" type="radio" name="streamResolutionRadioButton" value="360p">\
 							</div>\
 							<div class="form-check">\
-							  <label class="custom-control-label" for="streamResolution240p">240p&nbsp&nbsp&nbsp</label>\
+							  <label class="custom-control-label" for="streamResolution240p">240p</label>\
 							  <input id="streamResolution240p" class="form-check-input" type="radio" name="streamResolutionRadioButton" value="240p">\
 							</div>\
 						</div>\
 					</div>\
-					<div class="input-group mb-3">\
-						<label class="custom-control-label">record stream remotely, publishing in real time</label>\
-						<div class="input-group form-switch">\
-							<input id="recordStreamRemotelyCheckbox" class="form-check-input" type="checkbox" style="height: 1.10em;"/>\
-						</div>\
+					<div class="form-check form-switch mb-3">\
+						<input id="recordStreamRemotelyCheckbox" class="form-check-input" type="checkbox"/>\
+						<label class="form-check-label" for="recordStreamRemotelyCheckbox">record stream remotely, publishing in real time</label>\
 					</div>\
-					<div class="input-group mb-3">\
-						<label class="custom-control-label">record stream locally for later publishing</label>\
-						<div class="input-group form-switch">\
-							<input id="recordStreamLocallyCheckbox" class="form-check-input" type="checkbox" style="height: 1.10em;"/>\
-						</div>\
+					<div class="form-check form-switch mb-3">\
+						<input id="recordStreamLocallyCheckbox" class="form-check-input" type="checkbox"/>\
+						<label class="form-check-label" for="recordStreamLocallyCheckbox">record stream locally for later publishing</label>\
 					</div>',
 				showCloseButton: true,
 				showCancelButton: false,
