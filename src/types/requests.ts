@@ -70,7 +70,7 @@ export interface UpdateChatSettingsBody {
 }
 
 export interface SetGpuAccelerationBody {
-  isGpuAccelerationEnabled: boolean;
+  gpuId: string;
 }
 
 export interface SetClientEncodingBody {

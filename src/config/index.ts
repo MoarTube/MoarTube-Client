@@ -18,6 +18,9 @@ const ClientSettingsSchema = z.object({
       processingAgentType: z.string(),
       processingAgentName: z.string().optional(),
       processingAgentModel: z.string().optional(),
+      gpuId: z.string().optional(),
+      deviceUuid: z.string().optional(),
+      deviceIndex: z.number().int().nonnegative().optional(),
     })
     .optional(),
   videoEncoderSettings: z.record(z.string(), z.unknown()).optional(),

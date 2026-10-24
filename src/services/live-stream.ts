@@ -1,5 +1,6 @@
 import type { ChildProcess } from 'node:child_process';
 import { spawn } from 'node:child_process';
+import { getGpuProcessEnvironment } from '@/utils/hardware.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Logger } from 'pino';
@@ -139,7 +140,9 @@ export class LiveStreamService {
       externalVideosBaseUrl
     );
 
-    const process = spawn(this.ffmpegService.getPath(), ffmpegArguments);
+    const process = spawn(this.ffmpegService.getPath(), ffmpegArguments, {
+      env: getGpuProcessEnvironment(this.settingsRepository.getClientSettings().processingAgent),
+    });
     this.addProcessToLiveStreamTracker(videoId, process);
 
     let lengthSeconds = 0;
@@ -595,11 +598,9 @@ export class LiveStreamService {
 
     let args: string[] = [];
 
-    const processingAgent = clientSettings.processingAgent as
-      | { processingAgentType?: string; processingAgentName?: string }
-      | undefined;
+    const processingAgent = clientSettings.processingAgent ?? { processingAgentType: 'cpu' };
 
-    if (processingAgent?.processingAgentType === 'cpu') {
+    if (processingAgent.processingAgentType === 'cpu') {
       if (format === 'm3u8') {
         args = [
           '-listen',
@@ -635,7 +636,7 @@ export class LiveStreamService {
           'pipe:1',
         ];
       }
-    } else if (processingAgent?.processingAgentType === 'gpu') {
+    } else if (processingAgent.processingAgentType === 'gpu') {
       if (processingAgent.processingAgentName === 'NVIDIA') {
         if (format === 'm3u8') {
           args = [
@@ -684,9 +685,9 @@ export class LiveStreamService {
             '-timeout',
             '10000',
             '-hwaccel',
-            'dxva2',
+            'd3d11va',
             '-hwaccel_device',
-            '0',
+            'selectedGpu',
             '-f',
             'flv',
             '-i',
@@ -724,6 +725,15 @@ export class LiveStreamService {
       if (hlsPlaylistTypeIdx !== -1) {
         args.splice(hlsPlaylistTypeIdx, 2);
       }
+    }
+
+    if (args.includes('h264_amf')) {
+      args.unshift(
+        '-init_hw_device',
+        `d3d11va=selectedGpu:${String(clientSettings.processingAgent?.deviceIndex ?? 0)}`,
+        '-filter_hw_device',
+        'selectedGpu'
+      );
     }
 
     return args;

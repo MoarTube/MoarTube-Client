@@ -1,5 +1,6 @@
 import type { ChildProcess } from 'node:child_process';
 import { spawn } from 'node:child_process';
+import { getGpuProcessEnvironment } from '@/utils/hardware.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Logger } from 'pino';
@@ -284,7 +285,9 @@ export class VideoPublishService {
         `[VideoPublishService] Spawning ffmpeg: ${this.ffmpegService.getPath()} with args: ${ffmpegArguments.join(' ')}`
       );
 
-      const process = spawn(this.ffmpegService.getPath(), ffmpegArguments);
+      const process = spawn(this.ffmpegService.getPath(), ffmpegArguments, {
+        env: getGpuProcessEnvironment(this.settingsRepository.getClientSettings().processingAgent),
+      });
       const state = this.activeEncodingJobs.get(job.videoId);
       state?.processes.add(process);
 
@@ -909,9 +912,9 @@ export class VideoPublishService {
         if (format === 'm3u8') {
           args = [
             '-hwaccel',
-            'dxva2',
+            'd3d11va',
             '-hwaccel_device',
-            '0',
+            'selectedGpu',
             '-i',
             sourceFilePath,
             '-c:a',
@@ -943,9 +946,9 @@ export class VideoPublishService {
         } else if (format === 'mp4') {
           args = [
             '-hwaccel',
-            'dxva2',
+            'd3d11va',
             '-hwaccel_device',
-            '0',
+            'selectedGpu',
             '-i',
             sourceFilePath,
             '-c:a',
@@ -1006,6 +1009,15 @@ export class VideoPublishService {
           ];
         }
       }
+    }
+
+    if (args.includes('h264_amf')) {
+      args.unshift(
+        '-init_hw_device',
+        `d3d11va=selectedGpu:${String(clientSettings.processingAgent?.deviceIndex ?? 0)}`,
+        '-filter_hw_device',
+        'selectedGpu'
+      );
     }
 
     return args;

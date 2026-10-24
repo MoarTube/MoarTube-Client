@@ -18,7 +18,12 @@ import type {
   ToggleStorageBody,
   ToggleBooleanBody,
 } from '@/types/requests.js';
-import { detectOperatingSystem, detectSystemCpu, detectSystemGpu } from '@/utils/hardware.js';
+import {
+  detectOperatingSystem,
+  detectSystemCpu,
+  detectSystemGpus,
+  type DetectedGpu,
+} from '@/utils/hardware.js';
 import sharp from 'sharp';
 import fs from 'node:fs';
 
@@ -65,18 +70,9 @@ export class SettingsController extends BaseController {
       // Get Client Settings (Local)
       const clientSettings = this.getClientSettings();
 
-      // Enrich with GPU/CPU info if needed (matches legacy logic in client_GET)
-      const isGpuAccelerationEnabled =
-        clientSettings.processingAgent?.processingAgentType === 'gpu';
       const viewClientSettings = {
         ...clientSettings,
-        isGpuAccelerationEnabled,
-        gpuVendor: isGpuAccelerationEnabled
-          ? clientSettings.processingAgent?.processingAgentName
-          : undefined,
-        gpuModel: isGpuAccelerationEnabled
-          ? clientSettings.processingAgent?.processingAgentModel
-          : undefined,
+        ...(await this.getGpuSettings()),
         version: this.config.clientSettings.version,
       };
 
@@ -106,16 +102,8 @@ export class SettingsController extends BaseController {
     reply: FastifyReply
   ): Promise<FastifyReply> => {
     const clientSettings = this.getClientSettings();
-    const isGpuAccelerationEnabled = clientSettings.processingAgent?.processingAgentType === 'gpu';
-
     const settings = {
-      isGpuAccelerationEnabled,
-      gpuVendor: isGpuAccelerationEnabled
-        ? clientSettings.processingAgent?.processingAgentName
-        : undefined,
-      gpuModel: isGpuAccelerationEnabled
-        ? clientSettings.processingAgent?.processingAgentModel
-        : undefined,
+      ...(await this.getGpuSettings()),
       videoEncoderSettings: clientSettings.videoEncoderSettings,
       liveEncoderSettings: clientSettings.liveEncoderSettings,
       version: this.config.clientSettings.version,
@@ -124,43 +112,75 @@ export class SettingsController extends BaseController {
     return await this.sendSuccess(reply, { clientSettings: settings });
   };
 
-  // API: POST /settings/client/gpu-acceleration
+  private async getGpuSettings(): Promise<{
+    detectedGpus: DetectedGpu[];
+    selectedGpuId: string;
+    isGpuAccelerationEnabled: boolean;
+    gpuVendor: string | undefined;
+    gpuModel: string | undefined;
+    isGpuAccelerationSupported: boolean;
+  }> {
+    const detectedGpus = await detectSystemGpus().catch((error: unknown) => {
+      this.logger.warn('Failed to detect GPUs', error);
+      return [];
+    });
+    const agent = this.config.clientSettings.processingAgent;
+    const isGpuAccelerationSupported = detectOperatingSystem() === 'win32';
+    const selected =
+      isGpuAccelerationSupported && agent?.processingAgentType === 'gpu'
+        ? detectedGpus.find((gpu) => gpu.id === agent.gpuId)
+        : undefined;
+    return {
+      detectedGpus,
+      selectedGpuId: selected?.id ?? '',
+      isGpuAccelerationEnabled: Boolean(selected),
+      gpuVendor: selected?.processingAgentName,
+      gpuModel: selected?.processingAgentModel,
+      isGpuAccelerationSupported,
+    };
+  }
+
+  // API: POST /settings/client/gpuAcceleration
   public apiSetGpuAcceleration = async (
     request: FastifyRequest,
     reply: FastifyReply
   ): Promise<FastifyReply> => {
-    const { isGpuAccelerationEnabled } = request.body as SetGpuAccelerationBody;
-    const operatingSystem = detectOperatingSystem();
-    const clientSettings = this.config.clientSettings;
-    const result: { isGpuAccelerationEnabled?: boolean; gpuVendor?: string; gpuModel?: string } =
-      {};
-
-    if (operatingSystem === 'win32') {
-      if (isGpuAccelerationEnabled) {
-        const systemGpu = await detectSystemGpu();
-        clientSettings.processingAgent = {
-          processingAgentType: 'gpu',
-          processingAgentName: systemGpu.processingAgentName,
-          processingAgentModel: systemGpu.processingAgentModel,
-        };
-        result.isGpuAccelerationEnabled = true;
-        result.gpuVendor = systemGpu.processingAgentName;
-        result.gpuModel = systemGpu.processingAgentModel;
-      } else {
-        const systemCpu = await detectSystemCpu();
-        clientSettings.processingAgent = {
-          processingAgentType: 'cpu',
-          processingAgentName: systemCpu.processingAgentName,
-          processingAgentModel: systemCpu.processingAgentModel,
-        };
-        result.isGpuAccelerationEnabled = false;
-      }
-
-      this.config.saveClientSettings(clientSettings);
-      return await this.sendSuccess(reply, { result });
-    } else {
+    const { gpuId } = (request.body ?? {}) as SetGpuAccelerationBody;
+    if (typeof gpuId !== 'string') {
+      return await this.sendError(reply, 'Select a detected GPU or disabled', 400);
+    }
+    if (gpuId !== '' && detectOperatingSystem() !== 'win32') {
       return await this.sendError(reply, 'GPU acceleration only supported on Windows', 400);
     }
+    if (gpuId === '') {
+      const cpu = await detectSystemCpu();
+      this.config.saveClientSettings({ processingAgent: { processingAgentType: 'cpu', ...cpu } });
+      return await this.sendSuccess(reply, {
+        result: { selectedGpuId: '', isGpuAccelerationEnabled: false },
+      });
+    }
+    const gpu = (await detectSystemGpus()).find((gpu) => gpu.id === gpuId);
+    if (!gpu) {
+      return await this.sendError(reply, 'Selected GPU is no longer detected', 400);
+    }
+    this.config.saveClientSettings({
+      processingAgent: {
+        processingAgentType: 'gpu',
+        processingAgentName: gpu.processingAgentName,
+        processingAgentModel: gpu.processingAgentModel,
+        gpuId: gpu.id,
+        deviceIndex: gpu.deviceIndex,
+        deviceUuid: gpu.deviceUuid,
+      },
+    });
+    return await this.sendSuccess(reply, {
+      result: {
+        selectedGpuId: gpu.id,
+        isGpuAccelerationEnabled: true,
+        gpuVendor: gpu.processingAgentName,
+        gpuModel: gpu.processingAgentModel,
+      },
+    });
   };
 
   // API: POST /settings/client/encoding

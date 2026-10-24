@@ -324,12 +324,12 @@
 										</a>
 									</div>
 								</div>
-								<p id="client-setting-gpu-acceleration-label"
-									class="text-sm text-secondary ms-auto me-3 my-auto"></p>
-								<div class="form-check form-switch my-auto">
-									<input id="client-setting-gpu-acceleration-checkbox" class="form-check-input toggle-gpu-acceleration"
-										type="checkbox">
-								</div>
+                                <div class="ms-auto text-end">
+                                    <select id="client-setting-gpu-select" class="form-control w-auto ms-auto select-gpu" aria-label="GPU acceleration" aria-describedby="client-setting-gpu-support-message" disabled>
+                                        <option value="">disabled (CPU)</option>
+                                    </select>
+                                    <p id="client-setting-gpu-support-message" class="text-sm text-secondary mb-0 mt-2" <%= model.clientSettings.isGpuAccelerationSupported ? 'hidden' : '' %>>GPU acceleration is only supported on Windows. This client uses CPU encoding.</p>
+                                </div>
 							</div>
 							<div class="card-body pt-0 d-flex">
 								<div class="my-auto ">
@@ -879,8 +879,8 @@
 			const self = this;
 
 			// Checkbox toggles
-			$(document).off('change', '.toggle-gpu-acceleration').on('change', '.toggle-gpu-acceleration', function () {
-				self.toggleClientSettingGpuAccelerationCheckbox(this);
+			$(document).off('change', '.select-gpu').on('change', '.select-gpu', function () {
+				self.selectClientGpu(this);
 			});
 
 			$(document).off('change', '.toggle-secure-mode').on('change', '.toggle-secure-mode', function () {
@@ -990,15 +990,16 @@
 
 			$('#client-version').text(clientSettings.version);
 
-			if (clientSettings.isGpuAccelerationEnabled) {
-				const gpuVendorAndModel = clientSettings.gpuVendor + ' ' + clientSettings.gpuModel;
+            const select = $('#client-setting-gpu-select').empty();
+            select.append($('<option>').val('').text('disabled (CPU)'));
+            (clientSettings.detectedGpus || []).forEach(function (gpu) {
+                select.append($('<option>').val(gpu.id).text(gpu.processingAgentName + ' ' + gpu.processingAgentModel + ' (' + gpu.id + ')'));
+            });
+            const selectedGpuId = clientSettings.selectedGpuId || '';
+            select.val(selectedGpuId).data('selectedGpuId', selectedGpuId);
+            select.prop('disabled', !clientSettings.isGpuAccelerationSupported);
+            $('#client-setting-gpu-support-message').prop('hidden', !!clientSettings.isGpuAccelerationSupported);
 
-				$('#client-setting-gpu-acceleration-checkbox').prop('checked', true);
-				$('#client-setting-gpu-acceleration-label').text(gpuVendorAndModel);
-			}
-			else {
-				$('#client-setting-gpu-acceleration-label').text('disabled');
-			}
 		}
 
 		loadNodeSettings(nodeSettings) {
@@ -1068,45 +1069,28 @@
 			}
 		}
 
-		toggleClientSettingGpuAccelerationCheckbox(checkbox) {
-			const self = this;
-			const isGpuAccelerationEnabled = $(checkbox).is(':checked');
-
-			$(checkbox).prop('disabled', true);
-
-			if (isGpuAccelerationEnabled) {
-				$('#client-setting-gpu-acceleration-label').text('...enabling...');
-			}
-			else {
-				$('#client-setting-gpu-acceleration-label').text('...disabling...');
-			}
-
-			$.ajax({ type: 'POST', url: '/settings/client/gpuAcceleration', data: JSON.stringify({ isGpuAccelerationEnabled: isGpuAccelerationEnabled }), contentType: 'application/json; charset=utf-8' })
-				.always(function () {
-					$(checkbox).prop('disabled', false);
-				})
-				.done(function (data, textStatus, xhr) {
-					if (data.isError) {
-						$(checkbox).prop('checked', !isGpuAccelerationEnabled);
-
-						self.showAlert(true, data.message);
-					}
-					else {
-						if (data.result.isGpuAccelerationEnabled) {
-							const gpuVendorAndModel = data.result.gpuVendor + ' ' + data.result.gpuModel;
-							$('#client-setting-gpu-acceleration-label').text(gpuVendorAndModel);
-						}
-						else {
-							$('#client-setting-gpu-acceleration-label').text('disabled');
-						}
-					}
-				})
-				.fail(function () {
-					$(checkbox).prop('checked', !isGpuAccelerationEnabled);
-
-					self.showAlert(true, 'an error occurred, please try again');
-				});
-		}
+        selectClientGpu(select) {
+            const self = this;
+            const previousGpuId = $(select).data('selectedGpuId') || '';
+            const gpuId = $(select).val();
+            $(select).prop('disabled', true);
+            $.ajax({ type: 'POST', url: '/settings/client/gpuAcceleration', data: JSON.stringify({ gpuId: gpuId }), contentType: 'application/json; charset=utf-8' })
+                .always(function () {
+                    $(select).prop('disabled', false);
+                })
+                .done(function (data) {
+                    if (data.isError) {
+                        $(select).val(previousGpuId);
+                        self.showAlert(true, data.message);
+                    } else {
+                        $(select).val(data.result.selectedGpuId).data('selectedGpuId', data.result.selectedGpuId);
+                    }
+                })
+                .fail(function (xhr) {
+                    $(select).val(previousGpuId);
+                    self.showAlert(true, xhr.responseJSON?.message || 'an error occurred, please try again');
+                });
+        }
 
 		handleAvatarFileInput(input) {
 			const self = this;
