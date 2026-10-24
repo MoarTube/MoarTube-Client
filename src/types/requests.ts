@@ -50,18 +50,6 @@ export interface VideoDataBody {
   tags: string;
 }
 
-export interface AddToIndexBody {
-  videoId: string;
-  containsAdultContent: boolean;
-  termsOfServiceAgreed: boolean;
-  cloudflareTurnstileToken: string;
-}
-
-export interface RemoveFromIndexBody {
-  videoId: string;
-  cloudflareTurnstileToken: string;
-}
-
 export interface VideoPermissionsBody {
   videoId: string;
   type: string;

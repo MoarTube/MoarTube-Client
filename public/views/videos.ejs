@@ -279,31 +279,6 @@
 						<span class="nav-link-text ms-1">GitHub</span>
 					</a>
 				</li>
-				<li class="nav-item">
-					<a class="nav-link" href="http://www.moartube.com/terms-of-service" target="_blank">
-						<div
-							class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center  me-2 d-flex align-items-center justify-content-center">
-							<svg class="text-dark" width="16px" height="16px" viewBox="0 0 40 44" version="1.1"
-								xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-								<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-									<g transform="translate(-1870.000000, -591.000000)" fill="#FFFFFF"
-										fill-rule="nonzero">
-										<g transform="translate(1716.000000, 291.000000)">
-											<g transform="translate(154.000000, 300.000000)">
-												<path class="color-background"
-													d="M40,40 L36.3636364,40 L36.3636364,3.63636364 L5.45454545,3.63636364 L5.45454545,0 L38.1818182,0 C39.1854545,0 40,0.814545455 40,1.81818182 L40,40 Z"
-													opacity="0.603585379"></path>
-												<path class="color-background"
-													d="M30.9090909,7.27272727 L1.81818182,7.27272727 C0.814545455,7.27272727 0,8.08727273 0,9.09090909 L0,41.8181818 C0,42.8218182 0.814545455,43.6363636 1.81818182,43.6363636 L30.9090909,43.6363636 C31.9127273,43.6363636 32.7272727,42.8218182 32.7272727,41.8181818 L32.7272727,9.09090909 C32.7272727,8.08727273 31.9127273,7.27272727 30.9090909,7.27272727 Z M18.1818182,34.5454545 L7.27272727,34.5454545 L7.27272727,30.9090909 L18.1818182,30.9090909 L18.1818182,34.5454545 Z M25.4545455,27.2727273 L7.27272727,27.2727273 L7.27272727,23.6363636 L25.4545455,23.6363636 L25.4545455,27.2727273 Z M25.4545455,20 L7.27272727,20 L7.27272727,16.3636364 L25.4545455,16.3636364 L25.4545455,20 Z"></path>
-											</g>
-										</g>
-									</g>
-								</g>
-							</svg>
-						</div>
-						<span class="nav-link-text ms-1">Terms of Service</span>
-					</a>
-				</li>
 			</ul>
 		</div>
 	</aside>
@@ -420,9 +395,6 @@
 											Activity</th>
 										<th
 											class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">
-											Index <button class="btn btn-link p-0 text-secondary text-xxs font-weight-bolder opacity-7 index-help-button" style="vertical-align: baseline;">(?)</button></th>
-										<th
-											class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">
 										</th>
 									</tr>
 								</thead>
@@ -525,9 +497,6 @@
 					self.doSelectAllVideos(this);
 				});
 
-				$('.index-help-button').off('click').on('click', function () {
-					self.showIndexHelp();
-				});
 
 				// Dynamic element events (event delegation)
 				$(document).off('click', '.stop-job-button').on('click', '.stop-job-button', function () {
@@ -538,9 +507,6 @@
 					self.doRestreamJob(this);
 				});
 
-				$(document).off('change', '.index-video-checkbox').on('change', '.index-video-checkbox', function () {
-					self.doIndexVideo(this);
-				});
 
 				$(document).off('click', '.publish-wizard-button').on('click', '.publish-wizard-button', function () {
 					self.showPublishWizardModal($(this).data('videoid'));
@@ -682,7 +648,6 @@
 									const likes = row.likes;
 									const dislikes = row.dislikes;
 									const bandwidth = row.bandwidth;
-									const isIndexed = row.is_indexed;
 									self.OLDEST_VISIBLE_TIMESTAMP = row.creation_timestamp;
 
 									let status = '';
@@ -714,7 +679,7 @@
 										status = 'error';
 									}
 
-									$('#videos_table tbody').append(self.generateVideoTableRow(videoId, thumbnail, title, tags, lengthTimestamp, views, comments, likes, dislikes, bandwidth, status, isIndexed));
+									$('#videos_table tbody').append(self.generateVideoTableRow(videoId, thumbnail, title, tags, lengthTimestamp, views, comments, likes, dislikes, bandwidth, status));
 								});
 
 								self.refreshHoverTooltips();
@@ -958,12 +923,6 @@
 								}
 							}
 						}
-						else if (data.eventName === 'video_indexed') {
-							//const videoId = data.payload.videoId;
-							//const synced = data.payload.synced;
-
-
-						}
 						else if (data.eventName === 'video_data') {
 							const videoId = data.payload.videoId;
 							const thumbnail = data.payload.thumbnail;
@@ -975,7 +934,6 @@
 							const likes = data.payload.likes;
 							const dislikes = data.payload.dislikes;
 							const bandwidth = data.payload.bandwidth;
-							const isIndexed = data.payload.isIndexed;
 
 							let status = '';
 
@@ -1007,10 +965,10 @@
 							}
 
 							if ($('#videos_table_row_' + videoId).length === 0) {
-								$('#videos_table tbody').prepend(self.generateVideoTableRow(videoId, thumbnail, title, tags, lengthTimestamp, views, comments, likes, dislikes, bandwidth, status, isIndexed));
+								$('#videos_table tbody').prepend(self.generateVideoTableRow(videoId, thumbnail, title, tags, lengthTimestamp, views, comments, likes, dislikes, bandwidth, status));
 							}
 							else {
-								$('#videos_table_row_' + videoId).replaceWith(self.generateVideoTableRow(videoId, thumbnail, title, tags, lengthTimestamp, views, comments, likes, dislikes, bandwidth, status, isIndexed));
+								$('#videos_table_row_' + videoId).replaceWith(self.generateVideoTableRow(videoId, thumbnail, title, tags, lengthTimestamp, views, comments, likes, dislikes, bandwidth, status));
 							}
 
 							self.refreshHoverTooltips();
@@ -1507,9 +1465,8 @@
 				<div class="share-icon-container"><a id="share-facebook-link" target="_blank"><button class="share-icon-button"><div class="share-icon-svg">' + facebookSVG + '</div><div class="share-icon-title">Facebook</div></button></a></div>\
 				<div>' + embedHtml + '</div>\
 				<div class="input-group"><input id="node-video-url-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="node-video-url-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>\
-				<div class="input-group mt-1"><input id="moartube-video-alias-url-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="moartube-video-alias-url-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>\
-				<div class="input-group mt-1"><input id="video-alias-embed-url-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="video-alias-embed-url-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>\
-				<div class="input-group mt-1"><input id="video-alias-embed-code-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="video-alias-embed-code-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>\
+				<div class="input-group mt-1"><input id="video-embed-url-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="video-embed-url-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>\
+				<div class="input-group mt-1"><input id="video-embed-code-input" class="form-control me-1" type="text" disabled><span class="input-group-btn"><button id="video-embed-code-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>\
 				<div class="input-group mt-1"><select id="direct-source-links-select" class="form-select dropdown-toggle me-1"></select><span class="input-group-btn"><button id="direct-source-links-copy-button" class="btn btn-primary click-tooltip" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="copied!" data-bs-animation="false">copy</button></span></div>\
 				');
 
@@ -1531,7 +1488,6 @@
 								const videoData = data.videoData;
 
 								const title = videoData.title;
-								const videoAliasUrl = videoData.videoAliasUrl;
 
 								$.ajax({ type: 'GET', url: '/videos/' + videoId + '/sources' })
 									.done(function (data, textStatus, xhr) {
@@ -1566,43 +1522,30 @@
 											let redditLink;
 											let facebookLink;
 
-											if (videoAliasUrl === 'MoarTube Aliaser link unavailable (video not indexed)') {
-												twitterLink = 'https://twitter.com/intent/tweet?url=' + nodeVideoUrl + '&text=' + title + '&via=MoarTubes&related=MoarTubes';
-												redditLink = 'https://www.reddit.com/submit?url=' + nodeVideoUrl + '&title=' + title;
-												facebookLink = 'https://www.facebook.com/dialog/share?app_id=246871938290679&href=' + nodeVideoUrl + '&display=popup';
-											}
-											else {
-												twitterLink = 'https://twitter.com/intent/tweet?url=' + videoAliasUrl + '&text=' + title + '&via=MoarTubes&related=MoarTubes';
-												redditLink = 'https://www.reddit.com/submit?url=' + videoAliasUrl + '&title=' + title;
-												facebookLink = 'https://www.facebook.com/dialog/share?app_id=246871938290679&href=' + videoAliasUrl + '&display=popup';
-											}
+											twitterLink = 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(nodeVideoUrl) + '&text=' + encodeURIComponent(title);
+                      redditLink = 'https://www.reddit.com/submit?url=' + encodeURIComponent(nodeVideoUrl) + '&title=' + encodeURIComponent(title);
+                      facebookLink = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(nodeVideoUrl);
 
 											$('#share-twitter-link').attr('href', twitterLink);
 											$('#share-reddit-link').attr('href', redditLink);
 											$('#share-facebook-link').attr('href', facebookLink);
 
 											$('#node-video-url-input').val(nodeVideoUrl);
-											$('#moartube-video-alias-url-input').val(videoAliasUrl);
-											$('#video-alias-embed-url-input').val(embedUrl);
-											$('#video-alias-embed-code-input').val(embedHtml);
+											$('#video-embed-url-input').val(embedUrl);
+											$('#video-embed-code-input').val(embedHtml);
 
-											$('#video-alias-embed-url-copy-button').click(function (event) {
-												const value = $('#video-alias-embed-url-input').val();
-
-												self.setClipboard(value);
-											});
-
-											$('#video-alias-embed-code-copy-button').click(function (event) {
-												const value = $('#video-alias-embed-code-input').val();
+											$('#video-embed-url-copy-button').click(function (event) {
+												const value = $('#video-embed-url-input').val();
 
 												self.setClipboard(value);
 											});
 
-											$('#moartube-video-alias-url-copy-button').click(function (event) {
-												const value = $('#moartube-video-alias-url-input').val();
+											$('#video-embed-code-copy-button').click(function (event) {
+												const value = $('#video-embed-code-input').val();
 
 												self.setClipboard(value);
 											});
+
 
 											$('#node-video-url-copy-button').click(function (event) {
 												const value = $('#node-video-url-input').val();
@@ -2342,7 +2285,7 @@
 		performDeleteSelectedVideos() {
 			const self = this;
 			const html = '\
-				<small>note: videos that are importing, publishing, streaming, or indexed cannot be deleted</small>\
+				<small>note: videos that are importing, publishing, or streaming cannot be deleted</small>\
 				';
 
 			Swal.fire({
@@ -2538,145 +2481,6 @@
 			const videoId = $(item).data('videoid');
 
 			this.showLiveModal(videoId);
-		}
-
-		doIndexVideo(checkbox) {
-			const self = this;
-			const videoId = $(checkbox).data('videoid');
-			const isIndexing = $(checkbox).prop('checked');
-
-			if (isIndexing) {
-				let revertAction = true;
-
-				const html = '\
-					<div class="form-check mt-2 d-flex align-items-center justify-content-center text-center">\
-						<div>\
-							<label for="contains-adult-content-checkbox">Contains Adult Content</label> \
-							<input id="contains-adult-content-checkbox" class="form-check-input" type="checkbox">\
-						</div>\
-					</div>\
-					<div class="form-check mt-2 d-flex align-items-center justify-content-center text-center">\
-						<div>\
-							<label for="terms-of-service-checkbox">I agree to the <a href="http://www.moartube.com/terms-of-service" target="_blank">Terms of Service</a></label> \
-							<input id="terms-of-service-checkbox" class="form-check-input" type="checkbox">\
-						</div>\
-					</div>';
-
-				Swal.fire({
-					title: 'index video',
-					html: html,
-					showCloseButton: true,
-					confirmButtonText: 'submit',
-					didOpen: () => {
-						Swal.disableButtons();
-
-						$('#terms-of-service-checkbox').on('click', function (event) {
-							if ($(this).prop('checked')) {
-								Swal.enableButtons();
-							}
-							else {
-								Swal.disableButtons();
-							}
-						});
-					},
-					preConfirm: async () => {
-						const containsAdultContent = $('#contains-adult-content-checkbox').prop('checked');
-						const termsOfServiceAgreed = $('#terms-of-service-checkbox').prop('checked');
-
-						if (termsOfServiceAgreed) {
-							Swal.showLoading();
-
-							try {
-								const cloudflareTurnstileToken = await self.getCloudflareTurnstileToken();
-
-								const data = { containsAdultContent: containsAdultContent, termsOfServiceAgreed: termsOfServiceAgreed, cloudflareTurnstileToken: cloudflareTurnstileToken };
-
-								$.ajax({ type: 'POST', url: '/videos/' + videoId + '/index/add', data: JSON.stringify(data), contentType: 'application/json; charset=utf-8' })
-									.always(function () {
-										$(checkbox).prop('disabled', false);
-									})
-									.done(function (data, textStatus, xhr) {
-										if (data.isError) {
-											self.showAlert(true, data.message);
-
-											$(checkbox).prop('checked', !isIndexing);
-										}
-										else {
-											Swal.close();
-											
-											self.showNotification('<span class=\"alert-text\">added your video to the MoarTube Index</span>', 'alert-primary');
-
-											revertAction = false;
-										}
-									})
-									.fail(function () {
-										$(checkbox).prop('checked', !isIndexing);
-
-										self.showAlert(true, 'an error occurred, please try again');
-									});
-							}
-							catch (error) {
-								self.showAlert(true, error);
-
-								$(checkbox).prop('checked', !isIndexing);
-							}
-						}
-
-						return false;
-					}
-				}).then((result) => {
-					if (!result.isConfirmed) {
-						if (revertAction) {
-							$(checkbox).prop('checked', !isIndexing);
-						}
-					}
-				});
-			}
-			else {
-				Swal.fire({
-					title: 'please wait',
-					html: '...removing video from MoarTube Index...',
-					allowOutsideClick: false,
-					didOpen: async () => {
-						Swal.showLoading();
-
-						const cloudflareTurnstileToken = await self.getCloudflareTurnstileToken();
-
-						$.ajax({ type: 'POST', url: '/videos/' + videoId + '/index/remove', data: { cloudflareTurnstileToken: cloudflareTurnstileToken } })
-							.done(function (data, textStatus, xhr) {
-								if (data.isError) {
-									self.showAlert(true, data.message);
-
-									$(checkbox).prop('checked', !isIndexing);
-								}
-								else {
-									const notificationMessage = "<span class=\"alert-text\">removed your video from the MoarTube index</span>";
-
-									self.showNotification(notificationMessage, 'alert-primary');
-
-									Swal.close();
-								}
-							})
-							.fail(function () {
-								self.showAlert(true, '...something went wrong...');
-
-								$(checkbox).prop('checked', !isIndexing);
-							});
-					}
-				}).then((result) => {
-					if (result.dismiss === Swal.DismissReason.timer) {
-						self.showAlert(false);
-					}
-				});
-			}
-		}
-
-		showIndexHelp() {
-			Swal.fire({
-				icon: 'info',
-				title: 'What is Indexing?',
-				html: "MoarTube allows you to share your videos publicly on the <a href='http://www.MoarTube.com' target='blank'>MoarTube.com</a> front page.<br> Please familiarize yourself with <a href='http://www.moartube.com/terms-of-service' target='blank'>MoarTube's Terms of Service</a> before using the indexing feature."
-			});
 		}
 
 		showChatEmbedModal(videoId) {
@@ -2961,7 +2765,7 @@
 			});
 		}
 
-		generateVideoTableRow(videoId, thumbnail, title, tags, lengthTimestamp, views, comments, likes, dislikes, bandwidth, status, isIndexed) {
+		generateVideoTableRow(videoId, thumbnail, title, tags, lengthTimestamp, views, comments, likes, dislikes, bandwidth, status) {
 			let html = this.generate_Avatar_Title_Description_TableCell(videoId, thumbnail, title, tags, status);
 
 			html += '<td class="align-middle text-center text-sm"> \
@@ -2996,15 +2800,6 @@
 			else if (status === 'streamed') {
 				html += '<a class="text-danger cursor-pointer restream-job-start restream-job-button" data-videoid="' + videoId + '"><i class="fas fa-redo"></i></a>';
 			}
-
-			let checked = '';
-			if (isIndexed) {
-				checked = 'checked'
-			}
-
-			html += '<td class="align-middle text-center text-sm"> \
-							<div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"><input id="' + videoId + '_index_checkbox" class="form-check-input index-video-checkbox" type="checkbox" data-videoid="' + videoId + '"' + checked + '></div> \
-						</td>';
 
 			html += '</td> \
 					<td class="align-middle text-center"> \
@@ -3152,61 +2947,6 @@
 			const parts = [hours.toString().padStart(2, "0"), minutes.toString().padStart(2, "0"), remainingSeconds.padStart(5, "0")];
 
 			return parts.join(":");
-		}
-
-		getCloudflareTurnstileToken() {
-			return new Promise(function (resolve, reject) {
-				$.ajax({ type: 'GET', url: 'https://captcha.moartube.com/heartbeat' })
-					.done(function () {
-						const captchaIframeId = `captcha-iframe-${Date.now()}`;
-
-						function processMessage(evt) {
-							if (evt.origin === "https://captcha.moartube.com") {
-								window.removeEventListener("message", processMessage);
-
-								const currentIframe = document.getElementById(captchaIframeId);
-
-								if (currentIframe) {
-									document.body.removeChild(currentIframe);
-								}
-
-								const token = evt.data;
-
-								if (token === 'unsupported') {
-									reject('Unable to activate that feature');
-								}
-								else if (token === 'timeout') {
-									reject('Human verification unsuccessful, please try again');
-								}
-								else if (token === 'error') {
-									reject('Human verification unsuccessful, please try again');
-								}
-								else {
-									resolve(token);
-								}
-							}
-						}
-
-						window.addEventListener("message", processMessage);
-
-						const newIframe = document.createElement('iframe');
-
-						newIframe.id = captchaIframeId;
-						newIframe.className = 'hidden-elem';
-						newIframe.src = 'https://captcha.moartube.com/token/generate';
-
-						newIframe.onload = function () {
-							const iframeWindow = newIframe.contentWindow;
-
-							iframeWindow.postMessage('get-captcha', 'https://captcha.moartube.com');
-						};
-
-						document.body.appendChild(newIframe);
-					})
-					.fail(function () {
-						reject('Human verification unavailable, please try again later');
-					});
-			});
 		}
 		}
 

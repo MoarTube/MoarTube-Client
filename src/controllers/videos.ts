@@ -20,8 +20,6 @@ import type {
   PublishBody,
   UnpublishBody,
   VideoDataBody,
-  AddToIndexBody,
-  RemoveFromIndexBody,
   VideoPermissionsBody,
   DeleteVideosBody,
   FinalizeVideosBody,
@@ -523,49 +521,6 @@ export class VideosController extends BaseController {
     }
   };
 
-  public postAddToIndex = async (
-    request: FastifyRequest,
-    reply: FastifyReply
-  ): Promise<FastifyReply> => {
-    try {
-      const jwtToken = request.session.jwtToken ?? '';
-      const { videoId } = request.params as VideoIdParams;
-      const { containsAdultContent, termsOfServiceAgreed, cloudflareTurnstileToken } =
-        request.body as AddToIndexBody;
-      const response = await this.nodeApiService.addVideoToIndex(
-        jwtToken,
-        videoId,
-        containsAdultContent,
-        termsOfServiceAgreed,
-        cloudflareTurnstileToken
-      );
-      return await reply.send(response);
-    } catch (error) {
-      this.logger.error('Error in postAddToIndex', error);
-      return await this.sendError(reply, 'Failed to add to index');
-    }
-  };
-
-  public postRemoveFromIndex = async (
-    request: FastifyRequest,
-    reply: FastifyReply
-  ): Promise<FastifyReply> => {
-    try {
-      const jwtToken = request.session.jwtToken ?? '';
-      const { videoId } = request.params as VideoIdParams;
-      const { cloudflareTurnstileToken } = request.body as RemoveFromIndexBody;
-      const response = await this.nodeApiService.removeVideoFromIndex(
-        jwtToken,
-        videoId,
-        cloudflareTurnstileToken
-      );
-      return await reply.send(response);
-    } catch (error) {
-      this.logger.error('Error in postRemoveFromIndex', error);
-      return await this.sendError(reply, 'Failed to remove from index');
-    }
-  };
-
   public getVideoPermissions = async (
     request: FastifyRequest,
     reply: FastifyReply
@@ -725,7 +680,6 @@ export class VideosController extends BaseController {
         const s3Config = storageConfig.s3Config;
         const key = `external/videos/${videoId}/images/thumbnail.jpg`;
         await this.s3Service.putObjectFromData(s3Config, key, thumbnailBuffer, 'image/jpeg');
-        await this.nodeApiService.setIsIndexOutdated(jwtToken, videoId);
       }
 
       return await this.sendSuccess(reply, {});
@@ -765,7 +719,6 @@ export class VideosController extends BaseController {
         const s3Config = storageConfig.s3Config;
         const key = `external/videos/${videoId}/images/preview.jpg`;
         await this.s3Service.putObjectFromData(s3Config, key, previewBuffer, 'image/jpeg');
-        await this.nodeApiService.setIsIndexOutdated(jwtToken, videoId);
       }
 
       return await this.sendSuccess(reply, {});
@@ -805,7 +758,6 @@ export class VideosController extends BaseController {
         const s3Config = storageConfig.s3Config;
         const key = `external/videos/${videoId}/images/poster.jpg`;
         await this.s3Service.putObjectFromData(s3Config, key, posterBuffer, 'image/jpeg');
-        await this.nodeApiService.setIsIndexOutdated(jwtToken, videoId);
       }
 
       return await this.sendSuccess(reply, {});

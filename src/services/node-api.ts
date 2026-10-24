@@ -778,34 +778,6 @@ export class NodeApiService extends BaseService {
     });
   }
 
-  public async addVideoToIndex(
-    jwtToken: string,
-    videoId: string,
-    containsAdultContent: boolean,
-    termsOfServiceAgreed: boolean,
-    cloudflareTurnstileToken: string
-  ): Promise<BaseNodeResponse> {
-    return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/videos/${videoId}/index/add`, {
-      containsAdultContent,
-      termsOfServiceAgreed,
-      cloudflareTurnstileToken,
-    });
-  }
-
-  public async removeVideoFromIndex(
-    jwtToken: string,
-    videoId: string,
-    cloudflareTurnstileToken: string
-  ): Promise<BaseNodeResponse> {
-    return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/videos/${videoId}/index/remove`, {
-      cloudflareTurnstileToken,
-    });
-  }
-
-  public async setIsIndexOutdated(jwtToken: string, videoId: string): Promise<BaseNodeResponse> {
-    return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/videos/${videoId}/index/outdated`);
-  }
-
   public async getVideoPermissions(
     jwtToken: string,
     videoId: string

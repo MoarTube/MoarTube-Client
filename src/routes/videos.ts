@@ -142,22 +142,6 @@ export function videosRoutes(
   );
 
   fastify.post(
-    '/:videoId/index/add',
-    {
-      schema: { tags: ['Videos'] },
-    },
-    controller.postAddToIndex.bind(controller)
-  );
-
-  fastify.post(
-    '/:videoId/index/remove',
-    {
-      schema: { tags: ['Videos'] },
-    },
-    controller.postRemoveFromIndex.bind(controller)
-  );
-
-  fastify.post(
     '/:videoId/images/thumbnail',
     {
       schema: { tags: ['Videos'] },
