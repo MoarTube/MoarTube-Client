@@ -106,7 +106,7 @@ export class CommentsController extends BaseController {
   };
 
   public postDelete = async (
-    request: FastifyRequest<{ Body: { videoId: string; commentId: string; timestamp: number } }>,
+    request: FastifyRequest<{ Body: { videoId: string; commentId: number; timestamp: number } }>,
     reply: FastifyReply
   ): Promise<FastifyReply> => {
     try {

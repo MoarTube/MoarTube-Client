@@ -1,3 +1,4 @@
+import { observe } from './fixtures.js';
 import {
   test,
   expect,
@@ -52,14 +53,16 @@ for (const [kind, width, height] of [
       .toBuffer();
     await video.row.locator('.thumbnail-button').click();
     const upload = clientResponse(page, `/videos/${video.id}/images/${kind}`);
-    const refreshed = page.waitForResponse(
-      (response) =>
-        new URL(response.url()).pathname.endsWith(`/images/${kind}.jpg`) &&
-        new URL(response.url()).searchParams.has('cache-bust')
+    const refreshed = observe(
+      page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname.endsWith(`/images/${kind}.jpg`) &&
+          new URL(response.url()).searchParams.has('cache-bust')
+      )
     );
-    await page
-      .locator(`#upload-${kind}-input`)
-      .setInputFiles({ name: 'image.png', mimeType: 'image/png', buffer });
+    const chooser = observe(page.waitForEvent('filechooser'));
+    await page.locator(`#${kind}-image-button`).click();
+    await (await chooser).setFiles({ name: 'image.png', mimeType: 'image/png', buffer });
     await expectSuccess(upload);
     const served = await refreshed;
     expect(served.ok()).toBeTruthy();
@@ -100,7 +103,7 @@ test('exports the real Node database through the Client download link', async ({
   signedInPage: page,
 }, testInfo) => {
   await page.goto('/settings');
-  const download = page.waitForEvent('download');
+  const download = observe(page.waitForEvent('download'));
   await page
     .getByRole('link')
     .filter({ has: page.getByRole('button', { name: 'export', exact: true }) })

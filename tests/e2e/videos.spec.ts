@@ -1,3 +1,4 @@
+import { observe } from './fixtures.js';
 import {
   test,
   expect,
@@ -18,10 +19,12 @@ test('imported video persists in real Node search after a Client reload', async 
   await page.locator('#search-input').fill(video.title);
   await expect(video.row).toContainText('imported');
   const empty = uniqueName('not-found');
-  const search = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname === '/videos/search' &&
-      new URL(response.url()).searchParams.get('searchTerm') === empty
+  const search = observe(
+    page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/videos/search' &&
+        new URL(response.url()).searchParams.get('searchTerm') === empty
+    )
   );
   await page.locator('#search-input').fill(empty);
   expect((await search).ok()).toBeTruthy();

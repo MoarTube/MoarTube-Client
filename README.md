@@ -41,7 +41,8 @@ include the sources and build tools needed to recreate `dist`.
 
 ## Development testing
 
-The client includes Playwright UI integration, media-processing and streaming tests
+The client includes Playwright tests spanning Client administration and Node viewer
+workflows, including playback, comments, reports, moderation and live chat
 against a real MoarTube Node that the developer must already have running at
 `http://localhost:9090`. The suite errors out if it is unavailable and never
 prepares, starts, resets or substitutes the Node.

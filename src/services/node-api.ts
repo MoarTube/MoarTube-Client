@@ -613,14 +613,17 @@ export class NodeApiService extends BaseService {
   public async removeComment(
     jwtToken: string,
     videoId: string,
-    commentId: string,
+    commentId: number,
     timestamp: number
   ): Promise<BaseNodeResponse> {
     const client = await this.getClient();
-    const response = await client.delete(`/videos/${videoId}/comments/${commentId}/delete`, {
-      params: { timestamp },
-      headers: { Authorization: `Bearer ${jwtToken}` },
-    });
+    const response = await client.delete(
+      `/videos/${videoId}/comments/${String(commentId)}/delete`,
+      {
+        params: { timestamp },
+        headers: { Authorization: `Bearer ${jwtToken}` },
+      }
+    );
     return response.data as BaseNodeResponse;
   }
 
@@ -642,15 +645,15 @@ export class NodeApiService extends BaseService {
     return response.data as GetReportsResponse;
   }
 
-  public async archiveVideoReport(jwtToken: string, reportId: string): Promise<BaseNodeResponse> {
+  public async archiveVideoReport(jwtToken: string, reportId: number): Promise<BaseNodeResponse> {
     return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/reports/videos/archive', {
       reportId,
     });
   }
 
-  public async removeVideoReport(jwtToken: string, reportId: string): Promise<BaseNodeResponse> {
+  public async removeVideoReport(jwtToken: string, reportId: number): Promise<BaseNodeResponse> {
     const client = await this.getClient();
-    const response = await client.delete(`/reports/videos/${reportId}/delete`, {
+    const response = await client.delete(`/reports/videos/${String(reportId)}/delete`, {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
     return response.data as BaseNodeResponse;
@@ -658,10 +661,10 @@ export class NodeApiService extends BaseService {
 
   public async removeVideoReportArchive(
     jwtToken: string,
-    archiveId: string
+    archiveId: number
   ): Promise<BaseNodeResponse> {
     const client = await this.getClient();
-    const response = await client.delete(`/reports/archive/videos/${archiveId}/delete`, {
+    const response = await client.delete(`/reports/archive/videos/${String(archiveId)}/delete`, {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
     return response.data as BaseNodeResponse;
@@ -685,15 +688,15 @@ export class NodeApiService extends BaseService {
     return response.data as GetReportsResponse;
   }
 
-  public async archiveCommentReport(jwtToken: string, reportId: string): Promise<BaseNodeResponse> {
+  public async archiveCommentReport(jwtToken: string, reportId: number): Promise<BaseNodeResponse> {
     return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/reports/comments/archive', {
       reportId,
     });
   }
 
-  public async removeCommentReport(jwtToken: string, reportId: string): Promise<BaseNodeResponse> {
+  public async removeCommentReport(jwtToken: string, reportId: number): Promise<BaseNodeResponse> {
     const client = await this.getClient();
-    const response = await client.delete(`/reports/comments/${reportId}/delete`, {
+    const response = await client.delete(`/reports/comments/${String(reportId)}/delete`, {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
     return response.data as BaseNodeResponse;
@@ -701,10 +704,10 @@ export class NodeApiService extends BaseService {
 
   public async removeCommentReportArchive(
     jwtToken: string,
-    archiveId: string
+    archiveId: number
   ): Promise<BaseNodeResponse> {
     const client = await this.getClient();
-    const response = await client.delete(`/reports/archive/comments/${archiveId}/delete`, {
+    const response = await client.delete(`/reports/archive/comments/${String(archiveId)}/delete`, {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
     return response.data as BaseNodeResponse;

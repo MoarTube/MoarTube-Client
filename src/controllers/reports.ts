@@ -101,7 +101,7 @@ export class ReportsController extends BaseController {
   };
 
   public postCommentsArchive = async (
-    request: FastifyRequest<{ Body: { reportId: string } }>,
+    request: FastifyRequest<{ Body: { reportId: number } }>,
     reply: FastifyReply
   ): Promise<FastifyReply> => {
     try {
@@ -120,7 +120,7 @@ export class ReportsController extends BaseController {
   };
 
   public postCommentsDelete = async (
-    request: FastifyRequest<{ Body: { reportId: string } }>,
+    request: FastifyRequest<{ Body: { reportId: number } }>,
     reply: FastifyReply
   ): Promise<FastifyReply> => {
     try {
@@ -139,7 +139,7 @@ export class ReportsController extends BaseController {
   };
 
   public postVideosArchiveDelete = async (
-    request: FastifyRequest<{ Body: { archiveId: string } }>,
+    request: FastifyRequest<{ Body: { archiveId: number } }>,
     reply: FastifyReply
   ): Promise<FastifyReply> => {
     try {
@@ -248,7 +248,7 @@ export class ReportsController extends BaseController {
   };
 
   public postVideosArchive = async (
-    request: FastifyRequest<{ Body: { reportId: string } }>,
+    request: FastifyRequest<{ Body: { reportId: number } }>,
     reply: FastifyReply
   ): Promise<FastifyReply> => {
     try {
@@ -267,7 +267,7 @@ export class ReportsController extends BaseController {
   };
 
   public postVideosDelete = async (
-    request: FastifyRequest<{ Body: { reportId: string } }>,
+    request: FastifyRequest<{ Body: { reportId: number } }>,
     reply: FastifyReply
   ): Promise<FastifyReply> => {
     try {
@@ -286,7 +286,7 @@ export class ReportsController extends BaseController {
   };
 
   public postCommentsArchiveDelete = async (
-    request: FastifyRequest<{ Body: { archiveId: string } }>,
+    request: FastifyRequest<{ Body: { archiveId: number } }>,
     reply: FastifyReply
   ): Promise<FastifyReply> => {
     try {

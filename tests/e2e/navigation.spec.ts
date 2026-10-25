@@ -1,3 +1,4 @@
+import { observe } from './fixtures.js';
 import { test, expect } from './fixtures.js';
 
 for (const [route, selector] of [
@@ -36,10 +37,12 @@ for (const [route, table] of [
   test(`moderation view ${route} loads real records without seeded assumptions`, async ({
     signedInPage: page,
   }) => {
-    const checked = page.waitForResponse(
-      (response) =>
-        new URL(response.url()).pathname === '/node/contentChecked' &&
-        response.request().method() === 'POST'
+    const checked = observe(
+      page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/node/contentChecked' &&
+          response.request().method() === 'POST'
+      )
     );
     await page.goto(route);
     await expect(page.locator(table)).toBeVisible();

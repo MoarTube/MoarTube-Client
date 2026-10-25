@@ -1,7 +1,12 @@
-import { test, expect, uniqueName, clientResponse, expectSuccess } from './fixtures.js';
+import { observe } from './fixtures.js';
+import { test } from './node-fixtures.js';
+import { expect, uniqueName, clientResponse, expectSuccess } from './fixtures.js';
 import { randomBytes } from 'node:crypto';
 
-test('add and delete a promotional link through the Client', async ({ signedInPage: page }) => {
+test('add and delete a promotional link through the Client', async ({
+  signedInPage: page,
+  viewerPage: viewer,
+}) => {
   const url = `https://example.test/${uniqueName('link').replaceAll(' ', '-')}`;
   await page.goto('/links');
   await page.locator('#add-link-button').click();
@@ -15,6 +20,8 @@ test('add and delete a promotional link through the Client', async ({ signedInPa
   await page.reload();
   const row = page.locator('#links-table tr').filter({ hasText: url });
   await expect(row).toHaveCount(1);
+  await viewer.goto('/');
+  await expect(viewer.locator(`#navbar-settings-buttons a[href="${url}"]`)).toBeVisible();
   await row.locator('.delete-link-button').click();
   await page.locator('.swal2-cancel').click();
   await expect(row).toHaveCount(1);
@@ -25,6 +32,8 @@ test('add and delete a promotional link through the Client', async ({ signedInPa
   await expect(row).toHaveCount(0);
   await page.reload();
   await expect(page.locator('#links-table')).not.toContainText(url);
+  await viewer.reload();
+  await expect(viewer.locator(`#navbar-settings-buttons a[href="${url}"]`)).toHaveCount(0);
 });
 
 test('link dialog rejects empty fields', async ({ signedInPage: page }) => {
@@ -74,10 +83,12 @@ for (const chain of ['ETH', 'BNB']) {
 test('comment search submits the text entered in the Client', async ({ signedInPage: page }) => {
   await page.goto('/comments');
   const search = uniqueName('absent-comment');
-  const response = page.waitForResponse(
-    (result) =>
-      new URL(result.url()).pathname === '/comments/search' &&
-      new URL(result.url()).searchParams.get('searchTerm') === search
+  const response = observe(
+    page.waitForResponse(
+      (result) =>
+        new URL(result.url()).pathname === '/comments/search' &&
+        new URL(result.url()).searchParams.get('searchTerm') === search
+    )
   );
   await page.locator('#search-input').fill(search);
   expect((await response).ok()).toBeTruthy();

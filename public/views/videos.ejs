@@ -456,6 +456,28 @@
 				this.EXTERNAL_VIDEOS_BASE_URL = null;
 				this.lastUsedTag = '';
 				this.searchInputTimer = null;
+				this.isPageActive = true;
+				this.videoSearchRequests = new Set();
+				const stopVideoLoading = () => {
+					this.isPageActive = false;
+					clearInterval(this.VIDEOS_LOADER_INTERVAL);
+					clearTimeout(this.searchInputTimer);
+					for (const request of this.videoSearchRequests) {
+						request.abort();
+					}
+				};
+				// Stop deferred ready callbacks as soon as navigation starts;
+				// pagehide can occur after WebKit has already blocked new requests.
+				window.addEventListener('beforeunload', stopVideoLoading);
+				window.addEventListener('pagehide', stopVideoLoading);
+				window.addEventListener('pageshow', (event) => {
+					if (event.persisted) {
+						this.isPageActive = true;
+						const params = new URL(window.location.href).searchParams;
+						$('#videos_table tbody').empty();
+						this.startVideosLoaderInterval(params.get('s'), 'latest', params.get('t'), 10, Date.now());
+					}
+				});
 			}
 
 			async init() {
@@ -612,6 +634,10 @@
 		getVideos(searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
 			const self = this;
 			return new Promise(function (resolve, reject) {
+				if (!self.isPageActive) {
+					resolve();
+					return;
+				}
 				let data = {
 					sortTerm: sortTerm,
 					tagLimit: tagLimit,
@@ -649,8 +675,12 @@
 					window.history.replaceState({}, '', '/videos');
 				}
 
-				$.ajax({ type: 'GET', url: '/videos/search', data: data })
+				const request = $.ajax({ type: 'GET', url: '/videos/search', data: data })
 					.done(function (data, textStatus, xhr) {
+						if (!self.isPageActive) {
+							resolve();
+							return;
+						}
 						if (data.isError) {
 							reject();
 						}
@@ -714,16 +744,23 @@
 						}
 					})
 					.fail(function () {
+						if (!self.isPageActive) {
+							resolve();
+							return;
+						}
 						console.log('unable to communicate with node');
 
 						reject();
 					});
+				self.videoSearchRequests.add(request);
+				request.always(() => self.videoSearchRequests.delete(request));
 			});
 		}
 
 		async startVideosLoaderInterval(searchTerm, sortTerm, tagTerm, tagLimit, timestamp) {
 			const self = this;
 			clearInterval(this.VIDEOS_LOADER_INTERVAL);
+			if (!this.isPageActive) return;
 
 			this.OLDEST_VISIBLE_TIMESTAMP = timestamp;
 
@@ -733,6 +770,7 @@
 				$(videosTableLoadingSpinner).removeClass('hidden-elem');
 
 				await self.getVideos(searchTerm, sortTerm, tagTerm, tagLimit, self.OLDEST_VISIBLE_TIMESTAMP);
+				if (!self.isPageActive) return;
 
 				let blocked = false;
 
@@ -742,14 +780,21 @@
 					if (videosTableLoadingSpinnerRect.top >= 0 && videosTableLoadingSpinnerRect.bottom <= (window.innerHeight || document.documentElement.clientHeight)) {
 						if (!blocked) {
 							blocked = true;
-							await self.getVideos(searchTerm, sortTerm, tagTerm, tagLimit, self.OLDEST_VISIBLE_TIMESTAMP);
-							blocked = false;
+							try {
+								await self.getVideos(searchTerm, sortTerm, tagTerm, tagLimit, self.OLDEST_VISIBLE_TIMESTAMP);
+							} catch (error) {
+								clearInterval(self.VIDEOS_LOADER_INTERVAL);
+								if (self.isPageActive) self.showAlert(true, 'Unable to load videos. Please reload and try again.');
+							} finally {
+								blocked = false;
+							}
 						}
 					}
 				}, 500);
 			}
 			catch (error) {
 				console.log(error);
+				if (self.isPageActive) self.showAlert(true, 'Unable to load videos. Please reload and try again.');
 			}
 		}
 

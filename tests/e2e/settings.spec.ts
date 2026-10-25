@@ -1,4 +1,5 @@
-import { test, expect, uniqueName, clientResponse, expectSuccess } from './fixtures.js';
+import { test } from './node-fixtures.js';
+import { expect, uniqueName, clientResponse, expectSuccess } from './fixtures.js';
 
 for (const [kind, form, input] of [
   ['name', '#personalize_settings_node_name_form', '#node-name-input'],
@@ -6,6 +7,7 @@ for (const [kind, form, input] of [
 ] as const) {
   test(`edits node ${kind} through the Client and restores the previous value`, async ({
     signedInPage: page,
+    viewerPage: viewer,
   }) => {
     await page.goto('/settings');
     const previous = await page.locator(input).inputValue();
@@ -17,6 +19,10 @@ for (const [kind, form, input] of [
       await expectSuccess(response);
       await page.reload();
       await expect(page.locator(input)).toHaveValue(value);
+      await viewer.goto('/');
+      await expect(viewer.locator(kind === 'name' ? '#node-name' : '#node-about')).toHaveText(
+        value
+      );
     } finally {
       await page.goto('/settings');
       await page.locator(input).fill(previous);

@@ -5,12 +5,20 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import ffmpeg from 'ffmpeg-static';
 import checkNode from './support/check-node.js';
+import { readClientLogTail } from './support/client-logs.js';
 
 export const credentials = {
   username: process.env['MOARTUBE_E2E_USERNAME'] || 'admin',
   password: process.env['MOARTUBE_E2E_PASSWORD'] || 'admin',
 };
 export const uniqueName = (prefix: string): string => `E2E ${prefix} ${randomUUID()}`;
+
+// Keep the original rejection for the eventual await. If an earlier UI action
+// fails, the abandoned observer must not become an unrelated unhandled rejection.
+export function observe<T>(promise: Promise<T>): Promise<T> {
+  void promise.catch(() => {});
+  return promise;
+}
 
 export async function signIn(page: Page, password = credentials.password): Promise<void> {
   await page.goto('/account/signout');
@@ -31,10 +39,12 @@ export async function signIn(page: Page, password = credentials.password): Promi
 
 // Observe requests initiated by the UI; never submit workflows using an API shortcut.
 export function clientResponse(page: Page, pathname: string, method = 'POST'): Promise<Response> {
-  return page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname === pathname && response.request().method() === method,
-    { timeout: 30_000 }
+  return observe(
+    page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === pathname && response.request().method() === method,
+      { timeout: 30_000 }
+    )
   );
 }
 export async function expectSuccess(response: Promise<Response>): Promise<void> {
@@ -48,6 +58,7 @@ export async function closeDialog(page: Page): Promise<void> {
     await close.click();
   }
   await expect(page.locator('.swal2-popup')).toBeHidden();
+  await expect(page.locator('.swal2-container')).toHaveCount(0);
 }
 
 export async function createMedia(
@@ -85,10 +96,12 @@ export interface ImportedVideo {
   row: Locator;
 }
 export async function searchVideos(page: Page, title: string): Promise<void> {
-  const response = page.waitForResponse(
-    (result) =>
-      new URL(result.url()).pathname === '/videos/search' &&
-      new URL(result.url()).searchParams.get('searchTerm') === title
+  const response = observe(
+    page.waitForResponse(
+      (result) =>
+        new URL(result.url()).pathname === '/videos/search' &&
+        new URL(result.url()).searchParams.get('searchTerm') === title
+    )
   );
   await page.locator('#search-input').fill(title);
   await expectSuccess(response);
@@ -108,10 +121,12 @@ export async function importVideo(
   const tags = page.locator('.swal2-popup .choices__input--cloned');
   await tags.fill('e2e');
   await tags.press('Enter');
-  const response = page.waitForResponse(
-    (result) =>
-      new URL(result.url()).pathname === '/videos/import' && result.request().method() === 'POST',
-    { timeout: 120_000 }
+  const response = observe(
+    page.waitForResponse(
+      (result) =>
+        new URL(result.url()).pathname === '/videos/import' && result.request().method() === 'POST',
+      { timeout: 120_000 }
+    )
   );
   await page.locator('.swal2-confirm').click();
   await expectSuccess(response);
@@ -124,12 +139,10 @@ export async function importVideo(
   if (!id) {
     throw new Error('The Client did not render an imported video ID');
   }
-  await base
-    .info()
-    .attach('created-video.json', {
-      body: JSON.stringify({ id, title }),
-      contentType: 'application/json',
-    });
+  await base.info().attach('created-video.json', {
+    body: JSON.stringify({ id, title }),
+    contentType: 'application/json',
+  });
   return { id, title, row };
 }
 
@@ -138,6 +151,20 @@ export async function deleteVideo(page: Page, video: ImportedVideo): Promise<voi
   await searchVideos(page, video.title);
   const row = page.locator(`#videos_table_row_${video.id}`);
   await expect(row).toBeVisible();
+  // Stop only this test's active job through its normal Client control before
+  // deleting media that a publisher/streamer could still be using.
+  for (const [selector, pathname] of [
+    ['.publishing-job-stop', `/videos/${video.id}/publishing/stop`],
+    ['.streaming-job-stop', `/streams/${video.id}/stop`],
+  ] as const) {
+    const stop = row.locator(selector);
+    if (await stop.isVisible()) {
+      const response = clientResponse(page, pathname);
+      await stop.click();
+      await expectSuccess(response);
+      await expect(stop).toHaveCount(0);
+    }
+  }
   await row.locator('.videos-table-select-video').check();
   await page.locator('#delete-selected-videos-button').click();
   const response = clientResponse(page, '/videos/delete');
@@ -166,8 +193,11 @@ export const test = base.extend<
     const file = testInfo.outputPath('source.mp4');
     await createMedia(file);
     const video = await importVideo(page, file);
-    await use(video);
-    await deleteVideo(page, video);
+    try {
+      await use(video);
+    } finally {
+      await deleteVideo(page, video);
+    }
   },
   audit: [
     async ({ page }, use, testInfo) => {
@@ -181,6 +211,17 @@ export const test = base.extend<
       });
       await use(undefined);
       if (testInfo.status !== testInfo.expectedStatus || errors.length) {
+        try {
+          await testInfo.attach('client-process.log', {
+            body: await readClientLogTail(),
+            contentType: 'text/plain',
+          });
+        } catch (error) {
+          await testInfo.attach('client-log-unavailable.txt', {
+            body: `Client log unavailable (an existing Client may have been reused): ${String(error)}`,
+            contentType: 'text/plain',
+          });
+        }
         await testInfo.attach('browser-errors.json', {
           body: JSON.stringify({ errors, failed }, null, 2),
           contentType: 'application/json',

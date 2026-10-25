@@ -8,9 +8,13 @@ export default defineConfig({
   forbidOnly: Boolean(process.env['CI']),
   retries: 0,
   workers: 1,
+  // During integration work, preserve the first failure instead of cascading
+  // through the remaining suite against a potentially dead shared Client.
+  maxFailures: 1,
   timeout: 90_000,
   expect: { timeout: 10_000 },
   reporter: [
+    ['./tests/e2e/support/client-logs.ts'],
     ['list'],
     ['html', { open: 'never' }],
     ['json', { outputFile: 'test-results/results.json' }],
@@ -27,6 +31,8 @@ export default defineConfig({
     command: 'node --import tsx src/moartube-client.ts',
     url: process.env['MOARTUBE_CLIENT_URL'] ?? 'http://localhost:8080/account/signin',
     reuseExistingServer: true,
+    stdout: 'pipe',
+    stderr: 'pipe',
     timeout: 60_000,
   },
   projects: [
