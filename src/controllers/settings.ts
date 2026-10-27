@@ -18,13 +18,9 @@ import type {
   ToggleStorageBody,
   ToggleBooleanBody,
 } from '@/types/requests.js';
-import {
-  detectOperatingSystem,
-  detectSystemCpu,
-  detectSystemGpus,
-  type DetectedGpu,
-} from '@/utils/hardware.js';
+import { detectSystemCpu } from '@/utils/hardware.js';
 import sharp from 'sharp';
+import type { FfmpegService, GpuCapability } from '@/services/ffmpeg.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
@@ -39,7 +35,12 @@ export class SettingsController extends BaseController {
   private readonly config: Config;
   private readonly s3Service: S3Service;
 
-  constructor(config: Config, nodeApiService: NodeApiService, s3Service: S3Service) {
+  constructor(
+    config: Config,
+    nodeApiService: NodeApiService,
+    s3Service: S3Service,
+    private readonly ffmpegService: FfmpegService
+  ) {
     super('SettingsController');
     this.config = config;
     this.nodeApiService = nodeApiService;
@@ -117,22 +118,22 @@ export class SettingsController extends BaseController {
   };
 
   private async getGpuSettings(): Promise<{
-    detectedGpus: DetectedGpu[];
+    detectedGpus: GpuCapability[];
     selectedGpuId: string;
     isGpuAccelerationEnabled: boolean;
     gpuVendor: string | undefined;
     gpuModel: string | undefined;
     isGpuAccelerationSupported: boolean;
   }> {
-    const detectedGpus = await detectSystemGpus().catch((error: unknown) => {
+    const detectedGpus = await this.ffmpegService.assessGpus().catch((error: unknown) => {
       this.logger.warn('Failed to detect GPUs', error);
       return [];
     });
     const agent = this.config.clientSettings.processingAgent;
-    const isGpuAccelerationSupported = detectOperatingSystem() === 'win32';
+    const isGpuAccelerationSupported = detectedGpus.some((gpu) => gpu.available);
     const selected =
       isGpuAccelerationSupported && agent?.processingAgentType === 'gpu'
-        ? detectedGpus.find((gpu) => gpu.id === agent.gpuId)
+        ? detectedGpus.find((gpu) => gpu.id === agent.gpuId && gpu.available)
         : undefined;
     return {
       detectedGpus,
@@ -153,9 +154,6 @@ export class SettingsController extends BaseController {
     if (typeof gpuId !== 'string') {
       return await this.sendError(reply, 'Select a detected GPU or disabled', 400);
     }
-    if (gpuId !== '' && detectOperatingSystem() !== 'win32') {
-      return await this.sendError(reply, 'GPU acceleration only supported on Windows', 400);
-    }
     if (gpuId === '') {
       const cpu = await detectSystemCpu();
       this.config.saveClientSettings({ processingAgent: { processingAgentType: 'cpu', ...cpu } });
@@ -163,9 +161,16 @@ export class SettingsController extends BaseController {
         result: { selectedGpuId: '', isGpuAccelerationEnabled: false },
       });
     }
-    const gpu = (await detectSystemGpus()).find((gpu) => gpu.id === gpuId);
+    const gpu = (await this.ffmpegService.assessGpus(true)).find((gpu) => gpu.id === gpuId);
     if (!gpu) {
       return await this.sendError(reply, 'Selected GPU is no longer detected', 400);
+    }
+    if (!gpu.available) {
+      return await this.sendError(
+        reply,
+        gpu.unavailableReason ?? 'Selected GPU is unavailable',
+        400
+      );
     }
     this.config.saveClientSettings({
       processingAgent: {
@@ -175,6 +180,8 @@ export class SettingsController extends BaseController {
         gpuId: gpu.id,
         deviceIndex: gpu.deviceIndex,
         deviceUuid: gpu.deviceUuid,
+        backend: gpu.backend,
+        renderDevice: gpu.renderDevice,
       },
     });
     return await this.sendSuccess(reply, {

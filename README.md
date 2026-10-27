@@ -84,8 +84,8 @@ for prerequisites, coverage, debugging and integration-test limits.
 ## 💾 Data Processing, Storage, Distribution
 - Processing
   - **CPU** and **GPU** support
-  - Nvidia, AMD
-    - Windows Only
+  - Nvidia, AMD and Intel on Windows/Linux, VideoToolbox on native macOS
+    - Requires a compatible FFmpeg build and available hardware acceleration
 - Storage
   - Local database storage using **SQLite**
   - Decentralize your node with a remote **Postgres** database
@@ -134,7 +134,7 @@ for prerequisites, coverage, debugging and integration-test limits.
   - Can broadcast to a dedicated processing system over LAN or WAN.
   - No plugins like NDI required.
 - [**GPU Acceleration**](https://www.moartube.com/guides/how-to-enable-gpu-acceleration):
-  - Supports **Nvidia** and **AMD** GPUs for accelerated encoding/decoding (Windows only).
+  - Supports **Nvidia**, **AMD** and **Intel** GPUs on Windows/Linux and **VideoToolbox** on native macOS; available acceleration depends on the backend. See [GPU acceleration](docs/gpu-acceleration.md).
 
 ## 🏆 Why Choose MoarTube?
 MoarTube empowers you to take control of your media hosting with privacy, decentralization, and features designed to rival major platforms while remaining lightweight, accessible, and cost-effective, all from a single node.
@@ -153,7 +153,7 @@ MoarTube is designed to be lightweight and accessible, making it the most resour
 - Prefer a dedicated setup? MoarTube supports **dual boxing**. You can run the client on a **dedicated system** for optimized performance.
 
 ## 🎮 **GPU Acceleration**
-- **Accelerate** encoding/decoding with **Nvidia** and **AMD GPUs** (Windows only).
+- **Accelerate** processing with **Nvidia**, **AMD** and **Intel GPUs** on Windows/Linux and **VideoToolbox** on native macOS. Intel on Windows/Linux, Linux AMD and macOS support hardware decoding, scaling, and encoding. See [GPU setup and requirements](docs/gpu-acceleration.md).
 - **GPU acceleration** is disabled by default. Simply toggle it on in the settings if needed.
 
 ## 💻 **Requirements**

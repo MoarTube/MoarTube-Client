@@ -329,7 +329,7 @@
                                     <select id="client-setting-gpu-select" class="form-control w-auto ms-auto select-gpu" aria-label="GPU acceleration" aria-describedby="client-setting-gpu-support-message" disabled>
                                         <option value="">disabled (CPU)</option>
                                     </select>
-                                    <p id="client-setting-gpu-support-message" class="text-sm text-secondary mb-0 mt-2" <%= model.clientSettings.isGpuAccelerationSupported ? 'hidden' : '' %>>GPU acceleration is only supported on Windows. This client uses CPU encoding.</p>
+                                    <p id="client-setting-gpu-support-message" class="text-sm text-secondary mb-0 mt-2" <%= model.clientSettings.isGpuAccelerationSupported ? 'hidden' : '' %>>No usable GPU was found. Check FFmpeg hardware support, drivers and device access. CPU encoding is available.</p>
                                 </div>
 							</div>
 							<div class="card-body pt-0 d-flex">
@@ -994,11 +994,11 @@
             const select = $('#client-setting-gpu-select').empty();
             select.append($('<option>').val('').text('disabled (CPU)'));
             (clientSettings.detectedGpus || []).forEach(function (gpu) {
-                select.append($('<option>').val(gpu.id).text(gpu.processingAgentName + ' ' + gpu.processingAgentModel + ' (' + gpu.id + ')'));
+                select.append($('<option>').val(gpu.id).prop('disabled', !gpu.available).text(gpu.processingAgentName + ' ' + gpu.processingAgentModel + ' (' + gpu.id + ')' + (gpu.available ? '' : ' - ' + gpu.unavailableReason)));
             });
             const selectedGpuId = clientSettings.selectedGpuId || '';
             select.val(selectedGpuId).data('selectedGpuId', selectedGpuId);
-            select.prop('disabled', !clientSettings.isGpuAccelerationSupported);
+            select.prop('disabled', false);
             $('#client-setting-gpu-support-message').prop('hidden', !!clientSettings.isGpuAccelerationSupported);
 
 		}

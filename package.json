@@ -84,7 +84,7 @@
     "fastify": "^5.7.2",
     "fastify-plugin": "^5.1.0",
     "fastify-type-provider-zod": "^6.1.0",
-    "ffmpeg-static": "^5.2.0",
+    "ffmpeg-static": "5.3.0",
     "form-data": "^4.0.0",
     "pino": "^10.3.0",
     "pino-pretty": "^13.1.3",

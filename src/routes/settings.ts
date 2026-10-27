@@ -10,7 +10,12 @@ export function settingsRoutes(
   const nodeApiService = container.resolve('nodeApiService');
   const s3Service = container.resolve('s3Service');
 
-  const settingsController = new SettingsController(config, nodeApiService, s3Service);
+  const settingsController = new SettingsController(
+    config,
+    nodeApiService,
+    s3Service,
+    container.resolve('ffmpegService')
+  );
 
   // View
   fastify.get(

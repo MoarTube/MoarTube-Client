@@ -2,6 +2,11 @@ import type { ChildProcess } from 'node:child_process';
 import { spawn } from 'node:child_process';
 import { encodingPool } from '@/utils/work-pool.js';
 import { getGpuProcessEnvironment } from '@/utils/hardware.js';
+import {
+  applyGpuDeviceArguments,
+  getHardwareH264Options,
+  getCudaScaleFilter,
+} from '@/utils/gpu-encoding.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Logger } from 'pino';
@@ -675,46 +680,19 @@ export class VideoPublishService {
       framerate = String(encoderSettings.ogv['framerate']);
     }
 
-    // Determine scale filter based on processing agent and format
-    let scale: string;
+    // Software formats retain their existing scaling and cropping behavior.
+    let filterComplex = `scale='if(gt(ih,iw),-1,${width})':'if(gt(ih,iw),${height},-1)',crop=trunc(iw/2)*2:trunc(ih/2)*2`;
     if (
-      clientSettings.processingAgent?.processingAgentType === 'cpu' ||
-      format === 'webm' ||
-      format === 'ogv'
-    ) {
-      scale = 'scale';
-    } else if (
       clientSettings.processingAgent?.processingAgentType === 'gpu' &&
+      clientSettings.processingAgent.processingAgentName === 'NVIDIA' &&
       (format === 'm3u8' || format === 'mp4')
     ) {
-      if (clientSettings.processingAgent.processingAgentName === 'NVIDIA') {
-        scale = 'scale_cuda';
-      } else {
-        // AMD and others use standard scale
-        scale = 'scale';
-      }
-    } else {
-      scale = 'scale';
+      filterComplex = getCudaScaleFilter(resolution);
     }
 
-    // Build filter complex string
-    let filterComplex = `${scale}='if(gt(ih,iw),-1,${width})':'if(gt(ih,iw),${height},-1)',`;
-    if (
-      clientSettings.processingAgent?.processingAgentType === 'cpu' ||
-      format === 'webm' ||
-      format === 'ogv'
-    ) {
-      filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
-    } else if (
-      clientSettings.processingAgent?.processingAgentType === 'gpu' &&
-      (format === 'm3u8' || format === 'mp4')
-    ) {
-      if (clientSettings.processingAgent.processingAgentName === 'NVIDIA') {
-        filterComplex += 'hwdownload,format=nv12,crop=trunc(iw/2)*2:trunc(ih/2)*2,hwupload_cuda';
-      } else {
-        // AMD and others
-        filterComplex += 'crop=trunc(iw/2)*2:trunc(ih/2)*2';
-      }
+    const hardware = getHardwareH264Options(clientSettings.processingAgent, resolution);
+    if (hardware !== undefined && (format === 'm3u8' || format === 'mp4')) {
+      filterComplex = hardware.filter;
     }
 
     const hlsSegmentOutputPath = path.join(
@@ -726,8 +704,8 @@ export class VideoPublishService {
     const agentType = clientSettings.processingAgent?.processingAgentType ?? 'cpu';
     const agentName = clientSettings.processingAgent?.processingAgentName ?? '';
 
-    if (agentType === 'cpu') {
-      // CPU encoding
+    if (agentType === 'cpu' || hardware !== undefined) {
+      // These backends share output packaging and software-only formats.
       if (format === 'm3u8') {
         args = [
           '-i',
@@ -735,7 +713,7 @@ export class VideoPublishService {
           '-c:a',
           'aac',
           '-c:v',
-          'libx264',
+          hardware?.encoder ?? 'libx264',
           '-b:v',
           bitrate,
           '-sc_threshold',
@@ -765,7 +743,7 @@ export class VideoPublishService {
           '-c:a',
           'aac',
           '-c:v',
-          'libx264',
+          hardware?.encoder ?? 'libx264',
           '-b:v',
           bitrate,
           '-vf',
@@ -1038,16 +1016,7 @@ export class VideoPublishService {
       }
     }
 
-    if (args.includes('h264_amf')) {
-      args.unshift(
-        '-init_hw_device',
-        `d3d11va=selectedGpu:${String(clientSettings.processingAgent?.deviceIndex ?? 0)}`,
-        '-filter_hw_device',
-        'selectedGpu'
-      );
-    }
-
-    return args;
+    return applyGpuDeviceArguments(args, clientSettings.processingAgent);
   }
 
   private timestampToSeconds(timestamp: string): number {

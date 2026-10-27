@@ -21,6 +21,8 @@ const ClientSettingsSchema = z.object({
       gpuId: z.string().optional(),
       deviceUuid: z.string().optional(),
       deviceIndex: z.number().int().nonnegative().optional(),
+      backend: z.enum(['nvenc', 'amf', 'vaapi', 'qsv', 'videotoolbox']).optional(),
+      renderDevice: z.string().optional(),
     })
     .optional(),
   videoEncoderSettings: z.record(z.string(), z.unknown()).optional(),

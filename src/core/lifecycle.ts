@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { detectSystemCpu, detectSystemGpus } from '@/utils/hardware.js';
+import { detectSystemCpu } from '@/utils/hardware.js';
 import type { Container } from '@/core/container.js';
 import type { Logger } from '@/utils/logger.js';
 
@@ -27,22 +27,22 @@ export class LifecycleManager {
     this.logger.debug('Assessing system encoding/decoding capabilities');
     try {
       const cpu = await detectSystemCpu();
-      const gpus = await detectSystemGpus();
+      const gpus = await this.container.resolve('ffmpegService').assessGpus();
       this.logger.info(`CPU Detected: ${cpu.processingAgentModel}`);
       if (gpus.length === 0) {
         this.logger.info('Compatible GPUs Detected: none');
       }
       for (const gpu of gpus) {
         this.logger.info(
-          `GPU Detected: ${gpu.processingAgentName} ${gpu.processingAgentModel} (${gpu.id})`
+          `GPU Detected: ${gpu.processingAgentName} ${gpu.processingAgentModel} (${gpu.id}): ${gpu.available ? 'available' : (gpu.unavailableReason ?? 'unavailable')}`
         );
       }
 
       const config = this.container.resolve('config');
       const agent = config.clientSettings.processingAgent;
       const selectedGpu =
-        process.platform === 'win32' && agent?.processingAgentType === 'gpu'
-          ? gpus.find((gpu) => gpu.id === agent.gpuId)
+        agent?.processingAgentType === 'gpu'
+          ? gpus.find((gpu) => gpu.id === agent.gpuId && gpu.available)
           : undefined;
       // Legacy selections did not identify a device. Require an explicit choice.
       if (agent?.processingAgentType === 'gpu') {
@@ -55,6 +55,8 @@ export class LifecycleManager {
                 gpuId: selectedGpu.id,
                 deviceIndex: selectedGpu.deviceIndex,
                 deviceUuid: selectedGpu.deviceUuid,
+                backend: selectedGpu.backend,
+                renderDevice: selectedGpu.renderDevice,
               }
             : { processingAgentType: 'cpu', ...cpu },
         });
@@ -62,9 +64,7 @@ export class LifecycleManager {
       this.logger.info(
         selectedGpu
           ? `Encoding GPU Selected: ${selectedGpu.processingAgentName} ${selectedGpu.processingAgentModel}`
-          : process.platform !== 'win32'
-            ? 'GPU acceleration is only supported on Windows. Using CPU encoding.'
-            : 'GPU acceleration disabled (CPU). Select a GPU in Client Settings to enable it.'
+          : 'Using CPU encoding. Select an available GPU in Client Settings to enable acceleration.'
       );
     } catch (error) {
       this.logger.warn('Failed to assess system hardware; using CPU', error);

@@ -1,6 +1,11 @@
 import type { ChildProcess } from 'node:child_process';
 import { spawn } from 'node:child_process';
 import { getGpuProcessEnvironment } from '@/utils/hardware.js';
+import {
+  applyGpuDeviceArguments,
+  getHardwareH264Options,
+  getCudaScaleFilter,
+} from '@/utils/gpu-encoding.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Logger } from 'pino';
@@ -753,7 +758,8 @@ export class LiveStreamService {
 
     const processingAgent = clientSettings.processingAgent ?? { processingAgentType: 'cpu' };
 
-    if (processingAgent.processingAgentType === 'cpu') {
+    const hardware = getHardwareH264Options(processingAgent, resolution);
+    if (processingAgent.processingAgentType === 'cpu' || hardware !== undefined) {
       if (format === 'm3u8') {
         args = [
           '-listen',
@@ -765,7 +771,7 @@ export class LiveStreamService {
           '-i',
           rtmpUrl,
           '-c:v',
-          'libx264',
+          hardware?.encoder ?? 'libx264',
           '-b:v',
           bitrate,
           '-sc_threshold',
@@ -880,16 +886,16 @@ export class LiveStreamService {
       }
     }
 
-    if (args.includes('h264_amf')) {
-      args.unshift(
-        '-init_hw_device',
-        `d3d11va=selectedGpu:${String(clientSettings.processingAgent?.deviceIndex ?? 0)}`,
-        '-filter_hw_device',
-        'selectedGpu'
-      );
+    if (args.includes('h264_nvenc')) {
+      args.splice(args.indexOf('-c:v'), 0, '-vf', getCudaScaleFilter(resolution));
     }
-
-    return args;
+    if (hardware !== undefined && args.includes(hardware.encoder)) {
+      args.splice(args.indexOf('-c:v'), 0, '-vf', hardware.filter);
+      if (processingAgent.backend === 'videotoolbox') {
+        args.splice(args.indexOf('-c:v'), 0, '-realtime', '1');
+      }
+    }
+    return applyGpuDeviceArguments(args, clientSettings.processingAgent);
   }
 
   private timestampToSeconds(timestamp: string): number {
