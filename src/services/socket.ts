@@ -1,6 +1,7 @@
 import type { Logger } from 'pino';
 import { WebSocket } from 'ws';
 import { Buffer } from 'node:buffer';
+import { sendBounded } from '@/utils/socket-budget.js';
 
 export class SocketService {
   private readonly clients: Map<WebSocket, string | undefined> = new Map();
@@ -70,7 +71,7 @@ export class SocketService {
 
     for (const client of this.clients.keys()) {
       if (client.readyState === WebSocket.OPEN) {
-        client.send(message);
+        sendBounded(client, message);
       }
     }
   }
@@ -83,7 +84,7 @@ export class SocketService {
 
     for (const [client, clientKey] of this.clients) {
       if (clientKey === key && client.readyState === WebSocket.OPEN) {
-        client.send(message);
+        sendBounded(client, message);
       }
     }
   }

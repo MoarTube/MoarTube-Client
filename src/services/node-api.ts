@@ -4,6 +4,7 @@ import FormData from 'form-data';
 import { Agent as HttpAgent } from 'node:http';
 import { Agent as HttpsAgent } from 'node:https';
 import fs from 'node:fs';
+import type { Readable } from 'node:stream';
 import { BaseService } from './base.js';
 import type { Logger } from '@/utils/logger.js';
 import type { Config } from '@/config/index.js';
@@ -36,10 +37,11 @@ import type {
 } from '@/types/node-api.js';
 
 export interface UploadStreamOptions {
+  signal?: AbortSignal;
   videoId: string;
   format: string;
   resolution: string;
-  manifestBuffer: Buffer;
+  manifestBuffer: Buffer | Readable;
   segmentBuffer: Buffer;
   manifestFileName: string;
   segmentFileName: string;
@@ -63,6 +65,19 @@ export interface StreamVideoOptions {
  * Replaces _src/utils/node-communications.js
  */
 export class NodeApiService extends BaseService {
+  private readonly httpAgent = new HttpAgent({ keepAlive: true, maxSockets: 8, maxFreeSockets: 2 });
+  private readonly httpsAgent = new HttpsAgent({
+    keepAlive: true,
+    maxSockets: 8,
+    maxFreeSockets: 2,
+  });
+  private readonly shutdown = new AbortController();
+
+  public close(): void {
+    this.shutdown.abort();
+    this.httpAgent.destroy();
+    this.httpsAgent.destroy();
+  }
   // private readonly settingsRepo: SettingsRepository;
   private readonly config: Config;
 
@@ -83,14 +98,14 @@ export class NodeApiService extends BaseService {
   private async getClient(): Promise<AxiosInstance> {
     const baseURL = await this.getBaseUrl();
 
-    const httpAgent = new HttpAgent({ keepAlive: true, keepAliveMsecs: 10000 });
-    const httpsAgent = new HttpsAgent({ keepAlive: true, keepAliveMsecs: 10000 });
-
     return axios.create({
       baseURL,
-      timeout: 0,
-      httpAgent: httpAgent,
-      httpsAgent: httpsAgent,
+      timeout: 120_000,
+      maxRedirects: 0,
+      maxContentLength: 16 * 1024 * 1024,
+      signal: this.shutdown.signal,
+      httpAgent: this.httpAgent,
+      httpsAgent: this.httpsAgent,
       validateStatus: () => true, // Handle status codes manually
     });
   }
@@ -280,28 +295,44 @@ export class NodeApiService extends BaseService {
     });
   }
 
-  public async getVideoDataAll(jwtToken: string): Promise<VideoDataAllResponse> {
+  public async getVideoDataAll(jwtToken: string, offset = 0): Promise<VideoDataAllResponse> {
     const client = await this.getClient();
     const response = await client.get('/videos/data/all', {
       headers: { Authorization: `Bearer ${jwtToken}` },
+      params: { offset, limit: 101 },
     });
     return this.unwrapOrThrow(response.data, 'getVideoDataAll') as VideoDataAllResponse;
   }
 
+  public async *getVideoDataPages(jwtToken: string): AsyncGenerator<unknown[]> {
+    for (let offset = 0; ; offset += 100) {
+      const result = await this.getVideoDataAll(jwtToken, offset);
+      const rows = result['videosData'] as unknown[];
+      if (!Array.isArray(rows)) {
+        throw new Error('Invalid video page response');
+      }
+      yield rows;
+      if (!result['hasMore']) {
+        break;
+      }
+    }
+  }
+
   // Settings Methods
 
-  public async getAvatar(jwtToken: string): Promise<Buffer> {
+  public async getAvatar(jwtToken: string): Promise<Readable> {
     const client = await this.getClient();
     const response = await client.get('/settings/avatar', {
       headers: { Authorization: `Bearer ${jwtToken}` },
-      responseType: 'arraybuffer',
+      responseType: 'stream',
     });
 
     if (response.status !== 200) {
+      (response.data as Readable).destroy();
       throw new Error(`Failed to retrieve avatar: ${String(response.status)}`);
     }
 
-    return Buffer.from(response.data as ArrayBuffer);
+    return response.data as Readable;
   }
 
   public async setAvatar(jwtToken: string, icon: Buffer, avatar: Buffer): Promise<unknown> {
@@ -318,18 +349,19 @@ export class NodeApiService extends BaseService {
     return responseData;
   }
 
-  public async getBanner(jwtToken: string): Promise<Buffer> {
+  public async getBanner(jwtToken: string): Promise<Readable> {
     const client = await this.getClient();
     const response = await client.get('/settings/banner', {
       headers: { Authorization: `Bearer ${jwtToken}` },
-      responseType: 'arraybuffer',
+      responseType: 'stream',
     });
 
     if (response.status !== 200) {
+      (response.data as Readable).destroy();
       throw new Error(`Failed to retrieve banner: ${String(response.status)}`);
     }
 
-    return Buffer.from(response.data as ArrayBuffer);
+    return response.data as Readable;
   }
 
   public async setBanner(jwtToken: string, banner: Buffer): Promise<unknown> {
@@ -488,7 +520,7 @@ export class NodeApiService extends BaseService {
 
   public async settingsImportDatabase(
     jwtToken: string,
-    databaseFile: Buffer
+    databaseFile: Readable
   ): Promise<BaseNodeResponse> {
     const formData = new FormData();
     formData.append('databaseFile', databaseFile, 'database.json');
@@ -501,12 +533,18 @@ export class NodeApiService extends BaseService {
     return response.data as BaseNodeResponse;
   }
 
-  public async settingsExportDatabase(jwtToken: string): Promise<unknown> {
+  public async settingsExportDatabase(jwtToken: string): Promise<Readable> {
     const client = await this.getClient();
     const response = await client.get('/settings/export/database', {
       headers: { Authorization: `Bearer ${jwtToken}` },
+      params: { download: '1' },
+      responseType: 'stream',
     });
-    return response.data;
+    if (response.status !== 200) {
+      (response.data as Readable).destroy();
+      throw new Error('Database export failed');
+    }
+    return response.data as Readable;
   }
 
   public async commentsToggle(jwtToken: string, isEnabled: boolean): Promise<BaseNodeResponse> {
@@ -629,18 +667,26 @@ export class NodeApiService extends BaseService {
 
   // Reports Methods - Videos
 
-  public async getVideoReports(jwtToken: string): Promise<GetReportsResponse> {
+  public async getVideoReports(
+    jwtToken: string,
+    page: { offset?: number; search?: string } = {}
+  ): Promise<GetReportsResponse> {
     const client = await this.getClient();
     const response = await client.get('/reports/videos', {
       headers: { Authorization: `Bearer ${jwtToken}` },
+      params: { limit: 101, ...page },
     });
     return response.data as GetReportsResponse;
   }
 
-  public async getVideoReportsArchive(jwtToken: string): Promise<GetReportsResponse> {
+  public async getVideoReportsArchive(
+    jwtToken: string,
+    page: { offset?: number; search?: string } = {}
+  ): Promise<GetReportsResponse> {
     const client = await this.getClient();
     const response = await client.get('/reports/archive/videos', {
       headers: { Authorization: `Bearer ${jwtToken}` },
+      params: { limit: 101, ...page },
     });
     return response.data as GetReportsResponse;
   }
@@ -672,18 +718,26 @@ export class NodeApiService extends BaseService {
 
   // Reports Methods - Comments
 
-  public async getCommentReports(jwtToken: string): Promise<GetReportsResponse> {
+  public async getCommentReports(
+    jwtToken: string,
+    page: { offset?: number; search?: string } = {}
+  ): Promise<GetReportsResponse> {
     const client = await this.getClient();
     const response = await client.get('/reports/comments', {
       headers: { Authorization: `Bearer ${jwtToken}` },
+      params: { limit: 101, ...page },
     });
     return response.data as GetReportsResponse;
   }
 
-  public async getCommentReportsArchive(jwtToken: string): Promise<GetReportsResponse> {
+  public async getCommentReportsArchive(
+    jwtToken: string,
+    page: { offset?: number; search?: string } = {}
+  ): Promise<GetReportsResponse> {
     const client = await this.getClient();
     const response = await client.get('/reports/archive/comments', {
       headers: { Authorization: `Bearer ${jwtToken}` },
+      params: { limit: 101, ...page },
     });
     return response.data as GetReportsResponse;
   }
@@ -883,55 +937,57 @@ export class NodeApiService extends BaseService {
     format: string,
     resolution: string,
     files: Array<{ fileName: string; filePath: string; contentType: string }>,
-    onProgress?: (percent: number) => void
+    onProgress?: (percent: number) => void,
+    signal?: AbortSignal
   ): Promise<unknown> {
-    const formData = new FormData();
-
-    // Track upload progress by counting bytes read from each source file as it
-    // streams into the multipart body, rather than relying on axios's
-    // onUploadProgress (unreliable for Node's stream-based FormData bodies,
-    // since the request's total Content-Length isn't known upfront the same
-    // way it is for a browser-originated XHR upload).
-    let totalSize = 0;
-    for (const file of files) {
-      totalSize += fs.statSync(file.filePath).size;
-    }
-
-    let bytesSent = 0;
-    let lastProgressTime = 0;
-
-    for (const file of files) {
-      const fileStream = fs.createReadStream(file.filePath);
-
-      if (onProgress && totalSize > 0) {
-        fileStream.on('data', (chunk: Buffer) => {
-          bytesSent += chunk.length;
-          const now = Date.now();
-          if (now - lastProgressTime >= 100) {
-            lastProgressTime = now;
-            onProgress(Math.min(100, Math.floor((bytesSent / totalSize) * 100)));
-          }
-        });
-      }
-
-      formData.append('video_files', fileStream, {
-        filename: file.fileName,
-        contentType: file.contentType,
-      });
-    }
-
+    const ordered = [...files].sort(
+      (a, b) => Number(a.fileName.endsWith('.m3u8')) - Number(b.fileName.endsWith('.m3u8'))
+    );
+    const totalSize = ordered.reduce((total, file) => total + fs.statSync(file.filePath).size, 0);
+    let bytesSent = 0,
+      lastProgressTime = 0;
     const client = await this.getClient();
-    const headers = formData.getHeaders();
-    headers['Authorization'] = `Bearer ${jwtToken}`;
-
-    const response = await client.post(`/videos/${videoId}/upload`, formData, {
-      params: { format, resolution },
-      headers,
-    });
-
+    let result: unknown;
+    for (let offset = 0; offset < ordered.length; offset += 64) {
+      const formData = new FormData();
+      const streams: fs.ReadStream[] = [];
+      try {
+        for (const file of ordered.slice(offset, offset + 64)) {
+          const input = fs.createReadStream(file.filePath);
+          streams.push(input);
+          input.on('data', (chunk: Buffer) => {
+            bytesSent += chunk.length;
+            if (Date.now() - lastProgressTime >= 100) {
+              lastProgressTime = Date.now();
+              onProgress?.(Math.min(99, Math.floor((bytesSent / Math.max(totalSize, 1)) * 100)));
+            }
+          });
+          formData.append('video_files', input, {
+            filename: file.fileName,
+            contentType: file.contentType,
+          });
+        }
+        const response = await client.post('/videos/' + videoId + '/upload', formData, {
+          signal: signal ? AbortSignal.any([signal, this.shutdown.signal]) : this.shutdown.signal,
+          params: { format, resolution, finalBatch: offset + 64 >= ordered.length },
+          headers: { ...formData.getHeaders(), Authorization: 'Bearer ' + jwtToken },
+        });
+        if (
+          response.status < 200 ||
+          response.status >= 300 ||
+          (response.data as { isError?: boolean }).isError
+        ) {
+          throw new Error('Media upload failed');
+        }
+        result = response.data;
+      } finally {
+        for (const input of streams) {
+          input.destroy();
+        }
+      }
+    }
     onProgress?.(100);
-
-    return response.data;
+    return result;
   }
 
   public async uploadStream(jwtToken: string, options: UploadStreamOptions): Promise<unknown> {
@@ -946,14 +1002,14 @@ export class NodeApiService extends BaseService {
     } = options;
     const formData = new FormData();
 
-    formData.append('video_files', manifestBuffer, {
-      filename: manifestFileName,
-      contentType: 'application/vnd.apple.mpegurl',
-    });
-
     formData.append('video_files', segmentBuffer, {
       filename: segmentFileName,
       contentType: 'video/mp2t',
+    });
+
+    formData.append('video_files', manifestBuffer, {
+      filename: manifestFileName,
+      contentType: 'application/vnd.apple.mpegurl',
     });
 
     const client = await this.getClient();
@@ -961,10 +1017,20 @@ export class NodeApiService extends BaseService {
     headers['Authorization'] = `Bearer ${jwtToken}`;
 
     const response = await client.post(`/videos/${videoId}/stream`, formData, {
+      signal: options.signal
+        ? AbortSignal.any([options.signal, this.shutdown.signal])
+        : this.shutdown.signal,
       params: { format, resolution },
       headers,
     });
 
+    if (
+      response.status < 200 ||
+      response.status >= 300 ||
+      (response.data as { isError?: boolean }).isError
+    ) {
+      throw new Error('Live upload failed');
+    }
     return response.data;
   }
 

@@ -205,6 +205,7 @@ export interface Report {
 }
 
 export interface GetReportsResponse extends BaseNodeResponse {
+  hasMore?: boolean;
   reports: Report[];
 }
 

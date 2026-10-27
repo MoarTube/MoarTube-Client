@@ -121,7 +121,7 @@ export class StreamsController extends BaseController {
     const jwtToken = request.session.jwtToken ?? '';
 
     try {
-      this.liveStreamService.stopLiveStream(videoId);
+      await this.liveStreamService.stopLiveStream(videoId);
       this.nodeSocketService.sendVideoStatusEcho(jwtToken, 'streaming_stopping', videoId);
 
       // S3 Conversion Logic

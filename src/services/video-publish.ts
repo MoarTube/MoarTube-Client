@@ -1,5 +1,6 @@
 import type { ChildProcess } from 'node:child_process';
 import { spawn } from 'node:child_process';
+import { encodingPool } from '@/utils/work-pool.js';
 import { getGpuProcessEnvironment } from '@/utils/hardware.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -21,6 +22,7 @@ interface VideoPublishJob {
 }
 
 interface EncodingJobState {
+  aborter: AbortController;
   stopping: boolean;
   processes: Set<ChildProcess>;
   activeJobCount: number;
@@ -46,6 +48,19 @@ export class VideoPublishService {
   }
 
   public enqueuePendingPublishVideo(job: VideoPublishJob): void {
+    if (
+      this.pendingPublishVideoQueue.some(
+        (existing) =>
+          existing.videoId === job.videoId &&
+          existing.format === job.format &&
+          existing.resolution === job.resolution
+      )
+    ) {
+      return;
+    }
+    if (this.pendingPublishVideoQueue.length >= 100) {
+      throw new Error('Publishing queue is full');
+    }
     this.pendingPublishVideoQueue.push(job);
     this.logger.info(`[VideoPublishService] Enqueued job for video ${job.videoId}`);
   }
@@ -80,6 +95,7 @@ export class VideoPublishService {
     const state = this.activeEncodingJobs.get(videoId);
     if (state) {
       state.stopping = true;
+      state.aborter.abort();
       for (const activeProcess of state.processes) {
         activeProcess.kill();
       }
@@ -245,12 +261,17 @@ export class VideoPublishService {
       // the .catch() handler's retry decision after a killed job rejects.
       let state = this.activeEncodingJobs.get(job.videoId);
       if (!state) {
-        state = { stopping: false, processes: new Set(), activeJobCount: 0 };
+        state = {
+          stopping: false,
+          processes: new Set(),
+          activeJobCount: 0,
+          aborter: new AbortController(),
+        };
         this.activeEncodingJobs.set(job.videoId, state);
       }
       state.activeJobCount++;
 
-      await this.performEncodingJob(job);
+      await encodingPool.run(() => this.performEncodingJob(job));
       await this.performUploadingJob(job);
     }
   }
@@ -388,7 +409,7 @@ export class VideoPublishService {
           });
         }
       } else {
-        stderrOutput += stderrTemp;
+        stderrOutput = (stderrOutput + stderrTemp).slice(-64 * 1024);
       }
     });
 
@@ -482,7 +503,8 @@ export class VideoPublishService {
             progress: uploadProgress,
           },
         });
-      }
+      },
+      this.activeEncodingJobs.get(job.videoId)?.aborter.signal
     );
 
     // Clean up local files after upload if using filesystem mode?
@@ -543,19 +565,24 @@ export class VideoPublishService {
       paths.push({ key: key, filePath: filePath, contentType: `video/${ext}` });
     }
 
-    await this.s3Service.uploadFilesWithProgress(s3Config, paths, (percent) => {
-      const uploadProgress = Math.floor(percent / 2) + 50;
-      this.socketService.broadcastToUser(job.jwtToken, 'echo', {
-        eventName: 'video_status',
-        payload: {
-          type: 'publishing',
-          videoId: job.videoId,
-          format: job.format,
-          resolution: job.resolution,
-          progress: uploadProgress,
-        },
-      });
-    });
+    await this.s3Service.uploadFilesWithProgress(
+      s3Config,
+      paths,
+      (percent) => {
+        const uploadProgress = Math.floor(percent / 2) + 50;
+        this.socketService.broadcastToUser(job.jwtToken, 'echo', {
+          eventName: 'video_status',
+          payload: {
+            type: 'publishing',
+            videoId: job.videoId,
+            format: job.format,
+            resolution: job.resolution,
+            progress: uploadProgress,
+          },
+        });
+      },
+      this.activeEncodingJobs.get(job.videoId)?.aborter.signal
+    );
   }
 
   private async finishVideoPublish(jwtToken: string, videoId: string): Promise<void> {

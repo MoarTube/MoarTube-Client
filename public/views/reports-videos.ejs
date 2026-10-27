@@ -237,11 +237,16 @@
 				</div>
 			</div>
 		</nav>
-		<div class="container-fluid py-4">
+		<div class="container-fluid py-4"><form method="get" class="mb-3 d-flex gap-2"><input class="form-control" name="search" value="<%=model.search%>" placeholder="Search reports and archives" maxlength="100" aria-label="Search reports and archives"><button class="btn btn-primary" type="submit">Search</button></form>
 			<div class="row ">
 				<div class="col-lg-12">
 					<div class="card">
-						<table id="video-reports-table" class="table table-striped" style="width:100%">
+						<nav class="p-3 d-flex gap-3" aria-label="Report pages">
+ <% if (model.reportPage > 0) { %><a href="?page=<%=model.reportPage-1%>&archivePage=<%=model.archivePage%>&search=<%=encodeURIComponent(model.search)%>">Previous reports</a><% } %>
+ <span>Page <%=model.reportPage+1%></span>
+ <% if (model.reportHasMore) { %><a href="?page=<%=model.reportPage+1%>&archivePage=<%=model.archivePage%>&search=<%=encodeURIComponent(model.search)%>">Next reports</a><% } %>
+ </nav>
+<table id="video-reports-table" class="table table-striped" style="width:100%">
 
 						</table>
 					</div>
@@ -250,7 +255,12 @@
 			<div class="row mt-3">
 				<div class="col-lg-12">
 					<div class="card">
-						<table id="video-reports-archive-table" class="table table-striped" style="width:100%">
+						<nav class="p-3 d-flex gap-3" aria-label="Archive pages">
+ <% if (model.archivePage > 0) { %><a href="?archivePage=<%=model.archivePage-1%>&page=<%=model.reportPage%>&search=<%=encodeURIComponent(model.search)%>">Previous archives</a><% } %>
+ <span>Page <%=model.archivePage+1%></span>
+ <% if (model.archiveHasMore) { %><a href="?archivePage=<%=model.archivePage+1%>&page=<%=model.reportPage%>&search=<%=encodeURIComponent(model.search)%>">Next archives</a><% } %>
+ </nav>
+<table id="video-reports-archive-table" class="table table-striped" style="width:100%">
 
 						</table>
 					</div>
@@ -445,7 +455,7 @@
 			}
 
 			getVideoReportsArchive() {
-				$.ajax({ type: 'GET', url: '/reports/videos/archive/all' })
+				$.ajax({ type: 'GET', url: '/reports/videos/archive/all', data: { offset: Number(new URLSearchParams(location.search).get('archivePage') || 0) * 100, search: new URLSearchParams(location.search).get('search') || '' } })
 					.done((data, textStatus, xhr) => {
 						if (data.isError) {
 							this.showAlert(true, data.message);

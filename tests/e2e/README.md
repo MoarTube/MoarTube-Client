@@ -560,3 +560,8 @@ No retries, skips or mocks were introduced for this verification. Artifacts are
 `temp/e2e-live-cluster-fix.json`, its corresponding HTML report/log, and
 `test-results/live-cluster-fix/`. The full 327-case suite has not been rerun for
 this Node repair.
+
+
+## Isolated Node watch-page regressions
+
+`npm run test:watch-page` renders the actual Node watch template and serves its real assets through an isolated browser fixture. FFmpeg generates short HLS and MP4 media in an owned temporary directory; no running Node, production media, or comment mutations are required. It covers metadata injection, feature permissions, publishing state, autoplay rejection/deferred loading, explicit playback, initial seeking, and quality-switch state preservation. Rebuild Node's player (`npm run build:player` in MoarTube-Node) after changing player source. Chromium and Firefox exercise HLS and native MP4 playback; Windows Playwright WebKit lacks both MediaSource and native HLS, so its playback-specific case is skipped. Its blocked-download, metadata, and UI checks still run. Native MP4 is skipped only when an independent native-video probe reports the generated H.264/AAC fixture as unsupported. Blocked-autoplay tests assert no HLS segments are downloaded, the source remains attached, and Play does not repeat the initial manifest/page request.

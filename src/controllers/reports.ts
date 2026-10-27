@@ -2,6 +2,23 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import { BaseController } from './base.js';
 import type { NodeApiService } from '@/services/node-api.js';
 
+function pageNumber(value: unknown): number {
+  const page = Number(value);
+  return Number.isSafeInteger(page) && page >= 0 && page <= 10_000_000 ? page : 0;
+}
+function pages(request: FastifyRequest) {
+  const query = (request.query ?? {}) as {
+    page?: string;
+    archivePage?: string;
+    search?: string;
+    offset?: string;
+  };
+  return {
+    reportPage: pageNumber(query.page),
+    archivePage: pageNumber(query.archivePage),
+    search: (query.search ?? '').slice(0, 100),
+  };
+}
 export class ReportsController extends BaseController {
   private readonly nodeApiService: NodeApiService;
 
@@ -18,6 +35,7 @@ export class ReportsController extends BaseController {
   ): Promise<FastifyReply> => {
     try {
       const jwtToken = request.session.jwtToken ?? '';
+      const pagination = pages(request);
       const authResponse = await this.nodeApiService.isAuthenticated(jwtToken);
 
       if (authResponse.isError || !authResponse.isAuthenticated) {
@@ -38,8 +56,14 @@ export class ReportsController extends BaseController {
       ] = await Promise.all([
         this.nodeApiService.getNodeSettings(jwtToken),
         this.nodeApiService.getNewContentCounts(jwtToken),
-        this.nodeApiService.getVideoReports(jwtToken),
-        this.nodeApiService.getVideoReportsArchive(jwtToken),
+        this.nodeApiService.getVideoReports(jwtToken, {
+          offset: pagination.reportPage * 100,
+          search: pagination.search,
+        }),
+        this.nodeApiService.getVideoReportsArchive(jwtToken, {
+          offset: pagination.archivePage * 100,
+          search: pagination.search,
+        }),
       ]);
 
       const newContentCounts = newContentCountsResponse.newContentCounts;
@@ -51,6 +75,9 @@ export class ReportsController extends BaseController {
 
       return await reply.view('reports-videos', {
         model: {
+          ...pagination,
+          reportHasMore: videoReportsResponse.hasMore ?? false,
+          archiveHasMore: videoReportsArchiveResponse.hasMore ?? false,
           nodeSettings,
           newContentCounts,
           videoReports,
@@ -74,7 +101,10 @@ export class ReportsController extends BaseController {
         return await this.sendError(reply, 'Not authenticated', 401);
       }
 
-      const data = await this.nodeApiService.getVideoReports(jwtToken);
+      const data = await this.nodeApiService.getVideoReports(jwtToken, {
+        offset: pageNumber((request.query as { offset?: string } | undefined)?.offset),
+        search: pages(request).search,
+      });
       return await reply.send(data);
     } catch (error) {
       this.logger.error('Error in getVideosAll', error);
@@ -92,7 +122,10 @@ export class ReportsController extends BaseController {
         return await this.sendError(reply, 'Not authenticated', 401);
       }
 
-      const data = await this.nodeApiService.getCommentReportsArchive(jwtToken);
+      const data = await this.nodeApiService.getCommentReportsArchive(jwtToken, {
+        offset: pageNumber((request.query as { offset?: string } | undefined)?.offset),
+        search: pages(request).search,
+      });
       return await reply.send(data);
     } catch (error) {
       this.logger.error('Error in getCommentsArchiveAll', error);
@@ -165,6 +198,7 @@ export class ReportsController extends BaseController {
   ): Promise<FastifyReply> => {
     try {
       const jwtToken = request.session.jwtToken ?? '';
+      const pagination = pages(request);
       const authResponse = await this.nodeApiService.isAuthenticated(jwtToken);
 
       if (authResponse.isError || !authResponse.isAuthenticated) {
@@ -185,8 +219,14 @@ export class ReportsController extends BaseController {
       ] = await Promise.all([
         this.nodeApiService.getNodeSettings(jwtToken),
         this.nodeApiService.getNewContentCounts(jwtToken),
-        this.nodeApiService.getCommentReports(jwtToken),
-        this.nodeApiService.getCommentReportsArchive(jwtToken),
+        this.nodeApiService.getCommentReports(jwtToken, {
+          offset: pagination.reportPage * 100,
+          search: pagination.search,
+        }),
+        this.nodeApiService.getCommentReportsArchive(jwtToken, {
+          offset: pagination.archivePage * 100,
+          search: pagination.search,
+        }),
       ]);
 
       const newContentCounts = newContentCountsResponse.newContentCounts;
@@ -198,6 +238,9 @@ export class ReportsController extends BaseController {
 
       return await reply.view('reports-comments', {
         model: {
+          ...pagination,
+          reportHasMore: commentReportsResponse.hasMore ?? false,
+          archiveHasMore: commentReportsArchiveResponse.hasMore ?? false,
           nodeSettings,
           newContentCounts,
           commentReports,
@@ -221,7 +264,10 @@ export class ReportsController extends BaseController {
         return await this.sendError(reply, 'Not authenticated', 401);
       }
 
-      const data = await this.nodeApiService.getCommentReports(jwtToken);
+      const data = await this.nodeApiService.getCommentReports(jwtToken, {
+        offset: pageNumber((request.query as { offset?: string } | undefined)?.offset),
+        search: pages(request).search,
+      });
       return await reply.send(data);
     } catch (error) {
       this.logger.error('Error in getCommentsAll', error);
@@ -239,7 +285,10 @@ export class ReportsController extends BaseController {
         return await this.sendError(reply, 'Not authenticated', 401);
       }
 
-      const data = await this.nodeApiService.getVideoReportsArchive(jwtToken);
+      const data = await this.nodeApiService.getVideoReportsArchive(jwtToken, {
+        offset: pageNumber((request.query as { offset?: string } | undefined)?.offset),
+        search: pages(request).search,
+      });
       return await reply.send(data);
     } catch (error) {
       this.logger.error('Error in getVideosArchiveAll', error);

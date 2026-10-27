@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer';
 import WebSocket from 'ws';
+import { sendBounded } from '@/utils/socket-budget.js';
 import { BaseService } from './base.js';
 import type { Logger } from '@/utils/logger.js';
 import type { Config } from '@/config/index.js';
@@ -45,7 +46,7 @@ export class NodeSocketService extends BaseService {
     const url = `${settings.nodeWebsocketProtocol}://${settings.nodeIp}:${String(settings.nodePort)}`;
     this.logger.info(`Connecting to Node WebSocket at ${url}`);
 
-    const websocketClient = new WebSocket(url);
+    const websocketClient = new WebSocket(url, { maxPayload: 256 * 1024 });
     this.websocketClient = websocketClient;
 
     websocketClient.on('open', () => {
@@ -56,7 +57,8 @@ export class NodeSocketService extends BaseService {
 
       this.logger.info(`Validating connection to Node: ${url}`);
       this._isConnected = true;
-      websocketClient.send(
+      sendBounded(
+        websocketClient,
         JSON.stringify({
           eventName: 'register',
           socketType: 'moartube_client',
@@ -129,7 +131,7 @@ export class NodeSocketService extends BaseService {
       return;
     }
 
-    this.websocketClient.send(JSON.stringify(message));
+    sendBounded(this.websocketClient, JSON.stringify(message));
   }
 
   /**
@@ -163,7 +165,7 @@ export class NodeSocketService extends BaseService {
         }, 3000);
 
         // this.logger.info(`Sending ping... Token starts with: ${jwtToken.substring(0, 5)}`);
-        websocketClient.send(JSON.stringify({ eventName: 'ping', jwtToken }));
+        sendBounded(websocketClient, JSON.stringify({ eventName: 'ping', jwtToken }));
       }
     }, 1000);
   }
@@ -251,7 +253,9 @@ export class NodeSocketService extends BaseService {
         this.socketService.broadcast('echo', originalData);
         break;
       case 'streaming_stopping':
-        this.liveStreamService.stopLiveStream(videoId);
+        void this.liveStreamService.stopLiveStream(videoId).catch((error: unknown) => {
+          this.logger.error('Failed stopping live stream', error);
+        });
         break;
       case 'streaming_stopped':
         this.socketService.broadcast('echo', originalData);

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { spawn, type ChildProcess } from 'node:child_process';
 import sharp from 'sharp';
 import { BaseService } from './base.js';
+import { encodingPool } from '@/utils/work-pool.js';
 import type { Logger } from '@/utils/logger.js';
 import type { SettingsRepository } from '@/database/repositories/settings.js';
 import type { BaseNodeResponse } from '@/types/node-api.js';
@@ -45,49 +46,54 @@ export class VideoImportService extends BaseService {
   }
 
   private async runFfmpeg(videoId: string, args: string[]): Promise<string> {
-    if (this.cancelledImports.has(videoId)) {
-      throw new Error('Import cancelled');
-    }
-
-    const ffmpegPromise = new Promise<string>((resolve, reject) => {
-      const process = spawn(this.ffmpegService.getPath(), args);
-
-      this.activeImports.set(videoId, process);
-
-      let stderr = '';
-
-      process.stderr.on('data', (data: Buffer) => {
-        stderr += data.toString();
-      });
-
-      process.on('close', (_code) => {
-        this.activeImports.delete(videoId);
-
-        if (this.cancelledImports.has(videoId)) {
-          reject(new Error('Import cancelled'));
-          return;
-        }
-
-        resolve(stderr);
-      });
-
-      process.on('error', (err) => {
-        this.activeImports.delete(videoId);
-        reject(err);
-      });
-    });
-
-    // Race against an explicit cancellation signal so a stop request arriving
-    // at (almost) the same moment the process closes naturally can't lose to
-    // the 'close' handler having already read a stale, not-yet-set flag.
-    const cancellationPromise = new Promise<string>((_resolve, reject) => {
-      this.cancellationRejectors.set(videoId, reject);
-    });
-
+    const release = await encodingPool.acquire();
     try {
-      return await Promise.race([ffmpegPromise, cancellationPromise]);
+      if (this.cancelledImports.has(videoId)) {
+        throw new Error('Import cancelled');
+      }
+
+      const ffmpegPromise = new Promise<string>((resolve, reject) => {
+        const process = spawn(this.ffmpegService.getPath(), args);
+
+        this.activeImports.set(videoId, process);
+
+        let stderr = '';
+
+        process.stderr.on('data', (data: Buffer) => {
+          stderr = (stderr + data.toString()).slice(-64 * 1024);
+        });
+
+        process.on('close', (_code) => {
+          this.activeImports.delete(videoId);
+
+          if (this.cancelledImports.has(videoId)) {
+            reject(new Error('Import cancelled'));
+            return;
+          }
+
+          resolve(stderr);
+        });
+
+        process.on('error', (err) => {
+          this.activeImports.delete(videoId);
+          reject(err);
+        });
+      });
+
+      // Race against an explicit cancellation signal so a stop request arriving
+      // at (almost) the same moment the process closes naturally can't lose to
+      // the 'close' handler having already read a stale, not-yet-set flag.
+      const cancellationPromise = new Promise<string>((_resolve, reject) => {
+        this.cancellationRejectors.set(videoId, reject);
+      });
+
+      try {
+        return await Promise.race([ffmpegPromise, cancellationPromise]);
+      } finally {
+        this.cancellationRejectors.delete(videoId);
+      }
     } finally {
-      this.cancellationRejectors.delete(videoId);
+      release();
     }
   }
 

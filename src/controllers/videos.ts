@@ -657,7 +657,7 @@ export class VideosController extends BaseController {
     try {
       const jwtToken = request.session.jwtToken ?? '';
       const { videoId } = request.params as VideoIdParams;
-      const data = await request.file();
+      const data = await request.file({ limits: { fileSize: 20 * 1024 ** 2, files: 1, parts: 2 } });
 
       if (!data) {
         return await this.sendError(reply, 'Thumbnail file is missing');
@@ -665,7 +665,7 @@ export class VideosController extends BaseController {
 
       const buffer = await data.toBuffer();
       // Resize
-      const thumbnailBuffer = await sharp(buffer)
+      const thumbnailBuffer = await sharp(buffer, { limitInputPixels: 40_000_000 })
         .resize({ width: 100 })
         .resize(100, 100)
         .jpeg({ quality: 90 })
@@ -696,7 +696,7 @@ export class VideosController extends BaseController {
     try {
       const jwtToken = request.session.jwtToken ?? '';
       const { videoId } = request.params as VideoIdParams;
-      const data = await request.file();
+      const data = await request.file({ limits: { fileSize: 20 * 1024 ** 2, files: 1, parts: 2 } });
 
       if (!data) {
         return await this.sendError(reply, 'Preview file is missing');
@@ -704,7 +704,7 @@ export class VideosController extends BaseController {
 
       const buffer = await data.toBuffer();
       // Resize
-      const previewBuffer = await sharp(buffer)
+      const previewBuffer = await sharp(buffer, { limitInputPixels: 40_000_000 })
         .resize({ width: 512 })
         .resize(512, 288)
         .jpeg({ quality: 90 })
@@ -735,7 +735,7 @@ export class VideosController extends BaseController {
     try {
       const jwtToken = request.session.jwtToken ?? '';
       const { videoId } = request.params as VideoIdParams;
-      const data = await request.file();
+      const data = await request.file({ limits: { fileSize: 20 * 1024 ** 2, files: 1, parts: 2 } });
 
       if (!data) {
         return await this.sendError(reply, 'Poster file is missing');
@@ -743,7 +743,7 @@ export class VideosController extends BaseController {
 
       const buffer = await data.toBuffer();
       // Resize
-      const posterBuffer = await sharp(buffer)
+      const posterBuffer = await sharp(buffer, { limitInputPixels: 40_000_000 })
         .resize({ width: 1280 })
         .resize(1280, 720)
         .jpeg({ quality: 90 })

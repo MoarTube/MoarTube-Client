@@ -127,6 +127,7 @@
 			width: 0;
 		}
 	</style>
+<script src="/javascript/memory-limits.js"></script>
 </head>
 
 <body class="g-sidenav-show bg-gray-100">
@@ -954,21 +955,10 @@
 									$('#videos_table_row_' + videoId).find('td').eq(5).html('<p class="text-secondary mb-0 text-sm">' + self.calculateBandwidthUsage_MB(bandwidth) + '</p>');
 								}
 
-								$.ajax({ type: 'GET', url: self.EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/thumbnail.jpg', xhrFields: { responseType: 'blob' } })
-									.done(function (data, textStatus, xhr) {
-										const objectURL = URL.createObjectURL(data);
-
-										if ($('#video-thumbnail-loading-spinner-' + videoId).length) {
-											$('#video-thumbnail-loading-spinner-' + videoId).replaceWith(
-												'<img id="video-thumbnail-' + videoId + '" src="' + objectURL + '" class="avatar avatar-sm me-3 cursor-pointer" alt="avatar image">'
-											);
-										} else if ($('#video-thumbnail-' + videoId).length) {
-											$('#video-thumbnail-' + videoId).attr('src', objectURL);
-										}
-									})
-									.fail(function () {
-										console.error('Could not retrieve stream thumbnail for video id:', videoId, error);
-									});
+								if ($('#video-thumbnail-loading-spinner-' + videoId).length) {
+  $('#video-thumbnail-loading-spinner-' + videoId).replaceWith('<img id="video-thumbnail-' + videoId + '" class="avatar avatar-sm me-3 cursor-pointer" alt="video thumbnail">');
+}
+MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId), self.EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/thumbnail.jpg');
 							}
 							else if (type === 'streaming_stopped') {
 								const videoId = data.payload.videoId;

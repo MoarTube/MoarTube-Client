@@ -26,6 +26,10 @@ import {
 } from '@/utils/hardware.js';
 import sharp from 'sharp';
 import fs from 'node:fs';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { randomUUID } from 'node:crypto';
+import { writeUpload } from '@/utils/stream-files.js';
 
 // Disable sharp cache
 sharp.cache(false);
@@ -265,7 +269,7 @@ export class SettingsController extends BaseController {
     request: FastifyRequest,
     reply: FastifyReply
   ): Promise<FastifyReply> => {
-    const parts = request.files();
+    const parts = request.files({ limits: { fileSize: 20 * 1024 ** 2, files: 2, parts: 4 } });
     let avatarFile: Buffer | undefined;
 
     for await (const part of parts) {
@@ -275,12 +279,12 @@ export class SettingsController extends BaseController {
     }
 
     if (avatarFile) {
-      const iconBuffer = await sharp(avatarFile)
+      const iconBuffer = await sharp(avatarFile, { limitInputPixels: 40_000_000 })
         .resize({ width: 48 })
         .resize(48, 48)
         .png({ compressionLevel: 9 })
         .toBuffer();
-      const avatarBuffer = await sharp(avatarFile)
+      const avatarBuffer = await sharp(avatarFile, { limitInputPixels: 40_000_000 })
         .resize({ width: 128 })
         .resize(128, 128)
         .png({ compressionLevel: 9 })
@@ -301,7 +305,7 @@ export class SettingsController extends BaseController {
     request: FastifyRequest,
     reply: FastifyReply
   ): Promise<FastifyReply> => {
-    const parts = request.files();
+    const parts = request.files({ limits: { fileSize: 20 * 1024 ** 2, files: 2, parts: 4 } });
     let bannerFile: Buffer | undefined;
 
     for await (const part of parts) {
@@ -311,7 +315,7 @@ export class SettingsController extends BaseController {
     }
 
     if (bannerFile) {
-      const bannerBuffer = await sharp(bannerFile)
+      const bannerBuffer = await sharp(bannerFile, { limitInputPixels: 40_000_000 })
         .resize({ width: 2560 })
         .resize(2560, 424)
         .png({ compressionLevel: 9 })
@@ -418,7 +422,9 @@ export class SettingsController extends BaseController {
       caFiles: [] as UploadedFile[],
     };
 
-    for await (const part of request.parts()) {
+    for await (const part of request.parts({
+      limits: { fileSize: 1024 ** 2, files: 12, parts: 14 },
+    })) {
       if (part.type !== 'file') {
         continue;
       }
@@ -473,19 +479,20 @@ export class SettingsController extends BaseController {
         nodeSettings.storageConfig?.storageMode === 's3provider' &&
         nodeSettings.storageConfig.s3Config
       ) {
-        const { videosData } = await this.nodeApiService.getVideoDataAll(jwtToken);
         const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(jwtToken);
 
         // s3Config from Node already has nested shape: { bucketName, s3ProviderClientConfig }
         const s3ValidationConfig = nodeSettings.storageConfig
           .s3Config as unknown as S3ValidationConfig;
 
-        const videosForUpdate = videosData as VideoForManifestUpdate[];
-        await this.s3Service.updateM3u8ManifestsWithExternalVideosBaseUrl(
-          s3ValidationConfig,
-          videosForUpdate,
-          externalVideosBaseUrl
-        );
+        for await (const videosData of this.nodeApiService.getVideoDataPages(jwtToken)) {
+          const videosForUpdate = videosData as VideoForManifestUpdate[];
+          await this.s3Service.updateM3u8ManifestsWithExternalVideosBaseUrl(
+            s3ValidationConfig,
+            videosForUpdate,
+            externalVideosBaseUrl
+          );
+        }
       }
     } catch (error) {
       this.logger.error('Failed to update S3 manifests', error as Error);
@@ -661,20 +668,20 @@ export class SettingsController extends BaseController {
       await this.s3Service.validateS3Config(s3ValidationConfig);
     }
 
-    const videosData = (await this.nodeApiService.getVideoDataAll(jwtToken))['videosData'];
-
     const validStorageConfig = storageConfig as StorageConfig;
     const response = await this.nodeApiService.storageConfigToggle(jwtToken, validStorageConfig);
 
     if (!response.isError && storageConfig.storageMode === 's3provider' && s3ValidationConfig) {
       try {
         const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(jwtToken);
-        const videosForUpdate = videosData as VideoForManifestUpdate[];
-        await this.s3Service.updateM3u8ManifestsWithExternalVideosBaseUrl(
-          s3ValidationConfig,
-          videosForUpdate,
-          externalVideosBaseUrl
-        );
+        for await (const videosData of this.nodeApiService.getVideoDataPages(jwtToken)) {
+          const videosForUpdate = videosData as VideoForManifestUpdate[];
+          await this.s3Service.updateM3u8ManifestsWithExternalVideosBaseUrl(
+            s3ValidationConfig,
+            videosForUpdate,
+            externalVideosBaseUrl
+          );
+        }
       } catch (error) {
         this.logger.error('Failed to update S3 manifests after storage toggle', error as Error);
       }
@@ -706,21 +713,30 @@ export class SettingsController extends BaseController {
     reply: FastifyReply
   ): Promise<FastifyReply> => {
     const jwtToken = request.session.jwtToken ?? '';
-    const parts = request.files();
-    let databaseFile: Buffer | undefined;
-
-    for await (const part of parts) {
-      if (part.fieldname === 'database_file') {
-        databaseFile = await part.toBuffer();
-        break;
+    const temporary = path.join(tmpdir(), 'moartube-client-import-' + randomUUID() + '.json');
+    let found = false;
+    try {
+      for await (const part of request.files({
+        limits: { files: 1, parts: 2, fileSize: 10 * 1024 ** 3 },
+      })) {
+        if (part.fieldname === 'database_file') {
+          found = true;
+          await writeUpload(part, temporary, 10 * 1024 ** 3);
+        } else {
+          part.file.resume();
+        }
       }
-    }
-
-    if (databaseFile) {
-      const response = await this.nodeApiService.settingsImportDatabase(jwtToken, databaseFile);
-      return await reply.send(response);
-    } else {
-      return await this.sendError(reply, 'database file is missing', 400);
+      if (!found) {
+        return await this.sendError(reply, 'database file is missing', 400);
+      }
+      const input = fs.createReadStream(temporary);
+      try {
+        return await reply.send(await this.nodeApiService.settingsImportDatabase(jwtToken, input));
+      } finally {
+        input.destroy();
+      }
+    } finally {
+      await fs.promises.rm(temporary, { force: true });
     }
   };
 
@@ -729,22 +745,11 @@ export class SettingsController extends BaseController {
     reply: FastifyReply
   ): Promise<FastifyReply> => {
     const jwtToken = request.session.jwtToken ?? '';
-    const response = (await this.nodeApiService.settingsExportDatabase(jwtToken)) as {
-      isError: boolean;
-      database: unknown;
-      message?: string;
-    };
-
-    if (response.isError) {
-      return await reply.status(500).send(response);
-    } else {
-      const databaseJsonString = JSON.stringify(response.database);
-      reply.header(
-        'Content-Disposition',
-        `attachment; filename=database-${String(Date.now())}.json`
-      );
-      reply.header('Content-Type', 'application/json');
-      return await reply.send(databaseJsonString);
-    }
+    const stream = await this.nodeApiService.settingsExportDatabase(jwtToken);
+    reply.header(
+      'Content-Disposition',
+      'attachment; filename=database-' + String(Date.now()) + '.json'
+    );
+    return reply.type('application/json').send(stream);
   };
 }

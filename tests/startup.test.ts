@@ -66,14 +66,18 @@ describe('startup launcher', () => {
     const result = start(root, ['--clean']);
     expect(result.status, String(result.stderr)).toBe(0);
     expect(String(result.stdout)).toContain('client started');
-    for (const name of targets) expect(existsSync(path.join(root, name, 'old'))).toBe(false);
+    for (const name of targets) {
+      expect(existsSync(path.join(root, name, 'old'))).toBe(false);
+    }
   });
 
   it.each([[], ['clean']])('keeps existing directories without --clean (%j)', (args) => {
     const root = fixture();
     writeFileSync(path.join(root, 'dist/moartube-client.js'), "console.log('client started');");
     expect(start(root, args).status).toBe(0);
-    for (const name of targets) expect(existsSync(path.join(root, name, 'old'))).toBe(true);
+    for (const name of targets) {
+      expect(existsSync(path.join(root, name, 'old'))).toBe(true);
+    }
   });
 
   it('does not start when the build fails', () => {
@@ -87,6 +91,8 @@ describe('startup launcher', () => {
   it('rejects clean without sources before deleting data', () => {
     const root = fixture();
     expect(start(root, ['--clean']).status).toBe(1);
-    for (const name of targets) expect(existsSync(path.join(root, name, 'old'))).toBe(true);
+    for (const name of targets) {
+      expect(existsSync(path.join(root, name, 'old'))).toBe(true);
+    }
   });
 });

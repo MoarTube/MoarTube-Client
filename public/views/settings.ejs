@@ -91,6 +91,7 @@
 			outline-offset: 0.125rem;
 		}
 	</style>
+<script src="/javascript/memory-limits.js"></script>
 </head>
 
 <body class="g-sidenav-show bg-gray-100">
@@ -1116,19 +1117,8 @@
 									self.showAlert(true, data.message);
 								}
 								else {
-									$.ajax({ type: 'GET', url: '/settings/node/avatar', xhrFields: { responseType: 'blob' } })
-										.done(function (data, textStatus, xhr) {
-											const objectURL = URL.createObjectURL(data);
-
-											$('.node-avatar').attr('src', objectURL);
-
-											self.showAlert(false);
-										})
-										.fail(function () {
-											console.error('could not retrieve uploaded banner', error);
-
-											Swal.close();
-										});
+									document.querySelectorAll('.node-avatar').forEach(image => MoarTubeMemory.refreshImage(image, '/settings/node/avatar', 0));
+self.showAlert(false);
 								}
 							})
 							.fail(function () {
@@ -1162,19 +1152,8 @@
 								self.showAlert(true, data.message);
 							}
 							else {
-								$.ajax({ type: 'GET', url: '/settings/node/banner', xhrFields: { responseType: 'blob' } })
-									.done(function (data, textStatus, xhr) {
-										const objectURL = URL.createObjectURL(data);
-
-										$('#node-banner').attr('src', objectURL);
-
-										self.showAlert(false);
-									})
-									.fail(function () {
-										console.error('could not retrieve uploaded banner', error);
-
-										Swal.close();
-									});
+								document.querySelectorAll('#node-banner').forEach(image => MoarTubeMemory.refreshImage(image, '/settings/node/banner', 0));
+self.showAlert(false);
 							}
 						})
 						.fail(function () {

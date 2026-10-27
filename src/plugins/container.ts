@@ -10,10 +10,16 @@ declare module 'fastify' {
 }
 
 export default fp((fastify, opts: { container: AwilixContainer<ContainerCradle> }, done) => {
+  fastify.addHook('onClose', (_instance, done) => {
+    opts.container.resolve('nodeApiService').close();
+    opts.container.resolve('s3Service').close();
+    opts.container.resolve('nodeSocketService').disconnect();
+    done();
+  });
   // Attach container to every request
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fastify.decorateRequest('container', null as any);
-  
+
   fastify.addHook('onRequest', (req) => {
     req.container = opts.container;
     return Promise.resolve();

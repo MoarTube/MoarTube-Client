@@ -1,4 +1,5 @@
 import { BaseService } from './base.js';
+import { uploadPool } from '@/utils/work-pool.js';
 import type { Logger } from '@/utils/logger.js';
 import {
   S3Client,
@@ -18,7 +19,8 @@ import type { S3ClientConfig } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { STSClient, GetCallerIdentityCommand } from '@aws-sdk/client-sts';
 import type { STSClientConfig } from '@aws-sdk/client-sts';
-import type { Readable } from 'node:stream';
+import { Readable } from 'node:stream';
+import { transformManifest } from '@/utils/manifest-transform.js';
 import * as fs from 'node:fs';
 import type { S3ProviderClientConfig as S3ProviderClientConfigType } from '@/types/node-api.js';
 
@@ -43,11 +45,24 @@ export interface VideoForManifestUpdate {
 }
 
 export class S3Service extends BaseService {
+  private client: S3Client | undefined;
+  private clientKey = '';
+  public close(): void {
+    this.client?.destroy();
+    this.client = undefined;
+    this.clientKey = '';
+  }
+
   constructor(logger: Logger) {
     super('s3Service', logger);
   }
 
   private createClientFromConfig(s3ProviderClientConfig: S3ProviderClientConfigType): S3Client {
+    const key = JSON.stringify(s3ProviderClientConfig);
+    if (this.client && key === this.clientKey) {
+      return this.client;
+    }
+    this.close();
     const config: S3ClientConfig = {
       region: s3ProviderClientConfig.region ?? 'us-east-1',
       credentials: {
@@ -59,24 +74,15 @@ export class S3Service extends BaseService {
           : {}),
       },
       forcePathStyle: s3ProviderClientConfig.forcePathStyle ?? true,
+      requestHandler: { connectionTimeout: 10_000, requestTimeout: 120_000 },
     };
     if (s3ProviderClientConfig.endpoint !== undefined && s3ProviderClientConfig.endpoint !== '') {
       config.endpoint = s3ProviderClientConfig.endpoint;
     }
 
-    return new S3Client(config);
-  }
-
-  // Helper method to convert stream to string
-  private async streamToString(stream: Readable): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const chunks: Buffer[] = [];
-      stream.on('data', (chunk: Buffer) => chunks.push(chunk));
-      stream.on('error', reject);
-      stream.on('end', () => {
-        resolve(Buffer.concat(chunks).toString('utf8'));
-      });
-    });
+    this.clientKey = key;
+    this.client = new S3Client(config);
+    return this.client;
   }
 
   public async validateS3Config(s3Config: S3ValidationConfig): Promise<void> {
@@ -259,21 +265,22 @@ export class S3Service extends BaseService {
           return;
         }
 
-        const oldManifest = await this.streamToString(response.Body as Readable);
-        // Regex from legacy code
-        const newManifest = oldManifest.replaceAll(
-          /(https?:\/\/).*?(\/external\/)/g,
-          externalVideosBaseUrl + '$2'
-        );
-
-        await s3Client.send(
-          new PutObjectCommand({
-            Bucket: bucketName,
-            Key: manifestKey,
-            Body: newManifest,
-            ContentType: 'application/vnd.apple.mpegurl',
-          })
-        );
+        const body = response.Body as Readable;
+        try {
+          const rewritten = Readable.from(
+            transformManifest(body, (line) =>
+              line.replaceAll(/(https?:\/\/).*?(\/external\/)/g, externalVideosBaseUrl + '$2')
+            )
+          );
+          await this.putObjectFromData(
+            s3Config,
+            manifestKey,
+            rewritten,
+            'application/vnd.apple.mpegurl'
+          );
+        } finally {
+          body.destroy();
+        }
       } catch {
         // Ignore errors as per legacy
       }
@@ -299,14 +306,19 @@ export class S3Service extends BaseService {
     s3Config: S3ValidationConfig,
     key: string,
     data: Buffer | string | Readable | Blob | Uint8Array,
-    contentType: string
+    contentType: string,
+    signal?: AbortSignal
   ): Promise<void> {
     const { bucketName, s3ProviderClientConfig } = s3Config;
     const client = this.createClientFromConfig(s3ProviderClientConfig);
 
+    const release = await uploadPool.acquire();
     try {
+      signal?.throwIfAborted();
       const upload = new Upload({
         client,
+        queueSize: 1,
+        partSize: 5 * 1024 ** 2,
         params: {
           Bucket: bucketName,
           Key: key,
@@ -315,17 +327,28 @@ export class S3Service extends BaseService {
         },
       });
 
-      await upload.done();
+      const abort = (): void => {
+        void upload.abort().catch(() => {});
+      };
+      signal?.addEventListener('abort', abort, { once: true });
+      try {
+        await upload.done();
+      } finally {
+        signal?.removeEventListener('abort', abort);
+      }
     } catch (error) {
       this.logger.error(`Failed to put object ${key}`, error as Error);
       throw error;
+    } finally {
+      release();
     }
   }
 
   public async uploadFilesWithProgress(
     s3Config: S3ValidationConfig,
     files: Array<{ key: string; filePath: string; contentType: string }>,
-    onProgress: (percent: number) => void
+    onProgress: (percent: number) => void,
+    signal?: AbortSignal
   ): Promise<void> {
     const { bucketName, s3ProviderClientConfig } = s3Config;
     const client = this.createClientFromConfig(s3ProviderClientConfig);
@@ -342,70 +365,67 @@ export class S3Service extends BaseService {
       return;
     }
 
-    const CONCURRENCY_LIMIT = 5;
-    const fileProgress = new Map<string, number>();
-
-    // Helper to run a single upload
-    const uploadFile = async (file: {
-      key: string;
-      filePath: string;
-      contentType: string;
-    }): Promise<void> => {
-      const fileStream = fs.createReadStream(file.filePath);
-
-      try {
-        const upload = new Upload({
-          client,
-          params: {
-            Bucket: bucketName,
-            Key: file.key,
-            Body: fileStream,
-            ContentType: file.contentType,
-          },
-        });
-
-        upload.on('httpUploadProgress', (progress) => {
-          if (progress.loaded !== undefined) {
-            fileProgress.set(file.key, progress.loaded);
-
-            let currentTotal = 0;
-            for (const size of fileProgress.values()) {
-              currentTotal += size;
-            }
-
-            const percent = Math.min(100, Math.round((currentTotal / totalSize) * 100));
-            onProgress(percent);
+    let nextIndex = 0,
+      completedBytes = 0,
+      failed = false;
+    const pending = new Set<Upload>();
+    const workers = Array.from({ length: 2 }, async () => {
+      while (!failed) {
+        const file = files[nextIndex++];
+        if (!file) {
+          break;
+        }
+        await uploadPool.run(async () => {
+          signal?.throwIfAborted();
+          if (failed) {
+            return;
+          }
+          const size = (await fs.promises.stat(file.filePath)).size;
+          const input = fs.createReadStream(file.filePath);
+          const upload = new Upload({
+            client,
+            queueSize: 1,
+            partSize: 5 * 1024 ** 2,
+            params: {
+              Bucket: bucketName,
+              Key: file.key,
+              Body: input,
+              ContentType: file.contentType,
+            },
+          });
+          pending.add(upload);
+          let loaded = 0;
+          upload.on('httpUploadProgress', (progress) => {
+            const next = Math.max(loaded, Math.min(size, progress.loaded ?? 0));
+            completedBytes += next - loaded;
+            loaded = next;
+            onProgress(Math.min(99, Math.floor((completedBytes / totalSize) * 100)));
+          });
+          const abort = (): void => {
+            void upload.abort().catch(() => {});
+          };
+          signal?.addEventListener('abort', abort, { once: true });
+          try {
+            await upload.done();
+            completedBytes += size - loaded;
+            onProgress(Math.min(99, Math.floor((completedBytes / totalSize) * 100)));
+          } catch (error) {
+            failed = true;
+            await Promise.allSettled([...pending].map((other) => other.abort()));
+            throw error;
+          } finally {
+            signal?.removeEventListener('abort', abort);
+            pending.delete(upload);
+            input.destroy();
           }
         });
-
-        await upload.done();
-        // Ensure we mark full size done in case progress didn't fire exactly at end
-        const stats = await fs.promises.stat(file.filePath);
-        fileProgress.set(file.key, stats.size);
-      } catch (error) {
-        this.logger.error(`Failed to upload ${file.key}`, error as Error);
-        throw error;
       }
-    };
-
-    // Worker Queue
-    const queue = [...files];
-    const workers = [];
-
-    for (let i = 0; i < CONCURRENCY_LIMIT; i++) {
-      workers.push(
-        (async (): Promise<void> => {
-          while (queue.length > 0) {
-            const file = queue.shift();
-            if (file) {
-              await uploadFile(file);
-            }
-          }
-        })()
-      );
+    });
+    const results = await Promise.allSettled(workers);
+    const failure = results.find((result) => result.status === 'rejected');
+    if (failure?.status === 'rejected') {
+      throw failure.reason;
     }
-
-    await Promise.all(workers);
     onProgress(100);
   }
 
@@ -509,29 +529,25 @@ export class S3Service extends BaseService {
           throw new Error('Empty response body');
         }
 
-        const dynamicManifest = await response.Body.transformToString('utf-8');
-
-        let staticManifest: string;
-        if (dynamicKey.includes('manifest-master.m3u8')) {
-          staticManifest = dynamicManifest.replaceAll('/dynamic/', '/static/');
-        } else {
-          // Convert EVENT to VOD and end list
-          staticManifest = dynamicManifest.replace(
-            '#EXT-X-PLAYLIST-TYPE:EVENT',
-            '#EXT-X-PLAYLIST-TYPE:VOD'
+        const body = response.Body as Readable;
+        try {
+          const master = dynamicKey.includes('manifest-master.m3u8');
+          const rewritten = Readable.from(
+            transformManifest(
+              body,
+              (line) => (master ? line.replaceAll('/dynamic/', '/static/') : line),
+              !master
+            )
           );
-          staticManifest = staticManifest.trim() + '\n#EXT-X-ENDLIST\n';
+          await this.putObjectFromData(
+            s3Config,
+            staticKey,
+            rewritten,
+            'application/vnd.apple.mpegurl'
+          );
+        } finally {
+          body.destroy();
         }
-
-        this.logger.debug(`Uploading static manifest: ${staticKey}`);
-        await client.send(
-          new PutObjectCommand({
-            Bucket: bucketName,
-            Key: staticKey,
-            Body: staticManifest,
-            ContentType: 'application/vnd.apple.mpegurl',
-          })
-        );
 
         this.logger.debug(`Deleting dynamic manifest: ${dynamicKey}`);
         await client.send(new DeleteObjectCommand({ Bucket: bucketName, Key: dynamicKey }));
@@ -544,14 +560,14 @@ export class S3Service extends BaseService {
       }
     };
 
+    await performConversion(
+      'external/videos/' + videoId + '/adaptive/m3u8/dynamic/manifests/manifest-master.m3u8',
+      'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-master.m3u8'
+    );
     for (const resolution of resolutions) {
-      const dynamicMasterManifestKey = `external/videos/${videoId}/adaptive/m3u8/dynamic/manifests/manifest-master.m3u8`;
-      const staticMasterManifestKey = `external/videos/${videoId}/adaptive/m3u8/static/manifests/manifest-master.m3u8`;
-
       const dynamicManifestKey = `external/videos/${videoId}/adaptive/m3u8/dynamic/manifests/manifest-${resolution}.m3u8`;
       const staticManifestKey = `external/videos/${videoId}/adaptive/m3u8/static/manifests/manifest-${resolution}.m3u8`;
 
-      await performConversion(dynamicMasterManifestKey, staticMasterManifestKey);
       await performConversion(dynamicManifestKey, staticManifestKey);
     }
   }
