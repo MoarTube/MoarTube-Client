@@ -1,0 +1,32 @@
+name: Windows FFmpeg candidate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify tooling
+        run: npm run ffmpeg:test:tooling
+      - name: Build locked Windows sources
+        run: npm run ffmpeg:build:windows
+      - name: Package candidate with source and evidence
+        run: npm run ffmpeg:package:windows
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: ffmpeg-win32-x64-candidate
+          path: |
+            build/ffmpeg/artifacts/*.zip
+            build/ffmpeg/artifacts/*.sha256
+            build/ffmpeg/reports/
+          retention-days: 14

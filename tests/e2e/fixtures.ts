@@ -3,7 +3,7 @@ import type { Page, Locator, Response } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import ffmpeg from 'ffmpeg-static';
+import { resolveFfmpegBinaries } from '../../src/utils/ffmpeg-path.js';
 import checkNode from './support/check-node.js';
 import { readClientLogTail } from './support/client-logs.js';
 
@@ -85,7 +85,7 @@ export async function createMedia(
     args.push('-c:a', extension === 'mp4' ? 'aac' : 'libopus');
   }
   args.push('-y', file);
-  await promisify(execFile)((ffmpeg as unknown as string | null) ?? 'ffmpeg', args, {
+  await promisify(execFile)(resolveFfmpegBinaries().ffmpeg, args, {
     timeout: 120_000,
   });
 }

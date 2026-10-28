@@ -8,6 +8,13 @@ export class SocketService {
 
   constructor(private readonly logger: Logger) {}
 
+  public close(): void {
+    for (const client of this.clients.keys()) {
+      client.terminate();
+    }
+    this.clients.clear();
+  }
+
   public handleConnection(socket: WebSocket, key?: string): void {
     this.clients.set(socket, key);
     this.logger.info(

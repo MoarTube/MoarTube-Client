@@ -8,7 +8,10 @@ const webSocket = require('ws');
 const crypto = require('crypto');
 const engine = require('express-dot-engine');
 
-const ffmpegPath = String(require('ffmpeg-static')).replace('app.asar', 'app.asar.unpacked');
+const ffmpegPath = process.env.FFMPEG_BIN || path.resolve(__dirname, '..', 'build', 'ffmpeg', 'install', `${process.platform}-${process.arch}`, 'bin', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
+if (!fs.existsSync(ffmpegPath)) {
+	throw new Error('Compile the MoarTube FFmpeg dependency first. On Windows x64, run: npm.cmd run ffmpeg:build:windows');
+}
 
 const {
 	logDebugMessageToConsole, performEncodingDecodingAssessment, cleanVideosDirectory, getPublicDirectoryPath, getDataDirectoryPath,

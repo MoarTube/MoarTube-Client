@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import ejs from 'ejs';
-import ffmpeg from 'ffmpeg-static';
+import { resolveFfmpegBinaries } from '../../src/utils/ffmpeg-path.js';
 
 interface FixtureMedia extends HTMLMediaElement {
   source: { engine: { hlsJs: { backBufferLength: number; maxBufferSize: number } } };
@@ -149,7 +149,7 @@ async function routes(page: Page) {
 test.beforeAll(async () => {
   mediaDirectory = await mkdtemp(path.join(tmpdir(), 'moartube-browser-media-'));
   await promisify(execFile)(
-    ffmpeg as unknown as string,
+    resolveFfmpegBinaries().ffmpeg,
     [
       '-hide_banner',
       '-loglevel',

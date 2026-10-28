@@ -11,11 +11,13 @@ export class LifecycleManager {
     this.logger = container.resolve('logger');
   }
 
-  public async onStartup(): Promise<void> {
+  public async onStartup(preserveMedia = false): Promise<void> {
     this.logger.info('[LifecycleManager] Running startup tasks...');
 
     await this.performEncodingDecodingAssessment();
-    await this.cleanVideosDirectory();
+    if (!preserveMedia) {
+      await this.cleanVideosDirectory();
+    }
 
     // Eager load background services
     this.container.resolve('videoPublishService');
@@ -25,6 +27,11 @@ export class LifecycleManager {
 
   private async performEncodingDecodingAssessment(): Promise<void> {
     this.logger.debug('Assessing system encoding/decoding capabilities');
+    // Missing/broken FFmpeg is a startup error, not a GPU failure that CPU mode fixes.
+    const diagnostics = await this.container.resolve('ffmpegService').getDiagnostics();
+    this.logger.info(
+      `FFmpeg: ${diagnostics.path} (${diagnostics.version}; MoarTube build: ${diagnostics.buildId ?? 'local compilation/override'})`
+    );
     try {
       const cpu = await detectSystemCpu();
       const gpus = await this.container.resolve('ffmpegService').assessGpus();

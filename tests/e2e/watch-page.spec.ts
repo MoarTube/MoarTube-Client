@@ -3,7 +3,7 @@ import { readFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import ffmpeg from 'ffmpeg-static';
+import { resolveFfmpegBinaries } from '../../src/utils/ffmpeg-path.js';
 import path from 'node:path';
 import ejs from 'ejs';
 const root = path.resolve('../MoarTube-Node');
@@ -12,7 +12,7 @@ const host = 'http://watch.test',
 let mediaFolder: string;
 test.beforeAll(async () => {
   mediaFolder = await mkdtemp(path.join(tmpdir(), 'moartube-watch-playback-'));
-  await promisify(execFile)(ffmpeg as unknown as string, [
+  await promisify(execFile)(resolveFfmpegBinaries().ffmpeg, [
     '-f',
     'lavfi',
     '-i',
@@ -45,7 +45,7 @@ test.beforeAll(async () => {
     path.join(mediaFolder, 'segment-%d.ts'),
     path.join(mediaFolder, 'fixture.m3u8'),
   ]);
-  await promisify(execFile)(ffmpeg as unknown as string, [
+  await promisify(execFile)(resolveFfmpegBinaries().ffmpeg, [
     '-i',
     path.join(mediaFolder, 'fixture.m3u8'),
     '-c',
@@ -303,8 +303,16 @@ for (const activation of ['poster', 'button', 'Enter', 'Space']) {
       'This browser build provides neither MediaSource nor native HLS'
     );
     await page.addInitScript(() => {
-      const create = Document.prototype.createElement;
-      Document.prototype.createElement = function (name: string, options?: ElementCreationOptions) {
+      const create: (
+        this: Document,
+        name: string,
+        options?: ElementCreationOptions
+      ) => HTMLElement = Document.prototype.createElement;
+      Document.prototype.createElement = function (
+        this: Document,
+        name: string,
+        options?: ElementCreationOptions
+      ) {
         const element = create.call(this, name, options);
         if (name === 'hlsjs-video') {
           const play = (element as any).play.bind(element);
@@ -426,7 +434,7 @@ test('native progressive video defers loading after blocked autoplay and starts 
   );
   const probe = await page.evaluate(
     () =>
-      new Promise<{ supported: boolean; code?: number }>((resolve) => {
+      new Promise<{ supported: boolean; code?: number | undefined }>((resolve) => {
         const video = document.createElement('video');
         let timer: ReturnType<typeof setTimeout>;
         const finish = (supported: boolean, code?: number) => {
@@ -453,8 +461,13 @@ test('native progressive video defers loading after blocked autoplay and starts 
   );
   expect(probe.supported).toBe(true);
   await page.addInitScript(() => {
-    const create = Document.prototype.createElement;
-    Document.prototype.createElement = function (name: string, options?: ElementCreationOptions) {
+    const create: (this: Document, name: string, options?: ElementCreationOptions) => HTMLElement =
+      Document.prototype.createElement;
+    Document.prototype.createElement = function (
+      this: Document,
+      name: string,
+      options?: ElementCreationOptions
+    ) {
       const element = create.call(this, name, options);
       if (name === 'video') {
         const play = (element as HTMLVideoElement).play.bind(element);

@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 import { cpSync } from 'node:fs';
 
 export default defineConfig({
-  entry: ['src/moartube-client.ts'],
+  entry: ['src/moartube-client.ts', 'src/desktop-backend.ts'],
   format: ['esm'],
   target: 'node20',
   outDir: 'dist',
@@ -16,8 +16,7 @@ export default defineConfig({
   external: [
     // Keep native modules external
     'sharp',
-    'systeminformation',
-    'ffmpeg-static' // Often better external if used
+    'systeminformation'
   ],
   esbuildOptions(options) {
     options.charset = 'utf8';

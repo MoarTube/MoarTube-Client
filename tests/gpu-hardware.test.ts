@@ -47,7 +47,9 @@ it.skipIf(process.env['MOARTUBE_TEST_GPU'] !== '1')(
             getVideosDirectoryPath: () => root,
           },
         } as unknown as VideoPublishService;
-        for (const job of gpu.backend === 'nvenc' ? ['mp4', 'm3u8', 'live'] : ['mp4', 'm3u8']) {
+        for (const job of ['nvenc', 'amf', 'qsv'].includes(gpu.backend ?? '')
+          ? ['mp4', 'm3u8', 'live']
+          : ['mp4', 'm3u8']) {
           const format = job === 'live' ? 'm3u8' : job;
           const videoId = `${gpu.backend ?? 'gpu'}-${job}`;
           const segments = path.join(root, videoId, 'adaptive', 'm3u8', '360p');
@@ -130,7 +132,7 @@ it.skipIf(process.env['MOARTUBE_TEST_GPU'] !== '1')(
             0
           );
         }
-        if (gpu.backend === 'nvenc') {
+        if (['nvenc', 'amf', 'qsv'].includes(gpu.backend ?? '')) {
           for (const [size, resolution, expected] of [
             ['1280x720', '360p', '640x360'],
             ['720x1280', '360p', '202x360'],

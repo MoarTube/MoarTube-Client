@@ -1,6 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import { spawn, type ChildProcess } from 'node:child_process';
+import { type ChildProcess } from 'node:child_process';
+import { spawnMediaProcess as spawn } from '@/utils/media-processes.js';
 import sharp from 'sharp';
 import { BaseService } from './base.js';
 import { encodingPool } from '@/utils/work-pool.js';
@@ -16,6 +17,7 @@ export class VideoImportService extends BaseService {
   private readonly activeImports: Map<string, ChildProcess> = new Map();
   private readonly cancelledImports: Set<string> = new Set();
   private readonly cancellationRejectors: Map<string, (err: Error) => void> = new Map();
+  private closing = false;
 
   constructor(
     logger: Logger,
@@ -30,6 +32,9 @@ export class VideoImportService extends BaseService {
   }
 
   public beginImport(videoId: string): void {
+    if (this.closing) {
+      throw new Error('MoarTube Client is shutting down');
+    }
     this.cancelledImports.delete(videoId);
   }
 
@@ -48,7 +53,7 @@ export class VideoImportService extends BaseService {
   private async runFfmpeg(videoId: string, args: string[]): Promise<string> {
     const release = await encodingPool.acquire();
     try {
-      if (this.cancelledImports.has(videoId)) {
+      if (this.closing || this.cancelledImports.has(videoId)) {
         throw new Error('Import cancelled');
       }
 
@@ -302,6 +307,16 @@ export class VideoImportService extends BaseService {
       this.logger.info(`Killing active ffmpeg process for ${videoId}`);
       process.kill('SIGKILL');
       this.activeImports.delete(videoId);
+    }
+  }
+
+  public close(): void {
+    this.closing = true;
+    for (const id of new Set([
+      ...this.activeImports.keys(),
+      ...this.cancellationRejectors.keys(),
+    ])) {
+      this.stoppingVideoImport(id);
     }
   }
 

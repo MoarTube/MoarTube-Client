@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'"
+    />
+    <title>MoarTube Client</title>
+    <style>
+      body {
+        margin: 0;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        background: #f8f9fa;
+        font:
+          16px 'Segoe UI',
+          sans-serif;
+        color: #344767;
+      }
+      main {
+        text-align: center;
+      }
+      h1 {
+        font-size: 28px;
+      }
+      .spinner {
+        width: 28px;
+        height: 28px;
+        border: 3px solid #e3d6e0;
+        border-top-color: #cb0c9f;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 24px auto;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      p {
+        max-width: 420px;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>MoarTube Client</h1>
+      <div class="spinner"></div>
+      <p>Starting your client and checking video processing support…</p>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "id": "ffmpeg-amf-hardware-input-layout",
+  "source": "ffmpeg",
+  "file": "libavfilter/vf_amf_common.c",
+  "reason": "AMF VideoConverter Init needs the underlying surface layout (e.g. NV12), not the opaque D3D11 pixel format. Use the input hardware frames context's sw_format for all hardware input surfaces, including D3D11. Frames themselves remain on the GPU.",
+  "before": "    if (inlink->format == AV_PIX_FMT_AMF_SURFACE) {\n        *in_format = in_sw_format;",
+  "after": "    if (inl->hw_frames_ctx) {\n        *in_format = in_sw_format;"
+}

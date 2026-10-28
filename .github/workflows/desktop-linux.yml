@@ -1,0 +1,30 @@
+name: Linux desktop candidate
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm run ffmpeg:test:tooling
+      - run: npm run ffmpeg:build:linux
+      - run: npm run desktop:dist:linux
+      - run: npm run desktop:verify:linux
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: moartube-client-linux-candidate
+          path: |
+            build/desktop/output/linux/*.deb
+            build/desktop/output/linux/*.tar.gz
+            build/desktop/output/linux/*.tar.xz
+            build/desktop/output/linux/SHA256SUMS-linux-x64.txt
+            build/desktop/output/linux/RELEASE-NOTES-linux-x64.md
+            build/desktop/linux-ubuntu-*/
+          retention-days: 14

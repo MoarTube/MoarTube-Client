@@ -1,5 +1,5 @@
 import type { ChildProcess } from 'node:child_process';
-import { spawn } from 'node:child_process';
+import { spawnMediaProcess as spawn } from '@/utils/media-processes.js';
 import { encodingPool } from '@/utils/work-pool.js';
 import { getGpuProcessEnvironment } from '@/utils/hardware.js';
 import {
@@ -39,6 +39,8 @@ export class VideoPublishService {
   private readonly inProgressPublishingJobs: VideoPublishJob[] = [];
   private readonly pendingPublishVideoQueue: VideoPublishJob[] = [];
   private readonly activeEncodingJobs: Map<string, EncodingJobState> = new Map();
+  private publishTimer: ReturnType<typeof setInterval> | undefined;
+  private closing = false;
 
   constructor(
     private readonly logger: Logger,
@@ -53,6 +55,9 @@ export class VideoPublishService {
   }
 
   public enqueuePendingPublishVideo(job: VideoPublishJob): void {
+    if (this.closing) {
+      return;
+    }
     if (
       this.pendingPublishVideoQueue.some(
         (existing) =>
@@ -109,7 +114,7 @@ export class VideoPublishService {
   }
 
   private startVideoPublishInterval(): void {
-    setInterval(() => {
+    this.publishTimer = setInterval(() => {
       while (
         this.pendingPublishVideoQueue.length > 0 &&
         this.inProgressPublishingJobCount < this.maximumInProgressPublishingJobCount
@@ -204,7 +209,7 @@ export class VideoPublishService {
               const wasStopping = this.isPublishVideoEncodingStopping(job.videoId);
               this.releaseEncodingJobSlot(job.videoId);
 
-              if (!wasStopping) {
+              if (!wasStopping && !this.closing) {
                 job.idleInterval = setInterval(() => {
                   this.socketService.broadcastToUser(job.jwtToken, 'echo', {
                     eventName: 'video_status',
@@ -230,6 +235,18 @@ export class VideoPublishService {
         }
       }
     }, 3000);
+  }
+
+  public close(): void {
+    this.closing = true;
+    clearInterval(this.publishTimer);
+    for (const job of [...this.pendingPublishVideoQueue, ...this.inProgressPublishingJobs]) {
+      clearInterval(job.idleInterval);
+    }
+    this.pendingPublishVideoQueue.length = 0;
+    for (const id of this.activeEncodingJobs.keys()) {
+      this.stoppingPublishVideoEncoding(id);
+    }
   }
 
   private findInProgressPublishJobIndex(job: VideoPublishJob): number {

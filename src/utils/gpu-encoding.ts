@@ -39,6 +39,10 @@ export function getCudaScaleFilter(resolution: string): string {
   return `scale_cuda=${getHardwareScaleDimensions(resolution)}:format=nv12`;
 }
 
+export function getAmfScaleFilter(resolution: string): string {
+  return `vpp_amf=${getHardwareScaleDimensions(resolution)}:format=nv12`;
+}
+
 /** These hardware backends share the CPU path's HLS/MP4 packaging options. */
 export function getHardwareH264Options(
   agent: Agent,
@@ -46,6 +50,12 @@ export function getHardwareH264Options(
 ): { encoder: string; filter: string } | undefined {
   if (agent?.processingAgentType !== 'gpu') {
     return undefined;
+  }
+  if (
+    agent.backend === 'amf' ||
+    (agent.backend === undefined && agent.processingAgentName === 'AMD')
+  ) {
+    return { encoder: 'h264_amf', filter: getAmfScaleFilter(resolution) };
   }
   switch (agent.backend) {
     case 'qsv':
@@ -151,12 +161,54 @@ export function applyGpuDeviceArguments(args: string[], agent: Agent): string[] 
     return args;
   }
   if (args.includes('h264_amf')) {
+    const result = [...args];
+    const input = result.indexOf('-i');
+    const vf = result.indexOf('-vf');
+    if (
+      input === -1 ||
+      vf === -1 ||
+      result[vf + 1]?.startsWith('vpp_amf=') !== true ||
+      /hwdownload|hwupload|\bcrop=|\bscale=/.test(result[vf + 1] ?? '')
+    ) {
+      throw new Error(
+        'AMF processing requires a hardware scaling filter without CPU frame transfers'
+      );
+    }
+    if (
+      agent?.deviceIndex === undefined ||
+      !Number.isInteger(agent.deviceIndex) ||
+      agent.deviceIndex < 0
+    ) {
+      throw new Error('Select an AMD DirectX adapter in Client Settings');
+    }
+    for (const option of ['-hwaccel', '-hwaccel_device', '-hwaccel_output_format']) {
+      const index = result.indexOf(option);
+      if (index !== -1) {
+        result.splice(index, 2);
+      }
+    }
+    result.splice(
+      result.indexOf('-i'),
+      0,
+      '-hwaccel',
+      'd3d11va',
+      '-hwaccel_device',
+      'selectedGpu',
+      '-hwaccel_output_format',
+      'd3d11'
+    );
+    // Derive the AMF filter context from the decoder's selected DirectX adapter.
+    // format=nv12 sets the surface's software layout; -pix_fmt amf constrains
+    // encoder input to AMF hardware surfaces instead of negotiating CPU frames.
+    result.splice(result.indexOf('h264_amf') + 1, 0, '-pix_fmt', 'amf');
     return [
       '-init_hw_device',
-      `d3d11va=selectedGpu:${String(agent?.deviceIndex ?? 0)}`,
+      `d3d11va=selectedGpu:${String(agent.deviceIndex)},SHADER=1`,
+      '-init_hw_device',
+      'amf=amfGpu@selectedGpu',
       '-filter_hw_device',
-      'selectedGpu',
-      ...args,
+      'amfGpu',
+      ...result,
     ];
   }
   if (agent?.renderDevice === undefined || !/^\/dev\/dri\/renderD\d+$/.test(agent.renderDevice)) {

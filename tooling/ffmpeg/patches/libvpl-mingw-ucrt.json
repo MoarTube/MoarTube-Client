@@ -1,0 +1,8 @@
+{
+  "id": "libvpl-mingw-ucrt",
+  "source": "libvpl",
+  "file": "libvpl/src/windows/mfx_dispatcher_defs.h",
+  "reason": "The old-MSVC secure string fallback also matches undefined _MSC_VER on MinGW, overriding UCRT wcscpy_s and breaking Windows SDK headers. Restrict it to old MSVC.",
+  "before": "#if _MSC_VER < 1400",
+  "after": "#if defined(_MSC_VER) && _MSC_VER < 1400"
+}

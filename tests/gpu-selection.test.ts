@@ -172,7 +172,10 @@ describe('GPU settings and startup', () => {
     const services = {
       config,
       logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn() },
-      ffmpegService: { assessGpus: assess },
+      ffmpegService: {
+        assessGpus: assess,
+        getDiagnostics: () => Promise.resolve({ path: '/test/ffmpeg', version: 'test' }),
+      },
     };
     const lifecycle = new LifecycleManager({
       resolve: (name: keyof typeof services) => services[name],

@@ -29,7 +29,13 @@ Linux AMD backend does not establish AMD GPU access through Docker Desktop.
   resolution. The selected GPU UUID
   restricts the child process to that device, and FFmpeg binds its hardware
   context to that device.
-- AMD on Windows retains the existing Direct3D 11/AMF path.
+- AMD on Windows uses Direct3D 11 hardware decoding, `vpp_amf` GPU scaling/NV12
+  conversion, and AMF hardware-surface H.264 encoding for publishing and live
+  streams. The AMF context derives from the selected DirectX adapter. This new
+  path requires the MoarTube candidate or another compatible FFmpeg build;
+  the old bundled binary lacks `vpp_amf`. See the
+  [native acceleration requirements](ffmpeg-distribution-plan.md#native-acceleration-requirements).
+  Native qualification and public distribution are separate from implementation.
 - Intel on Windows uses Quick Sync decoding, `vpp_qsv` hardware scaling and NV12
   conversion, and `h264_qsv` encoding for HLS/MP4 publishing and HLS live streams.
   The hardware session binds to the selected DirectX adapter index. Frames remain
@@ -54,12 +60,12 @@ Linux AMD backend does not establish AMD GPU access through Docker Desktop.
 The probe reads an embedded three-frame H.264 Baseline sample and decodes, scales,
 and encodes two frames using the selected device. It requires no software encoder
 or network download to create the sample. Temporary probe files are removed after
-the check, including on failure. The QSV, VA-API and VideoToolbox probes use the same hardware scaling paths
+the check, including on failure. The AMF, QSV, VA-API and VideoToolbox probes use the same hardware scaling paths
 as publishing and live streams, so an encoder-only device is not offered as fully
 usable. It does not guarantee hardware decoding support for every source codec,
 profile, bit depth, resolution, or concurrent encoder workload. Jobs still report
 FFmpeg errors if a particular source cannot be processed; there is no automatic
-mid-job retry on the CPU. QSV, VA-API and VideoToolbox require hardware video frames
+mid-job retry on the CPU. AMF, QSV, VA-API and VideoToolbox require hardware video frames
 throughout their filter graphs; unsupported input decoding fails instead of silently using CPU
 scaling. CPU processing remains an explicit selection in Client Settings.
 
@@ -68,16 +74,26 @@ scaling. CPU processing remains an explicit selection in Client Settings.
 The client resolves FFmpeg in this order:
 
 1. `ffmpegPath` in `data/_client_settings.json` (source installations).
-2. The executable exported by `ffmpeg-static`, including its `FFMPEG_BIN` override.
-3. `ffmpeg` on PATH if `ffmpeg-static` exports no path for the platform.
+2. An explicit `FFMPEG_BIN` environment override, re-evaluated on each resolution.
+3. The local compilation at `build/ffmpeg/install/<platform>-<architecture>/bin`.
+4. A checksum-verified MoarTube artifact for this OS and process architecture in
+   the application's resource directory, when there is no local compilation.
 
-`ffmpeg-static` remains the default. Its downloaded build varies by operating
-system and architecture; an npm installation does not guarantee NVENC, CUDA
-filters, QSV or VA-API support, or VideoToolbox and `scale_vt` support. When building a Linux image, install dependencies for
-Linux inside the build. Do not copy Windows `node_modules` into the image.
-If the bundled executable lacks the required backend, select an appropriate
-FFmpeg build using `ffmpegPath` or set `FFMPEG_BIN` before starting the client.
-An unusable configured executable does not silently fall through to another one.
+Installed Electron applications use their resource directory instead of a
+developer build directory. Missing or incomplete binaries stop startup with a
+compile-first error; CPU mode cannot replace the FFmpeg dependency.
+
+The Windows build tooling produces MoarTube-built FFmpeg/FFprobe 9.0.2
+executables invoked directly by TypeScript child processes, without native
+Node.js FFmpeg bindings. Build tooling and source/dependency locks reside
+in MoarTube-Client. See the [Windows tooling guide](../tooling/ffmpeg/README.md)
+and [distribution plan](ffmpeg-distribution-plan.md).
+
+The npm FFmpeg dependency has been removed. On Windows 11 x64, compile it with
+`npm.cmd run ffmpeg:build:windows`; development then uses that build directly.
+The automated recipe currently targets Windows x64. Other platforms need a native
+build or explicit compatible override. An unusable configured executable does
+not silently select another one, and an absent build never falls back to PATH.
 
 Useful diagnostic commands, using the same executable as the client:
 
@@ -104,8 +120,8 @@ and fall back to CPU if the backend is no longer usable.
 
 Check that the selected FFmpeg build includes VideoToolbox decoding,
 `scale_vt` scaling, and `h264_videotoolbox` encoding. Some older or minimal builds
-include the encoder but lack the hardware scaling filter. If the binary supplied
-by `ffmpeg-static` cannot pass the probe, use the existing `ffmpegPath` setting or
+include the encoder but lack the hardware scaling filter. Build a compatible
+native binary or use the existing `ffmpegPath` setting or
 `FFMPEG_BIN` override with a suitable native macOS executable. Package platform
 support alone does not establish hardware acceleration capability.
 

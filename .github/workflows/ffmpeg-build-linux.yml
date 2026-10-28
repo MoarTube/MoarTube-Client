@@ -1,0 +1,29 @@
+name: Linux FFmpeg candidate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm run ffmpeg:test:tooling
+      - run: npm run ffmpeg:build:linux
+      - run: npm run ffmpeg:verify:linux:runtimes
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: ffmpeg-linux-x64-candidate
+          path: |
+            build/ffmpeg/artifacts/linux-x64/*.tar.xz
+            build/ffmpeg/artifacts/linux-x64/SHA256SUMS.txt
+            build/ffmpeg/reports/linux-x64/
+          retention-days: 14

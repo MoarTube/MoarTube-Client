@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import ffmpegStatic from 'ffmpeg-static';
+import { resolveFfmpegBinaries } from '../src/utils/ffmpeg-path.js';
 import {
   getQsvScaleFilter,
   getCudaScaleFilter,
@@ -28,7 +28,7 @@ describe.each([
       .replace(/^(scale_vaapi|scale_vt|vpp_qsv|scale_cuda)=/, 'scale=')
       .replace(/:format=nv12$/, '');
     const result = spawnSync(
-      ffmpegStatic ?? 'ffmpeg',
+      resolveFfmpegBinaries().ffmpeg,
       [
         '-hide_banner',
         '-f',

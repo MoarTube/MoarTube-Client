@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "target": "win32-x64",
+  "sources": [
+    {
+      "id": "ffmpeg",
+      "version": "9.0.2",
+      "revision": "946fcce07b6dcd0331c8cc609192aeff5e1924f8",
+      "archive": "ffmpeg-9.0.2.tar.xz",
+      "url": "https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz",
+      "sha256": "8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e",
+      "license": "GPL-2.0-or-later"
+    },
+    {
+      "archive": "x264-stable-b35605a.tar.gz",
+      "url": "https://code.videolan.org/videolan/x264/-/archive/b35605ace3ddf7c1a5d67a2eb553f034aef41d55/x264-b35605ace3ddf7c1a5d67a2eb553f034aef41d55.tar.gz",
+      "id": "x264",
+      "version": "stable-b35605a",
+      "license": "GPL-2.0-or-later",
+      "sha256": "cd71a7515b0e9a012e1ac9b1f8415bebcaf6fc97d4db32286642ac4c0fbe24f9",
+      "revision": "b35605ace3ddf7c1a5d67a2eb553f034aef41d55"
+    },
+    {
+      "archive": "libvpx-1.15.2.tar.gz",
+      "url": "https://github.com/webmproject/libvpx/archive/refs/tags/v1.15.2.tar.gz",
+      "id": "libvpx",
+      "version": "1.15.2",
+      "license": "BSD-3-Clause",
+      "sha256": "26fcd3db88045dee380e581862a6ef106f49b74b6396ee95c2993a260b4636aa"
+    },
+    {
+      "archive": "opus-1.5.2.tar.gz",
+      "url": "https://downloads.xiph.org/releases/opus/opus-1.5.2.tar.gz",
+      "id": "opus",
+      "version": "1.5.2",
+      "license": "BSD-3-Clause",
+      "sha256": "65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1"
+    },
+    {
+      "archive": "nv-codec-headers-12.1.14.0.tar.gz",
+      "url": "https://github.com/FFmpeg/nv-codec-headers/archive/refs/tags/n12.1.14.0.tar.gz",
+      "id": "nv-codec-headers",
+      "version": "12.1.14.0",
+      "license": "MIT",
+      "sha256": "2fefaa227d2a3b4170797796425a59d1dd2ed5fd231db9b4244468ba327acd0b"
+    },
+    {
+      "archive": "amf-1.5.2.tar.gz",
+      "url": "https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/eadd00804d5f7e5cd8c85d540073198312870776.tar.gz",
+      "extract": [
+        "AMF-eadd00804d5f7e5cd8c85d540073198312870776/LICENSE.txt",
+        "AMF-eadd00804d5f7e5cd8c85d540073198312870776/amf/public/include"
+      ],
+      "id": "amf",
+      "version": "1.5.2",
+      "license": "MIT",
+      "sha256": "d9cde24be31e847e78d31e4d01cfc6a461eac35c77557578436a407f621de26b",
+      "revision": "eadd00804d5f7e5cd8c85d540073198312870776"
+    },
+    {
+      "archive": "libvpl-2023.4.0.tar.gz",
+      "url": "https://github.com/intel/libvpl/archive/2274efcd3672b43297ef774f332e1fed6781381c.tar.gz",
+      "id": "libvpl",
+      "version": "2023.4.0",
+      "license": "MIT",
+      "sha256": "7246dab293c0590b9cf8bc328b052103414cb8d6d028a95d994ac397146e33fd",
+      "revision": "2274efcd3672b43297ef774f332e1fed6781381c"
+    },
+    {
+      "id": "dav1d",
+      "version": "1.5.1",
+      "archive": "dav1d-1.5.1.tar.gz",
+      "url": "https://code.videolan.org/videolan/dav1d/-/archive/1.5.1/dav1d-1.5.1.tar.gz",
+      "sha256": "fa635e2bdb25147b1384007c83e15de44c589582bb3b9a53fc1579cb9d74b695",
+      "license": "BSD-2-Clause"
+    },
+    {
+      "id": "zlib",
+      "version": "1.3.1",
+      "archive": "zlib-1.3.1.tar.gz",
+      "url": "https://zlib.net/fossils/zlib-1.3.1.tar.gz",
+      "sha256": "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23",
+      "license": "Zlib"
+    }
+  ],
+  "patches": [
+    "libvpl-mingw-ucrt.json",
+    "libvpl-clang-libcxx.json",
+    "ffmpeg-amf-hardware-input-layout.json"
+  ]
+}

@@ -10,4 +10,7 @@ coverage/
 playwright-report/
 test-results/
 blob-report/
+build/ffmpeg/
+build/desktop/
+resources/ffmpeg/
 node_modules/

@@ -12,9 +12,10 @@ application so users do not need to download or compile FFmpeg themselves.
 
 The selected upstream version for MoarTube-owned distributions is **FFmpeg
 9.0.2**, with matching FFprobe 9.0.2, across all target platforms. Pin its exact
-source revision and archive checksum in the repository's build inputs. This is
-the planned build baseline; the client currently still uses the existing
-`ffmpeg-static` binaries described below.
+source revision and archive checksum in the repository's build inputs. The
+Windows candidate now implements this baseline. Developers must compile the
+native dependency; the npm binary dependency and automatic PATH fallback have
+been removed.
 
 Keep the entire FFmpeg build and release process in the existing
 `MoarTube-Client` repository. Store recipes, dependency locks, platform definitions,
@@ -29,7 +30,60 @@ OS APIs remain dependencies. GPU driver installation and upgrades remain the
 user's responsibility. The application should diagnose unavailable acceleration
 without attempting to install or repair drivers.
 
+### Selected integration architecture
+
+The TypeScript client will invoke MoarTube-built `ffmpeg` and `ffprobe`
+executables directly through managed child processes. Build these executables
+from pinned upstream FFmpeg 9.0.2 source and explicitly locked dependencies.
+MoarTube controls the source inputs, configure options, compiled features,
+runtime dependencies, artifact identity and qualification evidence.
+
+Native Node.js bindings such as `node-av` and `beamcoder`, direct in-process
+`libav*` integration, and third-party prebuilt FFmpeg distributions are outside
+the selected architecture. Retain the current executable-based pipeline and
+process isolation; implement backend differences in the client's argument and
+capability helpers. Existing third-party binaries remain reference artifacts and
+historical comparison artifacts during migration; they are not runtime fallbacks.
+
+Application orchestration stays in TypeScript, while CI builds a separate native
+artifact for each supported OS and CPU architecture. Package the matching tested
+artifact automatically so users need no compiler, SDK, or separate FFmpeg
+installation. Keep all recipes, locks, tests and workflows inside MoarTube-Client;
+there is no separate FFmpeg build repository.
+
 ## Scope
+
+### First implementation target: Windows 11 x64
+
+The first implementation targeted **Windows 11, `win32-x64`**. Linux x64 FFmpeg
+and Electron packaging followed with an Ubuntu 24.04 baseline; macOS remains a
+planned follow-up. Windows ARM64 and x86
+are not included in this first target. Keep the portable x86-64 CPU baseline;
+do not require AVX/AVX2 or tune binaries for the build machine. The oldest
+supported Windows 11 build must be recorded and tested before release.
+
+The first Windows artifact must include matching FFmpeg and FFprobe 9.0.2,
+all client software codecs, input decoding, containers, images, filters and
+network protocols, plus **all three Windows hardware backends**: NVIDIA,
+AMD and Intel. Each hardware backend must decode, scale and convert video on
+the GPU and encode H.264 for MP4/HLS publishing and RTMP-to-HLS live streams.
+No backend is optional merely because the build host lacks that vendor's GPU.
+Hardware qualification requires separate suitable hosts/adapters.
+
+The audited initial feature inventory is
+[`tooling/ffmpeg/features/win32-x64.json`](../tooling/ffmpeg/features/win32-x64.json).
+The [Windows tooling guide](../tooling/ffmpeg/README.md) describes the compiled
+feature check and remaining acceptance gates. The Windows implementation now
+builds and packages a local candidate, integrates artifact resolution, and uses
+`vpp_amf` in AMD publishing, live streaming and probing. Current-host software,
+AMD and NVIDIA smoke tests passed; Intel execution, clean-host testing and full
+release qualification remain pending. See the
+[Windows validation record](windows-ffmpeg-validation.md).
+
+Keep broad decoding enabled, including common H.264, HEVC, VP8, VP9 and AV1
+inputs. Preserve existing CPU WebM/OGV commands during the build audit, but
+resolve the existing VP8/Opus-in-Ogg playback question before claiming OGV
+compatibility. Do not substitute a smaller encoder-only build for this scope.
 
 The work includes FFmpeg and matching FFprobe executables, required software
 libraries, native acceleration features, portable packaging, source and license
@@ -48,7 +102,9 @@ Those are implementation and operational actions after the plan is adopted.
 
 ## Current application and binary baseline
 
-The client currently uses `ffmpeg-static` 5.3.0. That package downloads different
+The previous implementation used `ffmpeg-static` 5.3.0. The dependency is now
+removed; development selects the matching local compilation, with verified
+resource artifacts available for packaging. The old package downloaded different
 prebuilt executables by OS and architecture; it does not compile a common feature
 set when installed. Its configured binary release is `b6.1.1`, whose individual
 assets do not all identify as the same FFmpeg version.
@@ -109,11 +165,11 @@ supported source codecs and profiles on compatible hardware.
 | AMD / Intel VA-API on Linux | Yes | Yes | Yes | Yes |
 | VideoToolbox on macOS | Yes | Yes | Yes | Yes |
 
-For Windows AMD, replacing publishing's CPU scaler and adding live-stream GPU
-scaling through `vpp_amf` are required implementation work. Build and verify
-`vpp_amf` in the selected FFmpeg 9.0.2 distribution, then connect it to the
-client's publishing, live-stream and capability-probe paths. Upgrading the
-FFmpeg executable alone does not complete this requirement.
+For Windows AMD, the implementation replaces publishing's CPU scaler and adds
+live-stream GPU scaling through `vpp_amf`, shared with the capability probe.
+The Windows source recipe patches AMF's Direct3D input-layout handling and the
+client requests shader-readable decoder surfaces. Keep these changes together;
+upgrading the FFmpeg executable alone does not complete this requirement.
 
 Keep decoded video in hardware through scaling, pixel-format conversion and
 encoding. Calculate even portrait/landscape output dimensions in the hardware
@@ -176,13 +232,47 @@ record any existing compatibility defect separately from the new build work.
 
 ### Native acceleration requirements
 
+All rows below implement the all-Yes processing matrix: hardware decoding,
+GPU scaling and pixel-format conversion, and hardware H.264 encoding for both
+MP4/HLS publishing and HLS live streams. Build each applicable backend into the
+MoarTube-owned FFmpeg 9.0.2 artifact and qualify the actual client-generated
+commands. A compiled encoder alone does not satisfy these requirements.
+
 | Backend | Compile and packaging requirements | Required application behavior |
 | --- | --- | --- |
 | NVIDIA on Windows and Linux | Compatible pinned `nv-codec-headers`, CUDA filter compilation through a supported toolchain, NVENC and NVDEC integration | `h264_nvenc`, CUDA decoding, `scale_cuda` with NV12 conversion and even output dimensions, and UUID-based device selection; no CPU frame transfers for H.264 publishing or live scaling |
-| AMD on Windows | Pinned AMF headers, Windows graphics headers and libraries, and `vpp_amf` enabled in FFmpeg 9.0.2 | Direct3D 11 hardware decoding, `vpp_amf` GPU scaling and format conversion, and `h264_amf` encoding on the selected adapter for publishing and live streams; keep video in hardware throughout |
-| Intel on Windows | Pinned oneVPL development interfaces, compatible runtime and Windows Direct3D 11 interfaces | QSV decoding, `vpp_qsv` scaling and NV12 conversion, and `h264_qsv` on the selected DirectX adapter |
-| AMD and Intel on Linux | VA-API and DRM development interfaces and the required runtime library closure | VA-API decoding, `scale_vaapi`, NV12 conversion and `h264_vaapi` on the selected render node |
-| macOS | Apple SDK frameworks, VideoToolbox support, and an FFmpeg revision containing `scale_vt` | Hardware frames through decoding and scaling to `h264_videotoolbox`, with hardware encoding required |
+| AMD on Windows | Pinned AMF headers, Windows graphics interfaces, Direct3D 11 decoding, `vpp_amf` and `h264_amf` enabled in FFmpeg 9.0.2; verify AMF hardware-frame interop | Direct3D 11 hardware decode -> `vpp_amf` GPU scaling/NV12 conversion -> `h264_amf`, on the selected adapter for publishing and live streams; no CPU scaling, cropping or frame transfers |
+| Intel on Windows | Pinned oneVPL development interfaces, compatible runtime closure, Windows Direct3D 11 interfaces, QSV decoding, `vpp_qsv` and `h264_qsv` | QSV hardware decode -> `vpp_qsv` GPU scaling/NV12 conversion -> `h264_qsv`, with the hardware session bound to the selected DirectX adapter for publishing and live streams |
+| AMD and Intel on Linux | VA-API and DRM development interfaces, VA-API decoding, `scale_vaapi`, `h264_vaapi`, and the required runtime library closure | VA-API hardware decode -> `scale_vaapi` GPU scaling/NV12 conversion -> `h264_vaapi`, using the selected `/dev/dri/renderD*` node throughout publishing and live streams; qualify AMD and Intel separately |
+| macOS Intel and Apple Silicon | Pinned Apple SDK and deployment targets, VideoToolbox decoding, `scale_vt` and `h264_videotoolbox` in both architecture-specific FFmpeg 9.0.2 builds | VideoToolbox hardware decode -> `scale_vt` GPU scaling -> `h264_videotoolbox` for publishing and live streams, with hardware encoding required (`-allow_sw 0`); macOS chooses the hardware |
+
+Keep frames in the backend's hardware surfaces between stages. For Windows AMD,
+explicitly request hardware decoder output and validate the Direct3D 11/AMF
+filter/encoder surface handoff on the selected adapter. Select and test a
+hardware output surface format for `vpp_amf`; setting a software pixel format or
+merely removing explicit `hwdownload` arguments is not proof that frames remain
+in hardware. Hardware-to-hardware interop and device-local copies are acceptable;
+CPU frame downloads, CPU scaling/cropping and reuploads are not.
+
+Use the same backend filter/device configuration for the startup capability
+probe, publishing and live streaming. Each must apply the requested resolution,
+calculate even portrait/landscape dimensions in the GPU filter, and require
+hardware H.264 encoding. Report unsupported inputs and device failures rather
+than silently inserting CPU processing into an advertised hardware pipeline.
+Explicit CPU mode remains available.
+
+Current status differs from these release requirements: NVIDIA's GPU-only
+publishing and live-scaling paths are implemented and hardware-tested on Windows.
+Windows AMD now has GPU scaling in publishing, live and probing, with current-host
+execution tests passing against the patched MoarTube candidate. QSV,
+Linux VA-API and macOS VideoToolbox paths are implemented, with Intel, Linux and
+macOS hardware qualification still pending. Full Windows AMD release qualification
+extends beyond these short pipeline and loopback RTMP tests.
+
+On macOS, expose the OS-managed VideoToolbox backend rather than promising
+physical AMD, Intel or NVIDIA GPU selection. A Mac containing an NVIDIA GPU is
+not automatically excluded from VideoToolbox acceleration on other available
+hardware, but there is no direct NVIDIA CUDA/NVENC backend on macOS in this plan.
 
 For NVIDIA, prefer investigating the CUDA LLVM route already used by the working
 Windows reference. Validate its compiler and header requirements rather than
@@ -218,6 +308,7 @@ MoarTube-Client/
         common.json
         nvenc.json
         amf.json
+        qsv.json
         vaapi.json
         videotoolbox.json
       scripts/
@@ -389,9 +480,11 @@ Reject qualification if publishing or live scaling uses CPU filters or transfers
 video frames through system memory between hardware stages. Hardware-to-hardware
 interop must be validated on the selected adapter.
 
-The current opt-in hardware test verifies published MP4 and HLS files. It does
-not exercise a real RTMP session or a real MoarTube Node. Extend that coverage
-before treating the full streaming workflow as qualified.
+The opt-in hardware tests verify published MP4/HLS and locally fed live commands.
+The Windows live hardware test additionally exercises a real loopback RTMP session
+through the client's decoder, scaler, encoder and HLS arguments. Neither test
+exercises a real MoarTube Node. Complete that delivery-stack coverage before
+treating the full streaming workflow as qualified.
 
 ### Performance and compatibility checks
 
@@ -412,23 +505,44 @@ not advertise it as certified. Skipped tests are not passing evidence.
 
 ## Client and Electron integration
 
+Linux x64 FFmpeg compilation is now implemented using a pinned Ubuntu 24.04
+container, with software/feature validation on Ubuntu 24.04 and 26.04 runtime
+containers. It exports runtime and separate corresponding-source archives.
+Native Linux GPU and desktop qualification remain pending. See the
+[Linux build guide](linux-ffmpeg.md) and [validation record](linux-ffmpeg-validation.md).
+
+The initial Windows x64 Electron option is implemented: it runs the backend in a
+managed utility process, opens the local UI after readiness, bundles FFmpeg outside
+ASAR, and stores settings/media outside the installation. Local unsigned NSIS
+installer and standalone ZIP builds are available. Linux x64 now also produces
+Ubuntu DEB and standalone archives; see the [Linux desktop guide](electron-linux.md).
+macOS desktop packages, signing, auto-update and clean-host installation/upgrade qualification remain
+follow-up work. See the [Windows desktop guide](electron-windows.md).
+
 Introduce the MoarTube artifact through `FfmpegService` so import, publishing,
-streaming and preview extraction all use the same resolver. Proposed precedence:
+streaming and preview extraction all use the same resolver. Current precedence:
 
 1. An explicit user `ffmpegPath` override.
 2. An explicit `FFMPEG_BIN` environment override.
-3. The packaged MoarTube executable for this OS and process architecture.
-4. A documented development fallback during migration only.
+3. The local compilation for this OS and process architecture under
+   `build/ffmpeg/install/<target>/bin`.
+4. The packaged MoarTube executable for this OS and process architecture.
+
+Electron uses its installed resource directory instead of a local build directory.
+If no matching binaries exist, startup throws an error instructing the developer
+to compile FFmpeg first. A partial local build also fails instead of silently
+selecting an older staged artifact. There is no automatic PATH fallback.
 
 An invalid explicit override should produce an actionable error rather than
 silently choosing another executable. Record the effective path and build
 identity. Keep capability results tied to the selected executable and invalidate
 cached results when it changes.
 
-Keep `ffmpeg-static` during initial integration as a development fallback. Remove
-its dependency only after installation and runtime tests pass for every supported
-distribution path, including the npm/CLI path if it remains supported. Prevent its
-postinstall download from adding an unused second FFmpeg binary to Electron.
+The user selected mandatory developer compilation instead of retaining the npm
+binary fallback. Its dependency and test imports are removed, so npm installation
+does not download a second FFmpeg binary. Packaged installations must deliver
+their matching verified resource artifact. Preserve the remaining installation
+and runtime acceptance gates before publishing new distributions.
 
 Decide whether CLI users receive artifacts through platform-specific npm packages
 or a checksum-verified installer. Electron should bundle the verified archive at

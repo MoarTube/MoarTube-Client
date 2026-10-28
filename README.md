@@ -25,6 +25,69 @@ When you’re ready, make sure to check out the [MoarTube Node](https://github.c
   - [Default Login Credentials](#default-login-credentials)
   - [Get MoarTube Node](#get-moartube-node)
 
+## Windows desktop option
+
+The Windows 11 x64 Electron app bundles the client and compiled FFmpeg/FFprobe.
+Users run the installer or extract the standalone ZIP and open `MoarTube Client.exe`;
+no Node.js or command-line setup is needed. Connect it to your existing MoarTube
+Node. Closing the window stops its jobs and exits the app.
+
+Developers can run `npm.cmd run desktop:dev` after compiling FFmpeg, or create the
+Windows installer/ZIP with `npm.cmd run desktop:dist:windows`. Outputs are in
+`build/desktop/output`, including a separate corresponding FFmpeg sources ZIP,
+checksums and release notes. Publish the sources ZIP alongside the installer;
+users do not need it to run the app. The current local builds are unsigned candidates;
+macOS packaging is planned. See the [Windows desktop guide](docs/electron-windows.md)
+for storage paths, build commands, verification and release limitations.
+
+## Linux desktop option
+
+Ubuntu 24.04 and 26.04 x64 have an Electron DEB installer and standalone archive,
+with Linux FFmpeg/FFprobe bundled and corresponding sources offered separately.
+Install the DEB with your software installer or `sudo apt install ./<download>.deb`,
+then launch MoarTube Client from the application menu. The command
+`moartube-client-desktop` remains separate from the npm CLI.
+
+Build from Windows/WSL/Linux with `npm run desktop:dist:linux` after compiling the
+Linux FFmpeg candidate. Run `npm run desktop:verify:linux` for the container tests.
+Downloads land in `build/desktop/output/linux`. See the
+[Linux desktop guide](docs/electron-linux.md) for storage, dependencies and
+remaining native GPU/Wayland qualification.
+
+## Compile FFmpeg before starting
+
+Linux x64 builds use Ubuntu 24.04 as the baseline and test exported binaries on
+Ubuntu 24.04 and 26.04. Run `npm run ffmpeg:build:linux` with Docker's Linux engine
+(WSL 2 backend on Windows). See the [Linux FFmpeg guide](docs/linux-ffmpeg.md) for
+runtime dependencies, validation and source/runtime archives. Build the Linux
+Electron DEB and standalone archive with `npm run desktop:dist:linux`; see the
+[Linux desktop guide](docs/electron-linux.md) for installation and validation.
+
+Developers must compile the FFmpeg dependency for their operating system and CPU
+architecture. On Windows 11 x64, use native x64 Node.js 22 or newer and run from
+the repository root:
+
+```powershell
+npm.cmd install
+npm.cmd run ffmpeg:build:windows
+npm.cmd run build
+npm.cmd start
+```
+
+The FFmpeg command downloads and verifies the pinned build tools and sources,
+then compiles and checks FFmpeg and FFprobe. The client automatically uses
+`build/ffmpeg/install/win32-x64/bin`; no staging step or environment variable is
+needed for development. Missing or incomplete builds stop startup with a
+compile-first error. The client does not download FFmpeg through npm or fall
+back to a system executable on PATH. Installed packages can instead bundle a
+verified matching resource artifact. Explicit `ffmpegPath` and `FFMPEG_BIN`
+overrides remain available.
+
+Windows x64 is the currently automated build target. Other operating systems
+require their own native build or an explicit compatible override. See the
+[FFmpeg build guide](tooling/ffmpeg/README.md). Media fixture tests use the same
+compiled dependency as the client; test runners must prepare it first.
+
 ## Clean startup
 
 From a source checkout with development dependencies installed, run
@@ -214,7 +277,9 @@ npm install
 ```
 
 ```bash
-node moartube-client.js
+npm run ffmpeg:build:windows # Windows 11 x64; compile the matching target on other OSes
+npm run build
+npm start
 ```
 
 # Next Steps

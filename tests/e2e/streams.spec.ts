@@ -10,7 +10,7 @@ import { test, watchVideo, expectPlayback } from './node-fixtures.js';
 import { createServer } from 'node:net';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import ffmpeg from 'ffmpeg-static';
+import { resolveFfmpegBinaries } from '../../src/utils/ffmpeg-path.js';
 
 for (const viewport of [
   { width: 1280, height: 720 },
@@ -88,7 +88,7 @@ test.describe(() => {
     const { rtmpUrl } = (await (await started).json()) as { rtmpUrl: string };
     expect(rtmpUrl).toMatch(/^rtmp:\/\//);
     const broadcast = promisify(execFile)(
-      (ffmpeg as unknown as string | null) ?? 'ffmpeg',
+      resolveFfmpegBinaries().ffmpeg,
       [
         '-re',
         '-f',

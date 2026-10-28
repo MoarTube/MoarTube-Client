@@ -1,0 +1,8 @@
+{
+  "id": "libvpl-clang-libcxx",
+  "source": "libvpl",
+  "file": "libvpl/CMakeLists.txt",
+  "reason": "The CLANG64 toolchain uses libc++, not GCC libstdc++. Export the matching C++ runtime in the static dispatcher pkg-config metadata.",
+  "before": "  if(NOT MSVC)\n    set(CXX_LIB \"-lstdc++\")",
+  "after": "  if(MINGW AND CMAKE_CXX_COMPILER_ID MATCHES \"Clang\")\n    set(CXX_LIB \"-lc++\")\n  elseif(NOT MSVC)\n    set(CXX_LIB \"-lstdc++\")"
+}

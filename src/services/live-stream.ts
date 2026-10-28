@@ -1,5 +1,5 @@
 import type { ChildProcess } from 'node:child_process';
-import { spawn } from 'node:child_process';
+import { spawnMediaProcess as spawn } from '@/utils/media-processes.js';
 import { getGpuProcessEnvironment } from '@/utils/hardware.js';
 import {
   applyGpuDeviceArguments,
@@ -77,6 +77,7 @@ export class LiveStreamService {
   > = new Map();
   private uploadingImages = { thumbnail: false, preview: false, poster: false };
   private lastVideoImagesUpdateTimestamp = 0;
+  private closing = false;
 
   constructor(
     private readonly logger: Logger,
@@ -90,6 +91,15 @@ export class LiveStreamService {
 
   public addProcessToLiveStreamTracker(videoId: string, process: ChildProcess): void {
     this.activeStreams.set(videoId, { process, stopping: false, aborter: new AbortController() });
+  }
+
+  public close(): void {
+    this.closing = true;
+    for (const stream of this.activeStreams.values()) {
+      stream.stopping = true;
+      stream.aborter.abort();
+      stream.process?.kill();
+    }
   }
 
   public isLiveStreamStopping(videoId: string): boolean {
@@ -124,6 +134,9 @@ export class LiveStreamService {
     isRecordingStreamRemotely: boolean,
     isRecordingStreamLocally: boolean
   ): Promise<void> {
+    if (this.closing) {
+      throw new Error('MoarTube Client is shutting down');
+    }
     const release = livePool.tryAcquire();
     if (!release) {
       throw new Error('Live stream capacity reached');

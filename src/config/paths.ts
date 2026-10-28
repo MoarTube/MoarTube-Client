@@ -51,9 +51,14 @@ export function initializePaths(rootPath: string, entryPointDir?: string): Paths
   // node_modules: it would be lost on reinstall/upgrade and may require elevated
   // permissions to write. Use the OS-standard per-user data directory instead. When run
   // from a git checkout, keep data alongside the source, as before.
+  const override = process.env['MOARTUBE_DATA_DIR'];
+  if (override !== undefined && !path.isAbsolute(override)) {
+    throw new Error('MOARTUBE_DATA_DIR must be an absolute writable directory');
+  }
   const installedAsPackage = isInstalledPackage(projectRoot);
-  const dataRoot = installedAsPackage ? discoverOsDataDirectory() : projectRoot;
-  const dataPath = installedAsPackage ? dataRoot : path.join(dataRoot, 'data');
+  const dataRoot = override ?? (installedAsPackage ? discoverOsDataDirectory() : projectRoot);
+  const dataPath =
+    override !== undefined || installedAsPackage ? dataRoot : path.join(dataRoot, 'data');
   const tempPath = path.join(dataRoot, 'temp');
   const videosPath = path.join(dataPath, 'media', 'videos');
 

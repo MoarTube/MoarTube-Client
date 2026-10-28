@@ -6,6 +6,7 @@ import {
   getVideoToolboxScaleFilter,
   getQsvScaleFilter,
   getCudaScaleFilter,
+  getAmfScaleFilter,
 } from '../src/utils/gpu-encoding.js';
 import { getGpuProcessEnvironment } from '../src/utils/hardware.js';
 import { DEFAULT_CLIENT_SETTINGS } from '../src/config/defaults.js';
@@ -92,6 +93,44 @@ function live(agent: ClientSettings['processingAgent'], resolution = '720p'): st
 }
 
 describe('hardware processing arguments', () => {
+  it.each(['2160p', '1440p', '1080p', '720p', '480p', '360p', '240p'])(
+    'keeps AMD publishing, live and probing on the selected GPU at %s',
+    (resolution) => {
+      const windowsAmd = { ...amd, backend: 'amf' as const, deviceIndex: 2 };
+      for (const args of [
+        publish(windowsAmd, 'mp4', resolution),
+        publish(windowsAmd, 'm3u8', resolution),
+        live(windowsAmd, resolution),
+        getGpuProbeArguments(windowsAmd, '/probe.h264'),
+      ]) {
+        expect(args).toContain('d3d11va=selectedGpu:2,SHADER=1');
+        expect(args).toContain('amf=amfGpu@selectedGpu');
+        expect(args[args.indexOf('-filter_hw_device') + 1]).toBe('amfGpu');
+        expect(args[args.indexOf('-hwaccel_output_format') + 1]).toBe('d3d11');
+        expect(args[args.indexOf('-pix_fmt') + 1]).toBe('amf');
+        const filter = args[args.indexOf('-vf') + 1];
+        expect(filter).toMatch(/^vpp_amf=.*:format=nv12$/);
+        expect(filter).not.toMatch(/hwdownload|hwupload|\bcrop=|\bscale=/);
+      }
+      expect(publish(windowsAmd, 'mp4', resolution)).toContain(getAmfScaleFilter(resolution));
+      expect(live(windowsAmd, resolution)).toContain(getAmfScaleFilter(resolution));
+    }
+  );
+
+  it('rejects AMF CPU scaling and missing adapter selection', () => {
+    expect(() =>
+      applyGpuDeviceArguments(
+        ['-i', '/source.mp4', '-vf', 'scale=640:360', '-c:v', 'h264_amf', '/out.mp4'],
+        { ...amd, backend: 'amf' }
+      )
+    ).toThrow('hardware scaling filter');
+    expect(() =>
+      getGpuProbeArguments(
+        { processingAgentType: 'gpu', processingAgentName: 'AMD', backend: 'amf' },
+        '/probe.h264'
+      )
+    ).toThrow('Select an AMD');
+  });
   it.each(['2160p', '1440p', '1080p', '720p', '480p', '360p', '240p'])(
     'keeps NVIDIA publishing, live streaming and scaling in GPU memory at %s',
     (resolution) => {
@@ -320,7 +359,7 @@ describe('hardware processing arguments', () => {
 
   it('preserves Windows AMD device selection', () => {
     const args = publish({ ...amd, backend: 'amf', deviceIndex: 2 }, 'mp4');
-    expect(args).toContain('d3d11va=selectedGpu:2');
+    expect(args).toContain('d3d11va=selectedGpu:2,SHADER=1');
     expect(args).toContain('h264_amf');
     expect(args).not.toContain('h264_vaapi');
   });

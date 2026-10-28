@@ -1,0 +1,7 @@
+# Shell recipes run inside Linux/MSYS2 even from Windows checkouts.
+tooling/ffmpeg/**/*.sh text eol=lf
+tooling/ffmpeg/**/Dockerfile text eol=lf
+tooling/ffmpeg/**/*.Dockerfile text eol=lf
+desktop/linux/Dockerfile text eol=lf
+desktop/linux/*.Dockerfile text eol=lf
+scripts/*.sh text eol=lf
