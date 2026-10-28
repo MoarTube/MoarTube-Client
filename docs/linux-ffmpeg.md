@@ -1,4 +1,26 @@
-# Linux x64 FFmpeg builds
+# Linux FFmpeg builds
+
+Both `linux-x64` and `linux-arm64` have automated builds. ARM64 uses Ubuntu 24.04
+and an ARMv8-A CPU baseline with a maximum GLIBC requirement of 2.39. Build and
+check ARM64 from Windows, WSL or Linux with:
+
+```powershell
+npm.cmd run ffmpeg:build:linux:arm64
+npm.cmd run ffmpeg:verify:linux:arm64:runtimes
+```
+
+Docker must support `linux/arm64` containers. Docker Desktop on this Windows
+machine provides QEMU emulation; native ARM64 Docker also works and is faster.
+Reports distinguish emulated execution from native execution. All output paths
+below use `linux-arm64` for this target. The client running with ARM64 Node.js
+automatically selects that binary pair and throws a compile-first error if absent.
+
+ARM64 retains the software codec, CUDA/NVENC and VA-API feature requirements.
+Compiled GPU support requires compatible hardware and vendor drivers; CPU tests
+under emulation do not qualify any GPU. Jetson, Raspberry Pi and other SoC-specific
+video backends are outside this initial generic ARM64 build. Linux Electron
+packaging supports x64 and ARM64; see the [desktop guide](electron-linux.md).
+See [ARM64 FFmpeg validation](linux-arm64-ffmpeg-validation.md).
 
 The first candidate has passed feature/software checks and both Ubuntu runtime
 containers. See [the validation record](linux-ffmpeg-validation.md) for the exact
@@ -33,21 +55,22 @@ also requires retaining the compiler image/toolchain inputs.
 Upstream archives use the existing checksum-locked source revisions, with only
 the Linux dependencies selected. No Windows AMF or MinGW patches are applied.
 Compilation runs on a Docker-managed Linux volume to avoid NTFS performance and
-permission problems. Source downloads reuse `build/ffmpeg/cache`. The Windows
+permission problems. Source downloads reuse `build/ffmpeg/cache/sources`. The Windows
 work directory and installed binaries are separate and remain available.
 
 Set `MOARTUBE_BUILD_JOBS` to control parallel compilation (default 8). The command
 creates task-owned containers and an identified build-cache volume. Successful
 build containers are removed; failed ones are retained for diagnostics. It never
 prunes Docker globally or changes the default WSL distro. Build logs can be
-redirected to `build/ffmpeg/linux-build.log`.
+redirected to `build/ffmpeg/logs/linux-x64/build.log`.
 
 ## Outputs and runtime dependencies
 
 - Binaries: `build/ffmpeg/install/linux-x64/bin/ffmpeg` and `ffprobe`
 - Feature, software, ELF and compiler reports: `build/ffmpeg/reports/linux-x64`
-- Runtime and separate corresponding-source archives: `build/ffmpeg/artifacts/linux-x64`
-- `selected.json` identifies the current candidate; `SHA256SUMS.txt` covers its archives.
+- Runtime and separate corresponding-source archives: `build/ffmpeg/releases/linux-x64/<build-id>`
+- `build/ffmpeg/state/linux-x64/selected.json` identifies the current candidate;
+  `SHA256SUMS.txt` in its release folder covers the archives.
 
 The codecs and FFmpeg libraries are linked statically, while VA-API, DRM, GnuTLS
 and the C runtime use distribution libraries. On Ubuntu install:

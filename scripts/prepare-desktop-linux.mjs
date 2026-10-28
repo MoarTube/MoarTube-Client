@@ -1,3 +1,5 @@
+import { desktopPaths, ffmpegPaths } from '../tooling/build-paths.cjs';
+import { linuxTarget } from '../tooling/ffmpeg/scripts/linux-target.mjs';
 import { execFileSync } from 'node:child_process';
 import {
   readFileSync,
@@ -5,31 +7,35 @@ import {
   cpSync,
   copyFileSync,
   mkdirSync,
-  mkdtempSync,
   chmodSync,
+  existsSync,
 } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sha256 } from './lib/desktop-ffmpeg.mjs';
 
-if (process.platform !== 'linux' || process.arch !== 'x64')
+const { arch, target } = linuxTarget(process.env.MOARTUBE_DESKTOP_ARCH ?? process.arch);
+if (process.platform !== 'linux' || process.arch !== arch)
   throw new Error(
-    'Run Linux desktop preparation on Linux x64 (or use desktop:dist:linux from Windows).'
+    'Run Linux desktop preparation on the matching Linux x64/ARM64 host (or use the Docker build from Windows).'
   );
 const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
-const artifacts = path.join(root, 'build/ffmpeg/artifacts/linux-x64');
-const selection = JSON.parse(readFileSync(path.join(artifacts, 'selected.json'), 'utf8'));
+const version = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version;
+const layout = desktopPaths(root, target, version);
+const ffmpeg = ffmpegPaths(root, target);
+const selection = JSON.parse(readFileSync(ffmpeg.selection, 'utf8'));
+const artifacts = path.join(ffmpeg.releases, selection.buildId);
 if (
   !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(selection.buildId) ||
   selection.runtime !== `${selection.buildId}/runtime` ||
   selection.sourceArchive !== `${selection.buildId}-sources.tar.xz`
 )
   throw new Error('Invalid Linux FFmpeg selection; run npm run ffmpeg:build:linux first');
-const candidate = path.join(artifacts, selection.runtime);
+const candidate = path.join(ffmpeg.candidates, selection.runtime);
 const manifest = JSON.parse(readFileSync(path.join(candidate, 'manifest.json'), 'utf8'));
 if (
   manifest.schemaVersion !== 1 ||
-  manifest.target !== 'linux-x64' ||
+  manifest.target !== target ||
   manifest.buildId !== selection.buildId ||
   manifest.qualification.compiledFeatures !== 'passed'
 )
@@ -50,11 +56,24 @@ const sourceSha256 = sha256(path.join(artifacts, selection.sourceArchive));
 if (!expected || sourceSha256 !== expected)
   throw new Error('Linux FFmpeg source archive checksum mismatch');
 execFileSync(process.execPath, [path.join(root, 'scripts/desktop-icon.mjs')], { stdio: 'inherit' });
-const output = path.join(root, 'build/desktop/output/linux');
+const output = layout.release;
 mkdirSync(output, { recursive: true });
-const runtimeDirectory = path.join(
-  mkdtempSync(path.join(root, 'build/desktop/ffmpeg-release-')),
-  'runtime'
+mkdirSync(layout.state, { recursive: true });
+const runtimeDirectory = path.join(layout.staging, selection.buildId, 'runtime');
+const nodeRuntimeDirectory = path.join(layout.staging, `node-${arch}-${process.version}`);
+const nodeLicense =
+  process.env.MOARTUBE_NODE_LICENSE ?? path.resolve(path.dirname(process.execPath), '../LICENSE');
+if (!existsSync(nodeLicense))
+  throw new Error(
+    'Node runtime LICENSE missing; set MOARTUBE_NODE_LICENSE to the matching Node distribution LICENSE.'
+  );
+mkdirSync(nodeRuntimeDirectory, { recursive: true });
+copyFileSync(process.execPath, path.join(nodeRuntimeDirectory, 'node'));
+chmodSync(path.join(nodeRuntimeDirectory, 'node'), 0o755);
+copyFileSync(nodeLicense, path.join(nodeRuntimeDirectory, 'LICENSE'));
+writeFileSync(
+  path.join(nodeRuntimeDirectory, 'NOTICES.txt'),
+  `Node.js ${process.version} (${arch}), bundled for the Linux backend. See LICENSE for Node.js and third-party license texts.\n`
 );
 cpSync(candidate, runtimeDirectory, { recursive: true });
 for (const name of ['ffmpeg', 'ffprobe'])
@@ -63,7 +82,7 @@ copyFileSync(
   path.join(artifacts, selection.sourceArchive),
   path.join(output, selection.sourceArchive)
 );
-const version = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version;
+
 const releaseTag = process.env.MOARTUBE_RELEASE_TAG ?? `v${version}`;
 const releaseBase = `https://github.com/MoarTube/MoarTube-Client/releases/download/${encodeURIComponent(releaseTag)}`;
 const sourceUrl = `${releaseBase}/${selection.sourceArchive}`;
@@ -74,10 +93,12 @@ writeFileSync(
     'Sources are a separate optional download from the same GitHub Release as the application.\n'
 );
 writeFileSync(
-  path.join(root, 'build/desktop/ffmpeg-selection-linux.json'),
+  layout.selection,
   JSON.stringify(
     {
       runtimeDirectory,
+      nodeRuntimeDirectory,
+      nodeVersion: process.version,
       buildId: manifest.buildId,
       sourceArchive: selection.sourceArchive,
       sourceSha256,
@@ -89,13 +110,13 @@ writeFileSync(
   ) + '\n'
 );
 writeFileSync(
-  path.join(output, 'RELEASE-NOTES-linux-x64.md'),
-  `# MoarTube Client ${version} - Ubuntu 24.04 and 26.04 x64\n\n` +
-    `- [Ubuntu installer](${releaseBase}/MoarTube-Client-${version}-linux-x64.deb)\n` +
-    `- [Standalone archive](${releaseBase}/MoarTube-Client-${version}-linux-x64.tar.gz)\n` +
+  path.join(output, `RELEASE-NOTES-${target}.md`),
+  `# MoarTube Client ${version} - Ubuntu 24.04 and 26.04 ${arch}\n\n` +
+    `- [Ubuntu installer](${releaseBase}/MoarTube-Client-${version}-${target}.deb)\n` +
+    `- [Standalone archive](${releaseBase}/MoarTube-Client-${version}-${target}.tar.gz)\n` +
     `- [FFmpeg corresponding sources](${sourceUrl}) - optional\n` +
-    `- [Checksums](${releaseBase}/SHA256SUMS-linux-x64.txt)\n\n` +
-    'Install the DEB with sudo apt install ./MoarTube-Client-<version>-linux-x64.deb so system dependencies are resolved. Node.js, FFmpeg and FFprobe are bundled. GPU drivers are host prerequisites. Connect to your existing MoarTube Node.\n\n' +
+    `- [Checksums](${releaseBase}/SHA256SUMS-${target}.txt)\n\n` +
+    `Install the DEB with sudo apt install ./MoarTube-Client-<version>-${target}.deb so system dependencies are resolved. Node.js, FFmpeg and FFprobe are bundled. GPU drivers are host prerequisites. Connect to your existing MoarTube Node.\n\n` +
     'The standalone archive requires the documented desktop/FFmpeg libraries and a working Chromium sandbox. Use the DEB for Ubuntu integration. Sources remain separate; publish and retain the linked archive beside the app.\n\n' +
     `Publish using tag ${releaseTag}. Native GPU, Wayland and full Node-connected desktop qualification remain release work; see docs/electron-linux.md.\n`
 );

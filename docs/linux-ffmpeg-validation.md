@@ -29,8 +29,9 @@ FFprobe SHA-256: `d2d0127c151d446ee9ddf0ac7f8b1f953df74ecfc81870b0f207368b653eeb
 
 ## Artifacts and evidence
 
-`build/ffmpeg/artifacts/linux-x64` contains the runtime `.tar.xz`, corresponding
-source `.tar.xz`, `SHA256SUMS.txt` and `selected.json`. Source archives include all
+`build/ffmpeg/releases/linux-x64/<build-id>` contains the runtime `.tar.xz`, corresponding
+source `.tar.xz` and `SHA256SUMS.txt`. The current selection lives at
+`build/ffmpeg/state/linux-x64/selected.json`. Source archives include all
 seven selected upstream inputs, their licenses, build recipe, compiler/package
 records, software/feature evidence and binary identity. The runtime is about
 21.3 MiB compressed; sources are about 28.7 MiB compressed.

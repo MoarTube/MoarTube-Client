@@ -12,8 +12,8 @@ jobs:
     timeout-minutes: 150
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-      ELECTRON_CACHE: ${{ github.workspace }}/build/desktop/electron-cache
-      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/build/desktop/builder-cache
+      ELECTRON_CACHE: ${{ github.workspace }}/build/desktop/cache/electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/build/desktop/cache/builder
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,9 +31,9 @@ jobs:
         with:
           name: moartube-client-windows-candidate
           path: |
-            build/desktop/output/*.exe
-            build/desktop/output/*.zip
-            build/desktop/output/*.blockmap
-            build/desktop/output/SHA256SUMS.txt
-            build/desktop/output/RELEASE-NOTES.md
+            build/desktop/releases/win32-x64/*/*.exe
+            build/desktop/releases/win32-x64/*/*.zip
+            build/desktop/releases/win32-x64/*/*.blockmap
+            build/desktop/releases/win32-x64/*/SHA256SUMS.txt
+            build/desktop/releases/win32-x64/*/RELEASE-NOTES.md
           retention-days: 14

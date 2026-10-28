@@ -1,7 +1,7 @@
 const { app, BrowserWindow, Menu, dialog, shell, utilityProcess } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
+const { spawn, fork } = require('node:child_process');
 const { isLocalNavigation, isExternalLink, readyOrigin, allowPermission } = require('./policy.cjs');
 const linuxProcesses = require('./linux-processes.cjs');
 
@@ -17,9 +17,7 @@ const userDirectory = process.env.MOARTUBE_DESKTOP_TEST_DATA_DIR
     ? path.join(app.getPath('appData'), 'MoarTube Client')
     : path.join(
         __dirname,
-        process.platform === 'linux'
-          ? '../build/desktop/dev-user-data-linux-x64'
-          : '../build/desktop/dev-user-data'
+        `../build/desktop/profiles/${process.platform}-${process.arch}/development`
       );
 fs.mkdirSync(userDirectory, { recursive: true });
 app.setPath('userData', userDirectory);
@@ -100,8 +98,15 @@ if (!app.requestSingleInstanceLock()) {
   app
     .whenReady()
     .then(async () => {
-      if (!['win32', 'linux'].includes(process.platform) || process.arch !== 'x64')
-        throw new Error('This desktop candidate supports Windows and Linux x64. macOS is planned.');
+      if (
+        !(
+          (process.platform === 'win32' && process.arch === 'x64') ||
+          (process.platform === 'linux' && ['x64', 'arm64'].includes(process.arch))
+        )
+      )
+        throw new Error(
+          'This desktop candidate supports Windows x64 and Linux x64/ARM64. macOS is planned.'
+        );
       const userData = app.getPath('userData');
       fs.mkdirSync(path.join(userData, 'logs'), { recursive: true });
       const logPath = path.join(userData, 'logs/client.log');
@@ -268,17 +273,42 @@ if (!app.requestSingleInstanceLock()) {
         environment.MOARTUBE_RESOURCE_ROOT = process.resourcesPath;
         delete environment.FFMPEG_BIN;
       } else environment.MOARTUBE_RESOURCE_ROOT = '';
-      backend = utilityProcess.fork(path.join(applicationRoot, 'dist/desktop-backend.js'), [], {
-        env: environment,
-        cwd: userData,
-        stdio: 'pipe',
-        serviceName: 'MoarTube Client Backend',
-      });
+      if (process.platform === 'linux') {
+        environment.MOARTUBE_DESKTOP_NODE_BACKEND = '1';
+        const entry = app.isPackaged
+          ? path.join(process.resourcesPath, 'app.asar.unpacked/dist/desktop-backend.js')
+          : path.join(applicationRoot, 'dist/desktop-backend.js');
+        backend = fork(entry, [], {
+          execPath: app.isPackaged
+            ? path.join(process.resourcesPath, 'runtime/node')
+            : (process.env.npm_node_execpath ?? 'node'),
+          execArgv: [],
+          env: environment,
+          cwd: userData,
+          stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+        });
+        const child = backend;
+        backend.postMessage = (message) => {
+          if (child.connected)
+            child.send(message, (error) => {
+              if (error && !quitting) fail(`The backend IPC channel failed: ${error.message}`);
+            });
+        };
+      } else {
+        backend = utilityProcess.fork(path.join(applicationRoot, 'dist/desktop-backend.js'), [], {
+          env: environment,
+          cwd: userData,
+          stdio: 'pipe',
+          serviceName: 'MoarTube Client Backend',
+        });
+      }
       backend.stdout?.on('data', (chunk) => log.write(chunk));
       backend.on('spawn', () => {
         if (process.platform === 'linux') backendIdentity = linuxProcesses.identity(backend.pid);
+        if (process.env.MOARTUBE_DESKTOP_SMOKE === '1') app.moartubeBackendPid = backend.pid;
       });
       backend.stderr?.on('data', (chunk) => log.write(chunk));
+      backend.on('error', (error) => fail(`The client backend could not start: ${error.message}`));
       backend.on('message', (message) => {
         if (quitting || !window || window.isDestroyed()) return;
         if (message?.type === 'error') {

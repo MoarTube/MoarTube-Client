@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 root="$1"
-work="$root/build/ffmpeg/work"
+work="$root/build/ffmpeg/work/win32-x64"
 src="$work/sources"
 prefix="$root/build/ffmpeg/install/win32-x64"
 jobs="${MOARTUBE_BUILD_JOBS:-8}"

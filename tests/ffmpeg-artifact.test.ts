@@ -19,23 +19,24 @@ afterEach(() => {
   }
 });
 
-function fixture() {
+function fixture(target = 'win32-x64') {
+  const extension = target.startsWith('win32-') ? '.exe' : '';
   const root = fs.mkdtempSync(path.join(tmpdir(), 'moartube-artifact-'));
   directories.push(root);
-  const directory = path.join(root, 'ffmpeg/win32-x64');
+  const directory = path.join(root, 'ffmpeg', target);
   fs.mkdirSync(path.join(directory, 'test-r1'), { recursive: true });
   const manifest = {
     schemaVersion: 1,
-    target: 'win32-x64',
+    target,
     buildId: 'test-r1',
     version: '9.0.2',
     files: {} as Record<string, { path: string; sha256: string }>,
   };
   for (const name of ['ffmpeg', 'ffprobe']) {
     const bytes = Buffer.from(name);
-    fs.writeFileSync(path.join(directory, `test-r1/${name}.exe`), bytes);
+    fs.writeFileSync(path.join(directory, `test-r1/${name}${extension}`), bytes);
     manifest.files[name] = {
-      path: `test-r1/${name}.exe`,
+      path: `test-r1/${name}${extension}`,
       sha256: createHash('sha256').update(bytes).digest('hex'),
     };
   }
@@ -61,6 +62,26 @@ it('rejects a corrupt matching probe instead of using another installation', () 
   const { root, directory } = fixture();
   fs.writeFileSync(path.join(directory, 'test-r1/ffprobe.exe'), 'corrupt');
   expect(() => resolveFfmpegArtifact(root, 'win32-x64')).toThrow('checksum mismatch');
+});
+
+it('selects an ARM64 packaged pair without substituting an x64 artifact', () => {
+  const { root, directory } = fixture('linux-arm64');
+  expect(
+    resolveFfmpegBinaries({
+      root: '/unused',
+      platform: 'linux',
+      arch: 'arm64',
+      environmentPath: '',
+      resourceRoot: root,
+    })
+  ).toMatchObject({
+    ffmpeg: path.join(directory, 'test-r1/ffmpeg'),
+    ffprobe: path.join(directory, 'test-r1/ffprobe'),
+  });
+  expect(resolveFfmpegArtifact(root, 'linux-x64')).toBeUndefined();
+  const corrupt = fixture('linux-arm64');
+  fs.writeFileSync(path.join(corrupt.directory, 'test-r1/ffprobe'), 'corrupt');
+  expect(() => resolveFfmpegArtifact(corrupt.root, 'linux-arm64')).toThrow('checksum mismatch');
 });
 
 it('resolves installed resources without requiring a developer compilation', () => {

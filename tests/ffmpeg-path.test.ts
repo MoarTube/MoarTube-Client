@@ -99,6 +99,17 @@ it('requires both executables and gives the developer the build command', () => 
   expect(() => resolveFfmpegBinaries(options)).toThrow('compiled FFmpeg and FFprobe');
 });
 
+it('explains how to compile a missing ARM64 dependency', () => {
+  expect(() =>
+    resolveFfmpegBinaries({
+      root: fixture(),
+      platform: 'linux',
+      arch: 'arm64',
+      environmentPath: '',
+    })
+  ).toThrow('npm run ffmpeg:build:linux:arm64');
+});
+
 it('does not use a developer build when an installed Electron resource root is specified', () => {
   const root = fixture();
   compileFixture(root);

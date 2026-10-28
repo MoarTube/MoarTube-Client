@@ -8,4 +8,4 @@ RUN apt-get update --error-on=any && apt-get install -y --no-install-recommends 
     ca-certificates xvfb xauth dbus-x11 fonts-dejavu-core procps apparmor && \
     useradd --create-home --uid 1100 desktop-test
 WORKDIR /workspace
-RUN mkdir -p /workspace/scripts /workspace/build/desktop/output/linux
+RUN target="linux-$(node -p process.arch)" && mkdir -p /workspace/scripts /workspace/build/desktop/reports/$target /workspace/build/desktop/profiles/$target

@@ -23,6 +23,6 @@ for (const [index, frame] of frames.entries()) {
   header.writeUInt32LE(offset, entry + 12);
   offset += frame.length;
 }
-mkdirSync(path.join(root, 'build/desktop'), { recursive: true });
-writeFileSync(path.join(root, 'build/desktop/icon.ico'), Buffer.concat([header, ...frames]));
-await sharp(svg).resize(512, 512).png().toFile(path.join(root, 'build/desktop/icon.png'));
+mkdirSync(path.join(root, 'build/desktop/assets'), { recursive: true });
+writeFileSync(path.join(root, 'build/desktop/assets/icon.ico'), Buffer.concat([header, ...frames]));
+await sharp(svg).resize(512, 512).png().toFile(path.join(root, 'build/desktop/assets/icon.png'));

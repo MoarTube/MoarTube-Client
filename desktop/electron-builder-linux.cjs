@@ -1,21 +1,25 @@
+const { desktopPaths } = require('../tooling/build-paths.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
-const selection = JSON.parse(
-  fs.readFileSync(path.join(root, 'build/desktop/ffmpeg-selection-linux.json'), 'utf8')
-);
+const arch = process.env.MOARTUBE_DESKTOP_ARCH ?? process.arch;
+if (!['x64', 'arm64'].includes(arch) || process.platform !== 'linux' || process.arch !== arch)
+  throw new Error('Build Linux desktop packages with matching x64/ARM64 Linux dependencies.');
+const target = `linux-${arch}`;
+const layout = desktopPaths(root, target, require('../package.json').version);
+const selection = JSON.parse(fs.readFileSync(layout.selection, 'utf8'));
 const directory = path.resolve(selection.runtimeDirectory);
-if (
-  !directory.startsWith(path.join(root, 'build/desktop/ffmpeg-release-')) ||
-  path.basename(directory) !== 'runtime'
-)
+const nodeDirectory = path.resolve(selection.nodeRuntimeDirectory);
+if (!nodeDirectory.startsWith(layout.staging + path.sep))
+  throw new Error('Invalid bundled Node staging directory.');
+if (!directory.startsWith(layout.staging + path.sep) || path.basename(directory) !== 'runtime')
   throw new Error('Run npm run desktop:prepare:linux to select a verified Linux FFmpeg candidate');
 module.exports = {
   appId: 'com.moartube.client',
   productName: 'MoarTube Client',
   // Keep the existing npm CLI command available alongside the desktop option.
   executableName: 'moartube-client-desktop',
-  directories: { output: 'build/desktop/output/linux', buildResources: 'desktop' },
+  directories: { output: layout.packages, buildResources: 'desktop' },
   extraMetadata: { main: 'desktop/main.cjs', desktopName: 'moartube-client.desktop' },
   files: [
     'dist/**/*',
@@ -26,29 +30,32 @@ module.exports = {
     'package.json',
     '!dist/**/*.map',
     '!dist/**/*.d.ts',
-    { from: 'build/desktop/icon.png', to: 'desktop/icon.png' },
+    { from: path.join(layout.assets, 'icon.png'), to: 'desktop/icon.png' },
   ],
   asar: true,
-  asarUnpack: ['**/*.node', 'node_modules/@img/**/*'],
+  // Standalone Node reads the backend/dependencies from regular files, avoiding
+  // Electron's GLib symbol conflicts with Sharp. The renderer shell stays in ASAR.
+  asarUnpack: ['dist/**/*', 'node_modules/**/*', 'package.json'],
   npmRebuild: false,
   extraResources: [
-    { from: directory, to: 'ffmpeg/linux-x64', filter: ['**/*'] },
+    { from: directory, to: `ffmpeg/${target}`, filter: ['**/*'] },
+    { from: nodeDirectory, to: 'runtime', filter: ['node', 'LICENSE', 'NOTICES.txt'] },
     { from: 'LICENSE.md', to: 'MoarTube-LICENSE.md' },
   ],
   artifactName: 'MoarTube-Client-${version}-linux-${arch}.${ext}',
   linux: {
     syncDesktopName: true,
     target: [
-      { target: 'deb', arch: ['x64'] },
-      { target: 'tar.gz', arch: ['x64'] },
+      { target: 'deb', arch: [arch] },
+      { target: 'tar.gz', arch: [arch] },
     ],
-    icon: path.join(root, 'build/desktop/icon.png'),
+    icon: path.join(layout.assets, 'icon.png'),
     category: 'AudioVideo',
     maintainer: 'MoarTube, LLC',
     synopsis: 'MoarTube video publishing and live streaming client',
   },
   deb: {
-    artifactName: 'MoarTube-Client-${version}-linux-x64.deb',
+    artifactName: 'MoarTube-Client-${version}-' + target + '.deb',
     packageName: 'moartube-client',
     depends: [
       'libc6 (>= 2.39)',

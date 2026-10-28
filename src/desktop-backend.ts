@@ -7,9 +7,33 @@ interface ParentPort {
   on(event: string, handler: (event: { data: unknown }) => void): void;
   postMessage(message: unknown): void;
 }
-const parent = (process as NodeJS.Process & { parentPort?: ParentPort }).parentPort;
+// Linux uses a bundled standalone Node process so Sharp's GLib symbols are
+// isolated from Electron. Windows retains Electron's utility-process port.
+const nodeParent: ParentPort | undefined =
+  process.env['MOARTUBE_DESKTOP_NODE_BACKEND'] === '1' &&
+  process.versions['electron'] === undefined &&
+  process.connected &&
+  process.send !== undefined
+    ? {
+        on(event, handler): void {
+          if (event === 'message') {
+            process.on('message', (data): void => {
+              handler({ data });
+            });
+          } else if (event === 'close') {
+            process.on('disconnect', (): void => {
+              handler({ data: undefined });
+            });
+          }
+        },
+        postMessage(message): void {
+          process.send?.(message as object);
+        },
+      }
+    : undefined;
+const parent = (process as NodeJS.Process & { parentPort?: ParentPort }).parentPort ?? nodeParent;
 if (parent === undefined) {
-  throw new Error('The desktop backend must be launched by Electron');
+  throw new Error('The desktop backend must be launched by the desktop application');
 }
 let runtime: ClientRuntime | undefined;
 const state = { stopping: false };

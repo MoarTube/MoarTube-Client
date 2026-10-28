@@ -57,7 +57,7 @@ function run(executable, args) {
 
 async function main() {
   const [ffmpegArg, ffprobeArg, reportArg, target = 'win32-x64'] = process.argv.slice(2);
-  if (!['win32-x64', 'linux-x64'].includes(target))
+  if (!['win32-x64', 'linux-x64', 'linux-arm64'].includes(target))
     throw new Error('Unsupported verification target');
   const specification = JSON.parse(
     readFileSync(new URL(`../features/${target}.json`, import.meta.url), 'utf8')
@@ -75,9 +75,11 @@ async function main() {
     assertX64Pe(ffmpeg);
     assertX64Pe(ffprobe);
   } else {
-    const { assertX64Elf } = await import('./linux-elf.mjs');
-    assertX64Elf(readFileSync(ffmpeg));
-    assertX64Elf(readFileSync(ffprobe));
+    const { assertLinuxElf } = await import('./linux-elf.mjs');
+    const arch = target.slice('linux-'.length);
+    if (process.arch !== arch) throw new Error('Run Linux verification on the target architecture');
+    assertLinuxElf(readFileSync(ffmpeg), arch);
+    assertLinuxElf(readFileSync(ffprobe), arch);
   }
   mkdirSync(directory, { recursive: true });
   const reports = {};

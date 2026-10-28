@@ -1,3 +1,5 @@
+import { parseLinuxTarget } from './linux-target.mjs';
+import { ffmpegPaths } from '../../build-paths.cjs';
 import { createHash } from 'node:crypto';
 import {
   createReadStream,
@@ -14,9 +16,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
-const build = path.join(root, 'build/ffmpeg');
-const cache = path.join(build, 'cache');
-const image = 'moartube-ffmpeg-linux-x64:ubuntu24';
+const { arch, target, dockerPlatform } = parseLinuxTarget(process.argv.slice(2));
+const layout = ffmpegPaths(root, target);
+const build = layout.base;
+const cache = path.join(build, 'cache/sources');
+const image = `moartube-ffmpeg-${target}:ubuntu24`;
 const run = (args, options = {}) => {
   const result = spawnSync('docker', args, {
     cwd: root,
@@ -51,14 +55,23 @@ for (const source of lock.sources.filter((entry) => ids.has(entry.id))) {
   if ((await hash(file)) !== source.sha256)
     throw new Error(`Cached source checksum mismatch: ${source.id}`);
 }
-run(['build', '--platform', 'linux/amd64', '-t', image, 'tooling/ffmpeg/platforms/linux']);
+run(['build', '--platform', dockerPlatform, '-t', image, 'tooling/ffmpeg/platforms/linux']);
 const identity = run(['image', 'inspect', image, '--format', '{{.Id}}'], {
   stdio: ['ignore', 'pipe', 'inherit'],
   encoding: 'utf8',
 }).stdout.trim();
-mkdirSync(path.join(build, 'reports/linux-x64'), { recursive: true });
-writeFileSync(path.join(build, 'reports/linux-x64/compiler-image.txt'), identity + '\n');
-const name = `moartube-ffmpeg-build-${process.pid}`;
+mkdirSync(layout.reports, { recursive: true });
+writeFileSync(path.join(layout.reports, 'compiler-image.txt'), identity + '\n');
+const engineArch = run(['info', '--format', '{{.Architecture}}'], {
+  stdio: ['ignore', 'pipe', 'inherit'],
+  encoding: 'utf8',
+}).stdout.trim();
+const execution = (arch === 'arm64' ? ['aarch64', 'arm64'] : ['x86_64', 'amd64']).includes(
+  engineArch
+)
+  ? 'native-container'
+  : 'emulated-container';
+const name = `moartube-ffmpeg-${arch}-build-${process.pid}`;
 const workspaceKey = createHash('sha256')
   .update(JSON.stringify(lock))
   .update(readFileSync(path.join(root, 'tooling/ffmpeg/platforms/linux/build.sh')))
@@ -68,19 +81,25 @@ const workspaceKey = createHash('sha256')
 run([
   'create',
   '--platform',
-  'linux/amd64',
+  dockerPlatform,
   '--name',
   name,
   '--mount',
   `type=bind,source=${cache},target=/inputs,readonly`,
   '--mount',
-  `type=volume,source=moartube-ffmpeg-linux-${workspaceKey},target=/workspace/build/ffmpeg/work/linux-x64`,
+  `type=volume,source=moartube-ffmpeg-linux-${workspaceKey},target=/workspace/build/ffmpeg/work/${target}`,
   '-e',
   `MOARTUBE_BUILD_JOBS=${process.env.MOARTUBE_BUILD_JOBS ?? '8'}`,
+  '-e',
+  `MOARTUBE_FFMPEG_ARCH=${arch}`,
+  '-e',
+  `MOARTUBE_BUILD_EXECUTION=${execution}`,
+  '-e',
+  `MOARTUBE_BUILD_ENGINE_ARCH=${engineArch}`,
   image,
   'bash',
   '-lc',
-  'mkdir -p build/ffmpeg && ln -s /inputs build/ffmpeg/cache && node tooling/ffmpeg/scripts/build-linux-native.mjs',
+  'mkdir -p build/ffmpeg/cache && ln -s /inputs build/ffmpeg/cache/sources && node tooling/ffmpeg/scripts/build-linux-native.mjs',
 ]);
 // Copy only build tooling. Compilation stays on the Linux filesystem, not NTFS.
 let success = false;
@@ -92,28 +111,19 @@ try {
     stdio: ['ignore', 'pipe', 'inherit'],
     encoding: 'utf8',
   }).stdout.trim();
-  run([
-    'cp',
-    `${name}:/workspace/build/ffmpeg/reports/linux-x64/.`,
-    path.join(build, 'reports/linux-x64'),
-  ]);
+  run(['cp', `${name}:/workspace/build/ffmpeg/reports/${target}/.`, layout.reports]);
   if (exitCode !== '0')
     throw new Error(`Linux build failed (${exitCode}); see reports and retained container ${name}`);
-  mkdirSync(path.join(build, 'install/linux-x64'), { recursive: true });
-  run([
-    'cp',
-    `${name}:/workspace/build/ffmpeg/install/linux-x64/.`,
-    path.join(build, 'install/linux-x64'),
-  ]);
-  mkdirSync(path.join(build, 'artifacts/linux-x64'), { recursive: true });
-  run([
-    'cp',
-    `${name}:/workspace/build/ffmpeg/artifacts/linux-x64/.`,
-    path.join(build, 'artifacts/linux-x64'),
-  ]);
+  mkdirSync(layout.install, { recursive: true });
+  run(['cp', `${name}:/workspace/build/ffmpeg/install/${target}/.`, layout.install]);
+  for (const category of ['candidates', 'releases', 'state']) {
+    const destination = path.join(build, category, target);
+    mkdirSync(destination, { recursive: true });
+    run(['cp', `${name}:/workspace/build/ffmpeg/${category}/${target}/.`, destination]);
+  }
   success = true;
   run(['rm', name]);
-  console.log(`Linux FFmpeg and FFprobe: ${path.join(build, 'install/linux-x64/bin')}`);
+  console.log(`Linux FFmpeg and FFprobe: ${path.join(layout.install, 'bin')}`);
 } finally {
   if (!success) console.error(`Build container retained for diagnostics: ${name}`);
 }

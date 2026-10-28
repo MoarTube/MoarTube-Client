@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "target": "linux-arm64",
+  "minimumOs": "Ubuntu 24.04 ARM64 / glibc 2.39",
+  "architecture": "arm64",
+  "ffmpegVersion": "9.0.2",
+  "qualification": "pending",
+  "requirements": {
+    "encoders": [
+      "libx264",
+      "libvpx",
+      "libvpx-vp9",
+      "aac",
+      "libopus",
+      "mjpeg",
+      "h264_nvenc",
+      "h264_vaapi"
+    ],
+    "decoders": [
+      "h264",
+      "hevc",
+      "vp8",
+      "vp9",
+      "av1",
+      "libdav1d",
+      "png",
+      "aac",
+      "opus",
+      "mjpeg",
+      "h264_cuvid"
+    ],
+    "hwaccels": [
+      "cuda",
+      "vaapi"
+    ],
+    "filters": [
+      "scale",
+      "crop",
+      "format",
+      "aresample",
+      "scale_cuda",
+      "scale_vaapi",
+      "hwupload",
+      "hwdownload"
+    ],
+    "demuxers": [
+      "mov",
+      "hls",
+      "mpegts",
+      "matroska",
+      "ogg",
+      "flv",
+      "h264"
+    ],
+    "muxers": [
+      "mp4",
+      "hls",
+      "mpegts",
+      "webm",
+      "ogg",
+      "image2",
+      "null"
+    ],
+    "bsfs": [
+      "h264_mp4toannexb",
+      "aac_adtstoasc"
+    ],
+    "inputProtocols": [
+      "file",
+      "pipe",
+      "tcp",
+      "rtmp",
+      "http",
+      "https",
+      "tls"
+    ],
+    "outputProtocols": [
+      "file",
+      "pipe",
+      "tcp",
+      "rtmp",
+      "http",
+      "https",
+      "tls"
+    ]
+  },
+  "backends": {
+    "nvidia": {
+      "pipeline": [
+        "CUDA decode",
+        "scale_cuda with NV12 hardware output",
+        "h264_nvenc"
+      ]
+    },
+    "amd": {
+      "pipeline": [
+        "VA-API decode",
+        "scale_vaapi with NV12 hardware output",
+        "h264_vaapi"
+      ],
+      "deviceSelection": "selected /dev/dri/renderD* node"
+    },
+    "intel": {
+      "pipeline": [
+        "VA-API decode",
+        "scale_vaapi with NV12 hardware output",
+        "h264_vaapi"
+      ],
+      "deviceSelection": "selected /dev/dri/renderD* node"
+    }
+  },
+  "releaseGates": [
+    "Pinned Ubuntu 24.04 ARM64 build image and snapshot toolchain",
+    "Required compiled features, AArch64 ELF and GLIBC <= 2.39",
+    "Clean Ubuntu 24.04 and 26.04 software tests with declared runtime packages",
+    "Separate native NVIDIA, AMD and Intel GPU qualification, including publishing and RTMP/HLS live",
+    "Source/license availability, checksums and provenance"
+  ],
+  "cpuBaseline": "ARMv8-A, with optional optimized paths selected at runtime",
+  "scope": "Generic ARM64 Linux. CUDA/NVENC and VA-API require compatible hardware/drivers; no Jetson-specific, Raspberry Pi or other SoC backend qualification is implied."
+}

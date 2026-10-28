@@ -53,9 +53,11 @@ export function resolveFfmpegBinaries(options: ResolveOptions = {}): FfmpegBinar
   const buildCommand =
     target === 'win32-x64'
       ? 'Run "npm.cmd run ffmpeg:build:windows" from the MoarTube-Client repository.'
-      : target === 'linux-x64'
-        ? 'Run "npm run ffmpeg:build:linux" from the MoarTube-Client repository (requires Docker with Linux containers).'
-        : `Compile FFmpeg for ${target} first; automated recipes support Windows and Linux x64.`;
+      : target === 'linux-arm64'
+        ? 'Run "npm run ffmpeg:build:linux:arm64" from the MoarTube-Client repository (requires Docker with Linux containers).'
+        : target === 'linux-x64'
+          ? 'Run "npm run ffmpeg:build:linux" from the MoarTube-Client repository (requires Docker with Linux containers).'
+          : `Compile FFmpeg for ${target} first; automated recipes support Windows x64 and Linux x64/ARM64.`;
   const missing = (expected: string): Error =>
     new Error(
       `MoarTube requires compiled FFmpeg and FFprobe for ${target}. ${buildCommand} Expected binaries at: ${expected}.`

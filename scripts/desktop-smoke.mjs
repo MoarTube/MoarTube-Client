@@ -1,3 +1,4 @@
+import { desktopPaths } from '../tooling/build-paths.cjs';
 import { _electron } from 'playwright';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
@@ -5,11 +6,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
+const layout = desktopPaths(root, `${process.platform}-${process.arch}`);
+const report = path.join(layout.reports, process.argv[2] ? 'packaged' : 'development');
+mkdirSync(report, { recursive: true });
 const executablePath = process.argv[2] ? path.resolve(process.argv[2]) : undefined;
 const defaultLinuxProfile = process.platform === 'linux' && executablePath;
 const profile = defaultLinuxProfile
-  ? path.join(root, 'build/desktop/smoke-xdg/MoarTube Client')
-  : path.join(root, 'build/desktop', executablePath ? 'smoke-packaged-user' : 'smoke-dev-user');
+  ? path.join(layout.profiles, 'smoke-packaged/xdg/MoarTube Client')
+  : path.join(layout.profiles, executablePath ? 'smoke-packaged' : 'smoke-development');
 mkdirSync(profile, { recursive: true });
 const preserved = path.join(
   profile,
@@ -72,6 +76,7 @@ try {
     throw new Error('File menu points at an unexpected data/log folder');
   backendPid = await application.evaluate(
     ({ app }) =>
+      app.moartubeBackendPid ??
       app.getAppMetrics().find((metric) => metric.name === 'MoarTube Client Backend')?.pid
   );
   if (!Number.isInteger(backendPid)) throw new Error('Managed backend process was not found');
@@ -124,11 +129,7 @@ try {
   });
   if (!(await page.locator('#sign-in-form').isVisible()))
     throw new Error('Second launch disrupted the original window');
-  const screenshot = path.join(
-    root,
-    'build/desktop',
-    executablePath ? 'packaged-window.png' : 'dev-window.png'
-  );
+  const screenshot = path.join(report, 'window.png');
   await page.screenshot({ path: screenshot });
   const result = {
     mode: executablePath ? 'packaged' : 'development',
@@ -146,10 +147,7 @@ try {
     userData,
     menuFolders,
   };
-  writeFileSync(
-    path.join(root, 'build/desktop', executablePath ? 'packaged-smoke.json' : 'dev-smoke.json'),
-    JSON.stringify(result, null, 2) + '\n'
-  );
+  writeFileSync(path.join(report, 'smoke.json'), JSON.stringify(result, null, 2) + '\n');
   console.log(JSON.stringify(result, null, 2));
 } finally {
   if (!closed) {

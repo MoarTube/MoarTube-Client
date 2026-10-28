@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const build = path.join(root, 'build/ffmpeg');
-const inspect = path.join(build, 'work/msys64/clang64/bin/llvm-objdump.exe');
+const inspect = path.join(build, 'toolchains/win32-x64/msys64/clang64/bin/llvm-objdump.exe');
 const directory = path.join(build, 'reports/win32-x64');
 mkdirSync(directory, { recursive: true });
 const osLibraries = new Set([

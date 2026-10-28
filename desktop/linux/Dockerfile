@@ -8,4 +8,4 @@ RUN apt-get update --error-on=any && apt-get install -y --no-install-recommends 
     libgbm1 libasound2t64 libx11-xcb1 libnotify4 libsecret-1-0 xdg-utils \
     libva2 libva-drm2 libdrm2 libgnutls30t64 xvfb xauth dbus-x11 fonts-dejavu-core
 WORKDIR /workspace
-RUN mkdir -p /workspace/build/ffmpeg/artifacts/linux-x64
+RUN target="linux-$(node -p process.arch)" && mkdir -p /workspace/build/ffmpeg/candidates/$target /workspace/build/ffmpeg/releases/$target /workspace/build/ffmpeg/state/$target

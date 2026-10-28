@@ -1,20 +1,19 @@
+const { desktopPaths } = require('../tooling/build-paths.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
-const selectionPath = path.join(root, 'build/desktop/ffmpeg-selection.json');
+const layout = desktopPaths(root, 'win32-x64', require('../package.json').version);
+const selectionPath = layout.selection;
 if (!fs.existsSync(selectionPath)) throw new Error('Run npm run desktop:prepare first.');
 const selection = JSON.parse(fs.readFileSync(selectionPath, 'utf8'));
 const directory = path.resolve(selection.runtimeDirectory);
-if (
-  !directory.startsWith(path.join(root, 'build/desktop/ffmpeg-release-')) ||
-  path.basename(directory) !== 'runtime'
-)
+if (!directory.startsWith(layout.staging + path.sep) || path.basename(directory) !== 'runtime')
   throw new Error('Invalid desktop FFmpeg candidate path');
 module.exports = {
   appId: 'com.moartube.client',
   productName: 'MoarTube Client',
   executableName: 'MoarTube Client',
-  directories: { output: 'build/desktop/output', buildResources: 'desktop' },
+  directories: { output: layout.packages, buildResources: 'desktop' },
   extraMetadata: { main: 'desktop/main.cjs' },
   files: [
     'dist/**/*',
@@ -40,7 +39,7 @@ module.exports = {
       { target: 'nsis', arch: ['x64'] },
       { target: 'zip', arch: ['x64'] },
     ],
-    icon: path.join(root, 'build/desktop/icon.ico'),
+    icon: path.join(layout.assets, 'icon.ico'),
     signExecutable: false,
   },
   nsis: {

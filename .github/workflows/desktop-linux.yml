@@ -5,7 +5,15 @@ permissions:
   contents: read
 jobs:
   linux:
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
@@ -13,18 +21,18 @@ jobs:
         with:
           node-version: 22
       - run: npm run ffmpeg:test:tooling
-      - run: npm run ffmpeg:build:linux
-      - run: npm run desktop:dist:linux
-      - run: npm run desktop:verify:linux
+      - run: npm run ffmpeg:build:linux -- --arch=${{ matrix.arch }}
+      - run: npm run desktop:dist:linux -- --arch=${{ matrix.arch }}
+      - run: npm run desktop:verify:linux -- --arch=${{ matrix.arch }}
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: moartube-client-linux-candidate
+          name: moartube-client-linux-${{ matrix.arch }}-candidate
           path: |
-            build/desktop/output/linux/*.deb
-            build/desktop/output/linux/*.tar.gz
-            build/desktop/output/linux/*.tar.xz
-            build/desktop/output/linux/SHA256SUMS-linux-x64.txt
-            build/desktop/output/linux/RELEASE-NOTES-linux-x64.md
-            build/desktop/linux-ubuntu-*/
+            build/desktop/releases/linux-${{ matrix.arch }}/*/*.deb
+            build/desktop/releases/linux-${{ matrix.arch }}/*/*.tar.gz
+            build/desktop/releases/linux-${{ matrix.arch }}/*/*.tar.xz
+            build/desktop/releases/linux-${{ matrix.arch }}/*/SHA256SUMS-linux-${{ matrix.arch }}.txt
+            build/desktop/releases/linux-${{ matrix.arch }}/*/RELEASE-NOTES-linux-${{ matrix.arch }}.md
+            build/desktop/reports/linux-${{ matrix.arch }}/
           retention-days: 14

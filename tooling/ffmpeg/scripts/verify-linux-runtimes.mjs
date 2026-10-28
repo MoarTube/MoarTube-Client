@@ -1,8 +1,13 @@
+import { parseLinuxTarget } from './linux-target.mjs';
+import { ffmpegPaths } from '../../build-paths.cjs';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../../../', import.meta.url));
+const { arch, target, dockerPlatform } = parseLinuxTarget(process.argv.slice(2));
+const layout = ffmpegPaths(root, target);
 const images = JSON.parse(
   readFileSync(new URL('../platforms/linux/runtime-images.json', import.meta.url), 'utf8')
 );
@@ -17,13 +22,30 @@ function docker(args, options = {}) {
     throw result.error ?? new Error(`Runtime check failed: docker ${args[0]} (${result.status})`);
   return result;
 }
+const engineArchitecture = docker(['info', '--format', '{{.Architecture}}'], {
+  stdio: ['ignore', 'pipe', 'inherit'],
+  encoding: 'utf8',
+}).stdout.trim();
+const execution = (arch === 'arm64' ? ['aarch64', 'arm64'] : ['x86_64', 'amd64']).includes(
+  engineArchitecture
+)
+  ? 'native-container'
+  : 'emulated-container';
+const binarySha256 = Object.fromEntries(
+  ['ffmpeg', 'ffprobe'].map((name) => [
+    name,
+    createHash('sha256')
+      .update(readFileSync(path.join(layout.install, 'bin', name)))
+      .digest('hex'),
+  ])
+);
 const results = [];
 for (const [version, image] of Object.entries(images)) {
-  const tag = `moartube-ffmpeg-runtime:${version}`;
+  const tag = `moartube-ffmpeg-runtime-${arch}:${version}`;
   docker([
     'build',
     '--platform',
-    'linux/amd64',
+    dockerPlatform,
     '-t',
     tag,
     '-f',
@@ -32,30 +54,26 @@ for (const [version, image] of Object.entries(images)) {
     `UBUNTU_IMAGE=${image}`,
     'tooling/ffmpeg/platforms/linux',
   ]);
-  const name = `moartube-ffmpeg-runtime-${version}-${process.pid}`;
+  const name = `moartube-ffmpeg-runtime-${arch}-${version}-${process.pid}`;
   docker([
     'create',
     '--platform',
-    'linux/amd64',
+    dockerPlatform,
     '--name',
     name,
     tag,
     'bash',
     '-lc',
-    'chmod +x build/ffmpeg/install/linux-x64/bin/ffmpeg build/ffmpeg/install/linux-x64/bin/ffprobe && node tooling/ffmpeg/scripts/verify-features.mjs build/ffmpeg/install/linux-x64/bin/ffmpeg build/ffmpeg/install/linux-x64/bin/ffprobe /reports/features linux-x64 && node tooling/ffmpeg/scripts/verify-software.mjs build/ffmpeg/install/linux-x64/bin/ffmpeg build/ffmpeg/install/linux-x64/bin/ffprobe /reports/software',
+    `chmod +x build/ffmpeg/install/${target}/bin/ffmpeg build/ffmpeg/install/${target}/bin/ffprobe && node tooling/ffmpeg/scripts/verify-features.mjs build/ffmpeg/install/${target}/bin/ffmpeg build/ffmpeg/install/${target}/bin/ffprobe /reports/features ${target} && node tooling/ffmpeg/scripts/verify-software.mjs build/ffmpeg/install/${target}/bin/ffmpeg build/ffmpeg/install/${target}/bin/ffprobe /reports/software`,
   ]);
   docker(['cp', path.join(root, 'tooling'), `${name}:/workspace/tooling`]);
-  docker([
-    'cp',
-    path.join(root, 'build/ffmpeg/install/linux-x64'),
-    `${name}:/workspace/build/ffmpeg/install/linux-x64`,
-  ]);
+  docker(['cp', layout.install, `${name}:/workspace/build/ffmpeg/install/${target}`]);
   docker(['start', '-a', name]);
   const exitCode = docker(['inspect', name, '--format', '{{.State.ExitCode}}'], {
     stdio: ['ignore', 'pipe', 'inherit'],
     encoding: 'utf8',
   }).stdout.trim();
-  const report = path.join(root, 'build/ffmpeg/reports/linux-x64', `ubuntu-${version}`);
+  const report = path.join(layout.reports, `ubuntu-${version}`);
   mkdirSync(report, { recursive: true });
   docker(['cp', `${name}:/reports/.`, report]);
   docker(['cp', `${name}:/runtime-packages.txt`, path.join(report, 'runtime-packages.txt')]);
@@ -63,6 +81,9 @@ for (const [version, image] of Object.entries(images)) {
     throw new Error(`Ubuntu ${version} runtime failed; container retained: ${name}`);
   results.push({
     ubuntu: version,
+    target,
+    dockerPlatform,
+    execution,
     baseImage: image,
     passed: true,
     scope: 'container CPU/software and compiled-feature checks; no native GPU qualification',
@@ -70,7 +91,20 @@ for (const [version, image] of Object.entries(images)) {
   docker(['rm', name]);
 }
 writeFileSync(
-  path.join(root, 'build/ffmpeg/reports/linux-x64/runtimes.json'),
-  JSON.stringify({ checkedAt: new Date().toISOString(), results }, null, 2) + '\n'
+  path.join(layout.reports, 'runtimes.json'),
+  JSON.stringify(
+    {
+      checkedAt: new Date().toISOString(),
+      target,
+      engineArchitecture,
+      execution,
+      binarySha256,
+      results,
+    },
+    null,
+    2
+  ) + '\n'
 );
-console.log('Ubuntu 24.04 and 26.04 runtime checks passed. Native GPU tests remain pending.');
+console.log(
+  `${target}: Ubuntu 24.04 and 26.04 runtime checks passed. Native GPU tests remain pending.`
+);

@@ -74,9 +74,13 @@
     "ffmpeg:verify:linux:runtimes": "node tooling/ffmpeg/scripts/verify-linux-runtimes.mjs",
     "desktop:prepare:linux": "node scripts/prepare-desktop-linux.mjs",
     "desktop:dist:linux": "node scripts/desktop-linux.mjs",
-    "desktop:dist:linux:native": "npm run build && npm run desktop:prepare:linux && electron-builder --config desktop/electron-builder-linux.cjs --linux --x64 --publish never && node scripts/desktop-checksums.mjs --linux",
-    "desktop:pack:linux:native": "npm run build && npm run desktop:prepare:linux && electron-builder --config desktop/electron-builder-linux.cjs --linux --x64 --dir --publish never",
-    "desktop:verify:linux": "node scripts/verify-desktop-linux.mjs"
+    "desktop:dist:linux:native": "node scripts/desktop-linux-native.mjs",
+    "desktop:pack:linux:native": "node scripts/desktop-linux-native.mjs --dir",
+    "desktop:verify:linux": "node scripts/verify-desktop-linux.mjs",
+    "ffmpeg:build:linux:arm64": "node tooling/ffmpeg/scripts/build-linux.mjs --arch=arm64",
+    "ffmpeg:verify:linux:arm64:runtimes": "node tooling/ffmpeg/scripts/verify-linux-runtimes.mjs --arch=arm64",
+    "desktop:dist:linux:arm64": "node scripts/desktop-linux.mjs --arch=arm64",
+    "desktop:verify:linux:arm64": "node scripts/verify-desktop-linux.mjs --arch=arm64"
   },
   "lint-staged": {
     "src/**/*.ts": [

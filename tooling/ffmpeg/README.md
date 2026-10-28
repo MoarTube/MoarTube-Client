@@ -33,7 +33,8 @@ downloading a different version. A changed lock requires a fresh work directory.
 Never delete a work directory while its compiler processes are running.
 
 The binaries land in `build/ffmpeg/install/win32-x64/bin`. Candidate ZIPs and their
-SHA-256 files land in `build/ffmpeg/artifacts`. Packages include corresponding
+SHA-256 files land in `build/ffmpeg/releases/win32-x64/<build-id>`; unpacked
+candidates live in `build/ffmpeg/candidates/win32-x64/<build-id>`. Packages include corresponding
 upstream source archives, the actual recipe and patches, license materials,
 toolchain lock, checksums, provenance and qualification reports. Packaging does
 not publish or certify a release.
@@ -48,7 +49,7 @@ An explicit `FFMPEG_BIN` or client `ffmpegPath` can select another executable.
 To prepare resource files from an unpacked candidate for packaging:
 
 ```powershell
-npm.cmd run ffmpeg:stage:windows -- "build/ffmpeg/artifacts/<build-id>"
+npm.cmd run ffmpeg:stage:windows -- "build/ffmpeg/candidates/win32-x64/<build-id>"
 ```
 
 Staging checks binary hashes and copies a new immutable build into
@@ -166,6 +167,12 @@ pending. Never treat it as release acceptance.
 6. Validate installed application paths, signing and rollback. Electron packaging
    follows artifact validation. The current candidate scripts do not sign, publish
    releases, provision a MoarTube Node, install drivers or certify untested GPUs.
+
+Linux x64 and ARM64 builds use the shared Docker recipe. Run
+`npm run ffmpeg:build:linux:arm64` for ARM64 and
+`npm run ffmpeg:verify:linux:arm64:runtimes` for Ubuntu 24.04/26.04 CPU checks.
+See the [Linux guide](../../docs/linux-ffmpeg.md) for both architectures,
+runtime dependencies and GPU qualification limits.
 
 See [the distribution plan](../../docs/ffmpeg-distribution-plan.md) for the full
 acceptance criteria and later platforms.

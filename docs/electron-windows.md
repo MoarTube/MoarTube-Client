@@ -44,7 +44,7 @@ npm.cmd run desktop:dev
 
 `desktop:dev` builds the TypeScript backend and launches Electron. It uses the
 local FFmpeg compilation and an isolated profile at
-`build/desktop/dev-user-data`, so desktop development does not touch the normal
+`build/desktop/profiles/win32-x64/development`, so desktop development does not touch the normal
 CLI or installed desktop profile.
 
 To build an installer and standalone ZIP:
@@ -59,7 +59,7 @@ To create only the unpacked application directory:
 npm.cmd run desktop:pack:windows
 ```
 
-Artifacts and `SHA256SUMS.txt` appear in `build/desktop/output`. Build preparation uses the FFmpeg
+Artifacts and `SHA256SUMS.txt` appear in `build/desktop/releases/win32-x64/1.1.0`. Build preparation uses the FFmpeg
 packager's verified candidate selection, including binary checksums, matching
 FFprobe, source archives, patches, notices and qualification evidence. If the
 compiled dependency or its verification evidence is missing, run the FFmpeg build
@@ -71,7 +71,7 @@ toolchain once a release identity and credentials are available.
 
 ## GitHub Release assets
 
-`desktop:dist:windows` produces these files in `build/desktop/output`:
+`desktop:dist:windows` produces these files in `build/desktop/releases/win32-x64/1.1.0`:
 
 - `MoarTube-Client-<version>-windows-x64-setup.exe`
 - `MoarTube-Client-<version>-windows-x64.zip`
@@ -98,7 +98,7 @@ npm.cmd run desktop:dist:windows
 Retain each corresponding source archive while its binaries remain available.
 The repository's automatic GitHub source ZIP is not a substitute: downloaded
 FFmpeg/dependency archives under `build/ffmpeg` are gitignored. The unmodified full
-FFmpeg candidate under `build/ffmpeg/artifacts` remains available for verification
+FFmpeg candidate under `build/ffmpeg/candidates/win32-x64` remains available for verification
 and other distribution formats. Desktop preparation rechecks the upstream source
 hashes and both binary hashes before splitting it. The Help menu opens license
 texts and `SOURCES.txt`, which identifies the exact source asset, URL and SHA-256.
@@ -146,7 +146,7 @@ npm.cmd test
 npm.cmd run typecheck
 npm.cmd run desktop:test
 npm.cmd run desktop:smoke
-npm.cmd run desktop:smoke -- "build/desktop/output/win-unpacked/MoarTube Client.exe"
+npm.cmd run desktop:smoke -- "build/desktop/work/win32-x64/packages/win-unpacked/MoarTube Client.exe"
 ```
 
 Smoke tests use workspace-local test profiles, verify the sign-in UI, renderer

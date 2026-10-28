@@ -27,6 +27,9 @@ When you’re ready, make sure to check out the [MoarTube Node](https://github.c
 
 ## Windows desktop option
 
+See [the build output layout](docs/build-outputs.md) for release downloads,
+compiler workspaces, caches and validation evidence on both platforms.
+
 The Windows 11 x64 Electron app bundles the client and compiled FFmpeg/FFprobe.
 Users run the installer or extract the standalone ZIP and open `MoarTube Client.exe`;
 no Node.js or command-line setup is needed. Connect it to your existing MoarTube
@@ -34,7 +37,7 @@ Node. Closing the window stops its jobs and exits the app.
 
 Developers can run `npm.cmd run desktop:dev` after compiling FFmpeg, or create the
 Windows installer/ZIP with `npm.cmd run desktop:dist:windows`. Outputs are in
-`build/desktop/output`, including a separate corresponding FFmpeg sources ZIP,
+`build/desktop/releases/win32-x64/1.1.0`, including a separate corresponding FFmpeg sources ZIP,
 checksums and release notes. Publish the sources ZIP alongside the installer;
 users do not need it to run the app. The current local builds are unsigned candidates;
 macOS packaging is planned. See the [Windows desktop guide](docs/electron-windows.md)
@@ -42,7 +45,7 @@ for storage paths, build commands, verification and release limitations.
 
 ## Linux desktop option
 
-Ubuntu 24.04 and 26.04 x64 have an Electron DEB installer and standalone archive,
+Ubuntu 24.04 and 26.04 x64 and ARM64 have Electron DEB and standalone build targets,
 with Linux FFmpeg/FFprobe bundled and corresponding sources offered separately.
 Install the DEB with your software installer or `sudo apt install ./<download>.deb`,
 then launch MoarTube Client from the application menu. The command
@@ -50,9 +53,15 @@ then launch MoarTube Client from the application menu. The command
 
 Build from Windows/WSL/Linux with `npm run desktop:dist:linux` after compiling the
 Linux FFmpeg candidate. Run `npm run desktop:verify:linux` for the container tests.
-Downloads land in `build/desktop/output/linux`. See the
+Downloads land in `build/desktop/releases/linux-x64/1.1.0`. See the
 [Linux desktop guide](docs/electron-linux.md) for storage, dependencies and
 remaining native GPU/Wayland qualification.
+
+For ARM64, use `npm run desktop:dist:linux:arm64` after
+`npm run ffmpeg:build:linux:arm64`, and `npm run desktop:verify:linux:arm64`
+for validation. Downloads land in `build/desktop/releases/linux-arm64/1.1.0`.
+ARM64 also tests Debian Trixie libraries for Raspberry Pi OS compatibility;
+physical Pi desktop/GPU qualification remains separate.
 
 ## Compile FFmpeg before starting
 
@@ -83,8 +92,12 @@ back to a system executable on PATH. Installed packages can instead bundle a
 verified matching resource artifact. Explicit `ffmpegPath` and `FFMPEG_BIN`
 overrides remain available.
 
-Windows x64 is the currently automated build target. Other operating systems
-require their own native build or an explicit compatible override. See the
+Automated FFmpeg targets are Windows x64, Linux x64 and Linux ARM64. For ARM64,
+run `npm run ffmpeg:build:linux:arm64`, then
+`npm run ffmpeg:verify:linux:arm64:runtimes` with Docker's Linux engine.
+The ARM64 client selects `build/ffmpeg/install/linux-arm64/bin` automatically.
+Linux Electron targets both x64 and ARM64. Other targets require their own
+native build or an explicit compatible override. See the
 [FFmpeg build guide](tooling/ffmpeg/README.md). Media fixture tests use the same
 compiled dependency as the client; test runners must prepare it first.
 

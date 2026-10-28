@@ -26,7 +26,7 @@ jobs:
         with:
           name: ffmpeg-win32-x64-candidate
           path: |
-            build/ffmpeg/artifacts/*.zip
-            build/ffmpeg/artifacts/*.sha256
+            build/ffmpeg/releases/win32-x64/*/*.zip
+            build/ffmpeg/releases/win32-x64/*/*.sha256
             build/ffmpeg/reports/
           retention-days: 14

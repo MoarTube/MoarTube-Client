@@ -4,12 +4,24 @@ The initial packages have passed the installed and standalone container checks
 on both Ubuntu versions. See [the validation record](electron-linux-validation.md)
 for exact artifact hashes, evidence and remaining native-host qualification.
 
-MoarTube Client has an Electron option for Ubuntu 24.04 and 26.04 x64. Windows
-remains available; macOS, ARM64 and other Linux distributions remain future work.
-Linux releases contain the client, Electron, Sharp and the verified Linux FFmpeg
+MoarTube Client has Electron build targets for Ubuntu 24.04 and 26.04 x64 and ARM64.
+Windows remains available; macOS remains future work. ARM64 additionally tests
+Debian Trixie as a compatibility target for Raspberry Pi OS Trixie (64-bit).
+Debian container checks do not qualify a physical Pi desktop or its GPU.
+See [ARM64 validation](electron-linux-arm64-validation.md) for actual test results.
+Linux releases contain the client, Electron, a standalone Node runtime, Sharp and the verified Linux FFmpeg
 and FFprobe pair. Users need no Node.js, npm, compiler or separate FFmpeg download.
 GPU drivers remain system prerequisites. Connect to an existing MoarTube Node;
 the desktop application does not install a Node server.
+
+The Linux backend runs in the bundled Node process and communicates with the
+Electron shell through owned child-process IPC. This isolates Sharp/libvips from
+Electron's system GLib symbols, which otherwise caused image processing to abort
+on Ubuntu 26.04. The backend and dependencies are unpacked from ASAR for Node;
+the renderer shell stays in ASAR. The Node runtime and its third-party license
+texts are under `resources/runtime`. Closing the app stops the backend; losing
+the parent IPC connection also shuts it down. Windows retains its utility process.
+See [Sharp's documented Electron/Linux conflict](https://sharp.pixelplumbing.com/install/#electron-and-linux).
 
 ## Install and launch
 
@@ -19,6 +31,12 @@ software installer, or install with APT so system libraries are resolved:
 ```bash
 sudo apt install ./MoarTube-Client-1.1.0-linux-x64.deb
 ```
+
+For a 64-bit ARM machine, use `MoarTube-Client-1.1.0-linux-arm64.deb` instead.
+The standalone archive and checksum filenames similarly use `linux-arm64`.
+Use the package matching the installed OS architecture; 32-bit Pi OS is unsupported.
+The Pi's VideoCore video acceleration is not implemented by this generic ARM64
+FFmpeg build; Pi transcoding uses the CPU.
 
 Launch **MoarTube Client** from the application menu, or run `moartube-client-desktop`.
 The separate command name preserves an existing npm `moartube-client` CLI.
@@ -49,7 +67,7 @@ ${XDG_CONFIG_HOME:-~/.config}/MoarTube Client/
 
 The File menu opens the data and log folders. Uninstalling leaves this profile
 intact. Existing CLI data is not migrated or shared automatically. Development
-uses `build/desktop/dev-user-data-linux-x64`, separate from installed and Windows
+uses `build/desktop/profiles/<linux-x64|linux-arm64>/development`, separate from installed and Windows
 profiles.
 
 ## Standalone archive
@@ -77,6 +95,23 @@ npm.cmd run desktop:dist:linux
 npm.cmd run desktop:verify:linux
 ```
 
+For ARM64, including cross-building from Windows through Docker's ARM emulation:
+
+```powershell
+npm.cmd run ffmpeg:build:linux:arm64
+npm.cmd run desktop:dist:linux:arm64
+npm.cmd run desktop:verify:linux:arm64
+```
+
+The FFmpeg step can be skipped when its verified ARM64 candidate already exists.
+ARM64 outputs use `build/desktop/releases/linux-arm64/1.1.0` and corresponding
+`reports`, `profiles`, `logs`, `state` and `work` folders. Native ARM64 Docker is
+faster than emulation. The default commands above continue to select x64.
+On this Windows/QEMU setup the full ARM64 verification command returns nonzero:
+installer/backend checks pass, but Chromium's graphical zygote cannot start.
+Use native ARM64 or the native ARM64 CI job for full GUI qualification; see the
+[recorded results](electron-linux-arm64-validation.md).
+
 Use `npm` instead of `npm.cmd` in WSL/Linux. The FFmpeg step can be skipped when
 the verified Linux candidate already exists. Desktop packaging fails with a
 compile-first error if it is missing. It verifies binary and corresponding-source
@@ -96,19 +131,29 @@ npm run desktop:pack:linux:native
 
 Native development still needs the Linux desktop libraries and a working Chromium
 sandbox. `desktop:dist:linux` supplies the isolated packaging environment instead.
+The native commands automatically select x64 or ARM64 based on Node.js. Packaging
+checks Electron, Sharp and FFmpeg ELF architectures, executable permissions, DEB
+architecture and compressed archive integrity before writing release checksums.
+Native packaging also requires the matching Node distribution's `LICENSE` next
+to its installation prefix; set `MOARTUBE_NODE_LICENSE` to that file if Node was
+installed using a different layout. The Docker build supplies it automatically.
 Neither build command installs anything on the host. Failed build/test containers
 are retained for diagnostics; successful task containers are removed. No global
 Docker pruning or host GPU driver installation is performed.
 
 ## GitHub Release assets
 
-`build/desktop/output/linux` contains:
+`build/desktop/releases/linux-x64/1.1.0` contains:
 
 - `MoarTube-Client-<version>-linux-x64.deb`
 - `MoarTube-Client-<version>-linux-x64.tar.gz`
 - `<FFmpeg-build-id>-sources.tar.xz`
 - `SHA256SUMS-linux-x64.txt`
 - `RELEASE-NOTES-linux-x64.md`
+
+ARM64 uses `build/desktop/releases/linux-arm64/1.1.0` with `linux-arm64` in the
+application, checksum and release-note filenames, and its matching ARM64 FFmpeg
+source archive. Both architectures can coexist in a GitHub Release.
 
 Upload the application downloads, source archive and checksums together. Review
 and paste the generated release notes. The default tag is `v<package version>`;
@@ -120,7 +165,8 @@ download URL/checksum. Sources remain an optional download for users.
 Linux checksums and release-note filenames are platform-specific so they can
 coexist with Windows assets in the same GitHub Release. The manual
 `desktop-linux.yml` workflow builds FFmpeg and Electron, runs container tests,
-and uploads candidates without publishing a release.
+and uploads candidates without publishing a release. Its matrix uses
+`ubuntu-24.04` for x64 and native `ubuntu-24.04-arm` for ARM64.
 
 ## Validation scope
 
@@ -133,6 +179,13 @@ reinstalls the same version, removes it and checks that the profile remains.
 The standalone archive is launched from a Unicode/space path. A simulated
 existing npm CLI command is checked before and after installation/removal.
 It does not modify an installed host profile.
+
+`desktop:verify:linux:arm64` runs the same checks for ARM64, adding Debian Trixie.
+Before graphical testing, a separate probe uses bundled Node, Sharp and FFmpeg
+to process an image and serve the real backend sign-in page. It verifies actual
+child-process IPC shutdown and shutdown after parent disconnect. It does not
+qualify renderer sandboxing. Reports identify native versus emulated execution, and a
+failed graphical check remains a failure even when the backend probe succeeds.
 
 Containers need the `SYS_ADMIN` namespace capability for this Chromium sandbox
 test; no `--no-sandbox` flag is used. These checks share the WSL Linux kernel and

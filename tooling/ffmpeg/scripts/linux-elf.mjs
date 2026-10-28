@@ -1,13 +1,16 @@
-export function assertX64Elf(bytes) {
+export function assertLinuxElf(bytes, arch) {
+  const machine = { x64: 62, arm64: 183 }[arch];
   if (
+    machine === undefined ||
     bytes.length < 64 ||
     bytes.toString('hex', 0, 4) !== '7f454c46' ||
     bytes[4] !== 2 ||
     bytes[5] !== 1 ||
-    bytes.readUInt16LE(18) !== 62
+    bytes.readUInt16LE(18) !== machine
   )
-    throw new Error('Expected Linux x64 little-endian ELF executable');
+    throw new Error(`Expected Linux ${arch} little-endian ELF executable`);
 }
+export const assertX64Elf = (bytes) => assertLinuxElf(bytes, 'x64');
 
 export function glibcRequirements(text, maximum = '2.39') {
   const versions = [

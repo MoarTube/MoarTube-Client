@@ -1,3 +1,4 @@
+import { ffmpegPaths } from '../../build-paths.cjs';
 import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
@@ -8,9 +9,10 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const base = path.join(root, 'build/ffmpeg');
-const cache = path.join(base, 'cache');
-const work = path.join(base, 'work');
-const msys = path.join(work, 'msys64');
+const layout = ffmpegPaths(root, 'win32-x64');
+const cache = layout.toolchainDownloads;
+const work = layout.work;
+const msys = path.join(layout.toolchain, 'msys64');
 const bash = path.join(msys, 'usr/bin/bash.exe');
 const readJson = async (name) =>
   JSON.parse(
@@ -45,10 +47,10 @@ async function run(executable, args, options = {}) {
   });
 }
 
-async function download(input) {
+async function download(input, directory = cache) {
   if (!/^[a-zA-Z0-9_.+~\-]+$/.test(input.archive) || !/^[a-f0-9]{64}$/.test(input.sha256))
     throw new Error('Invalid source lock entry');
-  const target = path.join(cache, input.archive);
+  const target = path.join(directory, input.archive);
   if (await exists(target)) {
     if ((await hash(target)) !== input.sha256)
       throw new Error(`Cached archive checksum mismatch: ${target}`);
@@ -82,11 +84,13 @@ async function main() {
   const sources = await readJson('sources.lock.json');
   const toolchain = await readJson('toolchain.lock.json');
   await mkdir(cache, { recursive: true });
+  await mkdir(layout.sources, { recursive: true });
+  await mkdir(layout.toolchain, { recursive: true });
   await mkdir(work, { recursive: true });
   const bootstrap = await download(toolchain.bootstrap);
-  if (!(await exists(bash))) await run('tar.exe', ['-xf', bootstrap, '-C', work]);
+  if (!(await exists(bash))) await run('tar.exe', ['-xf', bootstrap, '-C', layout.toolchain]);
   const identity = createHash('sha256').update(JSON.stringify(toolchain)).digest('hex');
-  const stamp = path.join(work, 'toolchain.identity');
+  const stamp = path.join(layout.toolchain, 'toolchain.identity');
   if (!(await exists(stamp)) || (await readFile(stamp, 'utf8')) !== identity) {
     const packages = [];
     for (const input of toolchain.packages) packages.push(await download(input));
@@ -103,10 +107,10 @@ async function main() {
     .sort();
   if (JSON.stringify(installed) !== JSON.stringify([...toolchain.installed].sort()))
     throw new Error(
-      'Installed toolchain differs from lock. Use a fresh build/ffmpeg/work directory.'
+      'Installed toolchain differs from lock. Use a fresh build/ffmpeg/work/win32-x64 directory.'
     );
   for (const input of sources.sources) {
-    const archive = await download(input);
+    const archive = await download(input, layout.sources);
     const destination = path.join(work, 'sources', input.id);
     const marker = path.join(destination, '.moartube-source-sha256');
     if (await exists(marker)) {

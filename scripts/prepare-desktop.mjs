@@ -1,10 +1,13 @@
+import { desktopPaths, ffmpegPaths } from '../tooling/build-paths.cjs';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stageDesktopFfmpeg, sha256 } from './lib/desktop-ffmpeg.mjs';
 
 const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
+const version = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version;
+const layout = desktopPaths(root, 'win32-x64', version);
 if (process.platform !== 'win32' || process.arch !== 'x64')
   throw new Error('Desktop packaging currently supports native Windows x64.');
 execFileSync(process.execPath, [path.join(root, 'scripts/desktop-icon.mjs')], {
@@ -19,25 +22,25 @@ execFileSync(
   [path.join(root, 'tooling/ffmpeg/scripts/package-windows.mjs'), '--reuse'],
   { cwd: root, stdio: 'inherit', windowsHide: true }
 );
-const selection = JSON.parse(
-  readFileSync(path.join(root, 'build/ffmpeg/artifacts/selected.json'), 'utf8')
-);
+const ffmpeg = ffmpegPaths(root, 'win32-x64');
+const selection = JSON.parse(readFileSync(ffmpeg.selection, 'utf8'));
 const directory = path.resolve(selection.directory);
-const allowed = path.join(root, 'build/ffmpeg/artifacts') + path.sep;
+const allowed = ffmpeg.candidates + path.sep;
 if (!directory.startsWith(allowed))
   throw new Error('FFmpeg candidate is outside the build artifact directory');
-mkdirSync(path.join(root, 'build/desktop'), { recursive: true });
-const staging = mkdtempSync(path.join(root, 'build/desktop/ffmpeg-release-'));
+mkdirSync(layout.staging, { recursive: true });
+mkdirSync(layout.state, { recursive: true });
+const staging = path.join(layout.staging, selection.buildId);
 const runtimeDirectory = path.join(staging, 'runtime');
 const sourceDirectory = path.join(staging, 'source');
 const manifest = stageDesktopFfmpeg(directory, runtimeDirectory, sourceDirectory);
 if (manifest.buildId !== selection.buildId) throw new Error('FFmpeg selection build ID mismatch');
-const version = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version;
+
 const releaseTag = process.env.MOARTUBE_RELEASE_TAG ?? `v${version}`;
 const sourceArchive = `MoarTube-FFmpeg-${manifest.buildId}-sources.zip`;
 const releaseBase = `https://github.com/MoarTube/MoarTube-Client/releases/download/${encodeURIComponent(releaseTag)}`;
 const sourceUrl = `${releaseBase}/${sourceArchive}`;
-const output = path.join(root, 'build/desktop/output');
+const output = layout.release;
 mkdirSync(output, { recursive: true });
 const partial = path.join(output, `${sourceArchive}.partial-${process.pid}.zip`);
 execFileSync('tar.exe', ['-a', '-cf', partial, '-C', sourceDirectory, '.'], {
@@ -70,7 +73,7 @@ writeFileSync(
     `Release checklist: publish at tag \`${releaseTag}\`, upload all four linked assets, and retain the matching source archive for as long as the binaries remain available. Validate installation, upgrades and Node-connected workflows before declaring a stable release.\n`
 );
 writeFileSync(
-  path.join(root, 'build/desktop/ffmpeg-selection.json'),
+  layout.selection,
   JSON.stringify(
     {
       directory,

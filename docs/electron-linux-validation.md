@@ -1,5 +1,27 @@
 # Linux Electron validation — 2026-10-28
 
+## Current x64 follow-up: isolated Node backend
+
+The ARM64 implementation exposed a Sharp/GLib conflict during real image
+processing on Ubuntu 26.04. Linux packages now bundle standalone Node 22.23.4
+for the backend. Both x64 Ubuntu versions passed the image/backend IPC probe
+and full installed/standalone sandboxed GUI suite with this change. Current
+FFmpeg is `9.0.2-moartube-linux-x64-8828825bb7df5b22-r534f153d`.
+
+Current assets are in `build/desktop/releases/linux-x64/1.1.0`:
+
+- DEB SHA-256: `45ab1600ab1715ce662ff0128d9f4ab0ac31313109f2884cef364a0328b3509e`.
+- Standalone SHA-256: `712a702572595dc47fa9db7b83fadcf28375ae019b3e3dbfa0d8eae51f97ba17`.
+- Source SHA-256: `0e35b723ca3cffcc362901e71a934d880ae056296fc4a1746d3cb3c9686abfad`.
+
+Current evidence is under `build/desktop/reports/linux-x64/ubuntu-*` and
+`verification.json`; logs for this regression are
+`build/desktop/logs/linux-arm64/x64-final-verification.log`.
+[ARM64 validation](electron-linux-arm64-validation.md) records its separate scope.
+The original validation below describes the earlier utility-process candidate.
+
+## Earlier candidate
+
 MoarTube Client 1.1.0, Electron 45.1.0, Linux x64. Built from Windows 11 in an
 Ubuntu 24.04 container on the existing WSL 2-backed Docker engine. Bundled FFmpeg:
 `9.0.2-moartube-linux-x64-8828825bb7df5b22-r5e8a647b`.
@@ -28,7 +50,12 @@ shared entry point and File menu assertions.
 
 ## Deliverables
 
-Under `build/desktop/output/linux`:
+These original, pre-layout-validation downloads are preserved under
+`build/desktop/archive/linux-x64/releases/1.1.0-before-layout-validation`.
+New builds use the [current output layout](build-outputs.md).
+Those obsolete backup downloads were subsequently removed by an approved
+cleanup; the hashes below remain a historical validation record. Current
+downloads and checksums are in the release folder described by the output guide.
 
 | File | Approximate size | SHA-256 |
 | --- | --- | --- |
@@ -39,12 +66,14 @@ Under `build/desktop/output/linux`:
 Checksums and release-note templates accompany the downloads. FFmpeg sources are
 separate from the application payload. All Chromium locales remain present.
 
-Evidence is under `build/desktop/linux-ubuntu-24.04` and `linux-ubuntu-26.04`,
+Original evidence is under
+`build/desktop/archive/linux-x64/reports/before-layout-validation/ubuntu-24.04`
+and its `ubuntu-26.04` sibling,
 including installed/portable smoke JSON, screenshots, logs, library/package
 inventories and `installation-result.txt`. Final logs are
-`build/desktop/linux-build-final-artifacts.log` and
-`build/desktop/linux-verification-final-artifacts.log`. Windows regression
-packaging evidence is `build/desktop/windows-linux-regression-package.log` and
+`build/desktop/logs/linux-x64/linux-build-final-artifacts.log` and
+`build/desktop/logs/linux-x64/linux-verification-final-artifacts.log`. Windows regression
+packaging evidence is `build/desktop/logs/win32-x64/windows-linux-regression-package.log` and
 the normal packaged smoke report.
 
 ## Qualification limits

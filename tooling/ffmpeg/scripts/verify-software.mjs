@@ -14,7 +14,7 @@ import { createHash } from 'node:crypto';
 const [ffmpegArg, ffprobeArg, directoryArg] = process.argv.slice(2);
 if (!ffmpegArg || !ffprobeArg)
   throw new Error('Usage: verify-software.mjs <ffmpeg.exe> <ffprobe.exe> [directory]');
-const target = process.platform === 'win32' ? 'win32-x64' : 'linux-x64';
+const target = `${process.platform}-${process.arch}`;
 const directory = path.resolve(directoryArg ?? `build/ffmpeg/reports/${target}/software`);
 // Exercise executable and media paths containing spaces and non-ASCII text.
 const fixture = path.join(directory, 'media espace café 日本語');

@@ -8,7 +8,15 @@ permissions:
 
 jobs:
   linux:
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
@@ -16,14 +24,14 @@ jobs:
         with:
           node-version: 22
       - run: npm run ffmpeg:test:tooling
-      - run: npm run ffmpeg:build:linux
-      - run: npm run ffmpeg:verify:linux:runtimes
+      - run: npm run ffmpeg:build:linux -- --arch=${{ matrix.arch }}
+      - run: npm run ffmpeg:verify:linux:runtimes -- --arch=${{ matrix.arch }}
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: ffmpeg-linux-x64-candidate
+          name: ffmpeg-linux-${{ matrix.arch }}-candidate
           path: |
-            build/ffmpeg/artifacts/linux-x64/*.tar.xz
-            build/ffmpeg/artifacts/linux-x64/SHA256SUMS.txt
-            build/ffmpeg/reports/linux-x64/
+            build/ffmpeg/releases/linux-${{ matrix.arch }}/*/*.tar.xz
+            build/ffmpeg/releases/linux-${{ matrix.arch }}/*/SHA256SUMS.txt
+            build/ffmpeg/reports/linux-${{ matrix.arch }}/
           retention-days: 14

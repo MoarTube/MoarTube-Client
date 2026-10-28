@@ -1,3 +1,4 @@
+import { ffmpegPaths } from '../../build-paths.cjs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
@@ -15,7 +16,8 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const build = path.join(root, 'build/ffmpeg');
-const bin = path.join(build, 'install/win32-x64/bin');
+const layout = ffmpegPaths(root, 'win32-x64');
+const bin = path.join(layout.install, 'bin');
 const tooling = path.join(root, 'tooling/ffmpeg');
 const digest = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
 const run = (script, args) =>
@@ -79,6 +81,7 @@ function collect(directory) {
   }
 }
 collect(tooling);
+recipeFiles.push(path.join(root, 'tooling/build-paths.cjs'));
 recipeFiles.push(
   ...commandFiles.map((name) => path.join(root, name)),
   ...documentation.map((name) => path.join(root, 'docs', name))
@@ -91,15 +94,24 @@ for (const name of recipeFiles.sort())
     .update('\0');
 const recipeSha256 = recipeHash.digest('hex');
 const buildId = `9.0.2-moartube-${digest(binaries[0]).slice(0, 16)}-r${recipeSha256.slice(0, 8)}`;
-const finalOutput = path.join(build, 'artifacts', buildId);
+const finalOutput = path.join(layout.candidates, buildId);
+const release = path.join(layout.releases, buildId);
+mkdirSync(layout.state, { recursive: true });
+mkdirSync(release, { recursive: true });
+mkdirSync(layout.candidates, { recursive: true });
 function recordSelection(directory) {
-  writeFileSync(path.join(build, 'artifacts/selected.json'), JSON.stringify({ directory, buildId }, null, 2) + '\n');
+  writeFileSync(layout.selection, JSON.stringify({ directory, buildId }, null, 2) + '\n');
 }
 if (existsSync(finalOutput)) {
-  if (!process.argv.includes('--reuse')) throw new Error(`Artifact is immutable and already exists: ${finalOutput}`);
+  if (!process.argv.includes('--reuse'))
+    throw new Error(`Artifact is immutable and already exists: ${finalOutput}`);
   const existing = JSON.parse(readFileSync(path.join(finalOutput, 'manifest.json'), 'utf8'));
   for (const name of ['ffmpeg', 'ffprobe']) {
-    if (existing.files?.[name]?.sha256 !== hashes[name] || digest(path.join(finalOutput, existing.files[name].path)) !== hashes[name]) throw new Error('Existing artifact checksum mismatch');
+    if (
+      existing.files?.[name]?.sha256 !== hashes[name] ||
+      digest(path.join(finalOutput, existing.files[name].path)) !== hashes[name]
+    )
+      throw new Error('Existing artifact checksum mismatch');
   }
   recordSelection(finalOutput);
   console.log(`Reusing verified candidate: ${finalOutput}`);
@@ -129,10 +141,10 @@ for (const [index, name] of ['ffmpeg', 'ffprobe'].entries()) {
 mkdirSync(path.join(output, 'sources'), { recursive: true });
 mkdirSync(path.join(output, 'licenses'), { recursive: true });
 for (const source of sources.sources) {
-  const archive = path.join(build, 'cache', source.archive);
+  const archive = path.join(layout.sources, source.archive);
   if (digest(archive) !== source.sha256) throw new Error(`Source checksum mismatch: ${source.id}`);
   copyFileSync(archive, path.join(output, 'sources', source.archive));
-  const directory = path.join(build, 'work/sources', source.id);
+  const directory = path.join(build, 'work/win32-x64/sources', source.id);
   const notices = readdirSync(directory).filter((name) =>
     /^(COPYING|LICENSE|PATENTS|NOTICE)([.\-_]|$)/i.test(name)
   );
@@ -144,11 +156,15 @@ for (const source of sources.sources) {
     });
 }
 cpSync(
-  path.join(build, 'work/msys64/clang64/share/licenses'),
+  path.join(build, 'toolchains/win32-x64/msys64/clang64/share/licenses'),
   path.join(output, 'licenses/toolchain-runtime'),
   { recursive: true }
 );
 cpSync(tooling, path.join(output, 'recipe/tooling/ffmpeg'), { recursive: true });
+copyFileSync(
+  path.join(root, 'tooling/build-paths.cjs'),
+  path.join(output, 'recipe/tooling/build-paths.cjs')
+);
 for (const name of documentation) {
   mkdirSync(path.join(output, 'recipe/docs'), { recursive: true });
   copyFileSync(path.join(root, 'docs', name), path.join(output, 'recipe/docs', name));
@@ -182,7 +198,7 @@ writeFileSync(
 );
 writeFileSync(
   path.join(output, 'BUILD.txt'),
-  'Requires native Windows x64 Node.js 22+. From recipe/, run npm.cmd run ffmpeg:build:windows. To reuse the included sources offline, first copy sources/* from this archive into recipe/build/ffmpeg/cache/. The checksum-locked portable toolchain must also be cached or downloaded. See recipe/tooling/ffmpeg/README.md.\n'
+  'Requires native Windows x64 Node.js 22+. From recipe/, run npm.cmd run ffmpeg:build:windows. To reuse the included sources offline, first copy sources/* from this archive into recipe/build/ffmpeg/cache/sources/. The checksum-locked portable toolchain must also be cached or downloaded. See recipe/tooling/ffmpeg/README.md.\n'
 );
 cpSync(path.join(build, 'reports/win32-x64'), path.join(output, 'reports'), {
   recursive: true,
@@ -222,9 +238,9 @@ execFileSync('tar.exe', ['-a', '-cf', `${output}.zip`, '-C', output, '.'], {
 });
 writeFileSync(`${output}.zip.sha256`, `${digest(`${output}.zip`)}  ${buildId}.zip\n`);
 renameSync(output, finalOutput);
-renameSync(`${output}.zip`, `${finalOutput}.zip`);
-renameSync(`${output}.zip.sha256`, `${finalOutput}.zip.sha256`);
+renameSync(`${output}.zip`, path.join(release, `${buildId}.zip`));
+renameSync(`${output}.zip.sha256`, path.join(release, `${buildId}.zip.sha256`));
 recordSelection(finalOutput);
 console.log(
-  `Packaged candidate: ${finalOutput}.zip. Hardware and clean-host qualification remain pending.`
+  `Packaged candidate: ${path.join(release, `${buildId}.zip`)}. Hardware and clean-host qualification remain pending.`
 );
