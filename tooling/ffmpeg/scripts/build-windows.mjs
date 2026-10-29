@@ -1,4 +1,5 @@
 import { ffmpegPaths } from '../../build-paths.cjs';
+import { runMsysScript } from './windows-shell.mjs';
 import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
@@ -73,9 +74,7 @@ async function download(input, directory = cache) {
 }
 
 async function shell(command) {
-  await run(bash, ['-lc', command], {
-    env: { ...process.env, MSYSTEM: 'CLANG64', CHERE_INVOKING: '1', MSYS2_PATH_TYPE: 'minimal' },
-  });
+  await runMsysScript(bash, command, { cwd: root, directory: work });
 }
 
 async function main() {

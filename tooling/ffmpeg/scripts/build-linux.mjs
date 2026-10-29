@@ -97,9 +97,8 @@ run([
   '-e',
   `MOARTUBE_BUILD_ENGINE_ARCH=${engineArch}`,
   image,
-  'bash',
-  '-lc',
-  'mkdir -p build/ffmpeg/cache && ln -s /inputs build/ffmpeg/cache/sources && node tooling/ffmpeg/scripts/build-linux-native.mjs',
+  'node',
+  'tooling/ffmpeg/scripts/build-linux-container.mjs',
 ]);
 // Copy only build tooling. Compilation stays on the Linux filesystem, not NTFS.
 let success = false;

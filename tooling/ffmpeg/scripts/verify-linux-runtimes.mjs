@@ -62,9 +62,9 @@ for (const [version, image] of Object.entries(images)) {
     '--name',
     name,
     tag,
-    'bash',
-    '-lc',
-    `chmod +x build/ffmpeg/install/${target}/bin/ffmpeg build/ffmpeg/install/${target}/bin/ffprobe && node tooling/ffmpeg/scripts/verify-features.mjs build/ffmpeg/install/${target}/bin/ffmpeg build/ffmpeg/install/${target}/bin/ffprobe /reports/features ${target} && node tooling/ffmpeg/scripts/verify-software.mjs build/ffmpeg/install/${target}/bin/ffmpeg build/ffmpeg/install/${target}/bin/ffprobe /reports/software`,
+    'node',
+    'tooling/ffmpeg/scripts/verify-linux-runtime-native.mjs',
+    `--arch=${arch}`,
   ]);
   docker(['cp', path.join(root, 'tooling'), `${name}:/workspace/tooling`]);
   docker(['cp', layout.install, `${name}:/workspace/build/ffmpeg/install/${target}`]);

@@ -98,11 +98,20 @@ const adaptersSchema = z.array(
 );
 
 export async function getDirectXAdapters(): Promise<z.infer<typeof adaptersSchema>> {
-  const { stdout } = await run(
-    'powershell.exe',
-    ['-NoProfile', '-NonInteractive', '-Command', adapterScript],
-    { windowsHide: true, timeout: 15000 }
-  );
+  // Send source through stdin rather than Windows command-line quoting/limits.
+  const pending = run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '-'], {
+    windowsHide: true,
+    timeout: 15000,
+  });
+  const input = pending.child.stdin;
+  if (input === null) {
+    pending.child.kill();
+    await pending.catch(() => undefined);
+    throw new Error('PowerShell stdin is unavailable');
+  }
+  input.on('error', () => pending.child.kill());
+  input.end(`${adapterScript}\n`);
+  const { stdout } = await pending;
   return adaptersSchema.parse(JSON.parse(stdout.replace(/^\uFEFF/, '')));
 }
 

@@ -50,9 +50,8 @@ docker([
   '-e',
   `MOARTUBE_DESKTOP_ARCH=${arch}`,
   image,
-  'bash',
-  '-lc',
-  'npm ci --include=optional --ignore-scripts --no-audit --no-fund && node node_modules/electron/install.js && npm run desktop:test && npm run desktop:build:linux:native',
+  'node',
+  'scripts/desktop-linux-container.mjs',
 ]);
 try {
   for (const item of [
