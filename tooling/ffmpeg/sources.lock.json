@@ -13,7 +13,7 @@
     },
     {
       "archive": "x264-stable-b35605a.tar.gz",
-      "url": "https://code.videolan.org/videolan/x264/-/archive/b35605ace3ddf7c1a5d67a2eb553f034aef41d55/x264-b35605ace3ddf7c1a5d67a2eb553f034aef41d55.tar.gz",
+      "url": "https://codeload.github.com/mirror/x264/tar.gz/b35605ace3ddf7c1a5d67a2eb553f034aef41d55",
       "id": "x264",
       "version": "stable-b35605a",
       "license": "GPL-2.0-or-later",
@@ -70,7 +70,7 @@
       "id": "dav1d",
       "version": "1.5.1",
       "archive": "dav1d-1.5.1.tar.gz",
-      "url": "https://code.videolan.org/videolan/dav1d/-/archive/1.5.1/dav1d-1.5.1.tar.gz",
+      "url": "https://codeload.github.com/videolan/dav1d/tar.gz/refs/tags/1.5.1",
       "sha256": "fa635e2bdb25147b1384007c83e15de44c589582bb3b9a53fc1579cb9d74b695",
       "license": "BSD-2-Clause"
     },

@@ -42,6 +42,11 @@ adjust the default eight compile jobs. A hash mismatch fails instead of silently
 downloading a different version. A changed lock requires a fresh work directory.
 Never delete a work directory while its compiler processes are running.
 
+x264 and dav1d archives use their GitHub mirrors because VideoLAN's archive
+endpoints return HTTP 406 to automated builds. The mirror downloads were
+verified against the existing locked SHA-256 values; codec versions, revisions,
+archive filenames and source bytes are unchanged. All targets share this lock.
+
 The binaries land in `build/ffmpeg/install/win32-x64/bin`. Candidate ZIPs and their
 SHA-256 files land in `build/ffmpeg/releases/win32-x64/<build-id>`; unpacked
 candidates live in `build/ffmpeg/candidates/win32-x64/<build-id>`. Packages include corresponding
