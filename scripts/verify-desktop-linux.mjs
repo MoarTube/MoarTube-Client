@@ -86,7 +86,7 @@ for (const [ubuntu, image] of Object.entries(images)) {
   const archive = `MoarTube-Client-${version}-${target}.tar.gz`;
   docker(['cp', path.join(output, archive), `${name}:/workspace/${archive}`]);
   docker(['cp', path.join(root, 'tooling'), `${name}:/workspace/tooling`]);
-  for (const item of ['desktop-smoke.mjs', 'linux-installed-smoke.sh', 'linux-backend-probe.cjs'])
+  for (const item of ['desktop-smoke.mjs', 'linux-installed-smoke.sh', 'desktop-backend-probe.cjs'])
     docker(['cp', path.join(root, 'scripts', item), `${name}:/workspace/scripts/${item}`]);
   docker(['start', '-a', name], { allowFailure: true });
   const code = docker(['inspect', name, '--format', '{{.State.ExitCode}}'], {

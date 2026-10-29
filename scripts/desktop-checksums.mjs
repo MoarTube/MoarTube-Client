@@ -13,9 +13,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const linux = process.argv.includes('--linux');
-const target = linux
-  ? parseLinuxTarget(process.argv.slice(2).filter((arg) => arg !== '--linux')).target
-  : 'win32-x64';
+const darwin = process.argv.includes('--darwin');
+if (darwin && (linux || process.argv.length !== 3))
+  throw new Error('Usage: desktop-checksums.mjs --darwin');
+const target = darwin
+  ? 'darwin-x64'
+  : linux
+    ? parseLinuxTarget(process.argv.slice(2).filter((arg) => arg !== '--linux')).target
+    : 'win32-x64';
 const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
 const version = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8')
@@ -25,12 +30,14 @@ const directory = layout.release;
 mkdirSync(directory, { recursive: true });
 const selection = JSON.parse(readFileSync(layout.selection, 'utf8'));
 const artifacts = [
-  ...(linux
-    ? [`MoarTube-Client-${version}-${target}.deb`, `MoarTube-Client-${version}-${target}.tar.gz`]
-    : [
-        `MoarTube-Client-${version}-windows-x64-setup.exe`,
-        `MoarTube-Client-${version}-windows-x64.zip`,
-      ]),
+  ...(darwin
+    ? [`MoarTube-Client-${version}-${target}.dmg`, `MoarTube-Client-${version}-${target}.zip`]
+    : linux
+      ? [`MoarTube-Client-${version}-${target}.deb`, `MoarTube-Client-${version}-${target}.tar.gz`]
+      : [
+          `MoarTube-Client-${version}-windows-x64-setup.exe`,
+          `MoarTube-Client-${version}-windows-x64.zip`,
+        ]),
   selection.sourceArchive,
 ].sort();
 const lines = [];
@@ -45,8 +52,8 @@ for (const name of artifacts) {
   lines.push(`${digest}  ${name}`);
 }
 const blockmap = `MoarTube-Client-${version}-windows-x64-setup.exe.blockmap`;
-if (!linux && existsSync(path.join(layout.packages, blockmap)))
+if (!linux && !darwin && existsSync(path.join(layout.packages, blockmap)))
   renameSync(path.join(layout.packages, blockmap), path.join(directory, blockmap));
-const checksumFile = linux ? `SHA256SUMS-${target}.txt` : 'SHA256SUMS.txt';
+const checksumFile = linux || darwin ? `SHA256SUMS-${target}.txt` : 'SHA256SUMS.txt';
 writeFileSync(path.join(directory, checksumFile), lines.join('\n') + '\n');
 console.log(`Desktop artifact checksums: ${path.join(directory, checksumFile)}`);

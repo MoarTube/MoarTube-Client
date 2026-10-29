@@ -40,7 +40,7 @@ Windows installer/ZIP with `npm.cmd run desktop:build:windows`. Outputs are in
 `build/desktop/releases/win32-x64/1.1.0`, including a separate corresponding FFmpeg sources ZIP,
 checksums and release notes. Publish the sources ZIP alongside the installer;
 users do not need it to run the app. The current local builds are unsigned candidates;
-macOS packaging is planned. See the [Windows desktop guide](docs/electron-windows.md)
+See the [Windows desktop guide](docs/electron-windows.md)
 for storage paths, build commands, verification and release limitations.
 
 ## Linux desktop option
@@ -64,6 +64,16 @@ for full-system Debian Trixie VM validation. Native ARM64 Docker hosts can use
 Downloads land in `build/desktop/releases/linux-arm64/1.1.0`.
 ARM64 also tests Debian Trixie libraries for Raspberry Pi OS compatibility;
 physical Pi desktop/GPU qualification remains separate.
+
+## macOS Intel desktop option
+
+Darwin x64 has FFmpeg and Electron DMG/ZIP build scripts targeting macOS 15+.
+Use the **macOS Intel desktop candidate** GitHub Actions workflow to build and
+test from Windows. On an Intel Mac, run `npm run ffmpeg:build:darwin`,
+`npm run desktop:build:darwin` and `npm run desktop:verify:darwin`.
+The first native CI run is still required to qualify these scripts. Initial
+packages use ad-hoc signing and are not notarized; Darwin ARM64 remains future
+work. See the [macOS guide](docs/electron-darwin.md).
 
 ## Compile FFmpeg before starting
 
@@ -94,7 +104,7 @@ back to a system executable on PATH. Installed packages can instead bundle a
 verified matching resource artifact. Explicit `ffmpegPath` and `FFMPEG_BIN`
 overrides remain available.
 
-Automated FFmpeg targets are Windows x64, Linux x64 and Linux ARM64. For ARM64,
+FFmpeg recipes target Windows x64, Linux x64, Linux ARM64 and macOS x64. For Linux ARM64,
 run `npm run ffmpeg:build:linux:arm64`, then
 `npm run ffmpeg:verify:linux:arm64:runtimes` with Docker's Linux engine.
 The ARM64 client selects `build/ffmpeg/install/linux-arm64/bin` automatically.

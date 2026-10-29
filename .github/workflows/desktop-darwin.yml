@@ -1,0 +1,77 @@
+name: macOS Intel desktop candidate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15-intel
+    timeout-minutes: 150
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      ELECTRON_CACHE: ${{ github.workspace }}/build/desktop/cache/electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/build/desktop/cache/builder
+      MOARTUBE_NODE_LICENSE: ${{ github.workspace }}/build/desktop/node-LICENSE
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          architecture: x64
+          cache: npm
+      - name: Install compiler tools
+        run: brew install cmake ninja meson nasm pkg-config xz
+      - run: npm ci
+      - name: Preserve the matching bundled Node license
+        run: |
+          mkdir -p build/desktop
+          curl --fail --location --retry 3 "https://raw.githubusercontent.com/nodejs/node/$(node -p process.version)/LICENSE" --output "$MOARTUBE_NODE_LICENSE"
+      - run: npm run typecheck
+      - run: npm run ffmpeg:test:tooling
+      - run: npm run desktop:test
+      - run: npm run ffmpeg:build:darwin
+      - run: npm run desktop:build:darwin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: moartube-client-darwin-x64-candidate
+          path: build/desktop/releases/darwin-x64/
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: moartube-client-darwin-x64-build-reports
+          path: |
+            build/ffmpeg/reports/darwin-x64/
+            build/desktop/reports/darwin-x64/
+          retention-days: 14
+  verify:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15-intel, macos-26-intel]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          architecture: x64
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: moartube-client-darwin-x64-candidate
+          path: build/desktop/releases/darwin-x64/
+      - run: npm run desktop:verify:darwin
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: moartube-client-darwin-x64-${{ matrix.runner }}-verification
+          path: build/desktop/reports/darwin-x64/
+          retention-days: 14

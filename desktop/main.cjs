@@ -56,6 +56,16 @@ async function stopBackend() {
           resolve();
           return;
         }
+        if (process.platform === 'darwin') {
+          // The Mac backend owns a separate process group, including media jobs.
+          try {
+            process.kill(-backend.pid, 'SIGKILL');
+          } catch {
+            backend.kill();
+          }
+          resolve();
+          return;
+        }
         const killer = spawn('taskkill.exe', ['/PID', String(backend.pid), '/T', '/F'], {
           windowsHide: true,
         });
@@ -101,11 +111,12 @@ if (!app.requestSingleInstanceLock()) {
       if (
         !(
           (process.platform === 'win32' && process.arch === 'x64') ||
-          (process.platform === 'linux' && ['x64', 'arm64'].includes(process.arch))
+          (process.platform === 'linux' && ['x64', 'arm64'].includes(process.arch)) ||
+          (process.platform === 'darwin' && process.arch === 'x64')
         )
       )
         throw new Error(
-          'This desktop candidate supports Windows x64 and Linux x64/ARM64. macOS is planned.'
+          'This desktop candidate supports Windows x64, Linux x64/ARM64 and macOS x64.'
         );
       const userData = app.getPath('userData');
       fs.mkdirSync(path.join(userData, 'logs'), { recursive: true });
@@ -188,6 +199,7 @@ if (!app.requestSingleInstanceLock()) {
       });
       Menu.setApplicationMenu(
         Menu.buildFromTemplate([
+          ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
           {
             label: 'File',
             submenu: [
@@ -273,7 +285,7 @@ if (!app.requestSingleInstanceLock()) {
         environment.MOARTUBE_RESOURCE_ROOT = process.resourcesPath;
         delete environment.FFMPEG_BIN;
       } else environment.MOARTUBE_RESOURCE_ROOT = '';
-      if (process.platform === 'linux') {
+      if (process.platform === 'linux' || process.platform === 'darwin') {
         environment.MOARTUBE_DESKTOP_NODE_BACKEND = '1';
         const entry = app.isPackaged
           ? path.join(process.resourcesPath, 'app.asar.unpacked/dist/desktop-backend.js')
@@ -283,6 +295,7 @@ if (!app.requestSingleInstanceLock()) {
             ? path.join(process.resourcesPath, 'runtime/node')
             : (process.env.npm_node_execpath ?? 'node'),
           execArgv: [],
+          detached: process.platform === 'darwin',
           env: environment,
           cwd: userData,
           stdio: ['ignore', 'pipe', 'pipe', 'ipc'],

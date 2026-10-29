@@ -31,7 +31,7 @@ printf 'preserve backend media\n' > "$backend_media"
 chown -R desktop-test:desktop-test /workspace /home/desktop-test
 # Validate packaged native modules and real backend separately from GUI support.
 runuser -u desktop-test -- env HOME=/home/desktop-test \
-  '/opt/MoarTube Client/resources/runtime/node' scripts/linux-backend-probe.cjs '/opt/MoarTube Client/resources'
+  '/opt/MoarTube Client/resources/runtime/node' scripts/desktop-backend-probe.cjs '/opt/MoarTube Client/resources'
 cp "$reports/backend-probe.json" "$reports/installed-backend-probe.json"
 # The container's namespace policy may require the setuid helper even though
 # normal Ubuntu hosts use electron-builder's app-specific AppArmor integration.
@@ -54,7 +54,7 @@ portable_sandbox="$(dirname "$portable_exe")/chrome-sandbox"
 chown root:root "$portable_sandbox"
 chmod 4755 "$portable_sandbox"
 runuser -u desktop-test -- env HOME=/home/desktop-test \
-  "$(dirname "$portable_exe")/resources/runtime/node" scripts/linux-backend-probe.cjs "$(dirname "$portable_exe")/resources"
+  "$(dirname "$portable_exe")/resources/runtime/node" scripts/desktop-backend-probe.cjs "$(dirname "$portable_exe")/resources"
 cp "$reports/backend-probe.json" "$reports/portable-backend-probe.json"
 if runuser -u desktop-test -- env HOME=/home/desktop-test XDG_RUNTIME_DIR=/tmp/moartube-desktop-runtime DEBUG=pw:browser* \
   dbus-run-session -- xvfb-run -a node scripts/desktop-smoke.mjs "$portable_exe"; then

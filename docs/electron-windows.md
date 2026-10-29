@@ -2,7 +2,7 @@
 
 MoarTube Client has an Electron option for Windows 11 x64. The npm/CLI entry
 point remains available. Linux x64 has a [separate Ubuntu desktop build](electron-linux.md);
-macOS remains planned. The Windows configuration produces Windows x64 artifacts.
+[macOS Intel scripts](electron-darwin.md) await native CI qualification. The Windows configuration produces Windows x64 artifacts.
 
 ## For users
 

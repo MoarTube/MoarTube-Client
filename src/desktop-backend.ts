@@ -7,8 +7,8 @@ interface ParentPort {
   on(event: string, handler: (event: { data: unknown }) => void): void;
   postMessage(message: unknown): void;
 }
-// Linux uses a bundled standalone Node process so Sharp's GLib symbols are
-// isolated from Electron. Windows retains Electron's utility-process port.
+// Linux/macOS use a bundled standalone Node process. This isolates native
+// dependencies from Electron; Windows retains its utility-process port.
 const nodeParent: ParentPort | undefined =
   process.env['MOARTUBE_DESKTOP_NODE_BACKEND'] === '1' &&
   process.versions['electron'] === undefined &&

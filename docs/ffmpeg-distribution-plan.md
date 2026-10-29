@@ -56,8 +56,9 @@ there is no separate FFmpeg build repository.
 ### First implementation target: Windows 11 x64
 
 The first implementation targeted **Windows 11, `win32-x64`**. Linux x64 FFmpeg
-and Electron packaging followed with an Ubuntu 24.04 baseline; macOS remains a
-planned follow-up. Windows ARM64 and x86
+and Electron packaging followed with an Ubuntu 24.04 baseline. macOS Intel
+build/verification scripts now await native CI qualification; Darwin ARM64
+remains future work. Windows ARM64 and x86
 are not included in this first target. Keep the portable x86-64 CPU baseline;
 do not require AVX/AVX2 or tune binaries for the build machine. The oldest
 supported Windows 11 build must be recorded and tested before release.

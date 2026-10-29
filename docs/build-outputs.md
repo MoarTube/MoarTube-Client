@@ -1,8 +1,9 @@
 # Build output layout
 
 Generated files stay under `build/desktop` or `build/ffmpeg`, ignored by Git.
-FFmpeg targets are `win32-x64`, `linux-x64` and `linux-arm64`.
-Desktop packages use the same three targets.
+FFmpeg targets are `win32-x64`, `linux-x64`, `linux-arm64` and `darwin-x64`.
+Desktop packages use the same four targets. Darwin native CI qualification is
+pending; see [the macOS guide](electron-darwin.md).
 The build commands are unchanged.
 
 ## Desktop

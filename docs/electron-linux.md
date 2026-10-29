@@ -5,7 +5,7 @@ on both Ubuntu versions. See [the validation record](electron-linux-validation.m
 for exact artifact hashes, evidence and remaining native-host qualification.
 
 MoarTube Client has Electron build targets for Ubuntu 24.04 and 26.04 x64 and ARM64.
-Windows remains available; macOS remains future work. ARM64 additionally tests
+Windows remains available; [macOS Intel scripts](electron-darwin.md) await native CI qualification. ARM64 additionally tests
 Debian Trixie as a compatibility target for Raspberry Pi OS Trixie (64-bit).
 Debian container checks do not qualify a physical Pi desktop or its GPU.
 See [ARM64 validation](electron-linux-arm64-validation.md) for actual test results.

@@ -12,6 +12,14 @@ synthetic input fixtures and candidate packaging. Developers must compile the
 matching native dependency before starting the client or running media tests.
 There is no npm-provided FFmpeg binary or automatic PATH fallback.
 
+## macOS Intel builds
+
+On native Intel macOS 15+ with Node.js 22+, Xcode command line tools, cmake,
+ninja, meson, nasm, pkg-config and xz, run `npm run ffmpeg:build:darwin`.
+The GitHub **macOS Intel desktop candidate** workflow provides this environment
+for Windows developers. Native qualification is pending the first workflow run.
+See [the macOS guide](../../docs/electron-darwin.md) for details.
+
 ## Build and consume a candidate
 
 Use native Windows x64 Node.js 22 or newer. No global compiler, MSYS2 installation,
