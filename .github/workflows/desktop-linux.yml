@@ -24,12 +24,13 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 150
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
+          package-manager-cache: false
           node-version: 24.22.1
       - name: Restore verified FFmpeg downloads
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: ffmpeg-downloads
         with:
           path: |
@@ -39,7 +40,7 @@ jobs:
         id: ffmpeg-key
         run: node tooling/ffmpeg/scripts/compiled-cache.mjs key linux-${{ matrix.arch }}
       - name: Restore compiled FFmpeg candidate
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: compiled-ffmpeg
         with:
           path: |-
@@ -54,7 +55,7 @@ jobs:
         if: steps.compiled-ffmpeg.outputs.cache-hit == 'true'
         run: node tooling/ffmpeg/scripts/compiled-cache.mjs verify linux-${{ matrix.arch }}
       - name: Restore desktop dependency downloads
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: desktop-dependencies
         with:
           path: build/desktop/cache/dependencies/${{ matrix.arch }}
@@ -63,7 +64,7 @@ jobs:
         run: node scripts/prepare-linux-dependencies.mjs --arch=${{ matrix.arch }} --desktop --downloads-only
       - name: Save desktop dependency downloads
         if: steps.desktop-dependencies.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: build/desktop/cache/dependencies/${{ matrix.arch }}
           key: ${{ steps.desktop-dependencies.outputs.cache-primary-key }}
@@ -76,7 +77,7 @@ jobs:
         run: node tooling/ffmpeg/scripts/check-download-cache.mjs linux
       - name: Save verified FFmpeg downloads
         if: ${{ !cancelled() && steps.ffmpeg-cache-ready.outputs.complete == 'true' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: |
             build/ffmpeg/cache/sources
@@ -92,7 +93,7 @@ jobs:
         run: node tooling/ffmpeg/scripts/compiled-cache.mjs save linux-${{ matrix.arch }}
       - name: Save verified compiled FFmpeg
         if: steps.compiled-cache-ready.outcome == 'success'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: |-
             build/ffmpeg/install/linux-${{ matrix.arch }}/bin
@@ -104,7 +105,7 @@ jobs:
           key: ${{ steps.compiled-ffmpeg.outputs.cache-primary-key }}
       - run: npm run desktop:build:linux -- --arch=${{ matrix.arch }}
       - run: npm run desktop:verify:linux -- --arch=${{ matrix.arch }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
           name: moartube-client-linux-${{ matrix.arch }}-candidate
@@ -131,13 +132,14 @@ jobs:
       group: draft-upload-${{ github.repository }}-${{ inputs.release_tag }}-linux
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
+          package-manager-cache: false
           node-version: 24.22.1
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           pattern: moartube-client-linux-*-candidate
           path: build/release-upload

@@ -8,13 +8,14 @@ jobs:
     runs-on: macos-15-intel
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
+          package-manager-cache: false
           node-version: 24.22.1
           architecture: x64
       - name: Restore verified FFmpeg downloads
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: ffmpeg-downloads
         with:
           path: |
@@ -24,7 +25,7 @@ jobs:
         id: ffmpeg-key
         run: node tooling/ffmpeg/scripts/compiled-cache.mjs key darwin-x64
       - name: Restore compiled FFmpeg candidate
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: compiled-ffmpeg
         with:
           path: |-
@@ -47,7 +48,7 @@ jobs:
         run: node tooling/ffmpeg/scripts/check-download-cache.mjs darwin
       - name: Save verified FFmpeg downloads
         if: ${{ !cancelled() && steps.ffmpeg-cache-ready.outputs.complete == 'true' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: |
             build/ffmpeg/cache/sources
@@ -66,7 +67,7 @@ jobs:
         run: node tooling/ffmpeg/scripts/compiled-cache.mjs save darwin-x64
       - name: Save verified compiled FFmpeg
         if: steps.compiled-cache-ready.outcome == 'success'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: |-
             build/ffmpeg/install/darwin-x64/bin
@@ -76,7 +77,7 @@ jobs:
             build/ffmpeg/reports/darwin-x64/*.json
             build/ffmpeg/reports/darwin-x64/software/result.json
           key: ${{ steps.compiled-ffmpeg.outputs.cache-primary-key }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
           name: ffmpeg-darwin-x64-candidate

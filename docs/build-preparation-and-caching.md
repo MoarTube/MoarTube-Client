@@ -9,6 +9,13 @@ Completed npm, desktop-tool and verified source downloads are saved immediately,
 before later preparation, tests or compilation can fail. Compiled FFmpeg is
 verified and cached immediately after a successful build/package step.
 
+The workflows use Node 24-based GitHub Actions: checkout/setup-node v6,
+cache restore/save v5, upload-artifact v6 and download-artifact v7. The project
+Node version remains 24.22.1. Automatic package-manager caching in setup-node is
+disabled because explicit restore/save steps preserve downloads before a later
+failure. Self-hosted runners, including the E2E runner, require Actions Runner
+2.327.1 or newer; see the [cache action requirements](https://github.com/actions/cache/tree/v5#whats-new).
+
 Linux builds prepare compiler, desktop-dependency and test-runtime images before
 compilation. The dependency image includes the native npm modules, Electron,
 7zip and FPM. Desktop preparation first runs with `--desktop --downloads-only`,

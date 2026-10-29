@@ -23,13 +23,14 @@ jobs:
       MOARTUBE_FFMPEG_OFFLINE: '1'
       MOARTUBE_DEPENDENCIES_PREPARED: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
+          package-manager-cache: false
           node-version: 24.22.1
           architecture: x64
       - name: Restore verified FFmpeg downloads
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: ffmpeg-downloads
         with:
           path: |
@@ -39,7 +40,7 @@ jobs:
         id: ffmpeg-key
         run: node tooling/ffmpeg/scripts/compiled-cache.mjs key darwin-x64
       - name: Restore compiled FFmpeg candidate
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: compiled-ffmpeg
         with:
           path: |-
@@ -54,7 +55,7 @@ jobs:
         if: steps.compiled-ffmpeg.outputs.cache-hit == 'true'
         run: node tooling/ffmpeg/scripts/compiled-cache.mjs verify darwin-x64
       - name: Restore desktop dependency downloads
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: desktop-dependencies
         with:
           path: |-
@@ -66,14 +67,14 @@ jobs:
         run: node scripts/npm-cache-directory.mjs
       - name: Restore npm downloads
         id: npm-downloads
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: ${{ steps.npm-cache-directory.outputs.directory }}
           key: npm-downloads-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci
       - name: Save completed npm downloads
         if: steps.npm-downloads.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: ${{ steps.npm-cache-directory.outputs.directory }}
           key: ${{ steps.npm-downloads.outputs.cache-primary-key }}
@@ -85,7 +86,7 @@ jobs:
         run: node scripts/prefetch-desktop-tools.mjs
       - name: Save desktop dependency downloads
         if: steps.desktop-dependencies.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: |-
             build/desktop/cache/electron
@@ -100,7 +101,7 @@ jobs:
         run: node tooling/ffmpeg/scripts/check-download-cache.mjs darwin
       - name: Save verified FFmpeg downloads
         if: ${{ !cancelled() && steps.ffmpeg-cache-ready.outputs.complete == 'true' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: |
             build/ffmpeg/cache/sources
@@ -119,7 +120,7 @@ jobs:
         run: node tooling/ffmpeg/scripts/compiled-cache.mjs save darwin-x64
       - name: Save verified compiled FFmpeg
         if: steps.compiled-cache-ready.outcome == 'success'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: |-
             build/ffmpeg/install/darwin-x64/bin
@@ -130,13 +131,13 @@ jobs:
             build/ffmpeg/reports/darwin-x64/software/result.json
           key: ${{ steps.compiled-ffmpeg.outputs.cache-primary-key }}
       - run: npm run desktop:build:darwin
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: moartube-client-darwin-x64-candidate
           path: build/desktop/releases/darwin-x64/
           if-no-files-found: error
           retention-days: 14
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
           name: moartube-client-darwin-x64-build-reports
@@ -155,9 +156,10 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
+          package-manager-cache: false
           node-version: 24.22.1
           architecture: x64
       - name: Locate npm download cache
@@ -165,23 +167,23 @@ jobs:
         run: node scripts/npm-cache-directory.mjs
       - name: Restore npm downloads
         id: npm-downloads
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: ${{ steps.npm-cache-directory.outputs.directory }}
           key: npm-downloads-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci
       - name: Save completed npm downloads
         if: steps.npm-downloads.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: ${{ steps.npm-cache-directory.outputs.directory }}
           key: ${{ steps.npm-downloads.outputs.cache-primary-key }}
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: moartube-client-darwin-x64-candidate
           path: build/desktop/releases/darwin-x64/
       - run: npm run desktop:verify:darwin
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
           name: moartube-client-darwin-x64-${{ matrix.runner }}-verification
@@ -201,13 +203,14 @@ jobs:
       group: draft-upload-${{ github.repository }}-${{ inputs.release_tag }}-darwin
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
+          package-manager-cache: false
           node-version: 24.22.1
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: moartube-client-darwin-x64-candidate
           path: build/release-upload
