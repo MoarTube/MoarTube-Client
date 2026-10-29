@@ -8,6 +8,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 	<script src="/javascript/jquery-3.6.4.min.js"></script>
 	<link id="pagestyle" href="/css/soft-ui-dashboard-1.1.0.min.css" rel="stylesheet">
+	<link href="/css/signin.css" rel="stylesheet">
 </head>
 
 <body>
@@ -33,8 +34,8 @@
 				<div class="container">
 					<div class="row">
 						<div class="col-xl-4 col-lg-5 col-md-7 d-flex flex-column mx-lg-0 mx-auto">
-							<div class="card card-plain">
-								<div class="card-header pb-0 text-start">
+							<div class="card card-plain signin-panel">
+								<div id="sign-in-header" class="card-header pb-0 text-start">
 									<div style="display:flex;">
 										<h4 class="font-weight-bolder">Sign In</h4>
 										<a href="https://www.moartube.com/guides/how-to-sign-in" target="_blank"><svg
@@ -49,25 +50,47 @@
 												</path>
 											</svg></a>
 									</div>
-									<p class="mb-0">Enter your node credentials to sign in</p>
+									<p class="mb-0">Enter your node information to sign in</p>
+								</div>
+								<div id="node-favorite-header" class="card-header pb-0 text-start" hidden>
+									<h4 id="node-favorite-heading" class="font-weight-bolder">Add Favorite</h4>
+									<p class="mb-0">Save your node information for future sign-ins</p>
 								</div>
 								<div class="card-body">
+									<section aria-label="Favorite nodes" class="mb-4">
+										<p id="node-favorites-status" role="status" class="text-sm"></p>
+										<form id="node-favorite-editor" hidden>
+											<div class="mb-3">
+												<label for="node-favorite-name">Favorite name</label>
+												<input id="node-favorite-name" class="form-control form-control-lg" placeholder="Favorite Name" aria-label="Favorite name" maxlength="100" required autocomplete="off">
+											</div>
+											<div id="node-favorite-fields"></div>
+											<button type="submit" class="btn btn-lg bg-gradient-primary w-100 mt-4 mb-0">Save favorite</button>
+											<button id="cancel-node-favorite" type="button" class="btn btn-lg btn-outline-secondary w-100 mt-3 mb-0">Cancel</button>
+										</form>
+									</section>
 									<form id="sign-in-form" role="form" method="POST" action="/account/signin">
 										<div class="mb-3">
+											<label for="signin-username">Username</label>
 											<input type="text" class="form-control form-control-lg"
-												placeholder="Username" name="username" value="">
+												id="signin-username" aria-label="Username" name="username" value="">
 										</div>
 										<div class="mb-3">
+											<label for="signin-password">Password</label>
 											<input type="password" class="form-control form-control-lg"
-												placeholder="Password" name="password" value="">
+												id="signin-password" aria-label="Password" name="password" value="">
 										</div>
+										<div class="signin-address-row">
 										<div class="mb-3">
+											<label for="signin-address">Node IP Address</label>
 											<input type="text" class="form-control form-control-lg"
-												placeholder="ip address" name="moarTubeNodeIp" value="">
+												id="signin-address" aria-label="IP address" name="moarTubeNodeIp" value="">
 										</div>
 										<div class="mb-3">
-											<input type="text" class="form-control form-control-lg" placeholder="port"
-												name="moarTubeNodePort" value="">
+											<label for="signin-port">Port</label>
+											<input type="text" class="form-control form-control-lg"
+												id="signin-port" aria-label="Port" name="moarTubeNodePort" value="">
+										</div>
 										</div>
 										<div class="text-center">
 											<button id="sign-in-button" type="submit"
@@ -75,6 +98,11 @@
 												in</button>
 										</div>
 									</form>
+									<button id="new-node-favorite" type="button" class="btn btn-lg btn-outline-primary w-100 mt-3 mb-0">Add favorite</button>
+									<details id="node-favorites-dropdown" class="mt-3" hidden>
+										<summary id="node-favorites-summary" class="btn btn-lg btn-outline-primary w-100 mb-2">Favorites &#9662;</summary>
+										<ul id="node-favorites-list" class="list-unstyled mb-0" aria-label="Saved favorites"></ul>
+									</details>
 								</div>
 							</div>
 						</div>
@@ -237,6 +265,7 @@
 			moarTubeClientSignIn.init();
 		});
 	</script>
+	<script src="/javascript/node-favorites.js"></script>
 
 </body>
 

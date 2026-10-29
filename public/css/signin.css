@@ -1,0 +1,119 @@
+.signin-panel {
+  font-family: Inter, 'Segoe UI', Arial, sans-serif;
+  color: #303044;
+}
+
+.signin-panel .card-header,
+.signin-panel .card-body {
+  font-family: inherit;
+}
+
+.signin-panel .card-header h4 {
+  font-family: inherit;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.6px;
+  color: #303044;
+  margin-bottom: 8px;
+}
+
+.signin-panel .card-header p,
+.signin-panel #node-favorites-status {
+  color: #747484;
+  font-size: 13px;
+}
+
+.signin-panel label {
+  display: block;
+  margin: 0 0 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #303044;
+}
+
+.signin-panel .form-control {
+  min-width: 0;
+  height: 46px;
+  min-height: 46px;
+  padding: 0 13px;
+  font-family: inherit;
+  font-size: 14px;
+  color: #303044;
+  border: 1px solid #e3e3eb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.signin-panel .form-control::placeholder {
+  color: #747484;
+}
+
+.signin-panel .form-control:focus {
+  border-color: #cb0c9f;
+  box-shadow: 0 0 0 2px #cb0c9f20;
+}
+
+.signin-panel .signin-address-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px;
+  gap: 12px;
+}
+
+.signin-panel .signin-address-row > div {
+  min-width: 0;
+}
+
+.signin-panel #sign-in-form .mb-3,
+.signin-panel #node-favorite-editor .mb-3 {
+  margin-bottom: 16px !important;
+}
+
+.signin-panel .btn {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.signin-panel .btn-lg {
+  min-height: 48px;
+  padding: 12px 14px;
+}
+
+.signin-panel .btn.bg-gradient-primary {
+  background-image: linear-gradient(110deg, #ec0094, #cb0c9f);
+  color: #fff;
+}
+
+.signin-panel #new-node-favorite,
+.signin-panel #cancel-node-favorite {
+  border-color: transparent;
+  background: transparent;
+  color: #cb0c9f;
+}
+
+.signin-panel #new-node-favorite:hover,
+.signin-panel #cancel-node-favorite:hover {
+  background: #fdf0fa;
+}
+
+.signin-panel #node-favorites-status:empty {
+  display: none;
+}
+
+.signin-panel
+  section[aria-label='Favorite nodes']:has(#node-favorite-editor[hidden]):has(
+    #node-favorites-status:empty
+  ) {
+  margin-bottom: 0 !important;
+}
+
+@media (pointer: coarse) {
+  .signin-panel .form-control {
+    font-size: 16px;
+  }
+}
