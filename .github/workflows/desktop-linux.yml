@@ -59,17 +59,30 @@ jobs:
         with:
           path: build/desktop/cache/dependencies/${{ matrix.arch }}
           key: desktop-dependencies-v1-linux-${{ matrix.arch }}-${{ hashFiles('package-lock.json', 'scripts/prefetch-desktop-tools.mjs', 'desktop/linux/dependencies.Dockerfile') }}
-      - name: Download and verify all FFmpeg inputs
-        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
-        run: node tooling/ffmpeg/scripts/download-inputs.mjs linux-${{ matrix.arch }}
-      - name: Prepare all compiler and runtime containers
-        run: node scripts/prepare-linux-dependencies.mjs --arch=${{ matrix.arch }} --desktop ${{ steps.compiled-ffmpeg.outputs.cache-hit == 'true' && '--skip-compiler' || '' }}
+      - name: Download npm, Electron and packaging tools
+        run: node scripts/prepare-linux-dependencies.mjs --arch=${{ matrix.arch }} --desktop --downloads-only
       - name: Save desktop dependency downloads
         if: steps.desktop-dependencies.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: build/desktop/cache/dependencies/${{ matrix.arch }}
           key: ${{ steps.desktop-dependencies.outputs.cache-primary-key }}
+      - name: Download and verify all FFmpeg inputs
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+        run: node tooling/ffmpeg/scripts/download-inputs.mjs linux-${{ matrix.arch }}
+      - name: Check complete download cache
+        if: ${{ !cancelled() && steps.ffmpeg-downloads.outputs.cache-hit != 'true' }}
+        id: ffmpeg-cache-ready
+        run: node tooling/ffmpeg/scripts/check-download-cache.mjs linux
+      - name: Save verified FFmpeg downloads
+        if: ${{ !cancelled() && steps.ffmpeg-cache-ready.outputs.complete == 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            build/ffmpeg/cache/sources
+          key: ${{ steps.ffmpeg-downloads.outputs.cache-primary-key }}
+      - name: Prepare all compiler and runtime containers
+        run: node scripts/prepare-linux-dependencies.mjs --arch=${{ matrix.arch }} --desktop --environment-only ${{ steps.compiled-ffmpeg.outputs.cache-hit == 'true' && '--skip-compiler' || '' }}
       - run: npm run ffmpeg:test:tooling
       - run: npm run ffmpeg:build:linux -- --arch=${{ matrix.arch }}
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
@@ -103,17 +116,6 @@ jobs:
             build/desktop/releases/linux-${{ matrix.arch }}/*/RELEASE-NOTES-linux-${{ matrix.arch }}.md
             build/desktop/reports/linux-${{ matrix.arch }}/
           retention-days: 14
-      - name: Check complete download cache
-        if: ${{ !cancelled() && steps.ffmpeg-downloads.outputs.cache-hit != 'true' }}
-        id: ffmpeg-cache-ready
-        run: node tooling/ffmpeg/scripts/check-download-cache.mjs linux
-      - name: Save verified FFmpeg downloads
-        if: ${{ !cancelled() && steps.ffmpeg-cache-ready.outputs.complete == 'true' }}
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            build/ffmpeg/cache/sources
-          key: ${{ steps.ffmpeg-downloads.outputs.cache-primary-key }}
     env:
       MOARTUBE_FFMPEG_OFFLINE: '1'
       MOARTUBE_DEPENDENCIES_PREPARED: '1'

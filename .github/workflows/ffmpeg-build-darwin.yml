@@ -41,6 +41,17 @@ jobs:
       - name: Download and verify all FFmpeg inputs
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
         run: node tooling/ffmpeg/scripts/download-inputs.mjs darwin-x64
+      - name: Check complete download cache
+        if: ${{ !cancelled() && steps.ffmpeg-downloads.outputs.cache-hit != 'true' }}
+        id: ffmpeg-cache-ready
+        run: node tooling/ffmpeg/scripts/check-download-cache.mjs darwin
+      - name: Save verified FFmpeg downloads
+        if: ${{ !cancelled() && steps.ffmpeg-cache-ready.outputs.complete == 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            build/ffmpeg/cache/sources
+          key: ${{ steps.ffmpeg-downloads.outputs.cache-primary-key }}
       - name: Install compiler tools
         run: brew install cmake ninja meson nasm pkg-config xz
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
@@ -74,17 +85,6 @@ jobs:
             build/ffmpeg/releases/darwin-x64/*/SHA256SUMS.txt
             build/ffmpeg/reports/darwin-x64/
           retention-days: 14
-      - name: Check complete download cache
-        if: ${{ !cancelled() && steps.ffmpeg-downloads.outputs.cache-hit != 'true' }}
-        id: ffmpeg-cache-ready
-        run: node tooling/ffmpeg/scripts/check-download-cache.mjs darwin
-      - name: Save verified FFmpeg downloads
-        if: ${{ !cancelled() && steps.ffmpeg-cache-ready.outputs.complete == 'true' }}
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            build/ffmpeg/cache/sources
-          key: ${{ steps.ffmpeg-downloads.outputs.cache-primary-key }}
     env:
       MOARTUBE_FFMPEG_OFFLINE: '1'
       MOARTUBE_DEPENDENCIES_PREPARED: '1'

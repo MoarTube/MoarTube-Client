@@ -9,8 +9,17 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const flags = new Set(process.argv.slice(2));
 const desktop = flags.has('--desktop');
 const skipCompiler = flags.has('--skip-compiler');
+const downloadsOnly = flags.has('--downloads-only');
+const environmentOnly = flags.has('--environment-only');
+if ((downloadsOnly && environmentOnly) || (downloadsOnly && !desktop))
+  throw new Error('Use --downloads-only with --desktop, separately from --environment-only.');
 const { arch, target, dockerPlatform } = parseLinuxTarget(
-  process.argv.slice(2).filter((arg) => !['--desktop', '--skip-compiler'].includes(arg))
+  process.argv
+    .slice(2)
+    .filter(
+      (arg) =>
+        !['--desktop', '--skip-compiler', '--downloads-only', '--environment-only'].includes(arg)
+    )
 );
 const run = (args) => {
   const result = spawnSync('docker', args, { cwd: root, stdio: 'inherit', windowsHide: true });
@@ -20,19 +29,10 @@ const run = (args) => {
       new Error(`Dependency preparation: docker ${args[0]} failed (${result.status})`)
     );
 };
-if (!skipCompiler)
-  run([
-    'build',
-    '--platform',
-    dockerPlatform,
-    '-t',
-    `moartube-ffmpeg-${target}:ubuntu24`,
-    'tooling/ffmpeg/platforms/linux',
-  ]);
 const images = JSON.parse(
   readFileSync(path.join(root, 'tooling/ffmpeg/platforms/linux/runtime-images.json'), 'utf8')
 );
-if (desktop) {
+if (desktop && !environmentOnly) {
   run([
     'build',
     '--platform',
@@ -91,12 +91,35 @@ if (desktop) {
   } finally {
     run(['rm', exportName]);
   }
-  if (arch === 'arm64')
-    Object.assign(
-      images,
-      JSON.parse(readFileSync(path.join(root, 'desktop/linux/arm64-runtime-images.json'), 'utf8'))
-    );
 }
+if (downloadsOnly) {
+  console.log(
+    `All ${target} npm, Electron and packaging downloads are cached before FFmpeg compiler preparation.`
+  );
+  process.exit(0);
+}
+if (desktop && environmentOnly)
+  run([
+    'image',
+    'inspect',
+    '--format',
+    '{{.Id}}',
+    `moartube-desktop-dependencies-${arch}:ubuntu24`,
+  ]);
+if (!skipCompiler)
+  run([
+    'build',
+    '--platform',
+    dockerPlatform,
+    '-t',
+    `moartube-ffmpeg-${target}:ubuntu24`,
+    'tooling/ffmpeg/platforms/linux',
+  ]);
+if (desktop && arch === 'arm64')
+  Object.assign(
+    images,
+    JSON.parse(readFileSync(path.join(root, 'desktop/linux/arm64-runtime-images.json'), 'utf8'))
+  );
 for (const [version, image] of Object.entries(images)) {
   run([
     'build',

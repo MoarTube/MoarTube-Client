@@ -49,7 +49,7 @@ archive filenames and source bytes are unchanged. All targets share this lock.
 
 All source/toolchain downloads share a streaming HTTPS downloader. Connection
 attempts still have a 10-second limit. Temporary network failures and HTTP
-408/425/429/5xx service failures get up to four attempts with 1/2/4-second backoff;
+408/425/429/5xx service failures get up to ten attempts with exponential backoff capped at 8 seconds;
 30 seconds without socket activity and a 10-minute total transfer budget bound
 each attempt. Redirects are limited and HTTPS cannot downgrade to HTTP. Permanent
 HTTP errors and checksum mismatches fail immediately. Partial files are removed;

@@ -10,6 +10,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   e2e:
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/build/test/cache/playwright
     runs-on:
       - self-hosted
       - moartube-integration
@@ -19,9 +21,35 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24.22.1
-          cache: npm
+      - name: Locate npm download cache
+        id: npm-cache-directory
+        run: node scripts/npm-cache-directory.mjs
+      - name: Restore npm downloads
+        id: npm-downloads
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.npm-cache-directory.outputs.directory }}
+          key: npm-downloads-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci
+      - name: Save completed npm downloads
+        if: steps.npm-downloads.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.npm-cache-directory.outputs.directory }}
+          key: ${{ steps.npm-downloads.outputs.cache-primary-key }}
+      - name: Restore Playwright browser downloads
+        id: playwright-downloads
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: playwright-downloads-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
       - run: npx playwright install chromium firefox webkit
+      - name: Save completed Playwright browser downloads
+        if: steps.playwright-downloads.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: ${{ steps.playwright-downloads.outputs.cache-primary-key }}
       - run: npm run typecheck
       - run: npm run typecheck:e2e
       - run: npm run lint:e2e

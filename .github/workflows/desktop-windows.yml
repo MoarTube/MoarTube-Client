@@ -29,7 +29,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24.22.1
-          cache: npm
       - name: Restore verified FFmpeg downloads
         uses: actions/cache/restore@v4
         id: ffmpeg-downloads
@@ -64,13 +63,22 @@ jobs:
             build/desktop/cache/electron
             build/desktop/cache/builder
           key: desktop-dependencies-v1-windows-x64-${{ hashFiles('package-lock.json', 'scripts/prefetch-desktop-tools.mjs', 'desktop/linux/dependencies.Dockerfile') }}
-      - name: Download and verify all FFmpeg inputs
-        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
-        run: node tooling/ffmpeg/scripts/download-inputs.mjs win32-x64
-      - name: Prepare locked Windows compiler before building
-        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
-        run: npm run ffmpeg:build:windows -- --prepare-only
+      - name: Locate npm download cache
+        id: npm-cache-directory
+        run: node scripts/npm-cache-directory.mjs
+      - name: Restore npm downloads
+        id: npm-downloads
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.npm-cache-directory.outputs.directory }}
+          key: npm-downloads-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci
+      - name: Save completed npm downloads
+        if: steps.npm-downloads.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.npm-cache-directory.outputs.directory }}
+          key: ${{ steps.npm-downloads.outputs.cache-primary-key }}
       - name: Download Electron and packaging tools
         run: node scripts/prefetch-desktop-tools.mjs
       - name: Save desktop dependency downloads
@@ -81,6 +89,24 @@ jobs:
             build/desktop/cache/electron
             build/desktop/cache/builder
           key: ${{ steps.desktop-dependencies.outputs.cache-primary-key }}
+      - name: Download and verify all FFmpeg inputs
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+        run: node tooling/ffmpeg/scripts/download-inputs.mjs win32-x64
+      - name: Check complete download cache
+        if: ${{ !cancelled() && steps.ffmpeg-downloads.outputs.cache-hit != 'true' }}
+        id: ffmpeg-cache-ready
+        run: node tooling/ffmpeg/scripts/check-download-cache.mjs windows
+      - name: Save verified FFmpeg downloads
+        if: ${{ !cancelled() && steps.ffmpeg-cache-ready.outputs.complete == 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            build/ffmpeg/cache/sources
+            build/ffmpeg/cache/toolchains/win32-x64
+          key: ${{ steps.ffmpeg-downloads.outputs.cache-primary-key }}
+      - name: Prepare locked Windows compiler before building
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+        run: npm run ffmpeg:build:windows -- --prepare-only
       - run: npm run ffmpeg:build:windows
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
       - name: Package verified FFmpeg for reuse
@@ -119,18 +145,6 @@ jobs:
             build/desktop/releases/win32-x64/*/SHA256SUMS.txt
             build/desktop/releases/win32-x64/*/RELEASE-NOTES.md
           retention-days: 14
-      - name: Check complete download cache
-        if: ${{ !cancelled() && steps.ffmpeg-downloads.outputs.cache-hit != 'true' }}
-        id: ffmpeg-cache-ready
-        run: node tooling/ffmpeg/scripts/check-download-cache.mjs windows
-      - name: Save verified FFmpeg downloads
-        if: ${{ !cancelled() && steps.ffmpeg-cache-ready.outputs.complete == 'true' }}
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            build/ffmpeg/cache/sources
-            build/ffmpeg/cache/toolchains/win32-x64
-          key: ${{ steps.ffmpeg-downloads.outputs.cache-primary-key }}
   upload-draft:
     name: Upload verified windows assets to draft
     needs: windows

@@ -1,14 +1,23 @@
 # Build preparation and caches
 
 The desktop and FFmpeg workflows prepare network dependencies before compiling.
-They first restore caches, validate any compiled FFmpeg candidate, and download
-all missing source/toolchain archives. A cache miss prepares the compiler before
-compilation. Desktop jobs also download npm packages, Electron and packaging
-tools in this preparation phase. macOS obtains its matching Node license here.
+They first restore caches and validate any compiled FFmpeg candidate. Desktop
+jobs then install npm dependencies and download Electron and packaging tools,
+before downloading missing FFmpeg source/toolchain archives or preparing its
+compiler. macOS also obtains its matching Node license during preparation.
+Completed npm, desktop-tool and verified source downloads are saved immediately,
+before later preparation, tests or compilation can fail. Compiled FFmpeg is
+verified and cached immediately after a successful build/package step.
 
 Linux builds prepare compiler, desktop-dependency and test-runtime images before
 compilation. The dependency image includes the native npm modules, Electron,
-7zip and FPM. Test images include the application's declared system packages and
+7zip and FPM. Desktop preparation first runs with `--desktop --downloads-only`,
+preparing its base Linux environment and exporting npm/Electron/tool downloads
+for immediate caching. After FFmpeg inputs have also been downloaded and cached,
+`--desktop --environment-only` prepares the FFmpeg compiler and test images;
+it does not reinstall desktop dependencies. Without either phase flag, the
+helper still prepares everything, with desktop downloads first.
+Test images include the application's declared system packages and
 Playwright. The DEB declaration and prepared runtime use the same package list.
 Prepared Linux compiler, packaging and runtime-check containers run with Docker
 networking disabled; package tests use local-only `dpkg --install` and npm offline
@@ -17,7 +26,8 @@ download. Ordinary Windows/WSL developer commands can still prepare their Docker
 environment on demand when not using the CI preparation flag.
 
 The end-to-end workflow installs Playwright browsers immediately after npm
-dependencies, before its checks/client build. Its self-hosted MoarTube Node
+dependencies, before its checks/client build, restoring and immediately saving
+the browser downloads in a separate cache. Its self-hosted MoarTube Node
 server remains a prerequisite, not something the workflow provisions.
 
 Downloads of newly built Actions artifacts, uploading releases, cache transfers,

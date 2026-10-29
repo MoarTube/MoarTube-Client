@@ -147,7 +147,7 @@ export async function downloadArchive(
   input,
   directory,
   {
-    attempts = 4,
+    attempts = 10,
     connectTimeoutMs = 10000,
     idleTimeoutMs = 30000,
     transferTimeoutMs = 600000,
