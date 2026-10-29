@@ -1,8 +1,5 @@
 name: Linux desktop candidate
 on:
-  push:
-    branches:
-      - project-refactor
   workflow_dispatch:
     inputs:
       release_tag:
