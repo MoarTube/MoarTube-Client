@@ -1,11 +1,22 @@
-name: macOS Intel FFmpeg candidate
+name: macOS Intel and Apple Silicon FFmpeg candidate
 on:
   workflow_dispatch: null
 permissions:
   contents: read
 jobs:
   darwin:
-    runs-on: macos-15-intel
+    name: Build darwin-${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: macos-15-intel
+            suffix: ''
+          - arch: arm64
+            runner: macos-15
+            suffix: ':arm64'
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
@@ -13,7 +24,7 @@ jobs:
         with:
           package-manager-cache: false
           node-version: 24.22.1
-          architecture: x64
+          architecture: ${{ matrix.arch }}
       - name: Restore verified FFmpeg downloads
         uses: actions/cache/restore@v5
         id: ffmpeg-downloads
@@ -23,25 +34,25 @@ jobs:
           key: ffmpeg-downloads-v1-${{ runner.os }}-${{ hashFiles('tooling/ffmpeg/sources.lock.json') }}
       - name: Identify compiled FFmpeg cache
         id: ffmpeg-key
-        run: node tooling/ffmpeg/scripts/compiled-cache.mjs key darwin-x64
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs key darwin-${{ matrix.arch }}
       - name: Restore compiled FFmpeg candidate
         uses: actions/cache/restore@v5
         id: compiled-ffmpeg
         with:
           path: |-
-            build/ffmpeg/install/darwin-x64/bin
-            build/ffmpeg/candidates/darwin-x64
-            build/ffmpeg/releases/darwin-x64
-            build/ffmpeg/state/darwin-x64
-            build/ffmpeg/reports/darwin-x64/*.json
-            build/ffmpeg/reports/darwin-x64/software/result.json
+            build/ffmpeg/install/darwin-${{ matrix.arch }}/bin
+            build/ffmpeg/candidates/darwin-${{ matrix.arch }}
+            build/ffmpeg/releases/darwin-${{ matrix.arch }}
+            build/ffmpeg/state/darwin-${{ matrix.arch }}
+            build/ffmpeg/reports/darwin-${{ matrix.arch }}/*.json
+            build/ffmpeg/reports/darwin-${{ matrix.arch }}/software/result.json
           key: ${{ steps.ffmpeg-key.outputs.key }}
       - name: Verify restored FFmpeg candidate
         if: steps.compiled-ffmpeg.outputs.cache-hit == 'true'
-        run: node tooling/ffmpeg/scripts/compiled-cache.mjs verify darwin-x64
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs verify darwin-${{ matrix.arch }}
       - name: Download and verify all FFmpeg inputs
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
-        run: node tooling/ffmpeg/scripts/download-inputs.mjs darwin-x64
+        run: node tooling/ffmpeg/scripts/download-inputs.mjs darwin-${{ matrix.arch }}
       - name: Check complete download cache
         if: ${{ !cancelled() && steps.ffmpeg-downloads.outputs.cache-hit != 'true' }}
         id: ffmpeg-cache-ready
@@ -59,32 +70,32 @@ jobs:
       - name: Verify tooling
         run: npm run ffmpeg:test:tooling
       - name: Build and verify locked Darwin sources
-        run: npm run ffmpeg:build:darwin
+        run: npm run ffmpeg:build:darwin${{ matrix.suffix }}
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
       - name: Validate compiled candidate for caching
         id: compiled-cache-ready
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
-        run: node tooling/ffmpeg/scripts/compiled-cache.mjs save darwin-x64
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs save darwin-${{ matrix.arch }}
       - name: Save verified compiled FFmpeg
         if: steps.compiled-cache-ready.outcome == 'success'
         uses: actions/cache/save@v5
         with:
           path: |-
-            build/ffmpeg/install/darwin-x64/bin
-            build/ffmpeg/candidates/darwin-x64
-            build/ffmpeg/releases/darwin-x64
-            build/ffmpeg/state/darwin-x64
-            build/ffmpeg/reports/darwin-x64/*.json
-            build/ffmpeg/reports/darwin-x64/software/result.json
+            build/ffmpeg/install/darwin-${{ matrix.arch }}/bin
+            build/ffmpeg/candidates/darwin-${{ matrix.arch }}
+            build/ffmpeg/releases/darwin-${{ matrix.arch }}
+            build/ffmpeg/state/darwin-${{ matrix.arch }}
+            build/ffmpeg/reports/darwin-${{ matrix.arch }}/*.json
+            build/ffmpeg/reports/darwin-${{ matrix.arch }}/software/result.json
           key: ${{ steps.compiled-ffmpeg.outputs.cache-primary-key }}
       - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
-          name: ffmpeg-darwin-x64-candidate
+          name: ffmpeg-darwin-${{ matrix.arch }}-candidate
           path: |
-            build/ffmpeg/releases/darwin-x64/*/*.tar.xz
-            build/ffmpeg/releases/darwin-x64/*/SHA256SUMS.txt
-            build/ffmpeg/reports/darwin-x64/
+            build/ffmpeg/releases/darwin-${{ matrix.arch }}/*/*.tar.xz
+            build/ffmpeg/releases/darwin-${{ matrix.arch }}/*/SHA256SUMS.txt
+            build/ffmpeg/reports/darwin-${{ matrix.arch }}/
           retention-days: 14
     env:
       MOARTUBE_FFMPEG_OFFLINE: '1'

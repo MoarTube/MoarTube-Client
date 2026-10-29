@@ -1,6 +1,8 @@
 import { createRequire } from 'node:module';
 import { copyFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
+import { prepareBuilderCache } from '../desktop/builder-cache.cjs';
+prepareBuilderCache(process.env.ELECTRON_BUILDER_CACHE);
 const require = createRequire(import.meta.url);
 const { downloadArtifact } = require('@electron/get');
 const pkg = require('../package.json');
@@ -23,6 +25,8 @@ await downloadArtifact({
 });
 const { getPath7za } = require('app-builder-lib/out/toolsets/7zip.js');
 await getPath7za();
+const { getIconsToolsetPath } = require('app-builder-lib/out/toolsets/icons.js');
+await getIconsToolsetPath();
 if (process.platform === 'win32') {
   const tools = require('app-builder-lib/out/toolsets/windows.js');
   await tools.getRceditBundle();

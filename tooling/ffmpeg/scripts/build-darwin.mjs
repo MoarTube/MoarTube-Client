@@ -14,11 +14,10 @@ import {
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ffmpegPaths } from '../../build-paths.cjs';
-import { requireDarwinX64, run, inspectDarwinDependencies } from './darwin-native.mjs';
+import { requireDarwinTarget, run, inspectDarwinDependencies } from './darwin-native.mjs';
 
-requireDarwinX64();
+const { arch, target } = requireDarwinTarget();
 const root = fileURLToPath(new URL('../../../', import.meta.url));
-const target = 'darwin-x64';
 const layout = ffmpegPaths(root, target);
 const read = (file) => JSON.parse(readFileSync(file, 'utf8'));
 const hash = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
@@ -52,7 +51,7 @@ for (const [name, args] of [
 json(path.join(layout.reports, 'toolchain.json'), {
   versions,
   deploymentTarget: '15.0',
-  execution: 'native-macos-x64',
+  execution: `native-macos-${arch}`,
 });
 json(path.join(layout.reports, 'sources.lock.json'), lock);
 for (const source of lock.sources) {
@@ -61,13 +60,13 @@ for (const source of lock.sources) {
   mkdirSync(destination, { recursive: true });
   run('tar', ['-xf', archive, '--strip-components=1', '-C', destination]);
 }
-run('bash', [path.join(root, 'tooling/ffmpeg/platforms/darwin/build.sh'), root]);
+run('bash', [path.join(root, 'tooling/ffmpeg/platforms/darwin/build.sh'), root, arch]);
 const files = {};
 const dependencies = [];
 for (const name of ['ffmpeg', 'ffprobe']) {
   const file = path.join(layout.install, 'bin', name);
   run('codesign', ['--force', '--sign', '-', file]);
-  const linked = inspectDarwinDependencies(file);
+  const linked = inspectDarwinDependencies(file, arch);
   files[name] = { sha256: hash(file) };
   dependencies.push({ name, sha256: files[name].sha256, libraries: linked });
 }
@@ -161,7 +160,7 @@ const manifest = {
   target,
   version,
   buildId,
-  baseline: { macOS: '15.0', cpu: 'x86-64' },
+  baseline: { macOS: '15.0', cpu: arch === 'arm64' ? 'armv8-a' : 'x86-64' },
   qualification: {
     compiledFeatures: 'passed',
     softwareSmoke: 'passed',
@@ -206,7 +205,7 @@ cpSync(layout.reports, path.join(sources, 'reports'), {
 });
 writeFileSync(
   path.join(sources, 'BUILD.txt'),
-  'Requires Intel macOS 15+, Xcode command line tools, Node.js 24.22.1 or newer, cmake, ninja, meson, nasm, pkg-config and xz. From recipe/, run node tooling/ffmpeg/scripts/build-darwin.mjs. To reuse sources, copy sources/* into recipe/build/ffmpeg/cache/sources/. See reports/toolchain.json for recorded compiler and SDK versions; build tools are not vendored.\n'
+  `Requires native macOS ${arch} 15+, Xcode command line tools, matching native Node.js 24.22.1 or newer, cmake, ninja, meson, nasm, pkg-config and xz. From recipe/, run node tooling/ffmpeg/scripts/build-darwin.mjs --arch=${arch}. To reuse sources, copy sources/* into recipe/build/ffmpeg/cache/sources/. See reports/toolchain.json for recorded compiler and SDK versions; build tools are not vendored.\n`
 );
 const archives = [];
 for (const [suffix, directory] of [
@@ -238,4 +237,4 @@ json(layout.selection, {
   runtimeArchive: archives[0],
   sourceArchive: archives[1],
 });
-console.log(`Verified Darwin x64 FFmpeg candidate: ${buildId}`);
+console.log(`Verified ${target} FFmpeg candidate: ${buildId}`);

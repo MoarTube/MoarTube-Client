@@ -67,15 +67,16 @@ Downloads land in `build/desktop/releases/linux-arm64/1.1.0`.
 ARM64 also tests Debian Trixie libraries for Raspberry Pi OS compatibility;
 physical Pi desktop/GPU qualification remains separate.
 
-## macOS Intel desktop option
+## macOS Intel and Apple Silicon desktop options
 
-Darwin x64 has FFmpeg and Electron DMG/ZIP build scripts targeting macOS 15+.
-Use the **macOS Intel desktop candidate** GitHub Actions workflow to build and
+Darwin x64 and ARM64 have native FFmpeg and Electron DMG/ZIP build scripts targeting macOS 15+.
+Use the **macOS Intel and Apple Silicon desktop candidate** GitHub Actions workflow to build and
 test from Windows. On an Intel Mac, run `npm run ffmpeg:build:darwin`,
 `npm run desktop:build:darwin` and `npm run desktop:verify:darwin`.
-The first native CI run is still required to qualify these scripts. Initial
-packages use ad-hoc signing and are not notarized; Darwin ARM64 remains future
-work. See the [macOS guide](docs/electron-darwin.md).
+On Apple Silicon, use `npm run ffmpeg:build:darwin:arm64`,
+`npm run desktop:build:darwin:arm64` and `npm run desktop:verify:darwin:arm64`.
+The ARM64 path awaits its first native CI qualification. Initial packages use
+ad-hoc signing and are not notarized. See the [macOS guide](docs/electron-darwin.md).
 
 ## Compile FFmpeg before starting
 

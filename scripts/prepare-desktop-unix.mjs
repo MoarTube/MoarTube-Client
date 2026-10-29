@@ -1,4 +1,5 @@
 import { desktopPaths, ffmpegPaths } from '../tooling/build-paths.cjs';
+import { parseDarwinTarget } from '../tooling/ffmpeg/scripts/darwin-native.mjs';
 import { linuxTarget } from '../tooling/ffmpeg/scripts/linux-target.mjs';
 import { execFileSync } from 'node:child_process';
 import {
@@ -16,17 +17,17 @@ import { sha256 } from './lib/desktop-ffmpeg.mjs';
 
 const darwin = process.platform === 'darwin';
 const { arch, target } = darwin
-  ? { arch: 'x64', target: 'darwin-x64' }
+  ? parseDarwinTarget(process.argv.slice(2))
   : linuxTarget(process.env.MOARTUBE_DESKTOP_ARCH ?? process.arch);
 if ((!darwin && process.platform !== 'linux') || process.arch !== arch)
-  throw new Error('Run desktop preparation on matching native macOS x64 or Linux x64/ARM64.');
+  throw new Error('Run desktop preparation on matching native macOS or Linux x64/ARM64.');
 const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
 const version = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version;
 const layout = desktopPaths(root, target, version);
 const ffmpeg = ffmpegPaths(root, target);
 if (!existsSync(ffmpeg.selection))
   throw new Error(
-    `Compile FFmpeg first: npm run ffmpeg:build:${darwin ? 'darwin' : arch === 'arm64' ? 'linux:arm64' : 'linux'}`
+    `Compile FFmpeg first: npm run ffmpeg:build:${darwin ? `darwin${arch === 'arm64' ? ':arm64' : ''}` : arch === 'arm64' ? 'linux:arm64' : 'linux'}`
   );
 const selection = JSON.parse(readFileSync(ffmpeg.selection, 'utf8'));
 const artifacts = path.join(ffmpeg.releases, selection.buildId);
@@ -117,7 +118,7 @@ writeFileSync(
 if (darwin) {
   writeFileSync(
     path.join(output, `RELEASE-NOTES-${target}.md`),
-    `# MoarTube Client ${version} - macOS 15+ Intel x64\n\n` +
+    `# MoarTube Client ${version} - macOS 15+ ${arch === 'arm64' ? 'Apple Silicon ARM64' : 'Intel x64'}\n\n` +
       `- [Disk image](${releaseBase}/MoarTube-Client-${version}-${target}.dmg)\n` +
       `- [Application ZIP](${releaseBase}/MoarTube-Client-${version}-${target}.zip)\n` +
       `- [FFmpeg corresponding sources](${sourceUrl}) - optional\n` +

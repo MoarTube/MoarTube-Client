@@ -59,7 +59,7 @@ jobs:
         id: desktop-dependencies
         with:
           path: build/desktop/cache/dependencies/${{ matrix.arch }}
-          key: desktop-dependencies-v1-linux-${{ matrix.arch }}-${{ hashFiles('package-lock.json', 'scripts/prefetch-desktop-tools.mjs', 'desktop/linux/dependencies.Dockerfile') }}
+          key: desktop-dependencies-v1-linux-${{ matrix.arch }}-${{ hashFiles('package-lock.json', 'scripts/prefetch-desktop-tools.mjs', 'desktop/builder-cache.cjs', 'desktop/linux/dependencies.Dockerfile') }}
       - name: Download npm, Electron and packaging tools
         run: node scripts/prepare-linux-dependencies.mjs --arch=${{ matrix.arch }} --desktop --downloads-only
       - name: Save desktop dependency downloads

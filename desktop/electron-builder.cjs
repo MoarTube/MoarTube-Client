@@ -1,6 +1,8 @@
 const { desktopPaths } = require('../tooling/build-paths.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
+const { prepareBuilderCache } = require('./builder-cache.cjs');
+prepareBuilderCache(process.env.ELECTRON_BUILDER_CACHE);
 const root = path.resolve(__dirname, '..');
 const layout = desktopPaths(root, 'win32-x64', require('../package.json').version);
 const selectionPath = layout.selection;

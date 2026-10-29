@@ -99,15 +99,23 @@ it('requires both executables and gives the developer the build command', () => 
   expect(() => resolveFfmpegBinaries(options)).toThrow('compiled FFmpeg and FFprobe');
 });
 
-it('resolves the Intel macOS pair and gives its compile-first instruction', () => {
-  const root = fixture();
-  const options = { root, platform: 'darwin' as const, arch: 'x64', environmentPath: '' };
-  expect(() => resolveFfmpegBinaries(options)).toThrow('npm run ffmpeg:build:darwin');
-  const compiled = compileFixture(root, 'darwin-x64');
-  expect(resolveFfmpegBinaries(options)).toEqual(compiled);
-  fs.unlinkSync(compiled.ffprobe);
-  expect(() => resolveFfmpegBinaries(options)).toThrow('compiled FFmpeg and FFprobe');
-});
+it.each(['x64', 'arm64'])(
+  'resolves the native macOS %s pair and gives its compile-first instruction',
+  (arch) => {
+    const root = fixture();
+    const options = { root, platform: 'darwin' as const, arch, environmentPath: '' };
+    expect(() => resolveFfmpegBinaries(options)).toThrow(
+      `npm run ffmpeg:build:darwin${arch === 'arm64' ? ':arm64' : ''}`
+    );
+    const compiled = compileFixture(root, `darwin-${arch}`);
+    expect(resolveFfmpegBinaries(options)).toEqual(compiled);
+    expect(() =>
+      resolveFfmpegBinaries({ ...options, arch: arch === 'arm64' ? 'x64' : 'arm64' })
+    ).toThrow('compiled FFmpeg');
+    fs.unlinkSync(compiled.ffprobe);
+    expect(() => resolveFfmpegBinaries(options)).toThrow('compiled FFmpeg and FFprobe');
+  }
+);
 
 it('explains how to compile a missing ARM64 dependency', () => {
   expect(() =>

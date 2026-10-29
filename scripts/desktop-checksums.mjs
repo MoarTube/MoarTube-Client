@@ -1,4 +1,5 @@
 import { desktopPaths } from '../tooling/build-paths.cjs';
+import { parseDarwinTarget } from '../tooling/ffmpeg/scripts/darwin-native.mjs';
 import { parseLinuxTarget } from '../tooling/ffmpeg/scripts/linux-target.mjs';
 import {
   createReadStream,
@@ -14,10 +15,10 @@ import { fileURLToPath } from 'node:url';
 
 const linux = process.argv.includes('--linux');
 const darwin = process.argv.includes('--darwin');
-if (darwin && (linux || process.argv.length !== 3))
-  throw new Error('Usage: desktop-checksums.mjs --darwin');
+if (darwin && linux)
+  throw new Error('Usage: desktop-checksums.mjs --darwin [--arch=x64|--arch=arm64]');
 const target = darwin
-  ? 'darwin-x64'
+  ? parseDarwinTarget(process.argv.slice(2).filter((arg) => arg !== '--darwin')).target
   : linux
     ? parseLinuxTarget(process.argv.slice(2).filter((arg) => arg !== '--linux')).target
     : 'win32-x64';

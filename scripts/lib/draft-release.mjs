@@ -31,6 +31,12 @@ export async function collectReleaseAssets({ directory, target, version, repo, t
         `MoarTube-Client-${version}-linux-arm64.tar.gz`,
       ],
     },
+    'darwin-arm64': {
+      binaries: [
+        `MoarTube-Client-${version}-darwin-arm64.dmg`,
+        `MoarTube-Client-${version}-darwin-arm64.zip`,
+      ],
+    },
     'darwin-x64': {
       binaries: [
         `MoarTube-Client-${version}-darwin-x64.dmg`,

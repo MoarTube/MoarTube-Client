@@ -60,7 +60,7 @@ function fixture(t, target) {
   const binarySha256 = Object.fromEntries(
     Object.entries(files).map(([name, entry]) => [name, entry.sha256])
   );
-  put(`${base}/reports/${target}/${target === 'darwin-x64' ? 'features' : 'result'}.json`, {
+  put(`${base}/reports/${target}/${target.startsWith('darwin-') ? 'features' : 'result'}.json`, {
     compiledFeaturesPassed: true,
     binarySha256,
   });
@@ -88,7 +88,7 @@ function fixture(t, target) {
 }
 
 test('verified compiled caches support all targets and rebase Windows selection safely', async (t) => {
-  for (const target of ['win32-x64', 'linux-x64', 'linux-arm64', 'darwin-x64']) {
+  for (const target of ['win32-x64', 'linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64']) {
     const f = fixture(t, target);
     await verifyCompiledCache(f.root, target, { save: true });
     await verifyCompiledCache(f.root, target);
@@ -132,6 +132,14 @@ test('cache keys isolate CPU targets and macOS toolchain images without rebuildi
   assert.notEqual(
     compiledCacheKey(f.root, 'darwin-x64', { ImageVersion: 'A' }).key,
     compiledCacheKey(f.root, 'darwin-x64', { ImageVersion: 'B' }).key
+  );
+  assert.notEqual(
+    compiledCacheKey(f.root, 'darwin-arm64', { ImageVersion: 'A' }).key,
+    compiledCacheKey(f.root, 'darwin-arm64', { ImageVersion: 'B' }).key
+  );
+  assert.notEqual(
+    compiledCacheKey(f.root, 'darwin-x64').key,
+    compiledCacheKey(f.root, 'darwin-arm64').key
   );
   const before = compiledCacheKey(f.root, 'win32-x64').key;
   f.put('public/unrelated-ui.html', 'new UI');

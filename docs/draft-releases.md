@@ -30,7 +30,9 @@ an optional download for users and must remain available beside the binaries.
 
 Uploads start only after the prerequisite build/test jobs succeed. Windows runs
 the packaged GUI smoke test before contributing. Linux waits for both native
-architecture jobs. macOS waits for its build and both Intel OS verification jobs.
+architecture jobs. macOS waits for both native architecture builds and all four
+OS verification jobs (Intel and ARM64, each on macOS 15 and 26), then contributes
+the two architecture-specific sets of downloads.
 Upload jobs alone have `contents: write`; compilation jobs keep read access.
 
 The uploader requires an existing draft and checks its effective commit against

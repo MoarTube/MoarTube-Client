@@ -1,10 +1,11 @@
 import { fileURLToPath } from 'node:url';
-import { requireDarwinX64, run } from '../tooling/ffmpeg/scripts/darwin-native.mjs';
+import { requireDarwinTarget, run } from '../tooling/ffmpeg/scripts/darwin-native.mjs';
 
-requireDarwinX64();
+const { arch } = requireDarwinTarget();
+const archArgs = [`--arch=${arch}`];
 const cwd = fileURLToPath(new URL('../', import.meta.url));
 run('npm', ['run', 'build'], { cwd });
-run(process.execPath, ['scripts/prepare-desktop-darwin.mjs'], { cwd });
+run(process.execPath, ['scripts/prepare-desktop-darwin.mjs', ...archArgs], { cwd });
 run(
   process.execPath,
   [
@@ -12,11 +13,11 @@ run(
     '--config',
     'desktop/electron-builder-darwin.cjs',
     '--mac',
-    '--x64',
+    `--${arch}`,
     '--publish',
     'never',
   ],
   { cwd }
 );
-run(process.execPath, ['scripts/verify-desktop-darwin-package.mjs'], { cwd });
-run(process.execPath, ['scripts/desktop-checksums.mjs', '--darwin'], { cwd });
+run(process.execPath, ['scripts/verify-desktop-darwin-package.mjs', ...archArgs], { cwd });
+run(process.execPath, ['scripts/desktop-checksums.mjs', '--darwin', ...archArgs], { cwd });

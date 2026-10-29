@@ -1,22 +1,34 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
-export function requireDarwinX64() {
-  if (process.platform !== 'darwin' || process.arch !== 'x64')
+export function darwinTarget(arch = 'x64') {
+  if (!['x64', 'arm64'].includes(arch)) throw new Error(`Unsupported Darwin architecture: ${arch}`);
+  return { arch, target: `darwin-${arch}` };
+}
+
+export function parseDarwinTarget(args = []) {
+  if (args.length > 1 || (args.length === 1 && !/^--arch=(x64|arm64)$/.test(args[0])))
+    throw new Error('Darwin commands accept only --arch=x64 or --arch=arm64 (default: x64).');
+  return darwinTarget(args[0]?.slice('--arch='.length) ?? 'x64');
+}
+
+export function requireDarwinTarget(args = process.argv.slice(2)) {
+  const selected = parseDarwinTarget(args);
+  if (process.platform !== 'darwin' || process.arch !== selected.arch)
     throw new Error(
-      'Run on native Intel macOS or the macos-15-intel GitHub Actions runner. Windows/WSL cannot build or execute macOS apps.'
+      `Run on matching native macOS ${selected.arch} with native Node.js. Use macos-15-intel for x64 or macos-15 for ARM64 in GitHub Actions. Windows/WSL cannot build or execute macOS apps.`
     );
-  if (process.argv.length > 2) throw new Error('This Darwin x64 command accepts no arguments.');
   const current = process.versions.node.split('.').map(Number);
   const minimum = [24, 22, 1];
   const difference = current.findIndex((part, index) => part !== minimum[index]);
   if (difference !== -1 && current[difference] < minimum[difference])
     throw new Error('Node.js 24.22.1 or newer is required.');
   if (Number(run('sw_vers', ['-productVersion'], { stdio: 'pipe' }).split('.')[0]) < 15)
-    throw new Error('The Darwin x64 baseline requires macOS 15 or newer.');
+    throw new Error('The Darwin baseline requires macOS 15 or newer.');
   const translated = spawnSync('sysctl', ['-in', 'sysctl.proc_translated'], { encoding: 'utf8' });
   if (translated.stdout?.trim() === '1')
-    throw new Error('Use a native Intel Mac, not Rosetta, for this target.');
+    throw new Error('Use matching native hardware and Node.js, not Rosetta, for this target.');
+  return selected;
 }
 
 export function run(command, args, options = {}) {
@@ -26,13 +38,11 @@ export function run(command, args, options = {}) {
   return result.stdout;
 }
 
-export function validateMachOX64(header) {
-  if (
-    header.length < 32 ||
-    header.readUInt32LE(0) !== 0xfeedfacf ||
-    header.readUInt32LE(4) !== 0x01000007
-  )
-    throw new Error('Expected a thin x86_64 Mach-O binary');
+export function validateMachO(header, arch = 'x64') {
+  darwinTarget(arch);
+  const cpu = arch === 'arm64' ? 0x0100000c : 0x01000007;
+  if (header.length < 32 || header.readUInt32LE(0) !== 0xfeedfacf || header.readUInt32LE(4) !== cpu)
+    throw new Error(`Expected a thin ${arch === 'arm64' ? 'arm64' : 'x86_64'} Mach-O binary`);
   const count = header.readUInt32LE(16);
   const end = 32 + header.readUInt32LE(20);
   if (end > header.length) throw new Error('Truncated Mach-O commands');
@@ -55,9 +65,9 @@ export function validateMachOX64(header) {
   if (offset !== end) throw new Error('Inconsistent Mach-O command table');
 }
 
-export function inspectMachOX64(file) {
+export function inspectMachO(file, arch = 'x64') {
   try {
-    validateMachOX64(readFileSync(file));
+    validateMachO(readFileSync(file), arch);
   } catch (error) {
     throw new Error(`${file}: ${error.message}`);
   }
@@ -79,8 +89,8 @@ export function validateDarwinDependencies(output) {
   return dependencies;
 }
 
-export function inspectDarwinDependencies(file) {
-  inspectMachOX64(file);
+export function inspectDarwinDependencies(file, arch = 'x64') {
+  inspectMachO(file, arch);
   const output = run('otool', ['-L', file], { stdio: 'pipe' });
   return validateDarwinDependencies(output);
 }

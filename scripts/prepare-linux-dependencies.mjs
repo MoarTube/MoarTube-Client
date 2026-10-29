@@ -50,6 +50,10 @@ if (desktop && !environmentOnly) {
     path.join(context, 'prefetch-desktop-tools.mjs')
   );
   copyFileSync(
+    path.join(root, 'desktop/builder-cache.cjs'),
+    path.join(context, 'builder-cache.cjs')
+  );
+  copyFileSync(
     path.join(root, 'desktop/linux/dependencies.Dockerfile'),
     path.join(context, 'Dockerfile')
   );

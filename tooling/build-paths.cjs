@@ -1,7 +1,7 @@
 const path = require('node:path');
 
 function targetName(target) {
-  if (!['win32-x64', 'linux-x64', 'linux-arm64', 'darwin-x64'].includes(target))
+  if (!['win32-x64', 'linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64'].includes(target))
     throw new Error(`Unsupported build target: ${target}`);
   return target;
 }

@@ -24,7 +24,7 @@ async function fixture(t, target = 'win32-x64') {
     ? ['MoarTube-Client-1.1.0-windows-x64-setup.exe', 'MoarTube-Client-1.1.0-windows-x64.zip']
     : target.startsWith('linux')
       ? [`MoarTube-Client-1.1.0-${target}.deb`, `MoarTube-Client-1.1.0-${target}.tar.gz`]
-      : ['MoarTube-Client-1.1.0-darwin-x64.dmg', 'MoarTube-Client-1.1.0-darwin-x64.zip'];
+      : [`MoarTube-Client-1.1.0-${target}.dmg`, `MoarTube-Client-1.1.0-${target}.zip`];
   const source = windows
     ? 'MoarTube-FFmpeg-test-build-sources.zip'
     : `9.0.2-moartube-${target}-test-sources.tar.xz`;
@@ -89,7 +89,7 @@ function github({
 
 test('uploads each target allowlist, pins an untagged draft and never publishes it', async (t) => {
   const { uploadToDraft } = await import('../../scripts/lib/draft-release.mjs');
-  for (const target of ['win32-x64', 'linux-x64', 'linux-arm64', 'darwin-x64']) {
+  for (const target of ['win32-x64', 'linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64']) {
     const local = await fixture(t, target);
     const remote = github();
     const result = await uploadToDraft({ ...local, ...remote });

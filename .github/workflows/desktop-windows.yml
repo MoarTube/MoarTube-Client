@@ -60,7 +60,7 @@ jobs:
           path: |-
             build/desktop/cache/electron
             build/desktop/cache/builder
-          key: desktop-dependencies-v1-windows-x64-${{ hashFiles('package-lock.json', 'scripts/prefetch-desktop-tools.mjs', 'desktop/linux/dependencies.Dockerfile') }}
+          key: desktop-dependencies-v1-windows-x64-${{ hashFiles('package-lock.json', 'scripts/prefetch-desktop-tools.mjs', 'desktop/builder-cache.cjs', 'desktop/linux/dependencies.Dockerfile') }}
       - name: Locate npm download cache
         id: npm-cache-directory
         run: node scripts/npm-cache-directory.mjs

@@ -3,20 +3,20 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { desktopPaths } from '../tooling/build-paths.cjs';
 import { sha256 } from './lib/desktop-ffmpeg.mjs';
-import { requireDarwinX64, run } from '../tooling/ffmpeg/scripts/darwin-native.mjs';
+import { requireDarwinTarget, run } from '../tooling/ffmpeg/scripts/darwin-native.mjs';
 import { verifyDarwinBundle } from './lib/darwin-package.mjs';
 
-requireDarwinX64();
+const { arch, target } = requireDarwinTarget();
 const root = fileURLToPath(new URL('../', import.meta.url));
 const version = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version;
-const layout = desktopPaths(root, 'darwin-x64', version);
+const layout = desktopPaths(root, target, version);
 const token = `${Date.now()}-${process.pid}`;
 const work = path.join(layout.work, 'verification', token);
 const reports = path.join(layout.reports, 'verification', token);
 for (const dir of [work, reports]) mkdirSync(dir, { recursive: true });
-const prefix = `MoarTube-Client-${version}-darwin-x64`;
+const prefix = `MoarTube-Client-${version}-${target}`;
 const checksums = new Map(
-  readFileSync(path.join(layout.release, 'SHA256SUMS-darwin-x64.txt'), 'utf8')
+  readFileSync(path.join(layout.release, `SHA256SUMS-${target}.txt`), 'utf8')
     .trim()
     .split(/\r?\n/)
     .map((line) => {
@@ -42,7 +42,7 @@ try {
   mkdirSync(zip, { recursive: true });
   run('ditto', ['-x', '-k', path.join(layout.release, `${prefix}.zip`), zip]);
   async function test(app, mode) {
-    const bundle = verifyDarwinBundle(app);
+    const bundle = verifyDarwinBundle(app, arch);
     const resources = path.join(app, 'Contents/Resources');
     run(
       path.join(resources, 'runtime/node'),

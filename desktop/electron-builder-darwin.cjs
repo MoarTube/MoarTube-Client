@@ -1,10 +1,16 @@
 const { desktopPaths } = require('../tooling/build-paths.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
-if (process.platform !== 'darwin' || process.arch !== 'x64')
-  throw new Error('Build the macOS x64 desktop on an Intel Mac runner.');
+const { prepareBuilderCache } = require('./builder-cache.cjs');
+prepareBuilderCache(process.env.ELECTRON_BUILDER_CACHE);
+if (process.platform !== 'darwin' || !['x64', 'arm64'].includes(process.arch))
+  throw new Error(
+    'Build the macOS desktop on a matching native Intel or Apple Silicon Mac runner.'
+  );
 const root = path.resolve(__dirname, '..');
-const layout = desktopPaths(root, 'darwin-x64', require('../package.json').version);
+const arch = process.arch;
+const target = `darwin-${arch}`;
+const layout = desktopPaths(root, target, require('../package.json').version);
 const selection = JSON.parse(fs.readFileSync(layout.selection, 'utf8'));
 const runtime = path.resolve(selection.runtimeDirectory);
 const node = path.resolve(selection.nodeRuntimeDirectory);
@@ -32,15 +38,15 @@ module.exports = {
   asarUnpack: ['dist/**/*', 'node_modules/**/*', 'package.json'],
   npmRebuild: false,
   extraResources: [
-    { from: runtime, to: 'ffmpeg/darwin-x64' },
+    { from: runtime, to: `ffmpeg/${target}` },
     { from: node, to: 'runtime', filter: ['node', 'LICENSE', 'NOTICES.txt'] },
     { from: 'LICENSE.md', to: 'MoarTube-LICENSE.md' },
   ],
-  artifactName: 'MoarTube-Client-${version}-darwin-x64.${ext}',
+  artifactName: 'MoarTube-Client-${version}-' + target + '.${ext}',
   mac: {
     target: [
-      { target: 'dmg', arch: ['x64'] },
-      { target: 'zip', arch: ['x64'] },
+      { target: 'dmg', arch: [arch] },
+      { target: 'zip', arch: [arch] },
     ],
     icon: path.join(layout.assets, 'icon.png'),
     category: 'public.app-category.video',

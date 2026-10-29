@@ -21,10 +21,9 @@ export function compiledCacheKey(root, target, environment = process.env) {
         target,
         recipe,
         node: process.version,
-        image:
-          target === 'darwin-x64'
-            ? (environment.ImageVersion ?? environment.ImageOS ?? 'native-macos')
-            : 'locked-toolchain',
+        image: target.startsWith('darwin-')
+          ? (environment.ImageVersion ?? environment.ImageOS ?? 'native-macos')
+          : 'locked-toolchain',
       })
     )
     .digest('hex');
@@ -67,7 +66,7 @@ export async function verifyCompiledCache(root, target, { save = false } = {}) {
   if (!save && read(metadata).key !== current.key)
     throw new Error('Compiled FFmpeg cache key does not match this build');
   const features = read(
-    path.join(layout.reports, target === 'darwin-x64' ? 'features.json' : 'result.json')
+    path.join(layout.reports, target.startsWith('darwin-') ? 'features.json' : 'result.json')
   );
   const software = read(path.join(layout.reports, 'software/result.json'));
   if (

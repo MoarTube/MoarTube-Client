@@ -1,6 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateMachOX64, validateDarwinDependencies } from '../scripts/darwin-native.mjs';
+import {
+  validateMachO,
+  validateDarwinDependencies,
+  parseDarwinTarget,
+} from '../scripts/darwin-native.mjs';
 
 function binary(cpu = 0x01000007, minimum = 0x000f0000) {
   const data = Buffer.alloc(56);
@@ -16,17 +20,36 @@ function binary(cpu = 0x01000007, minimum = 0x000f0000) {
 }
 
 test('Darwin qualification rejects wrong architecture, platform and newer deployment targets', () => {
-  assert.doesNotThrow(() => validateMachOX64(binary()));
-  assert.doesNotThrow(() => validateMachOX64(binary(0x01000007, 0x000c0000)));
-  assert.throws(() => validateMachOX64(binary(0x0100000c)), /x86_64/);
-  assert.throws(() => validateMachOX64(binary(0x01000007, 0x001a0000)), /newer/);
+  assert.doesNotThrow(() => validateMachO(binary()));
+  assert.doesNotThrow(() => validateMachO(binary(0x01000007, 0x000c0000)));
+  assert.throws(() => validateMachO(binary(0x0100000c)), /x86_64/);
+  assert.throws(() => validateMachO(binary(0x01000007, 0x001a0000)), /newer/);
   const ios = binary();
   ios.writeUInt32LE(2, 40);
-  assert.throws(() => validateMachOX64(ios), /macOS platform/);
-  assert.throws(() => validateMachOX64(binary().subarray(0, 40)), /Truncated/);
+  assert.throws(() => validateMachO(ios), /macOS platform/);
+  assert.throws(() => validateMachO(binary().subarray(0, 40)), /Truncated/);
   const corrupt = binary();
   corrupt.writeUInt32LE(0, 36);
-  assert.throws(() => validateMachOX64(corrupt), /command size/);
+  assert.throws(() => validateMachO(corrupt), /command size/);
+});
+
+test('Apple Silicon qualification rejects Intel binaries, fat binaries and newer OS requirements', () => {
+  assert.doesNotThrow(() => validateMachO(binary(0x0100000c), 'arm64'));
+  assert.throws(() => validateMachO(binary(), 'arm64'), /arm64/);
+  assert.throws(() => validateMachO(binary(0x0100000c, 0x001a0000), 'arm64'), /newer/);
+  const fat = binary(0x0100000c);
+  fat.writeUInt32LE(0xcafebabe, 0);
+  assert.throws(() => validateMachO(fat, 'arm64'), /thin arm64/);
+  const ios = binary(0x0100000c);
+  ios.writeUInt32LE(2, 40);
+  assert.throws(() => validateMachO(ios, 'arm64'), /macOS platform/);
+});
+
+test('Darwin target parsing preserves the Intel default and accepts only explicit supported architectures', () => {
+  assert.deepEqual(parseDarwinTarget(), { arch: 'x64', target: 'darwin-x64' });
+  assert.deepEqual(parseDarwinTarget(['--arch=arm64']), { arch: 'arm64', target: 'darwin-arm64' });
+  for (const args of [['--arch=ia32'], ['--arm64'], ['--arch=arm64', '--arch=x64']])
+    assert.throws(() => parseDarwinTarget(args), /accept only/);
 });
 
 test('Darwin FFmpeg cannot depend on a build machine Homebrew or relative library', () => {

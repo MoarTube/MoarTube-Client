@@ -1,6 +1,8 @@
 const { desktopPaths } = require('../tooling/build-paths.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
+const { prepareBuilderCache } = require('./builder-cache.cjs');
+prepareBuilderCache(process.env.ELECTRON_BUILDER_CACHE);
 const root = path.resolve(__dirname, '..');
 const arch = process.env.MOARTUBE_DESKTOP_ARCH ?? process.arch;
 if (!['x64', 'arm64'].includes(arch) || process.platform !== 'linux' || process.arch !== arch)

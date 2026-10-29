@@ -59,7 +59,9 @@ export function resolveFfmpegBinaries(options: ResolveOptions = {}): FfmpegBinar
           ? 'Run "npm run ffmpeg:build:linux" from the MoarTube-Client repository (requires Docker with Linux containers).'
           : target === 'darwin-x64'
             ? 'Run "npm run ffmpeg:build:darwin" on an Intel Mac or the macOS GitHub Actions runner first.'
-            : `Compile FFmpeg for ${target} first; automated recipes support Windows x64, Linux x64/ARM64 and macOS x64.`;
+            : target === 'darwin-arm64'
+              ? 'Run "npm run ffmpeg:build:darwin:arm64" on an Apple Silicon Mac or native ARM64 macOS GitHub Actions runner first.'
+              : `Compile FFmpeg for ${target} first; automated recipes support Windows x64, Linux x64/ARM64 and macOS x64/ARM64.`;
   const missing = (expected: string): Error =>
     new Error(
       `MoarTube requires compiled FFmpeg and FFprobe for ${target}. ${buildCommand} Expected binaries at: ${expected}.`
