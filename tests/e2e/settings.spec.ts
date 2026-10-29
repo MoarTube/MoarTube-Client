@@ -19,7 +19,7 @@ for (const [kind, form, input] of [
       await expectSuccess(response);
       await page.reload();
       await expect(page.locator(input)).toHaveValue(value);
-      await viewer.goto('/');
+      await viewer.goto('/videos');
       await expect(viewer.locator(kind === 'name' ? '#node-name' : '#node-about')).toHaveText(
         value
       );

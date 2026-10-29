@@ -1,4 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
+import path from 'node:path';
+
+const reportRoot = process.env['MOARTUBE_E2E_REPORT_DIR'];
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -13,11 +16,26 @@ export default defineConfig({
   maxFailures: 1,
   timeout: 90_000,
   expect: { timeout: 10_000 },
+  ...(reportRoot === undefined ? {} : { outputDir: path.join(reportRoot, 'artifacts') }),
   reporter: [
     ['./tests/e2e/support/client-logs.ts'],
     ['list'],
-    ['html', { open: 'never' }],
-    ['json', { outputFile: 'test-results/results.json' }],
+    [
+      'html',
+      {
+        open: 'never',
+        ...(reportRoot === undefined ? {} : { outputFolder: path.join(reportRoot, 'html') }),
+      },
+    ],
+    [
+      'json',
+      {
+        outputFile:
+          reportRoot === undefined
+            ? 'test-results/results.json'
+            : path.join(reportRoot, 'results.json'),
+      },
+    ],
   ],
   use: {
     baseURL: process.env['MOARTUBE_CLIENT_URL'] ?? 'http://localhost:8080',
@@ -30,7 +48,7 @@ export default defineConfig({
   webServer: {
     command: 'node --import tsx src/moartube-client.ts',
     url: process.env['MOARTUBE_CLIENT_URL'] ?? 'http://localhost:8080/account/signin',
-    reuseExistingServer: true,
+    reuseExistingServer: process.env['MOARTUBE_E2E_MANAGED_CLIENT'] !== '1',
     stdout: 'pipe',
     stderr: 'pipe',
     timeout: 60_000,

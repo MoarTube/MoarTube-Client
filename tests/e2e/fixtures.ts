@@ -185,8 +185,28 @@ export const test = base.extend<
     },
     { scope: 'worker', auto: true },
   ],
-  signedInPage: async ({ page }, use) => {
+  signedInPage: async ({ page }, use, testInfo) => {
     await signIn(page);
+    const gpuId = process.env['MOARTUBE_E2E_GPU_ID'];
+    if (gpuId !== undefined && gpuId !== '') {
+      await page.goto('/settings');
+      const select = page.getByRole('combobox', { name: 'GPU acceleration' });
+      await expect(select).toBeEnabled();
+      const saved = clientResponse(page, '/settings/client/gpuAcceleration');
+      await select.selectOption(gpuId);
+      await expectSuccess(saved);
+      const result = await (await saved).json();
+      expect(result.result.selectedGpuId, 'Client must retain the explicitly requested GPU').toBe(
+        gpuId
+      );
+      await expect(select).toBeEnabled();
+      await expect(select).toHaveValue(gpuId);
+      await testInfo.attach('required-gpu.json', {
+        body: JSON.stringify(result.result),
+        contentType: 'application/json',
+      });
+      await page.goto('/videos');
+    }
     await use(page);
   },
   importedVideo: async ({ signedInPage: page }, use, testInfo) => {

@@ -161,6 +161,20 @@ References: [NVIDIA FFmpeg guide](https://docs.nvidia.com/video-technologies/vid
 
 ## Verification
 
+Live encoding writes a rolling HLS playlist and atomically completed segment
+files under the video's local `adaptive/encoder` directory. Delivery uploads one
+closed segment at a time; the GPU decoder/scaler/encoder options are preserved.
+FFmpeg retains a 20-segment playlist plus its deletion allowance rather than
+accumulating files indefinitely. Playlist reads are capped at 128 KiB and segment
+reads at 64 MiB. Delivery that falls behind the retained window fails explicitly.
+This replaces the legacy mixed segment/playlist stdout transport, whose inferred
+`pipe:N.ts` segment URLs are rejected by FFmpeg 9. No FFmpeg source patch or GPU
+fallback is needed for this transport change.
+
+On Windows, `npm.cmd run test:gpu` requires and exercises each detected adapter;
+`npm.cmd run test:gpu:e2e` also tests actual Client publishing/live journeys on
+those adapters. See [the local integration guide](local-integration-runner.md).
+
 Run `npm test` for discovery, selection, pipeline argument, filter geometry, and
 capability-check regression tests. GPU hardware testing is opt-in:
 

@@ -1,8 +1,15 @@
-name: Real Client-Node Playwright integration
+name: Local Windows Client-Node and GPU integration
 # Requires a self-hosted runner with MoarTube Node already running on localhost:9090.
 # This workflow downloads test dependencies first; it does not provision the server.
 on:
-  workflow_dispatch: null
+  workflow_dispatch:
+    inputs:
+      gpu_backend:
+        description: Required GPU backend (all requires every detected adapter to work)
+        type: choice
+        required: true
+        default: all
+        options: [all, nvenc, amf, qsv]
 permissions:
   contents: read
 concurrency:
@@ -12,12 +19,22 @@ jobs:
   e2e:
     env:
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/build/test/cache/playwright
+      MOARTUBE_INTEGRATION_GPU_BACKEND: ${{ inputs.gpu_backend }}
+      MOARTUBE_E2E_USERNAME: ${{ secrets.MOARTUBE_E2E_USERNAME }}
+      MOARTUBE_E2E_PASSWORD: ${{ secrets.MOARTUBE_E2E_PASSWORD }}
     runs-on:
       - self-hosted
+      - Windows
+      - X64
       - moartube-integration
-    timeout-minutes: 45
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: powershell
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v6
         with:
           package-manager-cache: false
@@ -31,40 +48,37 @@ jobs:
         with:
           path: ${{ steps.npm-cache-directory.outputs.directory }}
           key: npm-downloads-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
-      - run: npm ci
+      - run: npm.cmd ci
       - name: Save completed npm downloads
         if: steps.npm-downloads.outputs.cache-hit != 'true'
         uses: actions/cache/save@v5
         with:
           path: ${{ steps.npm-cache-directory.outputs.directory }}
           key: ${{ steps.npm-downloads.outputs.cache-primary-key }}
+      - name: Verify local Node, compiled FFmpeg and required physical GPUs
+        run: npm.cmd run test:integration:preflight
       - name: Restore Playwright browser downloads
         id: playwright-downloads
         uses: actions/cache/restore@v5
         with:
           path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
           key: playwright-downloads-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
-      - run: npx playwright install chromium firefox webkit
+      - run: npx.cmd playwright install chromium firefox webkit
       - name: Save completed Playwright browser downloads
         if: steps.playwright-downloads.outputs.cache-hit != 'true'
         uses: actions/cache/save@v5
         with:
           path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
           key: ${{ steps.playwright-downloads.outputs.cache-primary-key }}
-      - run: npm run typecheck
-      - run: npm run typecheck:e2e
-      - run: npm run lint:e2e
-      - run: npm test
-      - run: npm run build
-      - run: npm run test:e2e:all
-        env:
-          MOARTUBE_E2E_USERNAME: ${{ secrets.MOARTUBE_E2E_USERNAME }}
-          MOARTUBE_E2E_PASSWORD: ${{ secrets.MOARTUBE_E2E_PASSWORD }}
+      - name: Run all local checks, hardware pipelines and browser journeys
+        run: npm.cmd run test:integration
       - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
-          name: playwright-real-node
+          name: local-windows-integration-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             playwright-report/
             test-results/
+            build/integration/reports/
+            temp/e2e-client.log
           retention-days: 14

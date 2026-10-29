@@ -1,5 +1,12 @@
 # MoarTube Client and Node integration tests
 
+The local Windows GitHub Actions workflow runs this browser suite alongside
+strict physical GPU checks. See [local runner setup](../../docs/local-integration-runner.md).
+`npm.cmd run test:integration` runs that complete gate directly. Managed runs use
+separate Client profiles, and per-adapter browser phases select the required GPU
+through the settings UI. Ordinary Playwright commands retain their existing
+Client reuse behavior.
+
 The `Client-published m3u8 plays in the Node viewer` and
 `starts and stops a real RTMP stream through the Client UI` cases run for WebKit
 only on macOS. On other hosts they are explicitly skipped before their fixtures
@@ -7,6 +14,9 @@ run, because the Windows WebKit build lacks HLS/MSE support. The entire combined
 live journey, including its chat assertions, is excluded for WebKit on those
 hosts. Chromium and Firefox continue running both journeys on all hosts;
 WebKit MP4/WebM playback and the other stream-dialog tests remain enabled.
+The isolated HLS memory regression checks the same browser capability before
+running; Chromium and Firefox must play, seek, bound their back buffer and tear
+down the player. It explicitly starts playback after deferred loading.
 This is a platform exclusion, not successful WebKit HLS verification on Windows.
 
 These Playwright tests exercise **MoarTube Client through its UI against a real,
@@ -43,8 +53,11 @@ The suite never disables CAPTCHA, supplies fake tokens, changes global configura
 to make a journey pass, or substitutes unsupported media playback. OGV is checked as
 a real download; MP4, WebM and HLS must actually play in the selected browser.
 
-All Playwright code resides in Client. No adjacent Node checkout, Node source
-imports, Node package installation or third repository is needed to run it.
+The real-Node journeys need only the running server. The additional
+`watch-page`, `watch-comments` and `memory-regressions` fixture suites render/read
+Node's static viewer assets from `MOARTUBE_NODE_SOURCE_DIR` (default:
+`../MoarTube-Node`). The full combined suite therefore needs that source checkout
+as well. It does not install Node packages or modify Node source.
 
 ## Run
 

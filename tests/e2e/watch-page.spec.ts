@@ -6,7 +6,17 @@ import { promisify } from 'node:util';
 import { resolveFfmpegBinaries } from '../../src/utils/ffmpeg-path.js';
 import path from 'node:path';
 import ejs from 'ejs';
-const root = path.resolve('../MoarTube-Node');
+interface FixturePlaybackElement extends HTMLMediaElement {
+  source?: { src?: string };
+}
+declare global {
+  interface Window {
+    metadataExecuted?: boolean;
+    allowPlayback?: boolean;
+    allowNativePlayback?: boolean;
+  }
+}
+const root = path.resolve(process.env['MOARTUBE_NODE_SOURCE_DIR'] ?? '../MoarTube-Node');
 const host = 'http://watch.test',
   id = 'aaaaaaaaaaa';
 let mediaFolder: string;
@@ -59,8 +69,9 @@ test.afterAll(async () => {
   if (
     path.dirname(mediaFolder) !== path.resolve(tmpdir()) ||
     !path.basename(mediaFolder).startsWith('moartube-watch-playback-')
-  )
+  ) {
     throw new Error('Unexpected fixture directory');
+  }
   await rm(mediaFolder, { recursive: true, force: true });
 });
 async function fixture(
@@ -177,8 +188,9 @@ async function fixture(
   const documentRequests: string[] = [];
   await page.route('**/*', async (route) => {
     const url = new URL(route.request().url());
-    if (url.hostname !== 'watch.test')
+    if (url.hostname !== 'watch.test') {
       return route.fulfill({ body: '', contentType: 'application/javascript' });
+    }
     if (url.pathname === '/watch') {
       documentRequests.push(route.request().url());
       return route.fulfill({ body: html, contentType: 'text/html' });
@@ -220,9 +232,10 @@ async function fixture(
         contentType: file.endsWith('.m3u8') ? 'application/vnd.apple.mpegurl' : 'video/mp2t',
       });
     }
-    if (url.pathname.endsWith('/views/increment'))
+    if (url.pathname.endsWith('/views/increment')) {
       return route.fulfill({ json: { isError: false, views: 2 } });
-    if (url.pathname.endsWith('/comments'))
+    }
+    if (url.pathname.endsWith('/comments')) {
       return route.fulfill({
         json: {
           isError: false,
@@ -239,6 +252,7 @@ async function fixture(
           totalCount: 1,
         },
       });
+    }
     return route.fulfill({ body: '', status: 404 });
   });
   await page.goto(host + '/watch?v=' + id + '&t=' + time);
@@ -249,7 +263,7 @@ test('metadata is inert in scripts, recommendation titles, and tags', async ({ p
   const { errors, title, text } = await fixture(page, { malicious: true });
   await expect(page.locator('#video-title')).toHaveText(title);
   await expect(page.locator('#video-information-description')).toHaveText(text);
-  expect(await page.evaluate(() => (window as any).metadataExecuted)).toBeUndefined();
+  expect(await page.evaluate(() => window.metadataExecuted)).toBeUndefined();
   await expect(page.locator('.video-recommendation-card-text').first()).toHaveText(title);
   expect(await page.locator('.video-recommendation-card-text img').count()).toBe(0);
   for (const tag of ['__proto__', 'hasOwnProperty']) {
@@ -266,8 +280,9 @@ test('disabled actions stay disabled while existing comments remain readable', a
     '#video-report-button',
     '#comment-input-form-static textarea',
     '#comment-input-form-static button',
-  ])
+  ]) {
     await expect(page.locator(selector)).toBeDisabled();
+  }
   await expect(page.locator('#pc1 .comment-quote-button').first()).toHaveAttribute(
     'aria-disabled',
     'true'
@@ -315,17 +330,18 @@ for (const activation of ['poster', 'button', 'Enter', 'Space']) {
       ) {
         const element = create.call(this, name, options);
         if (name === 'hlsjs-video') {
-          const play = (element as any).play.bind(element);
+          const play = (element as FixturePlaybackElement).play.bind(element);
           Object.defineProperty(element, 'play', {
             configurable: true,
             value: function () {
-              if (!(window as any).allowPlayback)
+              if (!window.allowPlayback) {
                 return Promise.reject(new DOMException('Blocked autoplay', 'NotAllowedError'));
+              }
               return play();
             },
           });
           element.addEventListener('click', () => {
-            (window as any).allowPlayback = true;
+            window.allowPlayback = true;
           });
         }
         return element;
@@ -333,7 +349,7 @@ for (const activation of ['poster', 'button', 'Enter', 'Space']) {
       document.addEventListener(
         'click',
         () => {
-          (window as any).allowPlayback = true;
+          window.allowPlayback = true;
         },
         true
       );
@@ -344,9 +360,9 @@ for (const activation of ['poster', 'button', 'Enter', 'Space']) {
     await page.waitForTimeout(2000);
     expect(mediaRequests.filter((url) => url.endsWith('.ts'))).toHaveLength(0);
     expect(documentRequests).toHaveLength(1);
-    expect(await page.locator('hlsjs-video').evaluate((el: any) => el.source?.src)).toContain(
-      'manifest-master.m3u8'
-    );
+    expect(
+      await page.locator('hlsjs-video').evaluate((el: FixturePlaybackElement) => el.source?.src)
+    ).toContain('manifest-master.m3u8');
     const canPlayHls = await page.evaluate(
       () =>
         typeof MediaSource !== 'undefined' ||
@@ -356,37 +372,44 @@ for (const activation of ['poster', 'button', 'Enter', 'Space']) {
       expect(errors).toEqual([]);
       return;
     }
-    if (activation === 'poster')
+    if (activation === 'poster') {
       await page.locator('#mtp-video-overlay').click({ position: { x: 30, y: 30 } });
-    else if (activation === 'button')
+    } else if (activation === 'button') {
       await page.getByRole('button', { name: 'Play video', exact: true }).click();
-    else {
+    } else {
       await page.getByRole('button', { name: 'Play video', exact: true }).focus();
       await page.keyboard.press(activation);
     }
 
     await expect
-      .poll(() => page.locator('hlsjs-video').evaluate((el: any) => el.currentTime), {
-        timeout: 20000,
-      })
+      .poll(
+        () => page.locator('hlsjs-video').evaluate((el: FixturePlaybackElement) => el.currentTime),
+        {
+          timeout: 20000,
+        }
+      )
       .toBeGreaterThan(0);
-    const startedAt = await page.locator('hlsjs-video').evaluate((el: any) => el.currentTime);
+    const startedAt = await page
+      .locator('hlsjs-video')
+      .evaluate((el: FixturePlaybackElement) => el.currentTime);
     await page.waitForTimeout(1000);
-    expect(await page.locator('hlsjs-video').evaluate((el: any) => el.paused)).toBe(false);
-    expect(await page.locator('hlsjs-video').evaluate((el: any) => el.currentTime)).toBeGreaterThan(
-      startedAt
-    );
+    expect(
+      await page.locator('hlsjs-video').evaluate((el: FixturePlaybackElement) => el.paused)
+    ).toBe(false);
+    expect(
+      await page.locator('hlsjs-video').evaluate((el: FixturePlaybackElement) => el.currentTime)
+    ).toBeGreaterThan(startedAt);
     expect(mediaRequests.some((url) => url.endsWith('.ts'))).toBe(true);
     expect(mediaRequests.filter((url) => url.endsWith('manifest-master.m3u8'))).toHaveLength(1);
     expect(documentRequests).toHaveLength(1);
     const surface = page.locator('media-container');
     await surface.click({ position: { x: 30, y: 30 } });
     await expect
-      .poll(() => page.locator('hlsjs-video').evaluate((el: any) => el.paused))
+      .poll(() => page.locator('hlsjs-video').evaluate((el: FixturePlaybackElement) => el.paused))
       .toBe(true);
     await surface.click({ position: { x: 30, y: 30 } });
     await expect
-      .poll(() => page.locator('hlsjs-video').evaluate((el: any) => el.paused))
+      .poll(() => page.locator('hlsjs-video').evaluate((el: FixturePlaybackElement) => el.paused))
       .toBe(false);
     expect(errors).toEqual([]);
   });
@@ -404,23 +427,29 @@ test('autoplay, initial seek, quality switching, pause and resume remain functio
   test.skip(!canPlayHls, 'This browser build provides neither MediaSource nor native HLS');
   const { errors } = await fixture(page, { playback: true, time: 3 });
   const media = page.locator('hlsjs-video');
-  await expect.poll(() => media.evaluate((el: any) => el.currentTime)).toBeGreaterThanOrEqual(3);
-  await media.evaluate((el: any) => {
+  await expect
+    .poll(() => media.evaluate((el: FixturePlaybackElement) => el.currentTime))
+    .toBeGreaterThanOrEqual(3);
+  await media.evaluate((el: FixturePlaybackElement) => {
     el.pause();
     el.playbackRate = 1.5;
   });
-  const time = await media.evaluate((el: any) => el.currentTime);
+  const time = await media.evaluate((el: FixturePlaybackElement) => el.currentTime);
   await page.locator('.mt-settings').click();
   await page.getByRole('menuitem', { name: /^Quality/ }).click();
   await page.getByRole('menuitem', { name: 'm3u8', exact: false }).click();
   await page.getByRole('menuitemradio', { name: '720p', exact: true }).click();
-  await expect.poll(() => media.evaluate((el: any) => el.readyState)).toBeGreaterThan(0);
-  expect(await media.evaluate((el: any) => el.paused)).toBe(true);
-  expect(await media.evaluate((el: any) => el.currentTime)).toBeCloseTo(time, 0);
-  expect(await media.evaluate((el: any) => el.playbackRate)).toBe(1.5);
+  await expect
+    .poll(() => media.evaluate((el: FixturePlaybackElement) => el.readyState))
+    .toBeGreaterThan(0);
+  expect(await media.evaluate((el: FixturePlaybackElement) => el.paused)).toBe(true);
+  expect(await media.evaluate((el: FixturePlaybackElement) => el.currentTime)).toBeCloseTo(time, 0);
+  expect(await media.evaluate((el: FixturePlaybackElement) => el.playbackRate)).toBe(1.5);
   await page.locator('.mt-settings').click();
   await page.locator('media-play-button').click();
-  await expect.poll(() => media.evaluate((el: any) => el.currentTime)).toBeGreaterThan(time);
+  await expect
+    .poll(() => media.evaluate((el: FixturePlaybackElement) => el.currentTime))
+    .toBeGreaterThan(time);
   expect(errors).toEqual([]);
 });
 
@@ -436,7 +465,6 @@ test('native progressive video defers loading after blocked autoplay and starts 
     () =>
       new Promise<{ supported: boolean; code?: number | undefined }>((resolve) => {
         const video = document.createElement('video');
-        let timer: ReturnType<typeof setTimeout>;
         const finish = (supported: boolean, code?: number) => {
           clearTimeout(timer);
           video.onloadedmetadata = null;
@@ -450,7 +478,7 @@ test('native progressive video defers loading after blocked autoplay and starts 
         document.body.append(video);
         video.onloadedmetadata = () => finish(true);
         video.onerror = () => finish(false, video.error?.code);
-        timer = setTimeout(() => finish(false, video.error?.code), 3000);
+        const timer = setTimeout(() => finish(false, video.error?.code), 3000);
         video.src = 'http://decoder.test/fixture.mp4';
         video.load();
       })
@@ -474,8 +502,9 @@ test('native progressive video defers loading after blocked autoplay and starts 
         Object.defineProperty(element, 'play', {
           configurable: true,
           value: () => {
-            if (!(window as any).allowNativePlayback)
+            if (!window.allowNativePlayback) {
               return Promise.reject(new DOMException('Blocked', 'NotAllowedError'));
+            }
             return play();
           },
         });
@@ -485,7 +514,7 @@ test('native progressive video defers loading after blocked autoplay and starts 
     document.addEventListener(
       'click',
       () => {
-        (window as any).allowNativePlayback = true;
+        window.allowNativePlayback = true;
       },
       true
     );

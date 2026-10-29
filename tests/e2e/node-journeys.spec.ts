@@ -1,6 +1,5 @@
 import { observe } from './fixtures.js';
 import { readFile } from 'node:fs/promises';
-import type { Download } from '@playwright/test';
 import {
   test,
   expect,
@@ -24,7 +23,7 @@ test('Client publication is discoverable through Node search, sorting and tags',
   publishedVideo: video,
   viewerPage: viewer,
 }) => {
-  await viewer.goto('/');
+  await viewer.goto('/videos');
   await viewer.locator('#search-input').fill(video.title);
   const card = viewer.locator(`#videos-container a[href="/watch?v=${video.id}"]`);
   await expect(card).toHaveCount(1);
@@ -76,37 +75,41 @@ test('Node download links serve the OGV published through Client', async ({
   const link = viewer.locator('.swal2-popup a[href$=".ogv"]');
   await expect(link).toHaveCount(1);
   const linkUrl = await link.getAttribute('href');
-  const response = observe(
-    viewer.waitForResponse((result) => result.url() === new URL(linkUrl!, NODE_URL).toString())
-  );
+  expect(linkUrl).not.toBeNull();
+  const targetUrl = new URL(linkUrl!, NODE_URL).toString();
+  const response = observe(viewer.waitForResponse((result) => result.url() === targetUrl));
   expect(linkUrl).toContain(video.id);
-  const downloads: Download[] = [];
-  const receive = (download: Download): void => {
-    downloads.push(download);
-  };
-  viewer.on('download', receive);
-  try {
-    await link.click();
+  // A browser download does not necessarily produce a Page response event.
+  // Observe the actual download or committed media navigation before clicking.
+  const downloaded = observe(
+    viewer.waitForEvent('download').then((download) => ({ kind: 'download' as const, download }))
+  );
+  const navigated = observe(
+    viewer
+      .waitForURL(targetUrl, { waitUntil: 'domcontentloaded' })
+      .then(() => ({ kind: 'navigation' as const }))
+  );
+  await link.click();
+  const received = await Promise.race([downloaded, navigated]);
+  let bytes: Buffer;
+  if (received.kind === 'download') {
+    expect(received.download.url()).toBe(targetUrl);
+    expect(await received.download.failure()).toBeNull();
+    const file = await received.download.path();
+    expect(file).not.toBeNull();
+    bytes = await readFile(file!);
+  } else {
     const served = await response;
     expect(served.ok()).toBe(true);
-    // Browsers either download OGV or open it in their native media viewer.
-    // Both must receive the real Ogg bytes through the link the user clicked.
-    await expect
-      .poll(() => downloads.length > 0 || viewer.url() === new URL(linkUrl!, NODE_URL).toString())
-      .toBe(true);
-    let bytes: Buffer;
-    if (downloads[0]) {
-      expect(await downloads[0].failure()).toBeNull();
-      const path = await downloads[0].path();
-      expect(path).not.toBeNull();
-      bytes = await readFile(path!);
-    } else {
-      bytes = await served.body();
-    }
-    expect(bytes.subarray(0, 4).toString()).toBe('OggS');
-  } finally {
-    viewer.off('download', receive);
+    // Native browser media documents can keep their navigation response open.
+    // After verifying the real click/navigation, inspect the exact same public
+    // source with a separate read-only HTTP request rather than waiting forever
+    // for that media document's response body to finish.
+    const source = await viewer.context().request.get(targetUrl, { timeout: 15_000 });
+    expect(source.ok()).toBe(true);
+    bytes = await source.body();
   }
+  expect(bytes.subarray(0, 4).toString()).toBe('OggS');
 });
 
 test('Node share links open the real embedded player for a Client-published video', async ({
@@ -161,13 +164,14 @@ test('viewer comments and replies persist and can be moderated through Client', 
     text
   );
   await expect(viewer.locator(`#m${id} b`)).toHaveCount(0);
-  await viewer.locator(`#p${id} .quotelink:visible`).first().click();
-  const form = viewer.locator('#comment-input-form-static textarea');
-  await expect(form).toHaveValue(new RegExp(`>>${id}`));
+  await viewer.locator(`#pc${id} .comment-quote-button:visible`).first().click();
+  const form = viewer.locator(`#comment-input-form-dynamic-${id}`);
+  const textarea = form.locator('textarea');
+  await expect(textarea).toHaveValue(new RegExp(`>>${id}`));
   const reply = uniqueName('reply');
-  await form.fill(`${await form.inputValue()}\n${reply}`);
+  await textarea.fill(`${await textarea.inputValue()}\n${reply}`);
   const sent = clientResponse(viewer, `/videos/${video.id}/comments/comment`);
-  await viewer.locator('#comment-input-form-static button[type="submit"]').click();
+  await form.getByRole('button', { name: 'submit', exact: true }).click();
   await expectSuccess(sent);
   await viewer.reload();
   await openComments(viewer);
@@ -239,8 +243,10 @@ for (const permission of ['comments', 'likes', 'dislikes', 'reports']) {
     publishedVideo: video,
     viewerPage: viewer,
   }) => {
-    await setVideoPermission(page, video, permission, false);
     await watchVideo(viewer, video);
+    // Keep the viewer open while the owner revokes permission: its stale controls
+    // must still receive a real server rejection, independently of disabled UI.
+    await setVideoPermission(page, video, permission, false);
     let pathname: string;
     if (permission === 'comments') {
       await openComments(viewer);
@@ -272,6 +278,21 @@ for (const permission of ['comments', 'likes', 'dislikes', 'reports']) {
       await expect(
         viewer.locator(`#video-${permission === 'likes' ? 'like' : 'dislike'}-count`)
       ).toHaveText('0');
+    }
+    await viewer.reload();
+    if (permission === 'comments') {
+      await openComments(viewer);
+      await expect(viewer.locator('#comment-input-form-static textarea')).toBeDisabled();
+      await expect(
+        viewer.locator('#comment-input-form-static button[type="submit"]')
+      ).toBeDisabled();
+    } else if (permission === 'reports') {
+      await viewer.locator('#overflow-dropdown-button').click();
+      await expect(viewer.locator('#video-report-button')).toHaveAttribute('aria-disabled', 'true');
+    } else {
+      await expect(
+        viewer.locator(`#video-${permission === 'likes' ? 'like' : 'dislike'}-button`)
+      ).toBeDisabled();
     }
     await setVideoPermission(page, video, permission, true);
     await viewer.reload();
@@ -443,21 +464,19 @@ test('Node playback controls change speed, format and theater layout', async ({
   await watchVideo(viewer, video);
   await expectPlayback(viewer);
   await viewer.locator('#video-player').hover();
-  const overflow = viewer.locator('.vjs-control-bar > button').last();
-  await overflow.click();
-  await viewer.locator('.video-js-overflow-playback-speed-button').click();
-  await viewer.locator('[data-playbackrate="1.5"]').click();
+  const settings = viewer.locator('.mt-settings');
+  await settings.click();
+  await viewer.getByRole('menuitem', { name: /^Playback speed/ }).click();
+  await viewer.getByRole('menuitemradio', { name: '1.5×', exact: true }).click();
   await expect
     .poll(() =>
       viewer.locator('video').evaluate((element) => (element as HTMLVideoElement).playbackRate)
     )
     .toBe(1.5);
-  await viewer.locator('.video-js-back-to-overflow-main-button').click();
-  await viewer.locator('.video-js-overflow-format-button').click();
-  await viewer.locator('.video-js-overflow-format-explicit-button[data-format="webm"]').click();
-  await viewer
-    .locator('.video-js-overflow-format-resolution-explicit-button[data-resolution="240p"]')
-    .click();
+  await viewer.getByRole('menuitem', { name: '‹ Playback speed', exact: true }).click();
+  await viewer.getByRole('menuitem', { name: /^Quality/ }).click();
+  await viewer.getByRole('menuitem', { name: /^webm/ }).click();
+  await viewer.getByRole('menuitemradio', { name: '240p', exact: true }).click();
   await expect
     .poll(() =>
       viewer.locator('video').evaluate((element) => (element as HTMLVideoElement).currentSrc)
@@ -466,10 +485,10 @@ test('Node playback controls change speed, format and theater layout', async ({
   await viewer.locator('#video-title').click();
   await expectPlayback(viewer);
   await viewer.locator('#video-player').hover();
-  await viewer.locator('.video-js-theater-button').click();
+  await viewer.getByRole('button', { name: 'Theater mode', exact: true }).click();
   await expect(viewer.locator('#theater-container #video-player')).toBeVisible();
   await viewer.locator('#video-player').hover();
-  await viewer.locator('.video-js-theater-button').click();
+  await viewer.getByRole('button', { name: 'Theater mode', exact: true }).click();
   await expect(viewer.locator('#video-comments-inner #video-player')).toBeVisible();
 });
 

@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "rootDir": "../..", "noEmit": true, "lib": ["ES2022", "DOM"] },
+  "include": [
+    "./**/*.ts",
+    "../gpu-integration.test.ts",
+    "../gpu-hardware.test.ts",
+    "../windows-live-hardware.test.ts",
+    "../e2e/support/check-node.ts",
+    "../../src/**/*"
+  ]
+}

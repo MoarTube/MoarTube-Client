@@ -11,6 +11,8 @@ import { DEFAULT_CLIENT_SETTINGS } from '../src/config/defaults.js';
 import type { Config } from '../src/config/index.js';
 import { Logger } from '../src/utils/logger.js';
 import { getGpuProcessEnvironment } from '../src/utils/hardware.js';
+import { assertWindowsHardwarePipeline } from './integration/gpu-policy.js';
+import { withLiveHlsFiles } from '../src/utils/live-hls.js';
 
 // This exercises real loopback RTMP plus the client's hardware live commands.
 // It does not provision a MoarTube Node or certify the complete delivery stack.
@@ -21,7 +23,13 @@ it.skipIf(process.platform !== 'win32' || process.env['MOARTUBE_TEST_GPU'] !== '
     expect(['amf', 'nvenc', 'qsv']).toContain(backend);
     const service = new FfmpegService(new Logger(), { clientSettings: {} } as Config);
     const capabilities = await service.assessGpus(true);
-    const gpu = capabilities.find((device) => device.backend === backend && device.available);
+    const gpuId = process.env['MOARTUBE_TEST_GPU_ID'];
+    const gpu = capabilities.find(
+      (device) =>
+        device.backend === backend &&
+        device.available &&
+        (gpuId === undefined || device.id === gpuId)
+    );
     expect(gpu, JSON.stringify(capabilities)).toBeDefined();
     if (gpu === undefined) {
       throw new Error(`Required backend unavailable: ${backend ?? 'unspecified'}`);
@@ -92,7 +100,7 @@ it.skipIf(process.platform !== 'win32' || process.env['MOARTUBE_TEST_GPU'] !== '
           getClientSettings: () => ({ ...DEFAULT_CLIENT_SETTINGS, processingAgent: agent }),
         },
       } as unknown as LiveStreamService;
-      const args = LiveStreamService.prototype['generateFfmpegLiveArguments'].call(
+      let args = LiveStreamService.prototype['generateFfmpegLiveArguments'].call(
         context,
         'live',
         '360p',
@@ -105,13 +113,8 @@ it.skipIf(process.platform !== 'win32' || process.env['MOARTUBE_TEST_GPU'] !== '
       // Direct HLS output locally so the matching probe can validate the result.
       args.splice(args.indexOf('-hls_base_url'), 2);
       const output = path.join(root, 'live.m3u8');
-      args.splice(
-        args.length - 1,
-        1,
-        '-hls_segment_filename',
-        path.join(root, 'live-%d.ts'),
-        output
-      );
+      args = withLiveHlsFiles(args, output, '360p');
+      assertWindowsHardwarePipeline(args, backend ?? '');
       const receiver = launch(
         service.getPath(),
         ['-hide_banner', '-loglevel', 'verbose', ...args],
@@ -154,7 +157,8 @@ it.skipIf(process.platform !== 'win32' || process.env['MOARTUBE_TEST_GPU'] !== '
         }
       }
       const received = await receiver;
-      const reports = path.resolve('build/ffmpeg/reports/win32-x64');
+      const reports =
+        process.env['MOARTUBE_GPU_REPORT_DIR'] ?? path.resolve('build/ffmpeg/reports/win32-x64');
       await fs.mkdir(reports, { recursive: true });
       await fs.writeFile(
         path.join(reports, `rtmp-${backend ?? 'unknown'}.txt`),

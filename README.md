@@ -135,6 +135,12 @@ include the sources and build tools needed to recreate `dist`.
 
 ## Development testing
 
+For the complete Windows checks on one local GPU-equipped PC, use
+`npm.cmd run test:integration`, or register and start its GitHub Actions runner
+with `npm.cmd run test:runner:setup` and `npm.cmd run test:runner`.
+See [local integration and GPU testing](docs/local-integration-runner.md) for
+registration, dependencies, hardware assertions and report locations.
+
 The client includes Playwright tests spanning Client administration and Node viewer
 workflows, including playback, comments, reports, moderation and live chat
 against a real MoarTube Node that the developer must already have running at

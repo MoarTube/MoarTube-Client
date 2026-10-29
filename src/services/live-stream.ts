@@ -20,7 +20,7 @@ import type { FfmpegService } from './ffmpeg.js';
 import axios from 'axios';
 import { Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { readDelimited } from '@/utils/live-framing.js';
+import { readLiveHls, withLiveHlsFiles, type LiveHlsSegment } from '@/utils/live-hls.js';
 import { PlaylistArchive } from '@/utils/playlist-archive.js';
 import { WorkPool } from '@/utils/work-pool.js';
 
@@ -28,7 +28,6 @@ const livePool = new WorkPool(2, 0);
 
 interface StreamContext {
   archive?: PlaylistArchive;
-  accumulatedBuffer: Buffer;
   segmentCounter: number;
   nextExpectedSegmentIndex: number;
   endOfValidManifestPattern: Buffer;
@@ -49,8 +48,7 @@ interface SendSegmentOptions {
   externalVideosBaseUrl: string;
 }
 
-interface HandleStreamDataOptions {
-  data: Buffer;
+interface HandleStreamDataOptions extends LiveHlsSegment {
   context: StreamContext;
   jwtToken: string;
   videoId: string;
@@ -178,18 +176,26 @@ export class LiveStreamService {
       const sourceFilePath = path.join(videoDir, 'source', `${videoId}.ts`);
       const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(jwtToken);
 
-      const ffmpegArguments = this.generateFfmpegLiveArguments(
-        videoId,
-        resolution,
-        format,
-        rtmpUrl,
-        isRecordingStreamRemotely,
-        externalVideosBaseUrl
+      const encoderDirectory = path.join(videoDir, 'adaptive', 'encoder');
+      fs.mkdirSync(encoderDirectory, { recursive: true });
+      const livePlaylist = path.join(encoderDirectory, 'live.m3u8');
+      const ffmpegArguments = withLiveHlsFiles(
+        this.generateFfmpegLiveArguments(
+          videoId,
+          resolution,
+          format,
+          rtmpUrl,
+          isRecordingStreamRemotely,
+          externalVideosBaseUrl
+        ),
+        livePlaylist,
+        resolution
       );
 
       const process = spawn(this.ffmpegService.getPath(), ffmpegArguments, {
         env: getGpuProcessEnvironment(this.settingsRepository.getClientSettings().processingAgent),
       });
+      process.stdout.resume();
       this.addProcessToLiveStreamTracker(videoId, process);
       process.once('error', (error) => {
         release();
@@ -199,6 +205,7 @@ export class LiveStreamService {
       let lengthSeconds = 0;
       let lengthTimestamp = '';
       let lengthUpdatePending = false;
+      let stderrTail = '';
 
       const context: StreamContext = {
         ...(isRecordingStreamRemotely
@@ -208,7 +215,6 @@ export class LiveStreamService {
               ),
             }
           : {}),
-        accumulatedBuffer: Buffer.alloc(0),
         segmentCounter: -1,
         nextExpectedSegmentIndex: 0,
         endOfValidManifestPattern: Buffer.from(`segment-${resolution}-0.ts\n`),
@@ -217,6 +223,7 @@ export class LiveStreamService {
       context.endOfValidManifestPatternLength = context.endOfValidManifestPattern.length;
 
       process.stderr.on('data', (data: Buffer) => {
+        stderrTail = (stderrTail + data.toString()).slice(-16 * 1024);
         if (!this.isLiveStreamStopping(videoId)) {
           const stderrTemp = Buffer.from(data).toString();
           if (stderrTemp.includes('time=') && !lengthUpdatePending) {
@@ -237,16 +244,20 @@ export class LiveStreamService {
       });
 
       const consumption = (async (): Promise<void> => {
-        for await (const data of readDelimited(
-          process.stdout,
-          Buffer.from('.ts\n'),
-          64 * 1024 ** 2
-        )) {
+        const activeStream = this.activeStreams.get(videoId);
+        if (activeStream === undefined) {
+          throw new Error('Live stream tracker is missing');
+        }
+        for await (const files of readLiveHls(livePlaylist, resolution, {
+          finished: () => process.exitCode !== null || process.signalCode !== null,
+          stopping: () => this.isLiveStreamStopping(videoId),
+          signal: activeStream.aborter.signal,
+        })) {
           if (this.isLiveStreamStopping(videoId)) {
             break;
           }
           await this.handleStreamData({
-            data,
+            ...files,
             context,
             jwtToken,
             videoId,
@@ -284,6 +295,12 @@ export class LiveStreamService {
         void (async (): Promise<void> => {
           await consumption;
           this.logger.info(`[LiveStreamService] Stream process exited with code ${String(code)}`);
+          if (code !== 0 && !this.isLiveStreamStopping(videoId)) {
+            this.logger.error(
+              { videoId, code, stderr: stderrTail },
+              'Live encoder exited unexpectedly'
+            );
+          }
           if (this.liveStreamExists(videoId)) {
             if (!this.isLiveStreamStopping(videoId)) {
               // Stopped externally (e.g. OBS stopped streaming)
@@ -346,43 +363,7 @@ export class LiveStreamService {
   }
 
   private async handleStreamData(options: HandleStreamDataOptions): Promise<void> {
-    const { data, context } = options;
-    if (context.accumulatedBuffer.length + data.length > 64 * 1024 ** 2) {
-      throw new Error('Live segment exceeds byte limit');
-    }
-    context.accumulatedBuffer = Buffer.concat([context.accumulatedBuffer, data]);
-
-    // Check the tail of the full accumulated buffer, not just the newly-arrived
-    // chunk: Node's stream chunking doesn't align with ffmpeg's internal writes,
-    // so the ".ts\n" boundary marker can be split across two (or more) separate
-    // 'data' events - e.g. a chunk ending in ".t" followed by a short chunk
-    // containing just "s\n". Checking the accumulated buffer's tail instead
-    // still matches every case the old per-chunk check matched (its tail is
-    // identical to the new chunk's tail whenever the chunk is >= 4 bytes), while
-    // also correctly detecting boundaries split across small trailing chunks.
-    if (this.isSegmentBoundary(context.accumulatedBuffer)) {
-      const manifestIndex = context.accumulatedBuffer.indexOf('#EXTM3U');
-      const startingSegmentIndex = context.accumulatedBuffer.indexOf('#EXT-X-MEDIA-SEQUENCE');
-
-      if (manifestIndex !== -1 && startingSegmentIndex !== -1) {
-        await this.processManifestAndSegment(manifestIndex, options);
-      }
-    }
-  }
-
-  private isSegmentBoundary(data: Buffer): boolean {
-    return (
-      data.at(-4) === 0x2e && data.at(-3) === 0x74 && data.at(-2) === 0x73 && data.at(-1) === 0x0a
-    );
-  }
-
-  private async processManifestAndSegment(
-    manifestIndex: number,
-    options: HandleStreamDataOptions
-  ): Promise<void> {
-    const { context } = options;
-    const manifestBuffer = context.accumulatedBuffer.subarray(manifestIndex);
-    const segmentBuffer = context.accumulatedBuffer.subarray(0, manifestIndex);
+    const { context, manifestBuffer, segmentBuffer } = options;
     const manifestLines = manifestBuffer.toString().split('\n');
 
     for (const manifestLine of manifestLines) {
@@ -444,7 +425,6 @@ export class LiveStreamService {
       newManifestBuffer.length - context.endOfValidManifestPatternLength ===
         endOfValidManifestPatternIndex
     ) {
-      context.accumulatedBuffer = Buffer.alloc(0);
       context.nextExpectedSegmentIndex = localCounter;
       context.endOfValidManifestPattern = Buffer.from(
         `segment-${resolution}-${String(context.nextExpectedSegmentIndex)}.ts\n`

@@ -16,7 +16,7 @@ declare global {
   }
 }
 const client = path.resolve('.');
-const node = path.resolve('../MoarTube-Node');
+const node = path.resolve(process.env['MOARTUBE_NODE_SOURCE_DIR'] ?? '../MoarTube-Node');
 let mediaDirectory: string;
 const video = (id: number) => ({
   video_id: String(id),
@@ -229,10 +229,21 @@ test('catalog pages replace visible results instead of retaining prior pages', a
 });
 
 test('HLS playback and seeking work with a finite media back buffer', async ({ page }) => {
+  await page.goto('about:blank');
+  test.skip(
+    !(await page.evaluate(
+      () =>
+        typeof MediaSource !== 'undefined' ||
+        !!document.createElement('video').canPlayType('application/vnd.apple.mpegurl')
+    )),
+    'This browser build provides neither MediaSource nor native HLS'
+  );
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await routes(page);
   await page.goto('http://memory.local/player');
+  // The player intentionally defers media loading when autoplay is blocked.
+  await page.locator('media-play-button').click();
   await expect
     .poll(() => page.evaluate(() => Number(window.testPlayer?.media?.readyState || 0)))
     .toBeGreaterThanOrEqual(2);

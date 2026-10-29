@@ -46,7 +46,7 @@ interface EdgeRecord {
   time: number;
   ttl: number;
 }
-const root = path.resolve('../MoarTube-Node');
+const root = path.resolve(process.env['MOARTUBE_NODE_SOURCE_DIR'] ?? '../MoarTube-Node');
 const browserErrors = new WeakMap<Page, string[]>();
 test.beforeEach(({ page }) => {
   const errors: string[] = [];
@@ -66,7 +66,9 @@ const comment = (id: number): CommentRecord => ({
 function directReplyIds(text: string): number[] {
   return text.split('\n').flatMap((line) => {
     const trimmed = line.trimStart();
-    if (trimmed.startsWith('&gt;') && !/^&gt;&gt;[0-9]/.test(trimmed)) return [];
+    if (trimmed.startsWith('&gt;') && !/^&gt;&gt;[0-9]/.test(trimmed)) {
+      return [];
+    }
     return Array.from(line.matchAll(/(?<!&gt;)&gt;&gt;([0-9]+)/g), (match) =>
       Number(match[1])
     ).filter((id) => Number.isSafeInteger(id) && id > 0);
@@ -143,7 +145,9 @@ async function fixture(
               Number(url.searchParams.get('revision')) === revision
             ? 3600
             : 0;
-        if (ttl) edgeCache.set(url.href, { json: options.json, time: Date.now(), ttl });
+        if (ttl) {
+          edgeCache.set(url.href, { json: options.json, time: Date.now(), ttl });
+        }
       }
       return route.fulfill(options);
     };
@@ -319,7 +323,9 @@ async function fixture(
     edgeCache,
     expireState: () => {
       const cached = edgeCache.get('http://comments.test/videos/fixture/comments/state');
-      if (cached) cached.time = Date.now() - 31000;
+      if (cached) {
+        cached.time = Date.now() - 31000;
+      }
     },
     replaceDatabase: (rows: CommentRecord[]) => {
       records.clear();
@@ -2590,8 +2596,9 @@ test.describe('Cloudflare freshness edge cases', () => {
     });
     let blocked = false;
     await page.route('**/videos/fixture/comments/state*', async (route) => {
-      if (blocked || new URL(route.request().url()).searchParams.has('fresh'))
+      if (blocked || new URL(route.request().url()).searchParams.has('fresh')) {
         return route.fallback();
+      }
       blocked = true;
       arrived();
       await gate;
@@ -2830,7 +2837,9 @@ test('copying quotes repeatedly never turns quoted numbers into comment referenc
     const value = await form.locator('textarea').inputValue();
     expect(value.startsWith(`>>${id}\n> `)).toBe(true);
     expect(value).not.toMatch(/^>>123(?:\r?$)/m);
-    if (id === 14) expect(value).toBe('>>14\n> >>13\n> >>>12\n> >>test1\n> >123\n> 1234\n');
+    if (id === 14) {
+      expect(value).toBe('>>14\n> >>13\n> >>>12\n> >>test1\n> >123\n> 1234\n');
+    }
     await form.locator('button[type="submit"]').click();
     await expect(form).toHaveCount(0);
     const posted = page.locator(`#comments-container > #pc${id + 1}`);
@@ -2843,12 +2852,13 @@ test('copying quotes repeatedly never turns quoted numbers into comment referenc
         `#comments-container > #pc${id} .backlink .quotelink[data-comment-id="${id + 1}"]`
       )
     ).toHaveCount(1);
-    if (id > 14)
+    if (id > 14) {
       await expect(
         page.locator(
           `#comments-container > #pc14 .backlink .quotelink[data-comment-id="${id + 1}"]`
         )
       ).toHaveCount(0);
+    }
   }
   expect(state.allRequests.some((url) => url.pathname === '/videos/fixture/comments/123')).toBe(
     false

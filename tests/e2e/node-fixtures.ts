@@ -38,12 +38,12 @@ export async function expectPlayback(viewer: Page, playbackRequested = false): P
     !playbackRequested &&
     (await media.evaluate((element) => (element as HTMLVideoElement).paused))
   ) {
-    const poster = viewer.locator('#big-play-button-poster-container');
+    const poster = viewer.locator('#mtp-video-overlay');
     if (await poster.isVisible()) {
-      await poster.click();
+      await viewer.getByRole('button', { name: 'Play video', exact: true }).click();
     } else {
       await viewer.locator('#video-player').hover();
-      await viewer.locator('.vjs-play-control').click();
+      await viewer.locator('media-play-button').click();
     }
   }
   await expect

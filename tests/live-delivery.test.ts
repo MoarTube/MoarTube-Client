@@ -5,10 +5,9 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { LiveStreamService } from '../src/services/live-stream.js';
 import { PlaylistArchive } from '../src/utils/playlist-archive.js';
-import { readDelimited } from '../src/utils/live-framing.js';
 
 describe('recorded live delivery', () => {
-  it('streams a complete recording from a rolling encoder playlist across arbitrary chunk boundaries', async () => {
+  it('streams a complete recording from closed segments and rolling playlist snapshots', async () => {
     const directory = await mkdtemp(path.join(tmpdir(), 'moartube-live-test-'));
     const archive = new PlaylistArchive(path.join(directory, 'archive.m3u8'));
     let lastManifest = '',
@@ -43,7 +42,6 @@ describe('recorded live delivery', () => {
     internal.lastVideoImagesUpdateTimestamp = Date.now();
     const context = {
       archive,
-      accumulatedBuffer: Buffer.alloc(0),
       segmentCounter: -1,
       nextExpectedSegmentIndex: 0,
       endOfValidManifestPattern: Buffer.from('segment-720p-0.ts\n'),
@@ -54,20 +52,20 @@ describe('recorded live delivery', () => {
       await Promise.resolve();
       for (let index = 0; index < 50; index++) {
         const start = Math.max(0, index - 19);
-        let text = `segment-${String(index)}#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:${String(start)}\n`;
+        let text = `#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:${String(start)}\n`;
         for (let i = start; i <= index; i++) {
           text += `#EXTINF:2,\nhttps://example.test/pipe${String(i)}.ts\n`;
         }
-        const bytes = Buffer.from(text);
-        for (let i = 0; i < bytes.length; i += 37) {
-          yield bytes.subarray(i, i + 37);
-        }
+        yield {
+          segmentBuffer: Buffer.from(`segment-${String(index)}`),
+          manifestBuffer: Buffer.from(text),
+        };
       }
     }
     try {
-      for await (const data of readDelimited(encoder(), Buffer.from('.ts\n'), 1024 * 1024)) {
+      for await (const files of encoder()) {
         await internal.handleStreamData({
-          data,
+          ...files,
           context,
           jwtToken: 'token',
           videoId: 'video',
@@ -86,7 +84,6 @@ describe('recorded live delivery', () => {
       expect(lastManifest.match(/#EXTINF/g)).toHaveLength(50);
       expect(lastManifest).toContain('segment-720p-0.ts');
       expect(lastManifest).toContain('segment-720p-49.ts');
-      expect(context.accumulatedBuffer.length).toBe(0);
     } finally {
       await archive.close();
       expect(path.dirname(directory)).toBe(path.resolve(tmpdir()));

@@ -4,6 +4,7 @@ import path from 'node:path';
 
 export const windowsCommandFiles = [
   'src/utils/gpu-encoding.ts',
+  'src/utils/live-hls.ts',
   'src/utils/ffmpeg-path.ts',
   'src/utils/ffmpeg-artifact.ts',
   'src/services/ffmpeg.ts',
@@ -13,6 +14,7 @@ export const windowsCommandFiles = [
   'src/utils/windows-gpus.ts',
   'tests/gpu-hardware.test.ts',
   'tests/windows-live-hardware.test.ts',
+  'tests/integration/gpu-policy.ts',
 ];
 export const windowsDocumentation = [
   'ffmpeg-distribution-plan.md',

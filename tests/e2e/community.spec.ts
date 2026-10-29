@@ -20,7 +20,7 @@ test('add and delete a promotional link through the Client', async ({
   await page.reload();
   const row = page.locator('#links-table tr').filter({ hasText: url });
   await expect(row).toHaveCount(1);
-  await viewer.goto('/');
+  await viewer.goto('/videos');
   await expect(viewer.locator(`#navbar-settings-buttons a[href="${url}"]`)).toBeVisible();
   await row.locator('.delete-link-button').click();
   await page.locator('.swal2-cancel').click();

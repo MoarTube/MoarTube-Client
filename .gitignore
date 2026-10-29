@@ -12,5 +12,7 @@ test-results/
 blob-report/
 build/ffmpeg/
 build/desktop/
+build/integration/
+build/test/
 resources/ffmpeg/
 node_modules/

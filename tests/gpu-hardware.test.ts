@@ -11,6 +11,8 @@ import { getGpuProcessEnvironment } from '../src/utils/hardware.js';
 import { GPU_PROBE_H264 } from '../src/utils/gpu-probe.js';
 import { VideoPublishService } from '../src/services/video-publish.js';
 import { LiveStreamService } from '../src/services/live-stream.js';
+import { assertWindowsHardwarePipeline } from './integration/gpu-policy.js';
+import { withLiveHlsFiles } from '../src/utils/live-hls.js';
 
 // Opt in on a GPU host: MOARTUBE_TEST_GPU=1 npx vitest run tests/gpu-hardware.test.ts
 // Require a backend with MOARTUBE_TEST_GPU_BACKEND=qsv, vaapi, or videotoolbox.
@@ -22,12 +24,14 @@ it.skipIf(process.env['MOARTUBE_TEST_GPU'] !== '1')(
     const capabilities = await service.assessGpus(true);
     const backend = process.env['MOARTUBE_TEST_GPU_BACKEND'];
     const vendor = process.env['MOARTUBE_TEST_GPU_VENDOR'];
+    const gpuId = process.env['MOARTUBE_TEST_GPU_ID'];
     const candidates = capabilities.filter(
       (gpu) =>
         (backend === undefined || gpu.backend === backend) &&
+        (gpuId === undefined || gpu.id === gpuId) &&
         (vendor === undefined || gpu.processingAgentName === vendor)
     );
-    if (backend !== undefined || vendor !== undefined) {
+    if (backend !== undefined || vendor !== undefined || gpuId !== undefined) {
       expect(candidates.length, JSON.stringify(capabilities)).toBeGreaterThan(0);
       for (const gpu of candidates) {
         expect(gpu.available, JSON.stringify(gpu)).toBe(true);
@@ -36,6 +40,13 @@ it.skipIf(process.env['MOARTUBE_TEST_GPU'] !== '1')(
     const available = candidates.filter((gpu) => gpu.available);
     expect(available.length, JSON.stringify(capabilities)).toBeGreaterThan(0);
     const root = await fs.mkdtemp(path.join(tmpdir(), 'moartube-gpu-test-'));
+    if (
+      path.dirname(root) !== path.resolve(tmpdir()) ||
+      !path.basename(root).startsWith('moartube-gpu-test-')
+    ) {
+      throw new Error('Unexpected GPU test directory');
+    }
+    const commands: { gpuId: string; job: string; args: string[] }[] = [];
     try {
       const source = path.join(root, 'source.h264');
       await fs.writeFile(source, GPU_PROBE_H264);
@@ -81,14 +92,12 @@ it.skipIf(process.env['MOARTUBE_TEST_GPU'] !== '1')(
               args.splice(args.indexOf(option), 2);
             }
             args[args.indexOf('-f') + 1] = 'h264';
-            args.splice(
-              args.length - 1,
-              1,
-              '-hls_segment_filename',
-              path.join(segments, 'live-%d.ts'),
-              output
-            );
+            args = withLiveHlsFiles(args, output, '360p');
           }
+          if (process.platform === 'win32') {
+            assertWindowsHardwarePipeline(args, gpu.backend ?? '');
+          }
+          commands.push({ gpuId: gpu.id, job, args });
           const result = spawnSync(
             service.getPath(),
             ['-hide_banner', '-loglevel', 'error', ...args],
@@ -98,7 +107,7 @@ it.skipIf(process.env['MOARTUBE_TEST_GPU'] !== '1')(
               env: getGpuProcessEnvironment(agent),
             }
           );
-          expect(result.status, `${gpu.id} ${format}: ${result.stderr?.toString() ?? ''}`).toBe(0);
+          expect(result.status, `${gpu.id} ${format}: ${result.stderr.toString()}`).toBe(0);
           expect((await fs.stat(output)).size).toBeGreaterThan(0);
           let playable = output;
           if (format === 'm3u8') {
@@ -128,9 +137,7 @@ it.skipIf(process.env['MOARTUBE_TEST_GPU'] !== '1')(
             ],
             { timeout: 15000, windowsHide: true }
           );
-          expect(decoded.status, `${gpu.id} ${format}: ${decoded.stderr?.toString() ?? ''}`).toBe(
-            0
-          );
+          expect(decoded.status, `${gpu.id} ${format}: ${decoded.stderr.toString()}`).toBe(0);
         }
         if (['nvenc', 'amf', 'qsv'].includes(gpu.backend ?? '')) {
           for (const [size, resolution, expected] of [
@@ -172,6 +179,8 @@ it.skipIf(process.env['MOARTUBE_TEST_GPU'] !== '1')(
               '.h264',
               'https://node.example'
             );
+            assertWindowsHardwarePipeline(args, gpu.backend ?? '');
+            commands.push({ gpuId: gpu.id, job: `geometry-${size}`, args });
             const encoded = spawnSync(
               service.getPath(),
               ['-hide_banner', '-loglevel', 'error', ...args],
@@ -206,11 +215,13 @@ it.skipIf(process.env['MOARTUBE_TEST_GPU'] !== '1')(
         }
       }
     } finally {
-      if (
-        path.dirname(root) !== path.resolve(tmpdir()) ||
-        !path.basename(root).startsWith('moartube-gpu-test-')
-      ) {
-        throw new Error('Unexpected GPU test directory');
+      const reports = process.env['MOARTUBE_GPU_REPORT_DIR'];
+      if (reports !== undefined) {
+        await fs.mkdir(reports, { recursive: true });
+        await fs.writeFile(
+          path.join(reports, 'publishing-commands.json'),
+          JSON.stringify(commands, null, 2)
+        );
       }
       await fs.rm(root, { recursive: true, force: true });
     }
