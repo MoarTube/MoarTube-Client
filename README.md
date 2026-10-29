@@ -29,6 +29,8 @@ When you’re ready, make sure to check out the [MoarTube Node](https://github.c
 
 See [the build output layout](docs/build-outputs.md) for release downloads,
 compiler workspaces, caches and validation evidence on both platforms.
+See [build preparation and caching](docs/build-preparation-and-caching.md) for
+dependency preflight and reuse of verified FFmpeg builds in GitHub Actions.
 
 The Windows 11 x64 Electron app bundles the client and compiled FFmpeg/FFprobe.
 Users run the installer or extract the standalone ZIP and open `MoarTube Client.exe`;

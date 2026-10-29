@@ -1,7 +1,7 @@
 import { desktopPaths, ffmpegPaths } from '../tooling/build-paths.cjs';
 import { parseLinuxTarget } from '../tooling/ffmpeg/scripts/linux-target.mjs';
 import { spawnSync } from 'node:child_process';
-import { readFileSync, mkdirSync, existsSync, writeFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, existsSync, writeFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -32,8 +32,10 @@ const docker = (args, options = {}) => {
     throw result.error ?? new Error(`docker ${args[0]} failed (${result.status})`);
   return result;
 };
-const image = `moartube-desktop-builder-${arch}:ubuntu24`;
-docker(['build', '--platform', dockerPlatform, '-t', image, 'desktop/linux']);
+const prepared = process.env.MOARTUBE_DEPENDENCIES_PREPARED === '1';
+const image = `moartube-desktop-${prepared ? 'dependencies' : 'builder'}-${arch}:ubuntu24`;
+if (prepared) docker(['image', 'inspect', image], { stdio: 'ignore' });
+else docker(['build', '--platform', dockerPlatform, '-t', image, 'desktop/linux']);
 const name = `moartube-desktop-build-${arch}-${process.pid}`;
 const envArgs = process.env.MOARTUBE_RELEASE_TAG
   ? ['-e', `MOARTUBE_RELEASE_TAG=${process.env.MOARTUBE_RELEASE_TAG}`]
@@ -44,11 +46,14 @@ docker([
   dockerPlatform,
   '--name',
   name,
+  ...(prepared ? ['--network', 'none'] : []),
   ...envArgs,
   '-e',
   'CSC_IDENTITY_AUTO_DISCOVERY=false',
   '-e',
   `MOARTUBE_DESKTOP_ARCH=${arch}`,
+  '-e',
+  `MOARTUBE_DEPENDENCIES_PREPARED=${prepared ? '1' : '0'}`,
   image,
   'node',
   'scripts/desktop-linux-container.mjs',
@@ -67,8 +72,16 @@ try {
     'tsup.config.ts',
     'LICENSE.md',
     'README.md',
-  ])
-    docker(['cp', path.join(root, item), `${name}:/workspace/${item}`]);
+  ]) {
+    const source = path.join(root, item);
+    // Prepared images already contain scripts/. Copy its contents rather than
+    // accidentally nesting it as scripts/scripts when Docker finds the folder.
+    docker([
+      'cp',
+      statSync(source).isDirectory() ? `${source}${path.sep}.` : source,
+      `${name}:/workspace/${item}`,
+    ]);
+  }
   for (const category of ['candidates', 'releases', 'state']) {
     const source = path.join(
       ffmpeg.base,

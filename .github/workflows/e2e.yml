@@ -1,34 +1,32 @@
 name: Real Client-Node Playwright integration
-
-# The developer prepares and runs MoarTube Node on this runner's localhost:9090.
-# Hosted runners cannot supply that prerequisite; this workflow never provisions it.
+# Requires a self-hosted runner with MoarTube Node already running on localhost:9090.
+# This workflow downloads test dependencies first; it does not provision the server.
 on:
-  workflow_dispatch:
-
+  workflow_dispatch: null
 permissions:
   contents: read
-
 concurrency:
   group: moartube-local-integration
   cancel-in-progress: false
-
 jobs:
   e2e:
-    runs-on: [self-hosted, moartube-integration]
+    runs-on:
+      - self-hosted
+      - moartube-integration
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.22.1'
+          node-version: 24.22.1
           cache: npm
       - run: npm ci
+      - run: npx playwright install chromium firefox webkit
       - run: npm run typecheck
       - run: npm run typecheck:e2e
       - run: npm run lint:e2e
       - run: npm test
       - run: npm run build
-      - run: npx playwright install chromium firefox webkit
       - run: npm run test:e2e:all
         env:
           MOARTUBE_E2E_USERNAME: ${{ secrets.MOARTUBE_E2E_USERNAME }}

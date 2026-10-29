@@ -1,3 +1,4 @@
+import { recipeHash } from './recipe-hash.mjs';
 import { linuxTarget } from './linux-target.mjs';
 import { ffmpegPaths } from '../../build-paths.cjs';
 import { createHash } from 'node:crypto';
@@ -47,24 +48,7 @@ for (const name of ['ffmpeg', 'ffprobe'])
   )
     throw new Error('Linux verification evidence does not match binaries');
 const tooling = path.join(root, 'tooling/ffmpeg');
-const recipeHash = createHash('sha256');
-function hashTree(directory) {
-  for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) =>
-    a.name.localeCompare(b.name)
-  )) {
-    const file = path.join(directory, entry.name);
-    if (entry.isDirectory()) hashTree(file);
-    else
-      recipeHash
-        .update(path.relative(tooling, file))
-        .update('\0')
-        .update(readFileSync(file))
-        .update('\0');
-  }
-}
-hashTree(tooling);
-recipeHash.update(readFileSync(path.join(root, 'tooling/build-paths.cjs')));
-const recipeSha256 = recipeHash.digest('hex');
+const recipeSha256 = recipeHash(root, target);
 const buildId = `9.0.2-moartube-${target}-${binaryHashes.ffmpeg.slice(0, 16)}-r${recipeSha256.slice(0, 8)}`;
 const artifacts = path.join(layout.releases, buildId);
 const runtime = path.join(layout.candidates, buildId, 'runtime');

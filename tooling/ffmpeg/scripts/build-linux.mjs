@@ -1,16 +1,8 @@
 import { parseLinuxTarget } from './linux-target.mjs';
+import { downloadArchive } from './download-archive.mjs';
 import { ffmpegPaths } from '../../build-paths.cjs';
 import { createHash } from 'node:crypto';
-import {
-  createReadStream,
-  createWriteStream,
-  readFileSync,
-  mkdirSync,
-  existsSync,
-  writeFileSync,
-  renameSync,
-} from 'node:fs';
-import { pipeline } from 'node:stream/promises';
+import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,30 +24,14 @@ const run = (args, options = {}) => {
     throw result.error ?? new Error(`docker ${args[0]} failed (${result.status})`);
   return result;
 };
-const hash = async (file) => {
-  const value = createHash('sha256');
-  for await (const chunk of createReadStream(file)) value.update(chunk);
-  return value.digest('hex');
-};
 mkdirSync(cache, { recursive: true });
 const lock = JSON.parse(readFileSync(path.join(root, 'tooling/ffmpeg/sources.lock.json'), 'utf8'));
 const ids = new Set(['ffmpeg', 'x264', 'libvpx', 'opus', 'dav1d', 'zlib', 'nv-codec-headers']);
-for (const source of lock.sources.filter((entry) => ids.has(entry.id))) {
-  const file = path.join(cache, source.archive);
-  if (!existsSync(file)) {
-    console.log(`Fetching ${source.archive}`);
-    const response = await fetch(source.url, { signal: AbortSignal.timeout(600000) });
-    if (!response.ok || !response.body) throw new Error(`Download failed: ${source.url}`);
-    const temporary = `${file}.linux-partial`;
-    await pipeline(response.body, createWriteStream(temporary));
-    if ((await hash(temporary)) !== source.sha256)
-      throw new Error(`Downloaded source checksum mismatch: ${source.id}`);
-    renameSync(temporary, file);
-  }
-  if ((await hash(file)) !== source.sha256)
-    throw new Error(`Cached source checksum mismatch: ${source.id}`);
-}
-run(['build', '--platform', dockerPlatform, '-t', image, 'tooling/ffmpeg/platforms/linux']);
+for (const source of lock.sources.filter((entry) => ids.has(entry.id)))
+  await downloadArchive(source, cache);
+if (process.env.MOARTUBE_DEPENDENCIES_PREPARED === '1')
+  run(['image', 'inspect', image], { stdio: 'ignore' });
+else run(['build', '--platform', dockerPlatform, '-t', image, 'tooling/ffmpeg/platforms/linux']);
 const identity = run(['image', 'inspect', image, '--format', '{{.Id}}'], {
   stdio: ['ignore', 'pipe', 'inherit'],
   encoding: 'utf8',
@@ -84,6 +60,7 @@ run([
   dockerPlatform,
   '--name',
   name,
+  ...(process.env.MOARTUBE_DEPENDENCIES_PREPARED === '1' ? ['--network', 'none'] : []),
   '--mount',
   `type=bind,source=${cache},target=/inputs,readonly`,
   '--mount',
@@ -96,6 +73,8 @@ run([
   `MOARTUBE_BUILD_EXECUTION=${execution}`,
   '-e',
   `MOARTUBE_BUILD_ENGINE_ARCH=${engineArch}`,
+  '-e',
+  `MOARTUBE_FFMPEG_OFFLINE=${process.env.MOARTUBE_FFMPEG_OFFLINE ?? '0'}`,
   image,
   'node',
   'tooling/ffmpeg/scripts/build-linux-container.mjs',

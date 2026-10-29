@@ -15,6 +15,7 @@ if (!nodeDirectory.startsWith(layout.staging + path.sep))
 if (!directory.startsWith(layout.staging + path.sep) || path.basename(directory) !== 'runtime')
   throw new Error('Run npm run desktop:prepare:linux to select a verified Linux FFmpeg candidate');
 module.exports = {
+  electronDownload: { cache: process.env.ELECTRON_CACHE },
   appId: 'com.moartube.client',
   productName: 'MoarTube Client',
   // Keep the existing npm CLI command available alongside the desktop option.
@@ -57,27 +58,7 @@ module.exports = {
   deb: {
     artifactName: 'MoarTube-Client-${version}-' + target + '.deb',
     packageName: 'moartube-client',
-    depends: [
-      'libc6 (>= 2.39)',
-      'libgtk-3-0t64',
-      'libnss3',
-      'libnspr4',
-      'libxss1',
-      'libxtst6',
-      'libatspi2.0-0t64',
-      'libuuid1',
-      'libgbm1',
-      'libasound2t64',
-      'libx11-xcb1',
-      'libnotify4',
-      'libsecret-1-0',
-      'xdg-utils',
-      'libva2',
-      'libva-drm2',
-      'libdrm2',
-      'libgnutls30t64',
-      'ca-certificates',
-    ],
+    depends: require('./linux/runtime-packages.json'),
   },
   publish: null,
 };

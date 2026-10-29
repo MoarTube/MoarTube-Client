@@ -47,6 +47,25 @@ endpoints return HTTP 406 to automated builds. The mirror downloads were
 verified against the existing locked SHA-256 values; codec versions, revisions,
 archive filenames and source bytes are unchanged. All targets share this lock.
 
+All source/toolchain downloads share a streaming HTTPS downloader. Connection
+attempts still have a 10-second limit. Temporary network failures and HTTP
+408/425/429/5xx service failures get up to four attempts with 1/2/4-second backoff;
+30 seconds without socket activity and a 10-minute total transfer budget bound
+each attempt. Redirects are limited and HTTPS cannot downgrade to HTTP. Permanent
+HTTP errors and checksum mismatches fail immediately. Partial files are removed;
+only a complete, SHA-256-verified archive enters the local cache.
+
+The six desktop/FFmpeg build workflows restore archive caches keyed by OS and
+source locks (plus the Windows toolchain lock). A cache is saved only after all
+required archives pass their checksums, including when a later compiler/test
+step fails. Restored archives are checked again before use. Windows
+fetches its sources before spending time installing the compiler toolchain.
+
+The workflows also prepare desktop/compiler/test dependencies up front and use
+a separate validated cache of compiled FFmpeg candidates to skip unchanged
+compilations. See [build preparation and caching](../../docs/build-preparation-and-caching.md)
+for cache keys, offline Linux checks and GitHub retention behavior.
+
 The binaries land in `build/ffmpeg/install/win32-x64/bin`. Candidate ZIPs and their
 SHA-256 files land in `build/ffmpeg/releases/win32-x64/<build-id>`; unpacked
 candidates live in `build/ffmpeg/candidates/win32-x64/<build-id>`. Packages include corresponding

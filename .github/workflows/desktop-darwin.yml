@@ -1,20 +1,16 @@
 name: macOS Intel desktop candidate
-
 on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Draft release tag'
+        description: Draft release tag
         type: string
         required: true
         default: ''
-
 permissions:
   contents: read
-
 env:
   MOARTUBE_RELEASE_TAG: ${{ inputs.release_tag }}
-
 jobs:
   build:
     runs-on: macos-15-intel
@@ -24,24 +20,90 @@ jobs:
       ELECTRON_CACHE: ${{ github.workspace }}/build/desktop/cache/electron
       ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/build/desktop/cache/builder
       MOARTUBE_NODE_LICENSE: ${{ github.workspace }}/build/desktop/node-LICENSE
+      MOARTUBE_FFMPEG_OFFLINE: '1'
+      MOARTUBE_DEPENDENCIES_PREPARED: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.22.1'
+          node-version: 24.22.1
           architecture: x64
           cache: npm
+      - name: Restore verified FFmpeg downloads
+        uses: actions/cache/restore@v4
+        id: ffmpeg-downloads
+        with:
+          path: |
+            build/ffmpeg/cache/sources
+          key: ffmpeg-downloads-v1-${{ runner.os }}-${{ hashFiles('tooling/ffmpeg/sources.lock.json') }}
+      - name: Identify compiled FFmpeg cache
+        id: ffmpeg-key
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs key darwin-x64
+      - name: Restore compiled FFmpeg candidate
+        uses: actions/cache/restore@v4
+        id: compiled-ffmpeg
+        with:
+          path: |-
+            build/ffmpeg/install/darwin-x64/bin
+            build/ffmpeg/candidates/darwin-x64
+            build/ffmpeg/releases/darwin-x64
+            build/ffmpeg/state/darwin-x64
+            build/ffmpeg/reports/darwin-x64/*.json
+            build/ffmpeg/reports/darwin-x64/software/result.json
+          key: ${{ steps.ffmpeg-key.outputs.key }}
+      - name: Verify restored FFmpeg candidate
+        if: steps.compiled-ffmpeg.outputs.cache-hit == 'true'
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs verify darwin-x64
+      - name: Restore desktop dependency downloads
+        uses: actions/cache/restore@v4
+        id: desktop-dependencies
+        with:
+          path: |-
+            build/desktop/cache/electron
+            build/desktop/cache/builder
+          key: desktop-dependencies-v1-darwin-x64-${{ hashFiles('package-lock.json', 'scripts/prefetch-desktop-tools.mjs', 'desktop/linux/dependencies.Dockerfile') }}
+      - name: Download and verify all FFmpeg inputs
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+        run: node tooling/ffmpeg/scripts/download-inputs.mjs darwin-x64
       - name: Install compiler tools
         run: brew install cmake ninja meson nasm pkg-config xz
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
       - run: npm ci
       - name: Preserve the matching bundled Node license
         run: |
           mkdir -p build/desktop
           curl --fail --location --retry 3 "https://raw.githubusercontent.com/nodejs/node/$(node -p process.version)/LICENSE" --output "$MOARTUBE_NODE_LICENSE"
+      - name: Download Electron and packaging tools
+        run: node scripts/prefetch-desktop-tools.mjs
+      - name: Save desktop dependency downloads
+        if: steps.desktop-dependencies.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |-
+            build/desktop/cache/electron
+            build/desktop/cache/builder
+          key: ${{ steps.desktop-dependencies.outputs.cache-primary-key }}
       - run: npm run typecheck
       - run: npm run ffmpeg:test:tooling
       - run: npm run desktop:test
       - run: npm run ffmpeg:build:darwin
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+      - name: Validate compiled candidate for caching
+        id: compiled-cache-ready
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs save darwin-x64
+      - name: Save verified compiled FFmpeg
+        if: steps.compiled-cache-ready.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: |-
+            build/ffmpeg/install/darwin-x64/bin
+            build/ffmpeg/candidates/darwin-x64
+            build/ffmpeg/releases/darwin-x64
+            build/ffmpeg/state/darwin-x64
+            build/ffmpeg/reports/darwin-x64/*.json
+            build/ffmpeg/reports/darwin-x64/software/result.json
+          key: ${{ steps.compiled-ffmpeg.outputs.cache-primary-key }}
       - run: npm run desktop:build:darwin
       - uses: actions/upload-artifact@v4
         with:
@@ -57,19 +119,32 @@ jobs:
             build/ffmpeg/reports/darwin-x64/
             build/desktop/reports/darwin-x64/
           retention-days: 14
+      - name: Check complete download cache
+        if: ${{ !cancelled() && steps.ffmpeg-downloads.outputs.cache-hit != 'true' }}
+        id: ffmpeg-cache-ready
+        run: node tooling/ffmpeg/scripts/check-download-cache.mjs darwin
+      - name: Save verified FFmpeg downloads
+        if: ${{ !cancelled() && steps.ffmpeg-cache-ready.outputs.complete == 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            build/ffmpeg/cache/sources
+          key: ${{ steps.ffmpeg-downloads.outputs.cache-primary-key }}
   verify:
     needs: build
     strategy:
       fail-fast: false
       matrix:
-        runner: [macos-15-intel, macos-26-intel]
+        runner:
+          - macos-15-intel
+          - macos-26-intel
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.22.1'
+          node-version: 24.22.1
           architecture: x64
           cache: npm
       - run: npm ci
@@ -84,10 +159,11 @@ jobs:
           name: moartube-client-darwin-x64-${{ matrix.runner }}-verification
           path: build/desktop/reports/darwin-x64/
           retention-days: 14
-
   upload-draft:
     name: Upload verified darwin assets to draft
-    needs: [build, verify]
+    needs:
+      - build
+      - verify
     if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -102,7 +178,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.22.1'
+          node-version: 24.22.1
       - uses: actions/download-artifact@v4
         with:
           name: moartube-client-darwin-x64-candidate

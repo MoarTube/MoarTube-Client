@@ -1,11 +1,8 @@
 name: Linux FFmpeg candidate
-
 on:
-  workflow_dispatch:
-
+  workflow_dispatch: null
 permissions:
   contents: read
-
 jobs:
   linux:
     strategy:
@@ -22,9 +19,56 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.22.1'
+          node-version: 24.22.1
+      - name: Restore verified FFmpeg downloads
+        uses: actions/cache/restore@v4
+        id: ffmpeg-downloads
+        with:
+          path: |
+            build/ffmpeg/cache/sources
+          key: ffmpeg-downloads-v1-${{ runner.os }}-${{ hashFiles('tooling/ffmpeg/sources.lock.json') }}
+      - name: Identify compiled FFmpeg cache
+        id: ffmpeg-key
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs key linux-${{ matrix.arch }}
+      - name: Restore compiled FFmpeg candidate
+        uses: actions/cache/restore@v4
+        id: compiled-ffmpeg
+        with:
+          path: |-
+            build/ffmpeg/install/linux-${{ matrix.arch }}/bin
+            build/ffmpeg/candidates/linux-${{ matrix.arch }}
+            build/ffmpeg/releases/linux-${{ matrix.arch }}
+            build/ffmpeg/state/linux-${{ matrix.arch }}
+            build/ffmpeg/reports/linux-${{ matrix.arch }}/*.json
+            build/ffmpeg/reports/linux-${{ matrix.arch }}/software/result.json
+          key: ${{ steps.ffmpeg-key.outputs.key }}
+      - name: Verify restored FFmpeg candidate
+        if: steps.compiled-ffmpeg.outputs.cache-hit == 'true'
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs verify linux-${{ matrix.arch }}
+      - name: Download and verify all FFmpeg inputs
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+        run: node tooling/ffmpeg/scripts/download-inputs.mjs linux-${{ matrix.arch }}
+      - name: Prepare all compiler and runtime containers
+        run: node scripts/prepare-linux-dependencies.mjs --arch=${{ matrix.arch }} ${{ steps.compiled-ffmpeg.outputs.cache-hit == 'true' && '--skip-compiler' || '' }}
       - run: npm run ffmpeg:test:tooling
       - run: npm run ffmpeg:build:linux -- --arch=${{ matrix.arch }}
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+      - name: Validate compiled candidate for caching
+        id: compiled-cache-ready
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs save linux-${{ matrix.arch }}
+      - name: Save verified compiled FFmpeg
+        if: steps.compiled-cache-ready.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: |-
+            build/ffmpeg/install/linux-${{ matrix.arch }}/bin
+            build/ffmpeg/candidates/linux-${{ matrix.arch }}
+            build/ffmpeg/releases/linux-${{ matrix.arch }}
+            build/ffmpeg/state/linux-${{ matrix.arch }}
+            build/ffmpeg/reports/linux-${{ matrix.arch }}/*.json
+            build/ffmpeg/reports/linux-${{ matrix.arch }}/software/result.json
+          key: ${{ steps.compiled-ffmpeg.outputs.cache-primary-key }}
       - run: npm run ffmpeg:verify:linux:runtimes -- --arch=${{ matrix.arch }}
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -35,3 +79,17 @@ jobs:
             build/ffmpeg/releases/linux-${{ matrix.arch }}/*/SHA256SUMS.txt
             build/ffmpeg/reports/linux-${{ matrix.arch }}/
           retention-days: 14
+      - name: Check complete download cache
+        if: ${{ !cancelled() && steps.ffmpeg-downloads.outputs.cache-hit != 'true' }}
+        id: ffmpeg-cache-ready
+        run: node tooling/ffmpeg/scripts/check-download-cache.mjs linux
+      - name: Save verified FFmpeg downloads
+        if: ${{ !cancelled() && steps.ffmpeg-cache-ready.outputs.complete == 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            build/ffmpeg/cache/sources
+          key: ${{ steps.ffmpeg-downloads.outputs.cache-primary-key }}
+    env:
+      MOARTUBE_FFMPEG_OFFLINE: '1'
+      MOARTUBE_DEPENDENCIES_PREPARED: '1'

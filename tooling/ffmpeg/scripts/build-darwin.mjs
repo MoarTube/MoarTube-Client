@@ -1,17 +1,16 @@
+import { recipeHash } from './recipe-hash.mjs';
 import { createHash } from 'node:crypto';
+import { downloadArchive } from './download-archive.mjs';
 import {
-  createWriteStream,
   readFileSync,
   writeFileSync,
   mkdirSync,
   existsSync,
-  renameSync,
   cpSync,
   copyFileSync,
   readdirSync,
   chmodSync,
 } from 'node:fs';
-import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ffmpegPaths } from '../../build-paths.cjs';
@@ -57,18 +56,7 @@ json(path.join(layout.reports, 'toolchain.json'), {
 });
 json(path.join(layout.reports, 'sources.lock.json'), lock);
 for (const source of lock.sources) {
-  const archive = path.join(layout.sources, source.archive);
-  if (!existsSync(archive)) {
-    const response = await fetch(source.url, { signal: AbortSignal.timeout(600000) });
-    if (!response.ok || !response.body) throw new Error(`Source download failed: ${source.url}`);
-    const temporary = `${archive}.darwin-partial`;
-    await pipeline(response.body, createWriteStream(temporary));
-    if (hash(temporary) !== source.sha256)
-      throw new Error(`Downloaded source checksum mismatch: ${source.id}`);
-    renameSync(temporary, archive);
-  }
-  if (hash(archive) !== source.sha256)
-    throw new Error(`Cached source checksum mismatch: ${source.id}`);
+  const archive = await downloadArchive(source, layout.sources);
   const destination = path.join(layout.work, 'sources', source.id);
   mkdirSync(destination, { recursive: true });
   run('tar', ['-xf', archive, '--strip-components=1', '-C', destination]);
@@ -138,24 +126,7 @@ if (
   Object.entries(files).some(([name, file]) => software.binarySha256[name] !== file.sha256)
 )
   throw new Error('Darwin software qualification failed or mismatches the binaries');
-const recipeDigest = createHash('sha256');
-function hashTree(dir) {
-  for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
-    a.name.localeCompare(b.name)
-  )) {
-    const file = path.join(dir, entry.name);
-    if (entry.isDirectory()) hashTree(file);
-    else
-      recipeDigest
-        .update(path.relative(root, file).replaceAll('\\', '/'))
-        .update('\0')
-        .update(readFileSync(file))
-        .update('\0');
-  }
-}
-hashTree(path.join(root, 'tooling/ffmpeg'));
-recipeDigest.update(readFileSync(path.join(root, 'tooling/build-paths.cjs')));
-const recipeSha256 = recipeDigest.digest('hex');
+const recipeSha256 = recipeHash(root, target);
 const version = lock.sources.find((source) => source.id === 'ffmpeg').version;
 const buildId = `${version}-moartube-${target}-${files.ffmpeg.sha256.slice(0, 16)}-r${recipeSha256.slice(0, 8)}`;
 const runtime = path.join(layout.candidates, buildId, 'runtime');

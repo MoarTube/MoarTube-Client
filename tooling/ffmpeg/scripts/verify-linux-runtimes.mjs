@@ -42,18 +42,21 @@ const binarySha256 = Object.fromEntries(
 const results = [];
 for (const [version, image] of Object.entries(images)) {
   const tag = `moartube-ffmpeg-runtime-${arch}:${version}`;
-  docker([
-    'build',
-    '--platform',
-    dockerPlatform,
-    '-t',
-    tag,
-    '-f',
-    'tooling/ffmpeg/platforms/linux/runtime.Dockerfile',
-    '--build-arg',
-    `UBUNTU_IMAGE=${image}`,
-    'tooling/ffmpeg/platforms/linux',
-  ]);
+  if (process.env.MOARTUBE_DEPENDENCIES_PREPARED === '1')
+    docker(['image', 'inspect', tag], { stdio: 'ignore' });
+  else
+    docker([
+      'build',
+      '--platform',
+      dockerPlatform,
+      '-t',
+      tag,
+      '-f',
+      'tooling/ffmpeg/platforms/linux/runtime.Dockerfile',
+      '--build-arg',
+      `UBUNTU_IMAGE=${image}`,
+      'tooling/ffmpeg/platforms/linux',
+    ]);
   const name = `moartube-ffmpeg-runtime-${arch}-${version}-${process.pid}`;
   docker([
     'create',
@@ -61,6 +64,7 @@ for (const [version, image] of Object.entries(images)) {
     dockerPlatform,
     '--name',
     name,
+    ...(process.env.MOARTUBE_DEPENDENCIES_PREPARED === '1' ? ['--network', 'none'] : []),
     tag,
     'node',
     'tooling/ffmpeg/scripts/verify-linux-runtime-native.mjs',

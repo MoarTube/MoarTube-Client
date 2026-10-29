@@ -10,6 +10,7 @@ const directory = path.resolve(selection.runtimeDirectory);
 if (!directory.startsWith(layout.staging + path.sep) || path.basename(directory) !== 'runtime')
   throw new Error('Invalid desktop FFmpeg candidate path');
 module.exports = {
+  electronDownload: { cache: process.env.ELECTRON_CACHE },
   appId: 'com.moartube.client',
   productName: 'MoarTube Client',
   executableName: 'MoarTube Client',

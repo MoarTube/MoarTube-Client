@@ -1,9 +1,8 @@
 import { ffmpegPaths } from '../../build-paths.cjs';
 import { runMsysScript } from './windows-shell.mjs';
+import { downloadArchive } from './download-archive.mjs';
 import { createHash } from 'node:crypto';
-import { createReadStream, createWriteStream } from 'node:fs';
-import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import { pipeline } from 'node:stream/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,11 +23,6 @@ const exists = async (name) =>
     () => true,
     () => false
   );
-const hash = async (name) => {
-  const digest = createHash('sha256');
-  for await (const chunk of createReadStream(name)) digest.update(chunk);
-  return digest.digest('hex');
-};
 const posix = (name) =>
   name.replaceAll('\\', '/').replace(/^([A-Za-z]):/, (_, drive) => `/${drive.toLowerCase()}`);
 const quote = (value) => `'${value.replaceAll("'", "'\\''")}'`;
@@ -48,30 +42,7 @@ async function run(executable, args, options = {}) {
   });
 }
 
-async function download(input, directory = cache) {
-  if (!/^[a-zA-Z0-9_.+~\-]+$/.test(input.archive) || !/^[a-f0-9]{64}$/.test(input.sha256))
-    throw new Error('Invalid source lock entry');
-  const target = path.join(directory, input.archive);
-  if (await exists(target)) {
-    if ((await hash(target)) !== input.sha256)
-      throw new Error(`Cached archive checksum mismatch: ${target}`);
-    return target;
-  }
-  console.log(`Fetching ${input.archive}`);
-  const response = await fetch(input.url, { signal: AbortSignal.timeout(600000) });
-  if (!response.ok || !response.body)
-    throw new Error(`Download failed: ${input.url} (${response.status})`);
-  const temporary = `${target}.partial`;
-  try {
-    await pipeline(response.body, createWriteStream(temporary));
-    if ((await hash(temporary)) !== input.sha256)
-      throw new Error(`Downloaded archive checksum mismatch: ${input.archive}`);
-    await rename(temporary, target);
-  } finally {
-    await rm(temporary, { force: true });
-  }
-  return target;
-}
+const download = (input, directory = cache) => downloadArchive(input, directory);
 
 async function shell(command) {
   await runMsysScript(bash, command, { cwd: root, directory: work });
@@ -86,6 +57,8 @@ async function main() {
   await mkdir(layout.sources, { recursive: true });
   await mkdir(layout.toolchain, { recursive: true });
   await mkdir(work, { recursive: true });
+  // Fail on source connectivity before spending time installing the toolchain.
+  for (const input of sources.sources) await download(input, layout.sources);
   const bootstrap = await download(toolchain.bootstrap);
   if (!(await exists(bash))) await run('tar.exe', ['-xf', bootstrap, '-C', layout.toolchain]);
   const identity = createHash('sha256').update(JSON.stringify(toolchain)).digest('hex');

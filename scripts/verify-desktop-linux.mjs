@@ -53,18 +53,21 @@ for (const [ubuntu, image] of Object.entries(images)) {
   const distro = ubuntu === 'debian-trixie' ? 'Debian Trixie' : `Ubuntu ${ubuntu}`;
   const reportName = ubuntu === 'debian-trixie' ? ubuntu : `ubuntu-${ubuntu}`;
   const tag = `moartube-desktop-runtime-${arch}:${ubuntu}`;
-  docker([
-    'build',
-    '--platform',
-    dockerPlatform,
-    '-f',
-    'desktop/linux/runtime.Dockerfile',
-    '--build-arg',
-    `UBUNTU_IMAGE=${image}`,
-    '-t',
-    tag,
-    'desktop/linux',
-  ]);
+  if (process.env.MOARTUBE_DEPENDENCIES_PREPARED === '1')
+    docker(['image', 'inspect', tag], { stdio: 'ignore' });
+  else
+    docker([
+      'build',
+      '--platform',
+      dockerPlatform,
+      '-f',
+      'desktop/linux/runtime.Dockerfile',
+      '--build-arg',
+      `UBUNTU_IMAGE=${image}`,
+      '-t',
+      tag,
+      'desktop/linux',
+    ]);
   const name = `moartube-desktop-qa-${arch}-${ubuntu}-${process.pid}`;
   // Chromium's sandbox needs namespace syscalls inside this test container.
   // SYS_ADMIN is limited to the disposable container; sandbox flags stay enabled.
@@ -76,6 +79,7 @@ for (const [ubuntu, image] of Object.entries(images)) {
     'SYS_ADMIN',
     '--name',
     name,
+    ...(process.env.MOARTUBE_DEPENDENCIES_PREPARED === '1' ? ['--network', 'none'] : []),
     '-e',
     `MOARTUBE_DESKTOP_ARCH=${arch}`,
     tag,

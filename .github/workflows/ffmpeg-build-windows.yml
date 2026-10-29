@@ -1,11 +1,8 @@
 name: Windows FFmpeg candidate
-
 on:
-  workflow_dispatch:
-
+  workflow_dispatch: null
 permissions:
   contents: read
-
 jobs:
   windows:
     runs-on: windows-2025
@@ -14,13 +11,63 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.22.1'
+          node-version: 24.22.1
+      - name: Restore verified FFmpeg downloads
+        uses: actions/cache/restore@v4
+        id: ffmpeg-downloads
+        with:
+          path: |
+            build/ffmpeg/cache/sources
+            build/ffmpeg/cache/toolchains/win32-x64
+          key: ffmpeg-downloads-v1-${{ runner.os }}-${{ hashFiles('tooling/ffmpeg/sources.lock.json', 'tooling/ffmpeg/toolchain.lock.json') }}
+      - name: Identify compiled FFmpeg cache
+        id: ffmpeg-key
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs key win32-x64
+      - name: Restore compiled FFmpeg candidate
+        uses: actions/cache/restore@v4
+        id: compiled-ffmpeg
+        with:
+          path: |-
+            build/ffmpeg/install/win32-x64/bin
+            build/ffmpeg/candidates/win32-x64
+            build/ffmpeg/releases/win32-x64
+            build/ffmpeg/state/win32-x64
+            build/ffmpeg/reports/win32-x64/*.json
+            build/ffmpeg/reports/win32-x64/software/result.json
+          key: ${{ steps.ffmpeg-key.outputs.key }}
+      - name: Verify restored FFmpeg candidate
+        if: steps.compiled-ffmpeg.outputs.cache-hit == 'true'
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs verify win32-x64
+      - name: Download and verify all FFmpeg inputs
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+        run: node tooling/ffmpeg/scripts/download-inputs.mjs win32-x64
+      - name: Prepare locked Windows compiler before building
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+        run: npm run ffmpeg:build:windows -- --prepare-only
       - name: Verify tooling
         run: npm run ffmpeg:test:tooling
       - name: Build locked Windows sources
         run: npm run ffmpeg:build:windows
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
       - name: Package candidate with source and evidence
         run: npm run ffmpeg:package:windows
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+      - name: Validate compiled candidate for caching
+        id: compiled-cache-ready
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs save win32-x64
+      - name: Save verified compiled FFmpeg
+        if: steps.compiled-cache-ready.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: |-
+            build/ffmpeg/install/win32-x64/bin
+            build/ffmpeg/candidates/win32-x64
+            build/ffmpeg/releases/win32-x64
+            build/ffmpeg/state/win32-x64
+            build/ffmpeg/reports/win32-x64/*.json
+            build/ffmpeg/reports/win32-x64/software/result.json
+          key: ${{ steps.compiled-ffmpeg.outputs.cache-primary-key }}
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -30,3 +77,18 @@ jobs:
             build/ffmpeg/releases/win32-x64/*/*.sha256
             build/ffmpeg/reports/
           retention-days: 14
+      - name: Check complete download cache
+        if: ${{ !cancelled() && steps.ffmpeg-downloads.outputs.cache-hit != 'true' }}
+        id: ffmpeg-cache-ready
+        run: node tooling/ffmpeg/scripts/check-download-cache.mjs windows
+      - name: Save verified FFmpeg downloads
+        if: ${{ !cancelled() && steps.ffmpeg-cache-ready.outputs.complete == 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            build/ffmpeg/cache/sources
+            build/ffmpeg/cache/toolchains/win32-x64
+          key: ${{ steps.ffmpeg-downloads.outputs.cache-primary-key }}
+    env:
+      MOARTUBE_FFMPEG_OFFLINE: '1'
+      MOARTUBE_DEPENDENCIES_PREPARED: '1'

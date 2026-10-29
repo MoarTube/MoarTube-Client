@@ -1,0 +1,21 @@
+[
+  "libc6 (>= 2.39)",
+  "libgtk-3-0t64",
+  "libnss3",
+  "libnspr4",
+  "libxss1",
+  "libxtst6",
+  "libatspi2.0-0t64",
+  "libuuid1",
+  "libgbm1",
+  "libasound2t64",
+  "libx11-xcb1",
+  "libnotify4",
+  "libsecret-1-0",
+  "xdg-utils",
+  "libva2",
+  "libva-drm2",
+  "libdrm2",
+  "libgnutls30t64",
+  "ca-certificates"
+]

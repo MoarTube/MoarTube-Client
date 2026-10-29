@@ -9,7 +9,9 @@ mkdir -p "$reports"
 printf '#!/bin/sh\nprintf "existing npm CLI\\n"\n' > /tmp/moartube-cli-fixture
 chmod 755 /tmp/moartube-cli-fixture
 ln -s /tmp/moartube-cli-fixture /usr/bin/moartube-client
-apt-get install -y --no-install-recommends ./MoarTube-Client-*-"$target".deb
+# All declared dependencies were installed while preparing the runtime image.
+# dpkg installs only this local file and fails if a dependency is missing.
+dpkg --install "$PWD"/MoarTube-Client-*-"$target".deb
 test "$(readlink /usr/bin/moartube-client)" = /tmp/moartube-cli-fixture
 test -f /usr/share/applications/moartube-client.desktop
 grep -q '^StartupWMClass=moartube-client$' /usr/share/applications/moartube-client.desktop
@@ -20,7 +22,7 @@ ldd '/opt/MoarTube Client/moartube-client-desktop' > "$reports/electron-ldd.txt"
 if grep -q 'not found' "$reports/electron-ldd.txt"; then exit 1; fi
 dpkg-query -W > "$reports/runtime-packages.txt"
 printf '{"private":true,"type":"module"}\n' > package.json
-npm install --ignore-scripts --no-audit --no-fund --save-exact playwright@1.64.1
+npm install --offline --ignore-scripts --no-audit --no-fund --save-exact playwright@1.64.1
 mkdir -p /home/desktop-test/.config /home/desktop-test/.cache
 mkdir -p /tmp/moartube-desktop-runtime
 chmod 700 /tmp/moartube-desktop-runtime
@@ -62,7 +64,7 @@ if runuser -u desktop-test -- env HOME=/home/desktop-test XDG_RUNTIME_DIR=/tmp/m
   cp "$reports/packaged/window.png" "$reports/portable-window.png"
 else gui_failed=1; fi
 # Reinstall the same candidate to exercise maintainer scripts and preserve data.
-apt-get install --reinstall -y ./MoarTube-Client-*-"$target".deb
+dpkg --install "$PWD"/MoarTube-Client-*-"$target".deb
 apt-get remove -y moartube-client
 test -f "build/desktop/profiles/$target/backend-node/client/_client_settings.json"
 grep -q 'preserve backend media' "$backend_media"

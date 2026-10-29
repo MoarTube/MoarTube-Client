@@ -12,6 +12,7 @@ for (const directory of [runtime, node])
   if (!directory.startsWith(layout.staging + path.sep))
     throw new Error('Invalid Darwin staging directory');
 module.exports = {
+  electronDownload: { cache: process.env.ELECTRON_CACHE },
   appId: 'com.moartube.client',
   productName: 'MoarTube Client',
   executableName: 'MoarTube Client',

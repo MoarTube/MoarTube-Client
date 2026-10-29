@@ -1,3 +1,4 @@
+import { recipeHash, windowsCommandFiles, windowsDocumentation } from './recipe-hash.mjs';
 import { ffmpegPaths } from '../../build-paths.cjs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -55,44 +56,9 @@ if (
 )
   throw new Error('Candidate has failing verification evidence');
 const sources = JSON.parse(readFileSync(path.join(tooling, 'sources.lock.json'), 'utf8'));
-const commandFiles = [
-  'src/utils/gpu-encoding.ts',
-  'src/utils/ffmpeg-path.ts',
-  'src/utils/ffmpeg-artifact.ts',
-  'src/services/ffmpeg.ts',
-  'src/services/video-publish.ts',
-  'src/services/live-stream.ts',
-  'src/utils/hardware.ts',
-  'src/utils/windows-gpus.ts',
-  'tests/gpu-hardware.test.ts',
-  'tests/windows-live-hardware.test.ts',
-];
-const documentation = [
-  'ffmpeg-distribution-plan.md',
-  'gpu-acceleration.md',
-  'windows-ffmpeg-validation.md',
-];
-const recipeFiles = [];
-function collect(directory) {
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    const name = path.join(directory, entry.name);
-    if (entry.isDirectory()) collect(name);
-    else recipeFiles.push(name);
-  }
-}
-collect(tooling);
-recipeFiles.push(path.join(root, 'tooling/build-paths.cjs'));
-recipeFiles.push(
-  ...commandFiles.map((name) => path.join(root, name)),
-  ...documentation.map((name) => path.join(root, 'docs', name))
-);
-const recipeHash = createHash('sha256');
-for (const name of recipeFiles.sort())
-  recipeHash
-    .update(path.relative(root, name).replaceAll('\\', '/') + '\0')
-    .update(readFileSync(name))
-    .update('\0');
-const recipeSha256 = recipeHash.digest('hex');
+const commandFiles = windowsCommandFiles;
+const documentation = windowsDocumentation;
+const recipeSha256 = recipeHash(root, 'win32-x64');
 const buildId = `9.0.2-moartube-${digest(binaries[0]).slice(0, 16)}-r${recipeSha256.slice(0, 8)}`;
 const finalOutput = path.join(layout.candidates, buildId);
 const release = path.join(layout.releases, buildId);
