@@ -2,6 +2,10 @@
 
 ## Current x64 follow-up: isolated Node backend
 
+This record describes the existing Node 22.23.4 packages. New builds pin Node
+24.22.1; the recorded downloads and their hashes have not been rebuilt by that
+configuration change.
+
 The ARM64 implementation exposed a Sharp/GLib conflict during real image
 processing on Ubuntu 26.04. Linux packages now bundle standalone Node 22.23.4
 for the backend. Both x64 Ubuntu versions passed the image/backend IPC probe

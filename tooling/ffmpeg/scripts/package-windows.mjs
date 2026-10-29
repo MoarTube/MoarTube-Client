@@ -198,7 +198,7 @@ writeFileSync(
 );
 writeFileSync(
   path.join(output, 'BUILD.txt'),
-  'Requires native Windows x64 Node.js 22+. From recipe/, run npm.cmd run ffmpeg:build:windows. To reuse the included sources offline, first copy sources/* from this archive into recipe/build/ffmpeg/cache/sources/. The checksum-locked portable toolchain must also be cached or downloaded. See recipe/tooling/ffmpeg/README.md.\n'
+  'Requires native Windows x64 Node.js 24.22.1 or newer. From recipe/, run npm.cmd run ffmpeg:build:windows. To reuse the included sources offline, first copy sources/* from this archive into recipe/build/ffmpeg/cache/sources/. The checksum-locked portable toolchain must also be cached or downloaded. See recipe/tooling/ffmpeg/README.md.\n'
 );
 cpSync(path.join(build, 'reports/win32-x64'), path.join(output, 'reports'), {
   recursive: true,

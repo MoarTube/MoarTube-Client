@@ -235,7 +235,7 @@ cpSync(layout.reports, path.join(sources, 'reports'), {
 });
 writeFileSync(
   path.join(sources, 'BUILD.txt'),
-  'Requires Intel macOS 15+, Xcode command line tools, Node.js 22+, cmake, ninja, meson, nasm, pkg-config and xz. From recipe/, run node tooling/ffmpeg/scripts/build-darwin.mjs. To reuse sources, copy sources/* into recipe/build/ffmpeg/cache/sources/. See reports/toolchain.json for recorded compiler and SDK versions; build tools are not vendored.\n'
+  'Requires Intel macOS 15+, Xcode command line tools, Node.js 24.22.1 or newer, cmake, ninja, meson, nasm, pkg-config and xz. From recipe/, run node tooling/ffmpeg/scripts/build-darwin.mjs. To reuse sources, copy sources/* into recipe/build/ffmpeg/cache/sources/. See reports/toolchain.json for recorded compiler and SDK versions; build tools are not vendored.\n'
 );
 const archives = [];
 for (const [suffix, directory] of [

@@ -1,5 +1,8 @@
 # Linux ARM64 Electron validation — 2026-10-28
 
+This record describes the existing Node 22.23.4 packages. New builds pin Node
+24.22.1; the recorded downloads and hashes remain unchanged until rebuilt.
+
 MoarTube Client 1.1.0, Electron 45.1.0, bundled standalone Node 22.23.4,
 Sharp 0.33.5 and FFmpeg/FFprobe
 `9.0.2-moartube-linux-arm64-7671bbfcb6d86643-r62b9c8a6`.

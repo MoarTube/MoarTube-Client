@@ -33,7 +33,7 @@ distribution or with musl-based distributions such as Alpine.
 
 ## Build from Windows 11, WSL or Linux
 
-Use Node.js 22+ and Docker with a running Linux-container engine. On this Windows
+Use Node.js 24.22.1 or newer and Docker with a running Linux-container engine. On this Windows
 machine Docker Desktop already uses WSL 2, so no additional WSL distro, global
 compiler or GPU driver installation is needed. Docker is a developer build tool,
 not an FFmpeg runtime requirement.

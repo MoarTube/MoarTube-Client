@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '24.22.1'
       - run: npm run ffmpeg:test:tooling
       - run: npm run ffmpeg:build:linux -- --arch=${{ matrix.arch }}
       - run: npm run ffmpeg:verify:linux:runtimes -- --arch=${{ matrix.arch }}

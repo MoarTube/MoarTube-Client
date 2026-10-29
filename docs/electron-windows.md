@@ -34,7 +34,7 @@ manual migration.
 
 ## Develop and build
 
-Use native x64 Node.js 22 or newer on Windows 11, from the repository root:
+Use native x64 Node.js 24.22.1 or newer on Windows 11, from the repository root:
 
 ```powershell
 npm.cmd install

@@ -14,7 +14,7 @@ There is no npm-provided FFmpeg binary or automatic PATH fallback.
 
 ## macOS Intel builds
 
-On native Intel macOS 15+ with Node.js 22+, Xcode command line tools, cmake,
+On native Intel macOS 15+ with Node.js 24.22.1 or newer, Xcode command line tools, cmake,
 ninja, meson, nasm, pkg-config and xz, run `npm run ffmpeg:build:darwin`.
 The GitHub **macOS Intel FFmpeg candidate** workflow builds FFmpeg separately;
 **macOS Intel desktop candidate** also compiles it before packaging Electron.
@@ -24,7 +24,7 @@ See [the macOS guide](../../docs/electron-darwin.md) for details.
 
 ## Build and consume a candidate
 
-Use native Windows x64 Node.js 22 or newer. No global compiler, MSYS2 installation,
+Use native Windows x64 Node.js 24.22.1 or newer. No global compiler, MSYS2 installation,
 CUDA toolkit or GPU driver installation is performed. The first build needs
 network access and several GB of free disk space; the complete AMF source archive
 alone is approximately 380 MiB. All generated files stay under `build/ffmpeg`.

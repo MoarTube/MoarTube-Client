@@ -77,6 +77,10 @@ work. See the [macOS guide](docs/electron-darwin.md).
 
 ## Compile FFmpeg before starting
 
+The Node.js minimum is **24.22.1**. `.nvmrc` selects that version, and GitHub
+workflows and Linux container images pin it exactly for builds and bundled Node
+backends. Electron supplies its own Node runtime for the Windows utility process.
+
 Linux x64 builds use Ubuntu 24.04 as the baseline and test exported binaries on
 Ubuntu 24.04 and 26.04. Run `npm run ffmpeg:build:linux` with Docker's Linux engine
 (WSL 2 backend on Windows). See the [Linux FFmpeg guide](docs/linux-ffmpeg.md) for
@@ -85,7 +89,7 @@ Electron DEB and standalone archive with `npm run desktop:build:linux`; see the
 [Linux desktop guide](docs/electron-linux.md) for installation and validation.
 
 Developers must compile the FFmpeg dependency for their operating system and CPU
-architecture. On Windows 11 x64, use native x64 Node.js 22 or newer and run from
+architecture. On Windows 11 x64, use native x64 Node.js 24.22.1 or newer and run from
 the repository root:
 
 ```powershell

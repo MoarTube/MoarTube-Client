@@ -1,5 +1,5 @@
 ARG UBUNTU_IMAGE
-FROM node:22-bookworm-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da AS node
+FROM node:24.22.1-bookworm-slim@sha256:be8204d4bd327363357f532187b752ff62759c31bedf98e9e18fc08c9cbd605c AS node
 FROM ${UBUNTU_IMAGE}
 ENV DEBIAN_FRONTEND=noninteractive
 COPY --from=node /usr/local/bin/node /usr/local/bin/node

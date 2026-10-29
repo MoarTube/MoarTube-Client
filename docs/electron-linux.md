@@ -86,7 +86,7 @@ No AppImage, Snap, Flatpak or RPM is produced in this initial implementation.
 
 ## Build from Windows, WSL or Linux
 
-Use Node.js 22+ and Docker with Linux containers. Docker Desktop's existing WSL 2
+Use Node.js 24.22.1 or newer and Docker with Linux containers. Docker Desktop's existing WSL 2
 backend can build from Windows without installing another Linux distro:
 
 ```powershell

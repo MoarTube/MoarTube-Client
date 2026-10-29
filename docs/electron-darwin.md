@@ -30,7 +30,7 @@ npm run desktop:build:darwin
 npm run desktop:verify:darwin
 ```
 
-Install Xcode command line tools first. Use native x64 Node.js 22+ and macOS 15+;
+Install Xcode command line tools first. Use native x64 Node.js 24.22.1 or newer and macOS 15+;
 Rosetta builds are rejected. Set `MOARTUBE_NODE_LICENSE` to the matching Node
 distribution's `LICENSE` if absent from its installation prefix. CI fetches the
 license from Node's matching release tag. Verified FFmpeg candidates can be

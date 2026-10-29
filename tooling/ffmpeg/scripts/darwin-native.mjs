@@ -7,8 +7,11 @@ export function requireDarwinX64() {
       'Run on native Intel macOS or the macos-15-intel GitHub Actions runner. Windows/WSL cannot build or execute macOS apps.'
     );
   if (process.argv.length > 2) throw new Error('This Darwin x64 command accepts no arguments.');
-  if (Number(process.versions.node.split('.')[0]) < 22)
-    throw new Error('Node.js 22 or newer is required.');
+  const current = process.versions.node.split('.').map(Number);
+  const minimum = [24, 22, 1];
+  const difference = current.findIndex((part, index) => part !== minimum[index]);
+  if (difference !== -1 && current[difference] < minimum[difference])
+    throw new Error('Node.js 24.22.1 or newer is required.');
   if (Number(run('sw_vers', ['-productVersion'], { stdio: 'pipe' }).split('.')[0]) < 15)
     throw new Error('The Darwin x64 baseline requires macOS 15 or newer.');
   const translated = spawnSync('sysctl', ['-in', 'sysctl.proc_translated'], { encoding: 'utf8' });

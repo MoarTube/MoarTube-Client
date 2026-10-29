@@ -12,7 +12,7 @@ For native ARM64 Docker container checks across Ubuntu and Trixie, use
 rejected before test containers are created. ARM64 builds and FFmpeg checks
 continue to support user-mode emulation.
 
-Requires Node.js 22+, Docker's Linux engine, at least 6 GiB available Docker RAM
+Requires Node.js 24.22.1 or newer, Docker's Linux engine, at least 6 GiB available Docker RAM
 and roughly 8 GiB temporary disk space. The guest uses four Cortex-A76 virtual
 CPUs and 4 GiB RAM. No extra WSL distribution, Windows QEMU installation, KVM,
 privileged host container, or global binfmt/namespace configuration is needed.
