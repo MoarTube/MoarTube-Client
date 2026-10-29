@@ -9,6 +9,49 @@ Completed npm, desktop-tool and verified source downloads are saved immediately,
 before later preparation, tests or compilation can fail. Compiled FFmpeg is
 verified and cached immediately after a successful build/package step.
 
+## Independent target workflows
+
+Each Electron and FFmpeg workflow is manual-only and builds one OS/architecture.
+Choose the target in Actions; no architecture build launches or waits for another.
+Every build workflow filename names its architecture explicitly: `-x64.yml` or
+`-arm64.yml`. Electron workflow filenames start with `electron-build-`.
+
+| Target | Electron workflow | FFmpeg-only workflow |
+| --- | --- | --- |
+| Windows x64 | `electron-build-windows-x64.yml` | `ffmpeg-build-windows-x64.yml` |
+| Linux x64 | `electron-build-linux-x64.yml` | `ffmpeg-build-linux-x64.yml` |
+| Linux ARM64 | `electron-build-linux-arm64.yml` | `ffmpeg-build-linux-arm64.yml` |
+| macOS Intel x64 | `electron-build-darwin-x64.yml` | `ffmpeg-build-darwin-x64.yml` |
+| macOS Apple Silicon ARM64 | `electron-build-darwin-arm64.yml` | `ffmpeg-build-darwin-arm64.yml` |
+
+Each desktop workflow can upload only its own verified assets to an existing
+draft. To collect several targets, run their workflows separately at the same
+commit with the same draft tag. macOS retains a two-OS verification matrix for
+the selected architecture (macOS 15 and 26); it does not build the other CPU target.
+
+### Cache reuse across workflows
+
+Cache-key formulas and cached paths do not depend on workflow filenames. A standalone
+FFmpeg run and its matching desktop run restore/save the same verified compiled
+candidate. Linux x64/ARM64 share their source-download cache; Intel/ARM64 macOS
+share theirs. Compiled binaries remain isolated by OS/CPU and recipe/toolchain.
+Linux desktop dependency tar archives remain architecture-specific.
+
+The FFmpeg recipe fingerprint currently includes `tooling/ffmpeg/README.md`.
+Updating its workflow links changes that fingerprint once, so a new compiled
+cache may be required after this rename. Subsequent matching Electron and
+FFmpeg runs still share the new target-specific compiled cache.
+
+Mac npm and Electron/packaging download caches also have same-OS fallback restore
+keys. A different architecture can seed compatible downloaded files; preparation
+fetches missing target assets and validates downloads before saving the original
+architecture-specific exact key. Installed `node_modules` and compiled FFmpeg
+never use these fallback keys.
+
+Cache reuse follows GitHub's branch/tag scope and cache-version rules (which
+include cached paths and compression format). Workflow filenames do not define
+that scope. See [GitHub's cache reference](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching).
+
 The workflows use Node 24-based GitHub Actions: checkout/setup-node v6,
 cache restore/save v5, upload-artifact v6 and download-artifact v7. The project
 Node version remains 24.22.1. Automatic package-manager caching in setup-node is

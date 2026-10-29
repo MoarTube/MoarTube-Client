@@ -1,11 +1,30 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const {
+  supportsDesktopTarget,
   isLocalNavigation,
   isExternalLink,
   readyOrigin,
   allowPermission,
 } = require('../policy.cjs');
+
+test('startup accepts Apple Silicon and the other packaged targets while rejecting unsupported hosts', () => {
+  for (const [platform, arch] of [
+    ['win32', 'x64'],
+    ['linux', 'x64'],
+    ['linux', 'arm64'],
+    ['darwin', 'x64'],
+    ['darwin', 'arm64'],
+  ])
+    assert.equal(supportsDesktopTarget(platform, arch), true, `${platform}-${arch}`);
+  for (const [platform, arch] of [
+    ['win32', 'arm64'],
+    ['darwin', 'ia32'],
+    ['linux', 'arm'],
+    ['freebsd', 'x64'],
+  ])
+    assert.equal(supportsDesktopTarget(platform, arch), false, `${platform}-${arch}`);
+});
 
 test('only accepts a private loopback backend readiness message', () => {
   assert.equal(

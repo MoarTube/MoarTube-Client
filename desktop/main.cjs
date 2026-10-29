@@ -2,7 +2,13 @@ const { app, BrowserWindow, Menu, dialog, shell, utilityProcess } = require('ele
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, fork } = require('node:child_process');
-const { isLocalNavigation, isExternalLink, readyOrigin, allowPermission } = require('./policy.cjs');
+const {
+  supportsDesktopTarget,
+  isLocalNavigation,
+  isExternalLink,
+  readyOrigin,
+  allowPermission,
+} = require('./policy.cjs');
 const linuxProcesses = require('./linux-processes.cjs');
 
 app.setName('MoarTube Client');
@@ -108,15 +114,9 @@ if (!app.requestSingleInstanceLock()) {
   app
     .whenReady()
     .then(async () => {
-      if (
-        !(
-          (process.platform === 'win32' && process.arch === 'x64') ||
-          (process.platform === 'linux' && ['x64', 'arm64'].includes(process.arch)) ||
-          (process.platform === 'darwin' && process.arch === 'x64')
-        )
-      )
+      if (!supportsDesktopTarget(process.platform, process.arch))
         throw new Error(
-          'This desktop candidate supports Windows x64, Linux x64/ARM64 and macOS x64.'
+          'This Electron candidate supports Windows x64, Linux x64/ARM64 and macOS x64/ARM64.'
         );
       const userData = app.getPath('userData');
       fs.mkdirSync(path.join(userData, 'logs'), { recursive: true });

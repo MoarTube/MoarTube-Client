@@ -29,10 +29,10 @@ notes file does not replace the description you wrote on GitHub. Sources remain
 an optional download for users and must remain available beside the binaries.
 
 Uploads start only after the prerequisite build/test jobs succeed. Windows runs
-the packaged GUI smoke test before contributing. Linux waits for both native
-architecture jobs. macOS waits for both native architecture builds and all four
-OS verification jobs (Intel and ARM64, each on macOS 15 and 26), then contributes
-the two architecture-specific sets of downloads.
+the packaged GUI smoke test before contributing. Each Linux architecture waits
+only for its own build and container verification. Each macOS architecture waits
+for its own build and its two OS verification jobs (macOS 15 and 26). Separate
+architecture workflows contribute independently; neither requires the other to run.
 Upload jobs alone have `contents: write`; compilation jobs keep read access.
 
 The uploader requires an existing draft and checks its effective commit against

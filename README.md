@@ -70,8 +70,8 @@ physical Pi desktop/GPU qualification remains separate.
 ## macOS Intel and Apple Silicon desktop options
 
 Darwin x64 and ARM64 have native FFmpeg and Electron DMG/ZIP build scripts targeting macOS 15+.
-Use the **macOS Intel and Apple Silicon desktop candidate** GitHub Actions workflow to build and
-test from Windows. On an Intel Mac, run `npm run ffmpeg:build:darwin`,
+Choose **macOS Intel x64 Electron candidate** or **macOS Apple Silicon ARM64 Electron candidate**
+in GitHub Actions to build and test either architecture independently from Windows. On an Intel Mac, run `npm run ffmpeg:build:darwin`,
 `npm run desktop:build:darwin` and `npm run desktop:verify:darwin`.
 On Apple Silicon, use `npm run ffmpeg:build:darwin:arm64`,
 `npm run desktop:build:darwin:arm64` and `npm run desktop:verify:darwin:arm64`.

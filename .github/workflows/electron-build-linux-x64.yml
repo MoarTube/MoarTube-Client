@@ -1,0 +1,141 @@
+name: Linux x64 Electron candidate
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Draft release tag
+        type: string
+        required: true
+        default: ''
+permissions:
+  contents: read
+env:
+  MOARTUBE_RELEASE_TAG: ${{ inputs.release_tag }}
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          package-manager-cache: false
+          node-version: 24.22.1
+      - name: Restore verified FFmpeg downloads
+        uses: actions/cache/restore@v5
+        id: ffmpeg-downloads
+        with:
+          path: |
+            build/ffmpeg/cache/sources
+          key: ffmpeg-downloads-v1-${{ runner.os }}-${{ hashFiles('tooling/ffmpeg/sources.lock.json') }}
+      - name: Identify compiled FFmpeg cache
+        id: ffmpeg-key
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs key linux-x64
+      - name: Restore compiled FFmpeg candidate
+        uses: actions/cache/restore@v5
+        id: compiled-ffmpeg
+        with:
+          path: |-
+            build/ffmpeg/install/linux-x64/bin
+            build/ffmpeg/candidates/linux-x64
+            build/ffmpeg/releases/linux-x64
+            build/ffmpeg/state/linux-x64
+            build/ffmpeg/reports/linux-x64/*.json
+            build/ffmpeg/reports/linux-x64/software/result.json
+          key: ${{ steps.ffmpeg-key.outputs.key }}
+      - name: Verify restored FFmpeg candidate
+        if: steps.compiled-ffmpeg.outputs.cache-hit == 'true'
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs verify linux-x64
+      - name: Restore desktop dependency downloads
+        uses: actions/cache/restore@v5
+        id: desktop-dependencies
+        with:
+          path: build/desktop/cache/dependencies/x64
+          key: desktop-dependencies-v1-linux-x64-${{ hashFiles('package-lock.json', 'scripts/prefetch-desktop-tools.mjs', 'desktop/builder-cache.cjs', 'desktop/linux/dependencies.Dockerfile') }}
+      - name: Download npm, Electron and packaging tools
+        run: node scripts/prepare-linux-dependencies.mjs --arch=x64 --desktop --downloads-only
+      - name: Save desktop dependency downloads
+        if: steps.desktop-dependencies.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: build/desktop/cache/dependencies/x64
+          key: ${{ steps.desktop-dependencies.outputs.cache-primary-key }}
+      - name: Download and verify all FFmpeg inputs
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+        run: node tooling/ffmpeg/scripts/download-inputs.mjs linux-x64
+      - name: Check complete download cache
+        if: ${{ !cancelled() && steps.ffmpeg-downloads.outputs.cache-hit != 'true' }}
+        id: ffmpeg-cache-ready
+        run: node tooling/ffmpeg/scripts/check-download-cache.mjs linux
+      - name: Save verified FFmpeg downloads
+        if: ${{ !cancelled() && steps.ffmpeg-cache-ready.outputs.complete == 'true' }}
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            build/ffmpeg/cache/sources
+          key: ${{ steps.ffmpeg-downloads.outputs.cache-primary-key }}
+      - name: Prepare all compiler and runtime containers
+        run: node scripts/prepare-linux-dependencies.mjs --arch=x64 --desktop --environment-only ${{ steps.compiled-ffmpeg.outputs.cache-hit == 'true' && '--skip-compiler' || '' }}
+      - run: npm run ffmpeg:test:tooling
+      - run: npm run ffmpeg:build:linux -- --arch=x64
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+      - name: Validate compiled candidate for caching
+        id: compiled-cache-ready
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs save linux-x64
+      - name: Save verified compiled FFmpeg
+        if: steps.compiled-cache-ready.outcome == 'success'
+        uses: actions/cache/save@v5
+        with:
+          path: |-
+            build/ffmpeg/install/linux-x64/bin
+            build/ffmpeg/candidates/linux-x64
+            build/ffmpeg/releases/linux-x64
+            build/ffmpeg/state/linux-x64
+            build/ffmpeg/reports/linux-x64/*.json
+            build/ffmpeg/reports/linux-x64/software/result.json
+          key: ${{ steps.compiled-ffmpeg.outputs.cache-primary-key }}
+      - run: npm run desktop:build:linux -- --arch=x64
+      - run: npm run desktop:verify:linux -- --arch=x64
+      - uses: actions/upload-artifact@v6
+        if: ${{ !cancelled() }}
+        with:
+          name: moartube-client-linux-x64-candidate
+          path: |
+            build/desktop/releases/linux-x64/*/*.deb
+            build/desktop/releases/linux-x64/*/*.tar.gz
+            build/desktop/releases/linux-x64/*/*.tar.xz
+            build/desktop/releases/linux-x64/*/SHA256SUMS-linux-x64.txt
+            build/desktop/releases/linux-x64/*/RELEASE-NOTES-linux-x64.md
+            build/desktop/reports/linux-x64/
+          retention-days: 14
+    env:
+      MOARTUBE_FFMPEG_OFFLINE: '1'
+      MOARTUBE_DEPENDENCIES_PREPARED: '1'
+  upload-draft:
+    name: Upload verified linux-x64 assets to draft
+    needs: linux
+    if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    concurrency:
+      group: draft-upload-${{ github.repository }}-${{ inputs.release_tag }}-linux-x64
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          package-manager-cache: false
+          node-version: 24.22.1
+      - uses: actions/download-artifact@v7
+        with:
+          name: moartube-client-linux-x64-candidate
+          path: build/release-upload
+      - name: Upload linux-x64 downloads to existing draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/upload-desktop-draft.mjs linux-x64 build/release-upload

@@ -1,3 +1,10 @@
+function supportsDesktopTarget(platform, arch) {
+  return (
+    (platform === 'win32' && arch === 'x64') ||
+    (['linux', 'darwin'].includes(platform) && ['x64', 'arm64'].includes(arch))
+  );
+}
+
 function isLocalNavigation(url, origin) {
   try {
     return new URL(url).origin === origin;
@@ -37,4 +44,10 @@ function readyOrigin(message) {
 function allowPermission(permission, url, origin) {
   return permission === 'clipboard-sanitized-write' && isLocalNavigation(url, origin);
 }
-module.exports = { isLocalNavigation, isExternalLink, readyOrigin, allowPermission };
+module.exports = {
+  supportsDesktopTarget,
+  isLocalNavigation,
+  isExternalLink,
+  readyOrigin,
+  allowPermission,
+};

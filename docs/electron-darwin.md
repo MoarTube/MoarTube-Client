@@ -1,4 +1,4 @@
-# macOS Intel and Apple Silicon desktop candidates
+# macOS Intel and Apple Silicon Electron candidates
 
 Darwin x64 targets Intel Macs; Darwin ARM64 targets Apple Silicon Macs. Both
 use macOS 15.0 as their deployment baseline. The repository includes
@@ -8,23 +8,29 @@ compilation and GUI results. Windows-side tests do not establish Mac execution.
 
 ## Build from Windows through GitHub Actions
 
-For FFmpeg alone, run **macOS Intel and Apple Silicon FFmpeg candidate**
-(`ffmpeg-build-darwin.yml`). It builds/verifies FFmpeg and FFprobe and uploads
-runtime/source archives, checksums and reports without building Electron.
-The desktop workflow also runs on pushes to `project-refactor`; the standalone
-FFmpeg workflow is manual-only. Both build x64 and ARM64 in separate native jobs.
+Choose one architecture's workflow in Actions:
 
-Push the changes to GitHub, then open **Actions → macOS Intel and Apple Silicon desktop candidate
-→ Run workflow**. The workflow must be on the default branch for its manual
-trigger to appear. It builds Intel on `macos-15-intel` and ARM64 on `macos-15`. Each architecture
-is then tested on macOS 15 and 26 (`macos-15-intel`/`macos-26-intel` for Intel;
-`macos-15`/`macos-26` for ARM64). Verification downloads the exact build artifacts,
-without recompiling them on the newer OS. Download the candidate and verification
-artifacts from the run. A manual desktop run also uploads verified downloads to
-the existing draft named by **Draft release tag**, after both builds and all four OS verification
-jobs pass. See [draft releases](draft-releases.md). Nothing is published
-automatically. Standard runners
-are free for public repositories; private repositories have usage allowances.
+| Target | FFmpeg only | Desktop build and verification |
+| --- | --- | --- |
+| Intel x64 | `ffmpeg-build-darwin-x64.yml` | `electron-build-darwin-x64.yml` |
+| Apple Silicon ARM64 | `ffmpeg-build-darwin-arm64.yml` | `electron-build-darwin-arm64.yml` |
+
+All four are manual-only. Selecting one architecture does not build or wait for
+the other. Every workflow filename includes its CPU target. Standalone FFmpeg
+workflows upload runtime/source archives, checksums and reports without Electron.
+
+Push the changes to GitHub, then open the selected workflow under Actions and
+choose **Run workflow**. The workflow must be on the default branch for its manual
+trigger to appear. Intel builds on `macos-15-intel` and verifies the exact desktop
+downloads on `macos-15-intel` and `macos-26-intel`. ARM64 builds on `macos-15` and
+verifies its exact downloads on `macos-15` and `macos-26`. Verification does not
+recompile the app on the newer OS.
+
+A manual desktop run uploads only that architecture's verified downloads to the
+existing draft named by **Draft release tag**, after its own build and both OS
+verification jobs pass. Run the other architecture separately if wanted, using
+the same commit and draft tag. Nothing is published automatically. See
+[draft releases](draft-releases.md) and [cache reuse](build-preparation-and-caching.md).
 
 Windows/WSL/Docker do not provide a macOS runtime. Use the following commands on an Intel
 Mac or its matching GitHub runner:
@@ -70,6 +76,10 @@ actual hardware execution remains unqualified until tested on a suitable Mac.
 
 The CPU baseline is generic x86-64 for Intel and ARMv8-A for Apple Silicon;
 the deployment target is macOS 15.0 for both.
+libvpx uses `arm64-darwin24-gcc` on Apple Silicon, matching Darwin 24/macOS 15.
+Its unversioned `arm64-darwin-gcc` tuple selects the iOS SDK in the locked
+libvpx 1.15.2 configure script, producing incompatible iPhoneOS/macOS compiler
+flags. Setting `SDKROOT` alone does not override that target-specific selection.
 Qualification rejects wrong Mach-O architectures, newer deployment requirements
 and FFmpeg dependencies on Homebrew/build-machine paths. Compiler/SDK versions
 are recorded, not hermetically pinned; bit-for-bit reproducibility is not claimed.

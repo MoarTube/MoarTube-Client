@@ -68,8 +68,9 @@ Development regression checks passed: type checking, 159 client unit tests
 (two opt-in hardware tests skipped), nine FFmpeg tooling tests, the existing
 Windows compiled-feature check, and the existing Linux x64 feature/software
 checks on both Ubuntu runtimes. Existing Windows and Linux x64 binary hashes
-remained unchanged. CI now builds both architectures, using native
-`ubuntu-24.04-arm` runners for ARM64; this local work did not launch remote CI.
+remained unchanged. Independent workflows cover each architecture:
+`ffmpeg-build-linux-x64.yml` for x64 and `ffmpeg-build-linux-arm64.yml` on native
+`ubuntu-24.04-arm` for ARM64. This local work did not launch remote CI.
 
 ## Remaining qualification
 

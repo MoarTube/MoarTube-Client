@@ -1,0 +1,88 @@
+name: Linux x64 FFmpeg candidate
+on:
+  workflow_dispatch: null
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          package-manager-cache: false
+          node-version: 24.22.1
+      - name: Restore verified FFmpeg downloads
+        uses: actions/cache/restore@v5
+        id: ffmpeg-downloads
+        with:
+          path: |
+            build/ffmpeg/cache/sources
+          key: ffmpeg-downloads-v1-${{ runner.os }}-${{ hashFiles('tooling/ffmpeg/sources.lock.json') }}
+      - name: Identify compiled FFmpeg cache
+        id: ffmpeg-key
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs key linux-x64
+      - name: Restore compiled FFmpeg candidate
+        uses: actions/cache/restore@v5
+        id: compiled-ffmpeg
+        with:
+          path: |-
+            build/ffmpeg/install/linux-x64/bin
+            build/ffmpeg/candidates/linux-x64
+            build/ffmpeg/releases/linux-x64
+            build/ffmpeg/state/linux-x64
+            build/ffmpeg/reports/linux-x64/*.json
+            build/ffmpeg/reports/linux-x64/software/result.json
+          key: ${{ steps.ffmpeg-key.outputs.key }}
+      - name: Verify restored FFmpeg candidate
+        if: steps.compiled-ffmpeg.outputs.cache-hit == 'true'
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs verify linux-x64
+      - name: Download and verify all FFmpeg inputs
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+        run: node tooling/ffmpeg/scripts/download-inputs.mjs linux-x64
+      - name: Check complete download cache
+        if: ${{ !cancelled() && steps.ffmpeg-downloads.outputs.cache-hit != 'true' }}
+        id: ffmpeg-cache-ready
+        run: node tooling/ffmpeg/scripts/check-download-cache.mjs linux
+      - name: Save verified FFmpeg downloads
+        if: ${{ !cancelled() && steps.ffmpeg-cache-ready.outputs.complete == 'true' }}
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            build/ffmpeg/cache/sources
+          key: ${{ steps.ffmpeg-downloads.outputs.cache-primary-key }}
+      - name: Prepare all compiler and runtime containers
+        run: node scripts/prepare-linux-dependencies.mjs --arch=x64 ${{ steps.compiled-ffmpeg.outputs.cache-hit == 'true' && '--skip-compiler' || '' }}
+      - run: npm run ffmpeg:test:tooling
+      - run: npm run ffmpeg:build:linux -- --arch=x64
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+      - name: Validate compiled candidate for caching
+        id: compiled-cache-ready
+        if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs save linux-x64
+      - name: Save verified compiled FFmpeg
+        if: steps.compiled-cache-ready.outcome == 'success'
+        uses: actions/cache/save@v5
+        with:
+          path: |-
+            build/ffmpeg/install/linux-x64/bin
+            build/ffmpeg/candidates/linux-x64
+            build/ffmpeg/releases/linux-x64
+            build/ffmpeg/state/linux-x64
+            build/ffmpeg/reports/linux-x64/*.json
+            build/ffmpeg/reports/linux-x64/software/result.json
+          key: ${{ steps.compiled-ffmpeg.outputs.cache-primary-key }}
+      - run: npm run ffmpeg:verify:linux:runtimes -- --arch=x64
+      - uses: actions/upload-artifact@v6
+        if: ${{ !cancelled() }}
+        with:
+          name: ffmpeg-linux-x64-candidate
+          path: |
+            build/ffmpeg/releases/linux-x64/*/*.tar.xz
+            build/ffmpeg/releases/linux-x64/*/SHA256SUMS.txt
+            build/ffmpeg/reports/linux-x64/
+          retention-days: 14
+    env:
+      MOARTUBE_FFMPEG_OFFLINE: '1'
+      MOARTUBE_DEPENDENCIES_PREPARED: '1'

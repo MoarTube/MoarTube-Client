@@ -15,7 +15,8 @@ case "$arch" in
     ffmpeg_arch=aarch64
     cpu=generic
     cpu_flags="-march=armv8-a"
-    vpx_target=arm64-darwin-gcc
+    # libvpx treats bare arm*-darwin-* as iOS; Darwin 24 selects macOS 15.
+    vpx_target=arm64-darwin24-gcc
     ;;
   *) echo "Unsupported Darwin architecture: $arch" >&2; exit 1 ;;
 esac

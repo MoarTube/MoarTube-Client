@@ -1,4 +1,4 @@
-name: Linux desktop candidate
+name: Linux ARM64 Electron candidate
 on:
   workflow_dispatch:
     inputs:
@@ -13,15 +13,7 @@ env:
   MOARTUBE_RELEASE_TAG: ${{ inputs.release_tag }}
 jobs:
   linux:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: x64
-            runner: ubuntu-24.04
-          - arch: arm64
-            runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 150
     steps:
       - uses: actions/checkout@v6
@@ -38,39 +30,39 @@ jobs:
           key: ffmpeg-downloads-v1-${{ runner.os }}-${{ hashFiles('tooling/ffmpeg/sources.lock.json') }}
       - name: Identify compiled FFmpeg cache
         id: ffmpeg-key
-        run: node tooling/ffmpeg/scripts/compiled-cache.mjs key linux-${{ matrix.arch }}
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs key linux-arm64
       - name: Restore compiled FFmpeg candidate
         uses: actions/cache/restore@v5
         id: compiled-ffmpeg
         with:
           path: |-
-            build/ffmpeg/install/linux-${{ matrix.arch }}/bin
-            build/ffmpeg/candidates/linux-${{ matrix.arch }}
-            build/ffmpeg/releases/linux-${{ matrix.arch }}
-            build/ffmpeg/state/linux-${{ matrix.arch }}
-            build/ffmpeg/reports/linux-${{ matrix.arch }}/*.json
-            build/ffmpeg/reports/linux-${{ matrix.arch }}/software/result.json
+            build/ffmpeg/install/linux-arm64/bin
+            build/ffmpeg/candidates/linux-arm64
+            build/ffmpeg/releases/linux-arm64
+            build/ffmpeg/state/linux-arm64
+            build/ffmpeg/reports/linux-arm64/*.json
+            build/ffmpeg/reports/linux-arm64/software/result.json
           key: ${{ steps.ffmpeg-key.outputs.key }}
       - name: Verify restored FFmpeg candidate
         if: steps.compiled-ffmpeg.outputs.cache-hit == 'true'
-        run: node tooling/ffmpeg/scripts/compiled-cache.mjs verify linux-${{ matrix.arch }}
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs verify linux-arm64
       - name: Restore desktop dependency downloads
         uses: actions/cache/restore@v5
         id: desktop-dependencies
         with:
-          path: build/desktop/cache/dependencies/${{ matrix.arch }}
-          key: desktop-dependencies-v1-linux-${{ matrix.arch }}-${{ hashFiles('package-lock.json', 'scripts/prefetch-desktop-tools.mjs', 'desktop/builder-cache.cjs', 'desktop/linux/dependencies.Dockerfile') }}
+          path: build/desktop/cache/dependencies/arm64
+          key: desktop-dependencies-v1-linux-arm64-${{ hashFiles('package-lock.json', 'scripts/prefetch-desktop-tools.mjs', 'desktop/builder-cache.cjs', 'desktop/linux/dependencies.Dockerfile') }}
       - name: Download npm, Electron and packaging tools
-        run: node scripts/prepare-linux-dependencies.mjs --arch=${{ matrix.arch }} --desktop --downloads-only
+        run: node scripts/prepare-linux-dependencies.mjs --arch=arm64 --desktop --downloads-only
       - name: Save desktop dependency downloads
         if: steps.desktop-dependencies.outputs.cache-hit != 'true'
         uses: actions/cache/save@v5
         with:
-          path: build/desktop/cache/dependencies/${{ matrix.arch }}
+          path: build/desktop/cache/dependencies/arm64
           key: ${{ steps.desktop-dependencies.outputs.cache-primary-key }}
       - name: Download and verify all FFmpeg inputs
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
-        run: node tooling/ffmpeg/scripts/download-inputs.mjs linux-${{ matrix.arch }}
+        run: node tooling/ffmpeg/scripts/download-inputs.mjs linux-arm64
       - name: Check complete download cache
         if: ${{ !cancelled() && steps.ffmpeg-downloads.outputs.cache-hit != 'true' }}
         id: ffmpeg-cache-ready
@@ -83,45 +75,45 @@ jobs:
             build/ffmpeg/cache/sources
           key: ${{ steps.ffmpeg-downloads.outputs.cache-primary-key }}
       - name: Prepare all compiler and runtime containers
-        run: node scripts/prepare-linux-dependencies.mjs --arch=${{ matrix.arch }} --desktop --environment-only ${{ steps.compiled-ffmpeg.outputs.cache-hit == 'true' && '--skip-compiler' || '' }}
+        run: node scripts/prepare-linux-dependencies.mjs --arch=arm64 --desktop --environment-only ${{ steps.compiled-ffmpeg.outputs.cache-hit == 'true' && '--skip-compiler' || '' }}
       - run: npm run ffmpeg:test:tooling
-      - run: npm run ffmpeg:build:linux -- --arch=${{ matrix.arch }}
+      - run: npm run ffmpeg:build:linux -- --arch=arm64
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
       - name: Validate compiled candidate for caching
         id: compiled-cache-ready
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
-        run: node tooling/ffmpeg/scripts/compiled-cache.mjs save linux-${{ matrix.arch }}
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs save linux-arm64
       - name: Save verified compiled FFmpeg
         if: steps.compiled-cache-ready.outcome == 'success'
         uses: actions/cache/save@v5
         with:
           path: |-
-            build/ffmpeg/install/linux-${{ matrix.arch }}/bin
-            build/ffmpeg/candidates/linux-${{ matrix.arch }}
-            build/ffmpeg/releases/linux-${{ matrix.arch }}
-            build/ffmpeg/state/linux-${{ matrix.arch }}
-            build/ffmpeg/reports/linux-${{ matrix.arch }}/*.json
-            build/ffmpeg/reports/linux-${{ matrix.arch }}/software/result.json
+            build/ffmpeg/install/linux-arm64/bin
+            build/ffmpeg/candidates/linux-arm64
+            build/ffmpeg/releases/linux-arm64
+            build/ffmpeg/state/linux-arm64
+            build/ffmpeg/reports/linux-arm64/*.json
+            build/ffmpeg/reports/linux-arm64/software/result.json
           key: ${{ steps.compiled-ffmpeg.outputs.cache-primary-key }}
-      - run: npm run desktop:build:linux -- --arch=${{ matrix.arch }}
-      - run: npm run desktop:verify:linux -- --arch=${{ matrix.arch }}
+      - run: npm run desktop:build:linux -- --arch=arm64
+      - run: npm run desktop:verify:linux -- --arch=arm64
       - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
-          name: moartube-client-linux-${{ matrix.arch }}-candidate
+          name: moartube-client-linux-arm64-candidate
           path: |
-            build/desktop/releases/linux-${{ matrix.arch }}/*/*.deb
-            build/desktop/releases/linux-${{ matrix.arch }}/*/*.tar.gz
-            build/desktop/releases/linux-${{ matrix.arch }}/*/*.tar.xz
-            build/desktop/releases/linux-${{ matrix.arch }}/*/SHA256SUMS-linux-${{ matrix.arch }}.txt
-            build/desktop/releases/linux-${{ matrix.arch }}/*/RELEASE-NOTES-linux-${{ matrix.arch }}.md
-            build/desktop/reports/linux-${{ matrix.arch }}/
+            build/desktop/releases/linux-arm64/*/*.deb
+            build/desktop/releases/linux-arm64/*/*.tar.gz
+            build/desktop/releases/linux-arm64/*/*.tar.xz
+            build/desktop/releases/linux-arm64/*/SHA256SUMS-linux-arm64.txt
+            build/desktop/releases/linux-arm64/*/RELEASE-NOTES-linux-arm64.md
+            build/desktop/reports/linux-arm64/
           retention-days: 14
     env:
       MOARTUBE_FFMPEG_OFFLINE: '1'
       MOARTUBE_DEPENDENCIES_PREPARED: '1'
   upload-draft:
-    name: Upload verified linux assets to draft
+    name: Upload verified linux-arm64 assets to draft
     needs: linux
     if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
     runs-on: ubuntu-24.04
@@ -129,7 +121,7 @@ jobs:
     permissions:
       contents: write
     concurrency:
-      group: draft-upload-${{ github.repository }}-${{ inputs.release_tag }}-linux
+      group: draft-upload-${{ github.repository }}-${{ inputs.release_tag }}-linux-arm64
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v6
@@ -141,12 +133,8 @@ jobs:
           node-version: 24.22.1
       - uses: actions/download-artifact@v7
         with:
-          pattern: moartube-client-linux-*-candidate
+          name: moartube-client-linux-arm64-candidate
           path: build/release-upload
-      - name: Upload linux-x64 downloads to existing draft
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/upload-desktop-draft.mjs linux-x64 build/release-upload
       - name: Upload linux-arm64 downloads to existing draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

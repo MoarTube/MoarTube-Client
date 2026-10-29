@@ -1,4 +1,4 @@
-name: Windows desktop candidate
+name: Windows x64 Electron candidate
 on:
   workflow_dispatch:
     inputs:

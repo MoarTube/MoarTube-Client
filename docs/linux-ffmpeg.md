@@ -107,8 +107,10 @@ constitute native Linux desktop or GPU qualification. NVIDIA, AMD and Intel each
 still require real Linux decode/scale/encode, publishing, RTMP/HLS live,
 adapter-selection and cancellation tests before release claims.
 
-The manual `ffmpeg-build-linux.yml` workflow uses the same recipe and uploads
-runtime/source archives and reports. It does not publish a release. Linux Electron
+The manual `ffmpeg-build-linux-x64.yml` (x64) and `ffmpeg-build-linux-arm64.yml`
+(ARM64) workflows independently use the same recipe and upload their target's
+runtime/source archives and reports. Matching download and compiled caches are
+shared with the corresponding desktop workflows. It does not publish a release. Linux Electron
 packaging is available through the [desktop build](electron-linux.md); native GPU,
 signing and full Node-connected desktop qualification remain separate work.
 

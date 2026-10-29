@@ -111,7 +111,7 @@ The ARM64 verification command above uses a full-system Debian Trixie VM.
 `desktop:verify:linux:arm64:vm` remains an alias for the same command.
 On native ARM64 Docker, use `npm run desktop:verify:linux:arm64:native`
 to test Ubuntu 24.04, Ubuntu 26.04 and Debian Trixie containers instead.
-The CI matrix uses this same native container verifier through
+The independent ARM64 CI workflow uses this same native container verifier through
 `desktop:verify:linux -- --arch=arm64`. Container GUI verification rejects
 architecture mismatches before creating test containers: user-mode QEMU cannot
 run Chromium's namespace sandbox. User-mode emulation remains useful for
@@ -180,9 +180,13 @@ download URL/checksum. Sources remain an optional download for users.
 
 Linux checksums and release-note filenames are platform-specific so they can
 coexist with Windows assets in the same GitHub Release. The manual
-`desktop-linux.yml` workflow builds FFmpeg and Electron, runs container tests,
-and uploads candidates without publishing a release. Its matrix uses
-`ubuntu-24.04` for x64 and native `ubuntu-24.04-arm` for ARM64.
+`electron-build-linux-x64.yml` (x64) and `electron-build-linux-arm64.yml` (ARM64) workflows each
+build FFmpeg and Electron, run container tests, and upload only their target's
+candidate. They run independently and do not publish releases. The x64 workflow
+uses `ubuntu-24.04`; ARM64 uses native `ubuntu-24.04-arm`. Either can contribute
+to the same draft after its own checks pass. Compatible FFmpeg download and
+compiled caches are shared with the standalone workflows; see
+[cache reuse](build-preparation-and-caching.md).
 
 ## Validation scope
 

@@ -70,9 +70,9 @@ reported `clone: Invalid argument`, premature zygote exit and QEMU SIGTRAP. The
 renderer sandbox was kept enabled throughout. Installer/backend successes do
 not qualify the ARM64 UI or turn these failed complete runs into passes.
 
-The manual GitHub `desktop-linux.yml` workflow now has native x64 and
-`ubuntu-24.04-arm` jobs; its ARM64 job performs the complete GUI tests on native
-ARM64 rather than QEMU. Remote CI was not launched by this work. Physical Pi 5,
+The manual GitHub `electron-build-linux-arm64.yml` workflow performs the complete GUI
+tests on native `ubuntu-24.04-arm` rather than QEMU. It runs independently of
+`electron-build-linux-x64.yml`, which builds and verifies only x64. Remote CI was not launched by this work. Physical Pi 5,
 Raspberry Pi OS, 16 KiB kernel execution, Wayland, video hardware acceleration,
 full Node-connected publishing/live workflows and future-version migrations
 still require appropriate native testing. Debian Trixie containers are a useful
