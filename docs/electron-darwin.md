@@ -7,6 +7,11 @@ results. Darwin ARM64 remains future work.
 
 ## Build from Windows through GitHub Actions
 
+For FFmpeg alone, run **macOS Intel FFmpeg candidate**
+(`ffmpeg-build-darwin.yml`). It builds/verifies FFmpeg and FFprobe and uploads
+runtime/source archives, checksums and reports without building Electron.
+Both Darwin workflows also run on pushes to `project-refactor`.
+
 Push the changes to GitHub, then open **Actions → macOS Intel desktop candidate
 → Run workflow**. The workflow must be on the default branch for its manual
 trigger to appear. It builds on `macos-15-intel` and tests the same downloads on

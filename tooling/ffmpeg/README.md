@@ -16,8 +16,10 @@ There is no npm-provided FFmpeg binary or automatic PATH fallback.
 
 On native Intel macOS 15+ with Node.js 22+, Xcode command line tools, cmake,
 ninja, meson, nasm, pkg-config and xz, run `npm run ffmpeg:build:darwin`.
-The GitHub **macOS Intel desktop candidate** workflow provides this environment
-for Windows developers. Native qualification is pending the first workflow run.
+The GitHub **macOS Intel FFmpeg candidate** workflow builds FFmpeg separately;
+**macOS Intel desktop candidate** also compiles it before packaging Electron.
+Both provide native Mac environments for Windows developers.
+Native qualification is pending the first workflow run.
 See [the macOS guide](../../docs/electron-darwin.md) for details.
 
 ## Build and consume a candidate

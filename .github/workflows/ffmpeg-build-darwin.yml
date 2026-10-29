@@ -1,0 +1,36 @@
+name: macOS Intel FFmpeg candidate
+
+on:
+  push:
+    branches:
+      - project-refactor
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  darwin:
+    runs-on: macos-15-intel
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          architecture: x64
+      - name: Install compiler tools
+        run: brew install cmake ninja meson nasm pkg-config xz
+      - name: Verify tooling
+        run: npm run ffmpeg:test:tooling
+      - name: Build and verify locked Darwin sources
+        run: npm run ffmpeg:build:darwin
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: ffmpeg-darwin-x64-candidate
+          path: |
+            build/ffmpeg/releases/darwin-x64/*/*.tar.xz
+            build/ffmpeg/releases/darwin-x64/*/SHA256SUMS.txt
+            build/ffmpeg/reports/darwin-x64/
+          retention-days: 14
