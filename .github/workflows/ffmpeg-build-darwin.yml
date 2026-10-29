@@ -1,9 +1,6 @@
 name: macOS Intel FFmpeg candidate
 
 on:
-  push:
-    branches:
-      - project-refactor
   workflow_dispatch:
 
 permissions:

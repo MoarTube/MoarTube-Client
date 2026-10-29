@@ -36,7 +36,7 @@ const sourceDirectory = path.join(staging, 'source');
 const manifest = stageDesktopFfmpeg(directory, runtimeDirectory, sourceDirectory);
 if (manifest.buildId !== selection.buildId) throw new Error('FFmpeg selection build ID mismatch');
 
-const releaseTag = process.env.MOARTUBE_RELEASE_TAG ?? `v${version}`;
+const releaseTag = process.env.MOARTUBE_RELEASE_TAG || `v${version}`;
 const sourceArchive = `MoarTube-FFmpeg-${manifest.buildId}-sources.zip`;
 const releaseBase = `https://github.com/MoarTube/MoarTube-Client/releases/download/${encodeURIComponent(releaseTag)}`;
 const sourceUrl = `${releaseBase}/${sourceArchive}`;

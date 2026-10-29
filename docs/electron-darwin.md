@@ -16,7 +16,10 @@ Push the changes to GitHub, then open **Actions → macOS Intel desktop candidat
 → Run workflow**. The workflow must be on the default branch for its manual
 trigger to appear. It builds on `macos-15-intel` and tests the same downloads on
 `macos-15-intel` and `macos-26-intel`. Download the candidate and verification
-artifacts from the run. Nothing is published automatically. Standard runners
+artifacts from the run. A manual desktop run also uploads verified downloads to
+the existing draft named by **Draft release tag**, after both OS verification
+jobs pass. See [draft releases](draft-releases.md). Nothing is published
+automatically. Standard runners
 are free for public repositories; private repositories have usage allowances.
 
 Windows/WSL/Docker do not provide a macOS runtime. These commands run on an Intel

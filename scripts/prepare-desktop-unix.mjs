@@ -88,7 +88,7 @@ copyFileSync(
   path.join(output, selection.sourceArchive)
 );
 
-const releaseTag = process.env.MOARTUBE_RELEASE_TAG ?? `v${version}`;
+const releaseTag = process.env.MOARTUBE_RELEASE_TAG || `v${version}`;
 const releaseBase = `https://github.com/MoarTube/MoarTube-Client/releases/download/${encodeURIComponent(releaseTag)}`;
 const sourceUrl = `${releaseBase}/${selection.sourceArchive}`;
 writeFileSync(

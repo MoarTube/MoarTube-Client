@@ -1,13 +1,19 @@
 name: Windows desktop candidate
 
 on:
-  push:
-    branches:
-      - project-refactor
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Draft release tag'
+        type: string
+        required: true
+        default: ''
 
 permissions:
   contents: read
+
+env:
+  MOARTUBE_RELEASE_TAG: ${{ inputs.release_tag }}
 
 jobs:
   windows:
@@ -29,6 +35,8 @@ jobs:
       - run: npm test
       - run: npm run desktop:test
       - run: npm run desktop:build:windows
+      - name: Verify packaged Windows GUI
+        run: npm run desktop:verify:windows -- "build/desktop/work/win32-x64/packages/win-unpacked/MoarTube Client.exe"
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -40,3 +48,30 @@ jobs:
             build/desktop/releases/win32-x64/*/SHA256SUMS.txt
             build/desktop/releases/win32-x64/*/RELEASE-NOTES.md
           retention-days: 14
+
+  upload-draft:
+    name: Upload verified windows assets to draft
+    needs: windows
+    if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    concurrency:
+      group: draft-upload-${{ github.repository }}-${{ inputs.release_tag }}-windows
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - uses: actions/download-artifact@v4
+        with:
+          name: moartube-client-windows-candidate
+          path: build/release-upload
+      - name: Upload win32-x64 downloads to existing draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/upload-desktop-draft.mjs win32-x64 build/release-upload

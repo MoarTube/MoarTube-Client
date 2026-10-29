@@ -1,11 +1,19 @@
 name: Linux desktop candidate
+
 on:
-  push:
-    branches:
-      - project-refactor
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Draft release tag'
+        type: string
+        required: true
+        default: ''
+
 permissions:
   contents: read
+
+env:
+  MOARTUBE_RELEASE_TAG: ${{ inputs.release_tag }}
 jobs:
   linux:
     strategy:
@@ -39,3 +47,34 @@ jobs:
             build/desktop/releases/linux-${{ matrix.arch }}/*/RELEASE-NOTES-linux-${{ matrix.arch }}.md
             build/desktop/reports/linux-${{ matrix.arch }}/
           retention-days: 14
+
+  upload-draft:
+    name: Upload verified linux assets to draft
+    needs: linux
+    if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    concurrency:
+      group: draft-upload-${{ github.repository }}-${{ inputs.release_tag }}-linux
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: 'moartube-client-linux-*-candidate'
+          path: build/release-upload
+      - name: Upload linux-x64 downloads to existing draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/upload-desktop-draft.mjs linux-x64 build/release-upload
+      - name: Upload linux-arm64 downloads to existing draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/upload-desktop-draft.mjs linux-arm64 build/release-upload

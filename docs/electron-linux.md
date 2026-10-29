@@ -156,6 +156,9 @@ Docker pruning or host GPU driver installation is performed.
 
 ## GitHub Release assets
 
+The desktop workflow can upload verified downloads to an existing draft using
+its **Draft release tag** input. See [draft releases](draft-releases.md).
+
 `build/desktop/releases/linux-x64/1.1.0` contains:
 
 - `MoarTube-Client-<version>-linux-x64.deb`

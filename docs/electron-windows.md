@@ -71,6 +71,9 @@ toolchain once a release identity and credentials are available.
 
 ## GitHub Release assets
 
+The desktop workflow can upload verified downloads to an existing draft using
+its **Draft release tag** input. See [draft releases](draft-releases.md).
+
 `desktop:build:windows` produces these files in `build/desktop/releases/win32-x64/1.1.0`:
 
 - `MoarTube-Client-<version>-windows-x64-setup.exe`
