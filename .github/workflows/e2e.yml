@@ -3,9 +3,6 @@ name: Real Client-Node Playwright integration
 # The developer prepares and runs MoarTube Node on this runner's localhost:9090.
 # Hosted runners cannot supply that prerequisite; this workflow never provisions it.
 on:
-  push:
-    branches:
-      - project-refactor
   workflow_dispatch:
 
 permissions:
