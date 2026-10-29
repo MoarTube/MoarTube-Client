@@ -36,7 +36,7 @@ no Node.js or command-line setup is needed. Connect it to your existing MoarTube
 Node. Closing the window stops its jobs and exits the app.
 
 Developers can run `npm.cmd run desktop:dev` after compiling FFmpeg, or create the
-Windows installer/ZIP with `npm.cmd run desktop:dist:windows`. Outputs are in
+Windows installer/ZIP with `npm.cmd run desktop:build:windows`. Outputs are in
 `build/desktop/releases/win32-x64/1.1.0`, including a separate corresponding FFmpeg sources ZIP,
 checksums and release notes. Publish the sources ZIP alongside the installer;
 users do not need it to run the app. The current local builds are unsigned candidates;
@@ -51,15 +51,17 @@ Install the DEB with your software installer or `sudo apt install ./<download>.d
 then launch MoarTube Client from the application menu. The command
 `moartube-client-desktop` remains separate from the npm CLI.
 
-Build from Windows/WSL/Linux with `npm run desktop:dist:linux` after compiling the
+Build from Windows/WSL/Linux with `npm run desktop:build:linux` after compiling the
 Linux FFmpeg candidate. Run `npm run desktop:verify:linux` for the container tests.
 Downloads land in `build/desktop/releases/linux-x64/1.1.0`. See the
 [Linux desktop guide](docs/electron-linux.md) for storage, dependencies and
 remaining native GPU/Wayland qualification.
 
-For ARM64, use `npm run desktop:dist:linux:arm64` after
+For ARM64, use `npm run desktop:build:linux:arm64` after
 `npm run ffmpeg:build:linux:arm64`, and `npm run desktop:verify:linux:arm64`
-for validation. Downloads land in `build/desktop/releases/linux-arm64/1.1.0`.
+for full-system Debian Trixie VM validation. Native ARM64 Docker hosts can use
+`npm run desktop:verify:linux:arm64:native` for Ubuntu and Trixie container tests.
+Downloads land in `build/desktop/releases/linux-arm64/1.1.0`.
 ARM64 also tests Debian Trixie libraries for Raspberry Pi OS compatibility;
 physical Pi desktop/GPU qualification remains separate.
 
@@ -69,7 +71,7 @@ Linux x64 builds use Ubuntu 24.04 as the baseline and test exported binaries on
 Ubuntu 24.04 and 26.04. Run `npm run ffmpeg:build:linux` with Docker's Linux engine
 (WSL 2 backend on Windows). See the [Linux FFmpeg guide](docs/linux-ffmpeg.md) for
 runtime dependencies, validation and source/runtime archives. Build the Linux
-Electron DEB and standalone archive with `npm run desktop:dist:linux`; see the
+Electron DEB and standalone archive with `npm run desktop:build:linux`; see the
 [Linux desktop guide](docs/electron-linux.md) for installation and validation.
 
 Developers must compile the FFmpeg dependency for their operating system and CPU

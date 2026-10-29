@@ -48,7 +48,20 @@ locales remain included. No release was published or host application installed.
 
 ## Native ARM64 GUI qualification remains pending
 
-All three complete ARM64 verification runs returned nonzero because Chromium's
+**Follow-up:** the unchanged installed and standalone ARM64 apps passed the full
+GUI suite in a full-system Trixie ARM64 VM. The earlier failure is specific to
+user-mode emulation. See the [QEMU investigation](qemu-arm64-investigation.md)
+and `npm run desktop:verify:linux:arm64` for the repeatable verification path.
+Physical ARM64/Pi qualification remains pending.
+
+The repeatable full-system command also passed direct kernel checks: both
+renderers had seccomp mode 2, `NoNewPrivs` 1 and nested PID namespaces. The guest
+completed the entire install/portable/reinstall/uninstall suite and powered off
+cleanly. Its kernel is Debian ARM64 6.12.113 with 4 KiB pages, so the Pi's physical
+16 KiB kernel and Wayland/GPU behavior remain untested. The original assets and
+their checksums above are unchanged.
+
+The earlier three user-mode ARM64 verification runs returned nonzero because Chromium's
 graphical zygote could not start under QEMU. A separate no-space-path diagnostic
 reported `clone: Invalid argument`, premature zygote exit and QEMU SIGTRAP. The
 renderer sandbox was kept enabled throughout. Installer/backend successes do
@@ -83,10 +96,14 @@ Logs are under `build/desktop/logs/linux-arm64`; native x64 GUI results are unde
 after exporting evidence; normal failed verification runs retain them.
 
 ```powershell
-npm.cmd run desktop:dist:linux:arm64
+npm.cmd run desktop:build:linux:arm64
 npm.cmd run desktop:verify:linux:arm64
 ```
 
-The verified ARM64 FFmpeg candidate must exist first. The full verification
-command currently fails at the graphical stage under this Windows/QEMU setup;
-use native ARM64 for complete GUI qualification. See the [Linux desktop guide](electron-linux.md).
+The verified ARM64 FFmpeg candidate must exist first. The verification command
+now uses the working full-system Trixie VM by default. The explicit `:vm` alias
+remains available. On native ARM64 Docker, use
+`npm run desktop:verify:linux:arm64:native` for the three-distro container suite.
+The container verifier rejects cross-architecture GUI testing before creating
+test containers; the earlier failed runs above remain historical evidence.
+See the [Linux desktop guide](electron-linux.md).

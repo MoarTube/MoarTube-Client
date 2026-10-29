@@ -50,7 +50,7 @@ CLI or installed desktop profile.
 To build an installer and standalone ZIP:
 
 ```powershell
-npm.cmd run desktop:dist:windows
+npm.cmd run desktop:build:windows
 ```
 
 To create only the unpacked application directory:
@@ -71,7 +71,7 @@ toolchain once a release identity and credentials are available.
 
 ## GitHub Release assets
 
-`desktop:dist:windows` produces these files in `build/desktop/releases/win32-x64/1.1.0`:
+`desktop:build:windows` produces these files in `build/desktop/releases/win32-x64/1.1.0`:
 
 - `MoarTube-Client-<version>-windows-x64-setup.exe`
 - `MoarTube-Client-<version>-windows-x64.zip`
@@ -92,7 +92,7 @@ application's source-download information:
 
 ```powershell
 $env:MOARTUBE_RELEASE_TAG = 'your-release-tag'
-npm.cmd run desktop:dist:windows
+npm.cmd run desktop:build:windows
 ```
 
 Retain each corresponding source archive while its binaries remain available.
@@ -145,8 +145,8 @@ It does not kill other FFmpeg installations or processes by executable name.
 npm.cmd test
 npm.cmd run typecheck
 npm.cmd run desktop:test
-npm.cmd run desktop:smoke
-npm.cmd run desktop:smoke -- "build/desktop/work/win32-x64/packages/win-unpacked/MoarTube Client.exe"
+npm.cmd run desktop:verify:windows
+npm.cmd run desktop:verify:windows -- "build/desktop/work/win32-x64/packages/win-unpacked/MoarTube Client.exe"
 ```
 
 Smoke tests use workspace-local test profiles, verify the sign-in UI, renderer

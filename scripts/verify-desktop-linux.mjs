@@ -11,7 +11,7 @@ const layout = desktopPaths(root, target, version);
 
 const output = layout.release;
 const deb = `MoarTube-Client-${version}-${target}.deb`;
-if (!existsSync(path.join(output, deb))) throw new Error('Run npm run desktop:dist:linux first');
+if (!existsSync(path.join(output, deb))) throw new Error('Run npm run desktop:build:linux first');
 const images = JSON.parse(
   readFileSync(path.join(root, 'tooling/ffmpeg/platforms/linux/runtime-images.json'), 'utf8')
 );
@@ -36,11 +36,18 @@ const engineArchitecture = docker(['info', '--format', '{{.Architecture}}'], {
   stdio: ['ignore', 'pipe', 'inherit'],
   encoding: 'utf8',
 }).stdout.trim();
-const execution = (arch === 'arm64' ? ['arm64', 'aarch64'] : ['amd64', 'x86_64']).includes(
+const nativeEngine = (arch === 'arm64' ? ['arm64', 'aarch64'] : ['amd64', 'x86_64']).includes(
   engineArchitecture
-)
-  ? 'native-container'
-  : 'emulated-container';
+);
+if (!nativeEngine)
+  throw new Error(
+    `${target} GUI container verification requires a matching native Docker engine; found ${engineArchitecture}. ` +
+      (arch === 'arm64'
+        ? 'Run npm run desktop:verify:linux:arm64 for full-system VM verification instead.'
+        : 'Run this command on an x64 Docker engine.') +
+      ' User-mode QEMU cannot provide the namespace syscalls required by Chromium sandboxing.'
+  );
+const execution = 'native-container';
 const results = [];
 for (const [ubuntu, image] of Object.entries(images)) {
   const distro = ubuntu === 'debian-trixie' ? 'Debian Trixie' : `Ubuntu ${ubuntu}`;

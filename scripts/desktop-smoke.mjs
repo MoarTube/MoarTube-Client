@@ -102,6 +102,27 @@ try {
     preferences.sandbox !== true
   )
     throw new Error('Unexpected renderer security preferences');
+  const kernelSandbox =
+    process.platform === 'linux'
+      ? await application.evaluate(({ BrowserWindow }) => {
+          const pid = BrowserWindow.getAllWindows()[0].webContents.getOSProcessId();
+          const status = process
+            .getBuiltinModule('node:fs')
+            .readFileSync(`/proc/${pid}/status`, 'utf8');
+          return {
+            rendererPid: pid,
+            seccomp: Number(status.match(/^Seccomp:\s*(\d+)/m)?.[1]),
+            noNewPrivs: Number(status.match(/^NoNewPrivs:\s*(\d+)/m)?.[1]),
+            namespacePids: status
+              .match(/^NSpid:\s*(.+)/m)?.[1]
+              .trim()
+              .split(/\s+/)
+              .map(Number),
+          };
+        })
+      : undefined;
+  if (kernelSandbox && (kernelSandbox.seccomp !== 2 || kernelSandbox.noNewPrivs !== 1))
+    throw new Error('Renderer kernel sandbox is not active');
   const before = readFileSync(path.join(profile, 'client/_client_settings.json'), 'utf8');
   await page.reload();
   await page.locator('#sign-in-form').waitFor({ state: 'visible' });
@@ -138,6 +159,7 @@ try {
     isolation,
     sandbox: preferences.sandbox,
     chromiumSandbox,
+    kernelSandbox,
     contextIsolation: preferences.contextIsolation,
     mediaPreserved: true,
     settingsPreserved: true,

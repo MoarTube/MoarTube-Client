@@ -33,7 +33,7 @@ For version 1.1.0, publish from:
 
 Only release assets go in these folders. Unpacked application directories and
 builder diagnostics stay in `work`. `desktop:pack:*` produces only the work
-directory; `desktop:dist:*` finalizes the download files into `releases` and
+directory; `desktop:build:*` finalizes the download files into `releases` and
 writes checksums there. Keep the matching separate FFmpeg sources available.
 For Docker-based Linux builds, temporary packaging work stays in the container;
 the host receives release assets, reports and test profiles. The pre-migration

@@ -52,7 +52,7 @@ docker([
   image,
   'bash',
   '-lc',
-  'npm ci --include=optional --ignore-scripts --no-audit --no-fund && node node_modules/electron/install.js && npm run desktop:test && npm run desktop:dist:linux:native',
+  'npm ci --include=optional --ignore-scripts --no-audit --no-fund && node node_modules/electron/install.js && npm run desktop:test && npm run desktop:build:linux:native',
 ]);
 try {
   for (const item of [

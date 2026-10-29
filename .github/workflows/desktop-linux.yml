@@ -22,7 +22,7 @@ jobs:
           node-version: 22
       - run: npm run ffmpeg:test:tooling
       - run: npm run ffmpeg:build:linux -- --arch=${{ matrix.arch }}
-      - run: npm run desktop:dist:linux -- --arch=${{ matrix.arch }}
+      - run: npm run desktop:build:linux -- --arch=${{ matrix.arch }}
       - run: npm run desktop:verify:linux -- --arch=${{ matrix.arch }}
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}

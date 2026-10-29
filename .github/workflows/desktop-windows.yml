@@ -25,7 +25,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run desktop:test
-      - run: npm run desktop:dist:windows
+      - run: npm run desktop:build:windows
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:

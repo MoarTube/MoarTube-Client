@@ -91,7 +91,7 @@ backend can build from Windows without installing another Linux distro:
 
 ```powershell
 npm.cmd run ffmpeg:build:linux
-npm.cmd run desktop:dist:linux
+npm.cmd run desktop:build:linux
 npm.cmd run desktop:verify:linux
 ```
 
@@ -99,7 +99,7 @@ For ARM64, including cross-building from Windows through Docker's ARM emulation:
 
 ```powershell
 npm.cmd run ffmpeg:build:linux:arm64
-npm.cmd run desktop:dist:linux:arm64
+npm.cmd run desktop:build:linux:arm64
 npm.cmd run desktop:verify:linux:arm64
 ```
 
@@ -107,10 +107,23 @@ The FFmpeg step can be skipped when its verified ARM64 candidate already exists.
 ARM64 outputs use `build/desktop/releases/linux-arm64/1.1.0` and corresponding
 `reports`, `profiles`, `logs`, `state` and `work` folders. Native ARM64 Docker is
 faster than emulation. The default commands above continue to select x64.
-On this Windows/QEMU setup the full ARM64 verification command returns nonzero:
-installer/backend checks pass, but Chromium's graphical zygote cannot start.
-Use native ARM64 or the native ARM64 CI job for full GUI qualification; see the
-[recorded results](electron-linux-arm64-validation.md).
+The ARM64 verification command above uses a full-system Debian Trixie VM.
+`desktop:verify:linux:arm64:vm` remains an alias for the same command.
+On native ARM64 Docker, use `npm run desktop:verify:linux:arm64:native`
+to test Ubuntu 24.04, Ubuntu 26.04 and Debian Trixie containers instead.
+The CI matrix uses this same native container verifier through
+`desktop:verify:linux -- --arch=arm64`. Container GUI verification rejects
+architecture mismatches before creating test containers: user-mode QEMU cannot
+run Chromium's namespace sandbox. User-mode emulation remains useful for
+cross-building and FFmpeg runtime checks.
+
+The installed and standalone ARM64 GUI passed in a Trixie VM with an ARM64
+kernel and active renderer sandbox. This command boots its own kernel instead
+of using Docker's user-mode QEMU translation. Allow at least 6 GiB Docker RAM
+and roughly 8 GiB temporary disk space; it uses four virtual Cortex-A76 CPUs and
+4 GiB guest RAM. See the [VM guide](../desktop/linux/vm/README.md) and
+[investigation results](qemu-arm64-investigation.md). Physical Pi/Wayland/GPU
+testing remains separate.
 
 Use `npm` instead of `npm.cmd` in WSL/Linux. The FFmpeg step can be skipped when
 the verified Linux candidate already exists. Desktop packaging fails with a
@@ -124,13 +137,13 @@ For a Linux checkout with native dependencies already installed, use:
 ```bash
 npm ci
 npm run desktop:dev
-npm run desktop:dist:linux:native
+npm run desktop:build:linux:native
 # Or produce only the application directory:
 npm run desktop:pack:linux:native
 ```
 
 Native development still needs the Linux desktop libraries and a working Chromium
-sandbox. `desktop:dist:linux` supplies the isolated packaging environment instead.
+sandbox. `desktop:build:linux` supplies the isolated packaging environment instead.
 The native commands automatically select x64 or ARM64 based on Node.js. Packaging
 checks Electron, Sharp and FFmpeg ELF architectures, executable permissions, DEB
 architecture and compressed archive integrity before writing release checksums.
@@ -180,12 +193,14 @@ The standalone archive is launched from a Unicode/space path. A simulated
 existing npm CLI command is checked before and after installation/removal.
 It does not modify an installed host profile.
 
-`desktop:verify:linux:arm64` runs the same checks for ARM64, adding Debian Trixie.
+`desktop:verify:linux:arm64` runs the same checks in a full-system Trixie ARM64 VM.
+`desktop:verify:linux:arm64:native` tests native ARM64 containers on Ubuntu 24.04,
+Ubuntu 26.04 and Debian Trixie.
 Before graphical testing, a separate probe uses bundled Node, Sharp and FFmpeg
 to process an image and serve the real backend sign-in page. It verifies actual
 child-process IPC shutdown and shutdown after parent disconnect. It does not
-qualify renderer sandboxing. Reports identify native versus emulated execution, and a
-failed graphical check remains a failure even when the backend probe succeeds.
+qualify renderer sandboxing. GUI tests separately verify the renderer sandbox;
+a failed graphical check remains a failure even when the backend probe succeeds.
 
 Containers need the `SYS_ADMIN` namespace capability for this Chromium sandbox
 test; no `--no-sandbox` flag is used. These checks share the WSL Linux kernel and
