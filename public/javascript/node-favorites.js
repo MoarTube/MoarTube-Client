@@ -146,7 +146,6 @@
                 status.textContent = `Enter ${missing.map((key) => fields[key]).join(', ')} to sign in. These values will not be saved automatically.`;
                 loginForm.elements.namedItem(missing[0]).focus();
               } else {
-                status.textContent = 'Favorite loaded. Select Sign in to connect.';
                 document.getElementById('sign-in-button').focus();
               }
             },
