@@ -76,23 +76,23 @@ describe('storage metrics', () => {
       request.session = { jwtToken } as typeof request.session;
       done();
     });
-    app.get('/settings/metrics/:target', controller.apiGetMetrics);
+    app.get('/settings/metrics/:target/disk', controller.apiGetMetrics);
     try {
-      expect((await app.inject('/settings/metrics/client')).statusCode).toBe(401);
+      expect((await app.inject('/settings/metrics/client/disk')).statusCode).toBe(401);
       expect(getNodeSettings).not.toHaveBeenCalled();
       jwtToken = 'test-token';
       isAuthenticated.mockResolvedValueOnce({ isAuthenticated: false, isError: false });
-      expect((await app.inject('/settings/metrics/node')).statusCode).toBe(401);
+      expect((await app.inject('/settings/metrics/node/disk')).statusCode).toBe(401);
       await mkdir(path.join(directory, 'media'));
       await writeFile(path.join(directory, 'media', 'source.mp4'), Buffer.alloc(32));
-      const response = await app.inject('/settings/metrics/client');
+      const response = await app.inject('/settings/metrics/client/disk');
       expect(response.json<{ metrics: StorageMetrics }>().metrics.mediaBytes).toBe(32);
       expect(response.headers['cache-control']).toBe('no-store');
-      const node = await app.inject('/settings/metrics/node');
+      const node = await app.inject('/settings/metrics/node/disk');
       expect(node.json<{ metrics: StorageMetrics }>().metrics.mediaBytes).toBe(99);
       expect(getNodeMetrics).toHaveBeenCalledWith('test-token');
       getNodeSettings.mockResolvedValueOnce({ storageConfig: { storageMode: 's3provider' } });
-      const s3 = await app.inject('/settings/metrics/node');
+      const s3 = await app.inject('/settings/metrics/node/disk');
       expect(s3.json<{ metrics: StorageMetrics }>().metrics).toEqual({
         storageMode: 's3provider',
         mediaBytes: null,
@@ -101,8 +101,8 @@ describe('storage metrics', () => {
       });
       expect(getNodeMetrics).toHaveBeenCalledTimes(1);
       getNodeMetrics.mockRejectedValueOnce(new Error('Node unavailable'));
-      expect((await app.inject('/settings/metrics/node')).statusCode).toBe(500);
-      expect((await app.inject('/settings/metrics/unknown')).statusCode).toBe(404);
+      expect((await app.inject('/settings/metrics/node/disk')).statusCode).toBe(500);
+      expect((await app.inject('/settings/metrics/unknown/disk')).statusCode).toBe(404);
     } finally {
       await app.close();
     }

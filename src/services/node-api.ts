@@ -9,6 +9,7 @@ import { BaseService } from './base.js';
 import type { Logger } from '@/utils/logger.js';
 import type { Config } from '@/config/index.js';
 import type { StorageMetrics } from '@/utils/storage-metrics.js';
+import type { MemoryMetrics } from '@/utils/memory-metrics.js';
 import type {
   AuthResponse,
   NodeSettings,
@@ -241,9 +242,20 @@ export class NodeApiService extends BaseService {
     return data.externalVideosBaseUrl;
   }
 
+  public async getMemoryMetrics(jwtToken: string): Promise<MemoryMetrics> {
+    const client = await this.getClient();
+    const response = await client.get('/settings/metrics/memory', {
+      headers: { Authorization: `Bearer ${jwtToken}` },
+    });
+    const data = this.unwrapOrThrow(response.data, 'getMemoryMetrics') as {
+      metrics: MemoryMetrics;
+    };
+    return data.metrics;
+  }
+
   public async getStorageMetrics(jwtToken: string): Promise<StorageMetrics> {
     const client = await this.getClient();
-    const response = await client.get('/settings/metrics', {
+    const response = await client.get('/settings/metrics/disk', {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
     const data = this.unwrapOrThrow(response.data, 'getStorageMetrics') as {

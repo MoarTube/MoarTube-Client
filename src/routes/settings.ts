@@ -28,7 +28,13 @@ export function settingsRoutes(
 
   // Client API
   fastify.get(
-    '/metrics/:target',
+    '/metrics/:target/memory',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiGetMemoryMetrics
+  );
+
+  fastify.get(
+    '/metrics/:target/disk',
     { schema: { tags: ['Settings'] } },
     settingsController.apiGetMetrics
   );

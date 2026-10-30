@@ -30,10 +30,11 @@ class MoarTubeStorageMetrics {
   refresh() {
     if (!this.active || this.requests.size > 0) return;
     for (const target of ['client', 'node']) {
+      this.loadMemory(target);
       const prefix = '#metrics-' + target;
       $(prefix).attr('aria-busy', 'true');
       $(prefix + '-status').text('Calculating...').prop('hidden', false);
-      const request = $.ajax({ url: '/settings/metrics/' + target, dataType: 'json', timeout: 120000 });
+      const request = $.ajax({ url: '/settings/metrics/' + target + '/disk', dataType: 'json', timeout: 120000 });
       this.requests.add(request);
       request.done((data) => {
         if (data.isError || !data.metrics) {
@@ -47,24 +48,9 @@ class MoarTubeStorageMetrics {
           this.showError(target);
           return;
         }
-        $(prefix + '-local').prop('hidden', elastic);
-        $(prefix + '-elastic').prop('hidden', !elastic);
-        $(prefix + '-storage').text(elastic ? 'S3 object storage' : 'Local storage');
-        const total = elastic ? 0 : metrics.totalBytes;
-        const media = Math.min(total, elastic ? 0 : metrics.mediaBytes);
-        const occupied = Math.min(total, Math.max(media, total - metrics.availableBytes));
-        const usage = total > 0 ? occupied / total * 100 : 0;
-        const mediaShare = occupied > 0 ? media / occupied * 100 : 0;
-        $(prefix + '-capacity').prop('hidden', false);
-        $(prefix + '-occupied').css({ width: usage + '%', minWidth: media > 0 ? '3px' : '0' });
-        $(prefix + '-usage-bar').css({ width: mediaShare + '%', minWidth: media > 0 ? '3px' : '0' });
-        if (elastic || metrics.totalBytes === 0) {
-          $(prefix + '-capacity').removeAttr('aria-valuenow').attr('aria-valuetext', elastic ? 'Elastic capacity' : 'Capacity unavailable');
-        } else {
-          $(prefix + '-capacity').attr('aria-valuenow', usage).removeAttr('aria-valuetext');
-        }
+        this.renderCapacity(prefix, metrics.mediaBytes, metrics.availableBytes, metrics.totalBytes, elastic);
         for (const [field, bytes] of Object.entries(fields)) {
-          $(prefix + '-' + field).text(this.formatBytes(bytes));
+          $(prefix + '-' + field).text(elastic ? '∞' : this.formatBytes(bytes));
         }
         $(prefix + '-status').text('').prop('hidden', true);
       }).fail((_xhr, status) => {
@@ -76,11 +62,53 @@ class MoarTubeStorageMetrics {
     }
   }
 
+  renderCapacity(prefix, appBytes, availableBytes, totalBytes, elastic = false) {
+    const total = elastic ? 0 : totalBytes;
+    const app = Math.min(total, elastic ? 0 : appBytes);
+    const occupied = Math.min(total, Math.max(app, total - availableBytes));
+    const usage = total > 0 ? occupied / total * 100 : 0;
+    const appShare = occupied > 0 ? app / occupied * 100 : 0;
+    $(prefix + '-capacity').prop('hidden', false);
+    $(prefix + '-occupied').css({ width: usage + '%', minWidth: app > 0 ? '3px' : '0' });
+    $(prefix + '-usage-bar').css({ width: appShare + '%', minWidth: app > 0 ? '3px' : '0' });
+    if (elastic || total === 0) {
+      $(prefix + '-capacity').removeAttr('aria-valuenow').attr('aria-valuetext', elastic ? 'Elastic capacity' : 'Capacity unavailable');
+    } else {
+      $(prefix + '-capacity').attr('aria-valuenow', usage).removeAttr('aria-valuetext');
+    }
+  }
+
+  loadMemory(target) {
+    const prefix = '#metrics-' + target + '-memory';
+    const showError = () => {
+      for (const field of ['app', 'available', 'total']) $(prefix + '-' + field).text('—');
+      $(prefix + '-capacity').prop('hidden', true);
+      $(prefix + '-status').text('Unable to load RAM metrics. Try reloading the page.').prop('hidden', false);
+    };
+    const request = $.ajax({ url: '/settings/metrics/' + target + '/memory', dataType: 'json', timeout: 20000 });
+    this.requests.add(request);
+    request.done((data) => {
+      const memory = data.metrics;
+      if (data.isError || !memory || [memory.appBytes, memory.availableBytes, memory.totalBytes].some(value => !Number.isFinite(value) || value < 0)) {
+        showError();
+        return;
+      }
+      for (const [field, bytes] of Object.entries({ app: memory.appBytes, available: memory.availableBytes, total: memory.totalBytes })) {
+        $(prefix + '-' + field).text(this.formatBytes(bytes));
+      }
+      this.renderCapacity(prefix, memory.appBytes, memory.availableBytes, memory.totalBytes);
+      $(prefix + '-status').text('').prop('hidden', true);
+    }).fail((_xhr, status) => {
+      if (status !== 'abort') showError();
+    }).always(() => {
+      this.requests.delete(request);
+      $(prefix).attr('aria-busy', 'false');
+    });
+  }
+
   showError(target) {
     const prefix = '#metrics-' + target;
     $(prefix + '-local').prop('hidden', false);
-    $(prefix + '-elastic').prop('hidden', true);
-    $(prefix + '-storage').text('Unavailable');
     $(prefix + '-capacity').prop('hidden', true);
     for (const field of ['media', 'available', 'total']) $(prefix + '-' + field).text('—');
     $(prefix + '-status').text('Unable to load metrics. Try reloading the page.').prop('hidden', false);

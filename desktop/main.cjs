@@ -278,6 +278,7 @@ if (!app.requestSingleInstanceLock()) {
         ...process.env,
         MOARTUBE_DATA_DIR: path.join(userData, 'client'),
         MOARTUBE_DESKTOP_MODE: app.isPackaged ? 'packaged' : 'development',
+        MOARTUBE_METRICS_ROOT_PID: String(process.pid),
       };
       // Select product resources explicitly; development must not look inside
       // node_modules/electron/dist/resources for the compiled media dependency.

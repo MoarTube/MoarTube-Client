@@ -341,7 +341,6 @@
 									<div id="metrics-<%= target %>" class="border border-radius-lg p-3 h-100" aria-busy="true">
 										<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
 											<h6 class="mb-0"><%= target === 'client' ? 'Client' : 'Node' %></h6>
-											<span id="metrics-<%= target %>-storage" class="badge bg-gradient-secondary"><%= target === 'client' ? 'Local storage' : 'Calculating...' %></span>
 										</div>
 										<div id="metrics-<%= target %>-local" class="row g-3">
 											<% for (const [key, label] of [['media', 'Disk Used'], ['available', 'Disk Available'], ['total', 'Disk Capacity']]) { %>
@@ -351,7 +350,6 @@
 											</div>
 											<% } %>
 										</div>
-										<p id="metrics-<%= target %>-elastic" class="h4 text-gradient text-primary mb-0" hidden>∞ Elastic capacity</p>
 										<div id="metrics-<%= target %>-capacity" class="progress metrics-capacity bg-gray-200 mt-3" role="progressbar" aria-label="<%= target === 'client' ? 'Client' : 'Node' %> disk usage" aria-valuemin="0" aria-valuemax="100" hidden>
 											<div id="metrics-<%= target %>-occupied" class="metrics-occupied" style="width: 0%">
 												<div class="metrics-other-usage"></div>
@@ -359,6 +357,24 @@
 											</div>
 										</div>
 										<p id="metrics-<%= target %>-status" class="text-xs text-secondary mt-2 mb-0" role="status">Calculating...</p>
+										<hr class="horizontal dark my-3">
+										<div id="metrics-<%= target %>-memory" aria-busy="true">
+											<div class="row g-3">
+												<% for (const [key, label] of [['app', 'RAM Used'], ['available', 'RAM available'], ['total', 'RAM capacity']]) { %>
+												<div class="col-sm-4">
+													<p class="text-sm text-secondary mb-1"><%= label %></p>
+													<p id="metrics-<%= target %>-memory-<%= key %>" class="font-weight-bold mb-0">—</p>
+												</div>
+												<% } %>
+											</div>
+											<div id="metrics-<%= target %>-memory-capacity" class="progress metrics-capacity bg-gray-200 mt-3" role="progressbar" aria-label="<%= target === 'client' ? 'Client' : 'Node' %> RAM usage" aria-valuemin="0" aria-valuemax="100" hidden>
+												<div id="metrics-<%= target %>-memory-occupied" class="metrics-occupied" style="width: 0%">
+													<div class="metrics-other-usage"></div>
+													<div id="metrics-<%= target %>-memory-usage-bar" class="progress-bar bg-gradient-primary" style="width: 0%"></div>
+												</div>
+											</div>
+											<p id="metrics-<%= target %>-memory-status" class="text-xs text-secondary mt-2 mb-0" role="status">Calculating...</p>
+										</div>
 									</div>
 								</div>
 								<% } %>

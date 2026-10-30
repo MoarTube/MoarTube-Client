@@ -210,8 +210,19 @@
 					<h6 class="font-weight-bolder mb-0">Video Reports</h6>
 				</nav>
 				<div class="collapse navbar-collapse mt-sm-0 mt-2 me-md-0 me-sm-4" id="navbar">
-					<div class="ms-md-auto pe-md-3 d-flex align-items-center">
-					</div>
+					<form method="get" role="search" class="ms-md-auto pe-md-3 d-flex align-items-center">
+						<div class="input-group">
+							<span class="input-group-text text-body">
+								<i id="search_input_icon" class="fas fa-search" aria-hidden="true"></i>
+								<output id="search_input_spinner" class="spinner-grow text-primary spinner-grow-sm hidden-elem">
+									<span class="sr-only">Loading...</span>
+								</output>
+							</span>
+							<input type="text" id="search-input" class="form-control" name="search" value="<%=model.search%>"
+								placeholder="Search here..." maxlength="100" aria-label="Search reports and archives"
+								onfocus="focused(this)" onfocusout="defocused(this)">
+						</div>
+					</form>
 					<ul class="navbar-nav  justify-content-end">
 						<li class="nav-item d-flex align-items-center">
 							<a href="/account/signout" class="nav-link text-body font-weight-bold px-0">
@@ -237,7 +248,7 @@
 				</div>
 			</div>
 		</nav>
-		<div class="container-fluid py-4"><form method="get" class="mb-3 d-flex gap-2"><input class="form-control" name="search" value="<%=model.search%>" placeholder="Search reports and archives" maxlength="100" aria-label="Search reports and archives"><button class="btn btn-primary" type="submit">Search</button></form>
+		<div class="container-fluid py-4">
 			<div class="row ">
 				<div class="col-lg-12">
 					<div class="card">
@@ -276,6 +287,7 @@
 	<script src="/javascript/simple-datatables.js"></script>
 	<script src="/javascript/choices-9.0.1.min.js"></script>
 	<script src="/javascript/soft-ui-dashboard-1.1.0.min.js"></script>
+	<script src="/javascript/reports-search.js"></script>
 
 	<script>
 		const INCOMING_PARAMETERS = <%- JSON.stringify(model) %>;
@@ -300,6 +312,11 @@
 				this.loadVideoReports(videoReports);
 				this.loadVideoReportsArchive(videoReportsArchive);
 				this.setupEventListeners();
+				this.search = new MoarTubeReportsSearch({
+					loadReports: (reports) => this.loadVideoReports(reports),
+					loadArchives: (reports) => this.loadVideoReportsArchive(reports),
+					onError: (message) => this.showAlert(true, message),
+				});
 			}
 
 			setupEventListeners() {

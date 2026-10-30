@@ -28,11 +28,44 @@ import { randomUUID } from 'node:crypto';
 import { writeUpload } from '@/utils/stream-files.js';
 import { getStorageMetrics, type StorageMetrics } from '@/utils/storage-metrics.js';
 import { CLIENT_VERSION } from '@/utils/version.js';
+import { getMemoryMetrics } from '@/utils/memory-metrics.js';
 
 // Disable sharp cache
 sharp.cache(false);
 
 export class SettingsController extends BaseController {
+  public apiGetMemoryMetrics = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    reply.header('Cache-Control', 'no-store');
+    try {
+      const jwtToken = request.session.jwtToken ?? '';
+      if (jwtToken === '') {
+        return await this.sendError(reply, 'Sign in to view metrics', 401);
+      }
+      const auth = await this.nodeApiService.isAuthenticated(jwtToken);
+      if (auth.isError || !auth.isAuthenticated) {
+        return await this.sendError(reply, 'Sign in to view metrics', 401);
+      }
+      const { target } = request.params as { target: string };
+      if (target === 'node') {
+        return await this.sendSuccess(reply, {
+          metrics: await this.nodeApiService.getMemoryMetrics(jwtToken),
+        });
+      }
+      if (target !== 'client') {
+        return await this.sendError(reply, 'Unknown metrics target', 404);
+      }
+      const desktopPid = Number(process.env['MOARTUBE_METRICS_ROOT_PID']);
+      const rootPid = Number.isInteger(desktopPid) && desktopPid > 0 ? desktopPid : process.pid;
+      return await this.sendSuccess(reply, { metrics: await getMemoryMetrics(rootPid) });
+    } catch (error) {
+      this.logger.error('Failed to load memory metrics', error);
+      return await this.sendError(reply, 'Unable to load memory metrics');
+    }
+  };
+
   private metricsScan: Promise<StorageMetrics> | undefined;
 
   public apiGetMetrics = async (
