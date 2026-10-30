@@ -28,6 +28,12 @@ export function settingsRoutes(
 
   // Client API
   fastify.get(
+    '/metrics/:target',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiGetMetrics
+  );
+
+  fastify.get(
     '/client',
     {
       schema: { tags: ['Settings'] },

@@ -8,6 +8,7 @@ import type { Readable } from 'node:stream';
 import { BaseService } from './base.js';
 import type { Logger } from '@/utils/logger.js';
 import type { Config } from '@/config/index.js';
+import type { StorageMetrics } from '@/utils/storage-metrics.js';
 import type {
   AuthResponse,
   NodeSettings,
@@ -238,6 +239,17 @@ export class NodeApiService extends BaseService {
       externalVideosBaseUrl: string;
     };
     return data.externalVideosBaseUrl;
+  }
+
+  public async getStorageMetrics(jwtToken: string): Promise<StorageMetrics> {
+    const client = await this.getClient();
+    const response = await client.get('/settings/metrics', {
+      headers: { Authorization: `Bearer ${jwtToken}` },
+    });
+    const data = this.unwrapOrThrow(response.data, 'getStorageMetrics') as {
+      metrics: StorageMetrics;
+    };
+    return data.metrics;
   }
 
   public async getNodeSettings(jwtToken: string): Promise<NodeSettings> {

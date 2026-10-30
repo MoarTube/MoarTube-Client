@@ -26,11 +26,58 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { writeUpload } from '@/utils/stream-files.js';
+import { getStorageMetrics, type StorageMetrics } from '@/utils/storage-metrics.js';
+import { CLIENT_VERSION } from '@/utils/version.js';
 
 // Disable sharp cache
 sharp.cache(false);
 
 export class SettingsController extends BaseController {
+  private metricsScan: Promise<StorageMetrics> | undefined;
+
+  public apiGetMetrics = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    reply.header('Cache-Control', 'no-store');
+    try {
+      const jwtToken = request.session.jwtToken ?? '';
+      if (jwtToken === '') {
+        return await this.sendError(reply, 'Sign in to view metrics', 401);
+      }
+      const auth = await this.nodeApiService.isAuthenticated(jwtToken);
+      if (auth.isError || !auth.isAuthenticated) {
+        return await this.sendError(reply, 'Sign in to view metrics', 401);
+      }
+      const { target } = request.params as { target: string };
+      if (target === 'node') {
+        const settings = await this.nodeApiService.getNodeSettings(jwtToken);
+        const metrics: StorageMetrics =
+          settings.storageConfig?.storageMode === 's3provider'
+            ? {
+                storageMode: 's3provider',
+                mediaBytes: null,
+                availableBytes: null,
+                totalBytes: null,
+              }
+            : await this.nodeApiService.getStorageMetrics(jwtToken);
+        return await this.sendSuccess(reply, { metrics });
+      }
+      if (target !== 'client') {
+        return await this.sendError(reply, 'Unknown metrics target', 404);
+      }
+      this.metricsScan ??= getStorageMetrics(path.join(this.config.paths.data, 'media')).finally(
+        () => {
+          this.metricsScan = undefined;
+        }
+      );
+      return await this.sendSuccess(reply, { metrics: await this.metricsScan });
+    } catch (error) {
+      this.logger.error('Failed to load storage metrics', error);
+      return await this.sendError(reply, 'Unable to load storage metrics');
+    }
+  };
+
   private readonly nodeApiService: NodeApiService;
   private readonly config: Config;
   private readonly s3Service: S3Service;
@@ -78,7 +125,7 @@ export class SettingsController extends BaseController {
       const viewClientSettings = {
         ...clientSettings,
         ...(await this.getGpuSettings()),
-        version: this.config.clientSettings.version,
+        version: CLIENT_VERSION,
       };
 
       // Get Node Settings (Remote)
@@ -111,7 +158,7 @@ export class SettingsController extends BaseController {
       ...(await this.getGpuSettings()),
       videoEncoderSettings: clientSettings.videoEncoderSettings,
       liveEncoderSettings: clientSettings.liveEncoderSettings,
-      version: this.config.clientSettings.version,
+      version: CLIENT_VERSION,
     };
 
     return await this.sendSuccess(reply, { clientSettings: settings });
