@@ -7,7 +7,7 @@ describe('disk-backed recorded playlist', () => {
   it('retains the complete timeline without retaining an array of segment entries', async () => {
     const directory = await mkdtemp(path.join(tmpdir(), 'moartube-playlist-test-'));
     const file = path.join(directory, 'archive.m3u8');
-    const archive = new PlaylistArchive(file);
+    const archive = new PlaylistArchive(file, 6);
     try {
       for (let i = 0; i < 1000; i++) {
         await archive.append(i === 999 ? 5.1 : 2, `https://example.test/segment-${String(i)}.ts`);

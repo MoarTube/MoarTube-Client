@@ -2,7 +2,7 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import { BaseController } from './base.js';
 import type { NodeApiService } from '@/services/node-api.js';
 import type { Config, ClientSettings } from '@/config/index.js';
-import type { S3Service, S3ValidationConfig, VideoForManifestUpdate } from '@/services/s3.js';
+import type { S3Service, S3ValidationConfig } from '@/services/s3.js';
 import type { UploadedFile, StorageConfig } from '@/types/node-api.js';
 import type {
   SetGpuAccelerationBody,
@@ -29,6 +29,8 @@ import { writeUpload } from '@/utils/stream-files.js';
 import { getStorageMetrics, type StorageMetrics } from '@/utils/storage-metrics.js';
 import { CLIENT_VERSION } from '@/utils/version.js';
 import { getMemoryMetrics } from '@/utils/memory-metrics.js';
+import { getCpuMetrics } from '@/utils/cpu-metrics.js';
+import { getGpuMetrics } from '@/utils/gpu-metrics.js';
 
 // Disable sharp cache
 sharp.cache(false);
@@ -63,6 +65,55 @@ export class SettingsController extends BaseController {
     } catch (error) {
       this.logger.error('Failed to load memory metrics', error);
       return await this.sendError(reply, 'Unable to load memory metrics');
+    }
+  };
+
+  public apiGetCpuMetrics = async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    reply.header('Cache-Control', 'no-store');
+    try {
+      const jwtToken = request.session.jwtToken ?? '';
+      if (jwtToken === '') {
+        return await this.sendError(reply, 'Sign in to view metrics', 401);
+      }
+      const auth = await this.nodeApiService.isAuthenticated(jwtToken);
+      if (auth.isError || !auth.isAuthenticated) {
+        return await this.sendError(reply, 'Sign in to view metrics', 401);
+      }
+      const { target } = request.params as { target: string };
+      if (target !== 'client' && target !== 'node') {
+        return await this.sendError(reply, 'Unknown metrics target', 404);
+      }
+      const desktopPid = Number(process.env['MOARTUBE_METRICS_ROOT_PID']);
+      const rootPid = Number.isInteger(desktopPid) && desktopPid > 0 ? desktopPid : process.pid;
+      const metrics =
+        target === 'client'
+          ? await getCpuMetrics(rootPid)
+          : await this.nodeApiService.getCpuMetrics(jwtToken);
+      return await this.sendSuccess(reply, { metrics });
+    } catch (error) {
+      this.logger.error('Failed to load CPU metrics', error);
+      return await this.sendError(reply, 'Unable to load CPU metrics');
+    }
+  };
+
+  public apiGetGpuMetrics = async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    reply.header('Cache-Control', 'no-store');
+    try {
+      const jwtToken = request.session.jwtToken ?? '';
+      if (jwtToken === '') {
+        return await this.sendError(reply, 'Sign in to view metrics', 401);
+      }
+      const auth = await this.nodeApiService.isAuthenticated(jwtToken);
+      if (auth.isError || !auth.isAuthenticated) {
+        return await this.sendError(reply, 'Sign in to view metrics', 401);
+      }
+      const desktopPid = Number(process.env['MOARTUBE_METRICS_ROOT_PID']);
+      const rootPid = Number.isInteger(desktopPid) && desktopPid > 0 ? desktopPid : process.pid;
+      const metrics = await getGpuMetrics(this.config.clientSettings.processingAgent, rootPid);
+      return await this.sendSuccess(reply, { metrics });
+    } catch (error) {
+      this.logger.debug('Failed to load GPU metrics', error);
+      return await this.sendError(reply, 'Unable to load GPU metrics');
     }
   };
 
@@ -559,33 +610,6 @@ export class SettingsController extends BaseController {
     return await reply.send(response);
   };
 
-  private async updateS3Manifests(jwtToken: string): Promise<void> {
-    try {
-      const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
-      if (
-        nodeSettings.storageConfig?.storageMode === 's3provider' &&
-        nodeSettings.storageConfig.s3Config
-      ) {
-        const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(jwtToken);
-
-        // s3Config from Node already has nested shape: { bucketName, s3ProviderClientConfig }
-        const s3ValidationConfig = nodeSettings.storageConfig
-          .s3Config as unknown as S3ValidationConfig;
-
-        for await (const videosData of this.nodeApiService.getVideoDataPages(jwtToken)) {
-          const videosForUpdate = videosData as VideoForManifestUpdate[];
-          await this.s3Service.updateM3u8ManifestsWithExternalVideosBaseUrl(
-            s3ValidationConfig,
-            videosForUpdate,
-            externalVideosBaseUrl
-          );
-        }
-      }
-    } catch (error) {
-      this.logger.error('Failed to update S3 manifests', error as Error);
-    }
-  }
-
   // API: POST /settings/node/network/external
   public apiSetNetworkExternal = async (
     request: FastifyRequest,
@@ -601,9 +625,6 @@ export class SettingsController extends BaseController {
       publicNodePort
     );
 
-    if (!response.isError) {
-      await this.updateS3Manifests(jwtToken);
-    }
     return await reply.send(response);
   };
 
@@ -620,9 +641,6 @@ export class SettingsController extends BaseController {
       cloudflareZoneId,
       cloudflareGlobalApiKey
     );
-    if (!response.isError) {
-      await this.updateS3Manifests(jwtToken);
-    }
     return await reply.send(response);
   };
 
@@ -632,9 +650,6 @@ export class SettingsController extends BaseController {
   ): Promise<FastifyReply> => {
     const jwtToken = request.session.jwtToken ?? '';
     const response = await this.nodeApiService.clearCloudflareConfiguration(jwtToken);
-    if (!response.isError) {
-      await this.updateS3Manifests(jwtToken);
-    }
     return await reply.send(response);
   };
 
@@ -757,30 +772,6 @@ export class SettingsController extends BaseController {
 
     const validStorageConfig = storageConfig as StorageConfig;
     const response = await this.nodeApiService.storageConfigToggle(jwtToken, validStorageConfig);
-
-    if (!response.isError && storageConfig.storageMode === 's3provider' && s3ValidationConfig) {
-      try {
-        const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(jwtToken);
-        for await (const videosData of this.nodeApiService.getVideoDataPages(jwtToken)) {
-          const videosForUpdate = videosData as VideoForManifestUpdate[];
-          await this.s3Service.updateM3u8ManifestsWithExternalVideosBaseUrl(
-            s3ValidationConfig,
-            videosForUpdate,
-            externalVideosBaseUrl
-          );
-        }
-      } catch (error) {
-        this.logger.error('Failed to update S3 manifests after storage toggle', error as Error);
-      }
-    }
-
-    if (!response.isError) {
-      try {
-        await this.nodeApiService.restartNode(jwtToken);
-      } catch (error) {
-        this.logger.error('Failed to restart node after storage toggle', error as Error);
-      }
-    }
 
     return await reply.send(response);
   };

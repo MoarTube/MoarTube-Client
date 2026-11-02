@@ -604,7 +604,7 @@ export class VideosController extends BaseController {
       const storageConfig = nodeSettings.storageConfig;
 
       if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
-        for (const videoId of videoIds) {
+        for (const videoId of deletedVideoIds) {
           const videoPrefix = `external/videos/${videoId}`;
           await this.s3Service.deleteDirectoryRecursive(storageConfig.s3Config, videoPrefix);
         }

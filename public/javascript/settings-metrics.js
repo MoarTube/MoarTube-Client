@@ -2,8 +2,18 @@ class MoarTubeStorageMetrics {
   constructor() {
     this.active = true;
     this.requests = new Set();
+    this.refreshInterval = 2;
+    this.timer = null;
+    $('#metrics-refresh-interval').on('change', (event) => {
+      const seconds = Number(event.target.value);
+      if (!Number.isInteger(seconds) || seconds < 1 || seconds > 10) return;
+      this.refreshInterval = seconds;
+      this.scheduleRefresh();
+    });
     const stop = () => {
       this.active = false;
+      clearInterval(this.timer);
+      this.timer = null;
       for (const request of this.requests) request.abort();
     };
     window.addEventListener('beforeunload', stop);
@@ -16,6 +26,12 @@ class MoarTubeStorageMetrics {
   start() {
     this.active = true;
     this.refresh();
+    this.scheduleRefresh();
+  }
+
+  scheduleRefresh() {
+    clearInterval(this.timer);
+    this.timer = this.active ? setInterval(() => this.refresh(), this.refreshInterval * 1000) : null;
   }
 
   formatBytes(bytes) {
@@ -29,11 +45,12 @@ class MoarTubeStorageMetrics {
 
   refresh() {
     if (!this.active || this.requests.size > 0) return;
+    this.loadGpu();
     for (const target of ['client', 'node']) {
+      this.loadCpu(target);
       this.loadMemory(target);
       const prefix = '#metrics-' + target;
       $(prefix).attr('aria-busy', 'true');
-      $(prefix + '-status').text('Calculating...').prop('hidden', false);
       const request = $.ajax({ url: '/settings/metrics/' + target + '/disk', dataType: 'json', timeout: 120000 });
       this.requests.add(request);
       request.done((data) => {
@@ -78,8 +95,101 @@ class MoarTubeStorageMetrics {
     }
   }
 
+  loadGpu() {
+    const prefix = '#metrics-client-gpu';
+    $(prefix).attr('aria-busy', 'true');
+    const render = (field, value, usage, contribution = null, appValue = 'unavailable') => {
+      $(prefix + '-' + field + '-used').text(value);
+      const track = $(prefix + '-' + field + '-capacity');
+      if (usage === null) {
+        track.css('visibility', 'hidden').removeAttr('aria-valuenow aria-valuetext title');
+      } else {
+        const app = Number.isFinite(contribution) && contribution >= 0 ? Math.min(usage, contribution) : 0;
+        this.renderCapacity(prefix + '-' + field, app, 100 - usage, 100);
+        const description = 'System: ' + value + '; MoarTube client: ' + appValue;
+        track.css('visibility', 'visible').attr('title', description).attr('aria-valuetext', description);
+      }
+    };
+    const showError = () => {
+      for (const field of ['encode', 'decode', 'memory']) render(field, 'Unavailable', null);
+    };
+    const request = $.ajax({ url: '/settings/metrics/client/gpu', dataType: 'json', timeout: 20000 });
+    this.requests.add(request);
+    request.done((data) => {
+      if (data.isError || !data.metrics) {
+        showError();
+        return;
+      }
+      const metrics = data.metrics;
+      for (const field of ['encode', 'decode']) {
+        const usage = metrics[field + 'Percent'];
+        if (Number.isFinite(usage) && usage >= 0 && usage <= 100) {
+          const contribution = metrics[field === 'encode' ? 'appEncodePercent' : 'appDecodePercent'];
+          const valid = Number.isFinite(contribution) && contribution >= 0 && contribution <= 100;
+          const app = valid ? Math.min(usage, contribution) : null;
+          render(field, usage.toLocaleString(undefined, { maximumFractionDigits: 1 }) + '%', usage, app,
+            valid ? app.toLocaleString(undefined, { maximumFractionDigits: 1 }) + '%' : 'unavailable');
+        } else {
+          render(field, 'Unavailable', null);
+        }
+      }
+      const used = metrics.memoryUsedBytes;
+      const total = metrics.memoryTotalBytes;
+      if (Number.isFinite(used) && Number.isFinite(total) && used >= 0 && total >= used) {
+        const contribution = metrics.appMemoryBytes;
+        const valid = Number.isFinite(contribution) && contribution >= 0;
+        render('memory', this.formatBytes(used) + ' / ' + this.formatBytes(total), total > 0 ? used / total * 100 : 0,
+          valid ? (total > 0 ? Math.min(used, contribution) / total * 100 : 0) : null,
+          valid ? this.formatBytes(contribution) + ' (process allocations)' : 'unavailable');
+      } else {
+        render('memory', 'Unavailable', null);
+      }
+    }).fail((_xhr, status) => {
+      if (status !== 'abort') showError();
+    }).always(() => {
+      this.requests.delete(request);
+      $(prefix).attr('aria-busy', 'false');
+    });
+  }
+
+  loadCpu(target) {
+    this.loadUsage(target, 'cpu');
+  }
+
+  loadUsage(target, kind) {
+    const prefix = '#metrics-' + target + '-' + kind;
+    $(prefix).attr('aria-busy', 'true');
+    const showError = () => {
+      $(prefix + '-used').text('Unavailable');
+      $(prefix + '-capacity').css('visibility', 'hidden').removeAttr('aria-valuenow');
+    };
+    const request = $.ajax({ url: '/settings/metrics/' + target + '/' + kind, dataType: 'json', timeout: 20000 });
+    this.requests.add(request);
+    request.done((data) => {
+      const used = data.metrics?.usedPercent;
+      if (data.isError || !Number.isFinite(used) || used < 0 || used > 100) {
+        showError();
+        return;
+      }
+      $(prefix + '-used').text(used.toLocaleString(undefined, { maximumFractionDigits: 1 }) + '%');
+      const measuredApp = data.metrics.appPercent;
+      const hasContribution = Number.isFinite(measuredApp) && measuredApp >= 0 && measuredApp <= 100;
+      const app = hasContribution ? Math.min(used, measuredApp) : 0;
+      this.renderCapacity(prefix, app, 100 - used, 100);
+      const description = 'System: ' + used.toLocaleString(undefined, { maximumFractionDigits: 1 }) + '%; MoarTube ' + target + ': ' +
+        (hasContribution ? app.toLocaleString(undefined, { maximumFractionDigits: 1 }) + '%' : 'unavailable');
+      $(prefix + '-capacity').css('visibility', 'visible').attr('title', description).attr('aria-valuetext', description);
+    }).fail((_xhr, status) => {
+      if (status !== 'abort') showError();
+    }).always(() => {
+      this.requests.delete(request);
+      $(prefix).attr('aria-busy', 'false');
+    });
+  }
+
   loadMemory(target) {
     const prefix = '#metrics-' + target + '-memory';
+    $(prefix).attr('aria-busy', 'true');
     const showError = () => {
       for (const field of ['app', 'available', 'total']) $(prefix + '-' + field).text('—');
       $(prefix + '-capacity').prop('hidden', true);

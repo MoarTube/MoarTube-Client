@@ -22,11 +22,12 @@ export function observe<T>(promise: Promise<T>): Promise<T> {
 
 export async function signIn(page: Page, password = credentials.password): Promise<void> {
   await page.goto('/account/signout');
-  await expect(page.locator('#sign-in-form')).toBeVisible();
-  await page.getByPlaceholder('Username', { exact: true }).fill(credentials.username);
-  await page.getByPlaceholder('Password', { exact: true }).fill(password);
-  await page.getByPlaceholder('ip address', { exact: true }).fill('localhost');
-  await page.getByPlaceholder('port', { exact: true }).fill('9090');
+  const form = page.locator('#sign-in-form');
+  await expect(form).toBeVisible();
+  await form.getByLabel('Username', { exact: true }).fill(credentials.username);
+  await form.getByLabel('Password', { exact: true }).fill(password);
+  await form.getByLabel('IP address', { exact: true }).fill('localhost');
+  await form.getByLabel('Port', { exact: true }).fill('9090');
   await page.locator('#sign-in-button').click();
   if (password === credentials.password) {
     await expect(

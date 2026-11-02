@@ -164,7 +164,12 @@ try {
       `Preflight passed: real Node at localhost:9090, ${String(selected.length)} required GPU(s), FFmpeg ${version}.`
     );
   } else {
-    const cpuEnvironment = { ...process.env, MOARTUBE_TEST_GPU: '0' };
+    const cpuEnvironment = {
+      ...process.env,
+      MOARTUBE_TEST_GPU: '0',
+      MOARTUBE_TEST_HLS: '1',
+      MOARTUBE_FFMPEG: ffmpeg,
+    };
     if (mode === 'all') {
       for (const project of [
         'tsconfig.json',

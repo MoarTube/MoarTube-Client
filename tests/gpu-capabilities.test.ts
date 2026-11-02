@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Config } from '../src/config/index.js';
 import type { Logger } from '../src/utils/logger.js';
+import type * as ChildProcess from 'node:child_process';
+import type * as Hardware from '../src/utils/hardware.js';
 
 const { run, detect } = vi.hoisted(() => ({ run: vi.fn(), detect: vi.fn() }));
 vi.mock('node:child_process', async (original) => ({
-  ...(await original<typeof import('node:child_process')>()),
+  ...(await original<typeof ChildProcess>()),
   execFile: Object.assign(vi.fn(), { [Symbol.for('nodejs.util.promisify.custom')]: run }),
 }));
 vi.mock('../src/utils/hardware.js', async (original) => ({
-  ...(await original<typeof import('../src/utils/hardware.js')>()),
+  ...(await original<typeof Hardware>()),
   detectSystemGpus: detect,
 }));
 import { FfmpegService } from '../src/services/ffmpeg.js';
@@ -92,7 +94,7 @@ describe('FFmpeg hardware capability assessment', () => {
     const results = await service().ffmpeg.assessGpus();
     expect(results[0]).toMatchObject({
       available: false,
-      unavailableReason: expect.stringContaining('vpp_qsv'),
+      unavailableReason: expect.stringContaining('vpp_qsv') as string,
     });
     expect(results[1]).toMatchObject({ available: true });
   });
@@ -108,7 +110,7 @@ describe('FFmpeg hardware capability assessment', () => {
         '-allow_sw',
         '0',
       ]),
-      expect.objectContaining({ timeout: 15000 })
+      matchingObject({ timeout: 15000 })
     );
     const args = run.mock.calls[0]?.[1] as string[];
     expect(args[args.indexOf('-vf') + 1]).toMatch(/^scale_vt=/);
@@ -118,9 +120,9 @@ describe('FFmpeg hardware capability assessment', () => {
     detect.mockResolvedValue([mac]);
     run.mockRejectedValueOnce(new Error("No such filter: 'scale_vt'"));
     expect(await service().ffmpeg.assessGpus()).toEqual([
-      expect.objectContaining({
+      matchingObject({
         available: false,
-        unavailableReason: expect.stringContaining('scale_vt'),
+        unavailableReason: expect.stringContaining('scale_vt') as string,
       }),
     ]);
   });
@@ -130,9 +132,9 @@ describe('FFmpeg hardware capability assessment', () => {
     expect(run).toHaveBeenCalledWith(
       '/custom/ffmpeg',
       expect.arrayContaining(['h264_nvenc', '-frames:v', '2', 'null']),
-      expect.objectContaining({
+      matchingObject({
         timeout: 15000,
-        env: expect.objectContaining({ CUDA_VISIBLE_DEVICES: 'GPU-123' }),
+        env: matchingObject({ CUDA_VISIBLE_DEVICES: 'GPU-123' }),
       })
     );
     expect(run).toHaveBeenCalledWith(
@@ -143,7 +145,7 @@ describe('FFmpeg hardware capability assessment', () => {
         'vaapi',
         'h264_vaapi',
       ]),
-      expect.objectContaining({ timeout: 15000 })
+      matchingObject({ timeout: 15000 })
     );
   });
 
@@ -156,7 +158,7 @@ describe('FFmpeg hardware capability assessment', () => {
     expect(results[0]).toMatchObject({ available: true });
     expect(results[1]).toMatchObject({
       available: false,
-      unavailableReason: expect.stringContaining('decode'),
+      unavailableReason: expect.stringContaining('decode') as string,
     });
   });
 
@@ -165,7 +167,7 @@ describe('FFmpeg hardware capability assessment', () => {
     const results = await service().ffmpeg.assessGpus();
     expect(results[0]).toMatchObject({
       available: false,
-      unavailableReason: expect.stringContaining('FFmpeg'),
+      unavailableReason: expect.stringContaining('FFmpeg') as string,
     });
     expect(results[1]).toMatchObject({ available: true });
   });
@@ -187,3 +189,8 @@ describe('FFmpeg hardware capability assessment', () => {
     expect(run).not.toHaveBeenCalled();
   });
 });
+
+// Preserve the runtime asymmetric matcher while exposing a safe assertion-boundary type.
+function matchingObject(value: Record<string, unknown>): unknown {
+  return expect.objectContaining(value) as unknown;
+}

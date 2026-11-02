@@ -207,8 +207,9 @@ for (const kind of ['videos', 'comments']) {
     await reportNav.getByRole('link', { name: 'Next reports' }).click();
     await expect(reportNav).toContainText('Page 4');
     await expect(page.getByRole('navigation', { name: 'Archive pages' })).toContainText('Page 4');
-    await page.getByRole('textbox', { name: 'Search reports and archives' }).fill('other');
-    await page.getByRole('button', { name: 'Search', exact: true }).click();
+    const search = page.getByRole('textbox', { name: 'Search reports and archives' });
+    await search.fill('other');
+    await search.press('Enter');
     await expect(reportNav).toContainText('Page 1');
     expect(errors).toEqual([]);
   });

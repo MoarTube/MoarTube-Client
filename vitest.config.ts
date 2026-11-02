@@ -5,6 +5,7 @@ import { resolve } from 'path';
 export default defineConfig({
   test: {
     environment: 'node',
+    globalSetup: ['./tests/support/silo-global.mjs'],
     include: ['tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     exclude: ['tests/e2e/**', 'node_modules/**'],
   },

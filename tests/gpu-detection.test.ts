@@ -8,6 +8,13 @@ vi.mock('../src/utils/windows-gpus.js', () => ({
 }));
 import { detectSystemGpus } from '../src/utils/hardware.js';
 
+function fixturePath(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw new Error('Expected a filesystem path string');
+  }
+  return value;
+}
+
 beforeEach(() => {
   vi.restoreAllMocks();
   nvidia.mockReset().mockResolvedValue([{ uuid: 'GPU-123', model: 'NVIDIA Example' }]);
@@ -24,7 +31,7 @@ describe('GPU discovery', () => {
       'renderD130',
     ] as never);
     vi.spyOn(fs, 'readFile').mockImplementation((file) => {
-      const name = String(file);
+      const name = fixturePath(file);
       return Promise.resolve(
         name.endsWith('/vendor')
           ? name.includes('renderD128')
@@ -90,7 +97,7 @@ describe('GPU discovery', () => {
     nvidia.mockRejectedValue(new Error('ENOENT'));
     vi.spyOn(fs, 'readdir').mockResolvedValue(['renderD129'] as never);
     vi.spyOn(fs, 'readFile').mockImplementation((file) =>
-      Promise.resolve(String(file).endsWith('/vendor') ? '0x8086\n' : '0x56a1\n')
+      Promise.resolve(fixturePath(file).endsWith('/vendor') ? '0x8086\n' : '0x56a1\n')
     );
     vi.spyOn(fs, 'realpath').mockResolvedValue('/sys/devices/pci0000:00/0000:04:00.0');
     expect(await detectSystemGpus()).toEqual([

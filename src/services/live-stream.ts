@@ -17,9 +17,7 @@ import type { SettingsRepository } from '../database/repositories/settings.js';
 import type { SocketService } from './socket.js';
 import type { ManifestService } from './manifest.js';
 import type { FfmpegService } from './ffmpeg.js';
-import axios from 'axios';
-import { Writable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
+import { randomUUID } from 'node:crypto';
 import { readLiveHls, withLiveHlsFiles, type LiveHlsSegment } from '@/utils/live-hls.js';
 import { PlaylistArchive } from '@/utils/playlist-archive.js';
 import { WorkPool } from '@/utils/work-pool.js';
@@ -27,6 +25,10 @@ import { WorkPool } from '@/utils/work-pool.js';
 const livePool = new WorkPool(2, 0);
 
 interface StreamContext {
+  cleanup?: Promise<void> | undefined;
+  generation?: string;
+  retained?: Map<string, { index: number; removedAt?: number; duration: number }>;
+  longestWindow?: number;
   archive?: PlaylistArchive;
   segmentCounter: number;
   nextExpectedSegmentIndex: number;
@@ -70,6 +72,7 @@ export class LiveStreamService {
       process?: ChildProcess;
       stopping: boolean;
       finished?: Promise<void>;
+      drainSeconds?: () => number;
       aborter: AbortController;
     }
   > = new Map();
@@ -108,11 +111,11 @@ export class LiveStreamService {
     return this.activeStreams.has(videoId);
   }
 
-  public async stopLiveStream(videoId: string): Promise<void> {
+  public async stopLiveStream(videoId: string): Promise<number> {
     if (this.activeStreams.has(videoId)) {
       const stream = this.activeStreams.get(videoId);
       if (!stream) {
-        return;
+        return 0;
       }
       stream.stopping = true;
       stream.aborter.abort();
@@ -120,7 +123,9 @@ export class LiveStreamService {
         stream.process.kill();
       }
       await stream.finished;
+      return stream.drainSeconds?.() ?? 0;
     }
+    return 0;
   }
 
   public async performStreamingJob(
@@ -208,6 +213,7 @@ export class LiveStreamService {
       let stderrTail = '';
 
       const context: StreamContext = {
+        generation: randomUUID(),
         ...(isRecordingStreamRemotely
           ? {
               archive: new PlaylistArchive(
@@ -221,6 +227,10 @@ export class LiveStreamService {
         endOfValidManifestPatternLength: 0,
       };
       context.endOfValidManifestPatternLength = context.endOfValidManifestPattern.length;
+      const tracker = this.activeStreams.get(videoId);
+      if (tracker) {
+        tracker.drainSeconds = () => Math.ceil((context.longestWindow ?? 0) * 2 + 6);
+      }
 
       process.stderr.on('data', (data: Buffer) => {
         stderrTail = (stderrTail + data.toString()).slice(-16 * 1024);
@@ -311,33 +321,11 @@ export class LiveStreamService {
                   payload: { type: 'streaming_stopping', videoId: videoId },
                 });
 
-                const exitNodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
-                const exitStorageConfig = exitNodeSettings.storageConfig;
-
-                if (exitStorageConfig?.storageMode === 's3provider' && exitStorageConfig.s3Config) {
-                  const s3Config = exitStorageConfig.s3Config;
-
-                  const videoDataResponse = await this.nodeApiService.getVideoData(
-                    jwtToken,
-                    videoId
-                  );
-                  const videoData = videoDataResponse.videoData;
-                  const isStreamRecordedRemotely = videoData.isStreamRecordedRemotely;
-
-                  if (isStreamRecordedRemotely === true) {
-                    const resolutions = videoData.outputs?.m3u8 ?? [];
-                    await this.s3Service.convertM3u8DynamicManifestsToStatic(
-                      s3Config,
-                      videoId,
-                      resolutions
-                    );
-                  } else {
-                    const prefix = `external/videos/${videoId}/adaptive/m3u8`;
-                    await this.s3Service.deleteDirectoryRecursive(s3Config, prefix);
-                  }
-                }
-
-                const response = await this.nodeApiService.stopVideoStreaming(jwtToken, videoId);
+                const response = await this.nodeApiService.stopVideoStreaming(
+                  jwtToken,
+                  videoId,
+                  Math.ceil((context.longestWindow ?? 0) * 2 + 6)
+                );
 
                 if (!response.isError) {
                   this.socketService.broadcastToUser(jwtToken, 'echo', {
@@ -415,6 +403,7 @@ export class LiveStreamService {
       return line;
     });
 
+    // Compare encoder numbering before translating to immutable public names.
     const newManifestBuffer = Buffer.from(updatedManifestLines.join('\n'));
     const endOfValidManifestPatternIndex = newManifestBuffer.indexOf(
       context.endOfValidManifestPattern
@@ -432,13 +421,21 @@ export class LiveStreamService {
       context.endOfValidManifestPatternLength = context.endOfValidManifestPattern.length;
 
       const currentSegmentCounter = localCounter - 1;
-      const segmentFileName = `segment-${resolution}-${String(currentSegmentCounter)}.ts`;
+      const originalSegmentFileName = `segment-${resolution}-${String(currentSegmentCounter)}.ts`;
+      const publicName = (index: number): string =>
+        `segment-${resolution}-${context.generation ? context.generation + '-' : ''}${String(index)}.ts`;
+      const segmentFileName = publicName(currentSegmentCounter);
+      const publicLines = updatedManifestLines.map((line) =>
+        line.replace(new RegExp(`segment-${resolution}-(\\d+)\\.ts$`), (_match, index: string) =>
+          publicName(Number(index))
+        )
+      );
       const manifestFileName = `manifest-${resolution}.m3u8`;
 
       if (context.archive) {
         let entryIndex = -1;
         for (let i = updatedManifestLines.length - 1; i >= 0; i--) {
-          if (updatedManifestLines[i]?.trim().endsWith(segmentFileName)) {
+          if (updatedManifestLines[i]?.trim().endsWith(originalSegmentFileName)) {
             entryIndex = i;
             break;
           }
@@ -449,7 +446,15 @@ export class LiveStreamService {
         if (entryIndex < 1 || !Number.isFinite(duration)) {
           throw new Error('Invalid recording manifest');
         }
-        await context.archive.append(duration, String(updatedManifestLines[entryIndex]).trim());
+        const targetDuration = Number(
+          manifestLines.find((line) => line.startsWith('#EXT-X-TARGETDURATION:'))?.split(':')[1] ??
+            0
+        );
+        await context.archive.append(
+          duration,
+          String(publicLines[entryIndex]).trim(),
+          targetDuration
+        );
       }
 
       await this.sendSegmentToNode({
@@ -457,7 +462,7 @@ export class LiveStreamService {
         jwtToken,
         videoId,
         resolution,
-        manifestBuffer: newManifestBuffer,
+        manifestBuffer: Buffer.from(publicLines.join('\n')),
         segmentBuffer,
         manifestFileName,
         segmentFileName,
@@ -472,19 +477,60 @@ export class LiveStreamService {
       }
 
       if (!isRecordingStreamRemotely) {
-        const segmentIndexToRemove = currentSegmentCounter - 20;
-        if (segmentIndexToRemove >= 0) {
-          const segmentName = `segment-${resolution}-${String(segmentIndexToRemove)}.ts`;
-          if (storageConfig.storageMode === 'filesystem') {
-            void this.nodeApiService
-              .removeAdaptiveStreamSegment(jwtToken, videoId, format, resolution, segmentName)
-              .catch(() => {});
-          } else if (storageConfig.s3Config !== undefined) {
-            const segmentKey = `external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/${segmentName}`;
-            void this.s3Service
-              .deleteObjectWithKey(storageConfig.s3Config, segmentKey)
-              .catch(() => {});
+        context.retained ??= new Map();
+        const durations = manifestLines.flatMap((line) => {
+          const match = /^#EXTINF:([\d.]+)/.exec(line);
+          return match ? [Number(match[1])] : [];
+        });
+        const windowSeconds = durations.reduce((sum, duration) => sum + duration, 0);
+        context.longestWindow = Math.max(context.longestWindow ?? 0, windowSeconds);
+        const duration = durations.at(-1) ?? 0;
+        context.retained.set(segmentFileName, { index: currentSegmentCounter, duration });
+        const now = Date.now();
+        const retainedSegments = context.retained;
+        for (const retained of retainedSegments.values()) {
+          if (retained.index < context.segmentCounter) {
+            retained.removedAt ??= now;
           }
+        }
+        if (context.cleanup === undefined) {
+          const cleanup = async (): Promise<void> => {
+            for (const [segmentName, retained] of [...retainedSegments]) {
+              if (
+                retained.removedAt === undefined ||
+                now - retained.removedAt <
+                  ((context.longestWindow ?? 0) + retained.duration + 5) * 1000
+              ) {
+                continue;
+              }
+              try {
+                if (storageConfig.storageMode === 'filesystem') {
+                  const response = (await this.nodeApiService.removeAdaptiveStreamSegment(
+                    jwtToken,
+                    videoId,
+                    format,
+                    resolution,
+                    segmentName
+                  )) as { isError?: boolean };
+                  if (response.isError === true) {
+                    throw new Error('Segment cleanup rejected');
+                  }
+                } else if (storageConfig.s3Config) {
+                  await this.s3Service.deleteObjectWithKey(
+                    storageConfig.s3Config,
+                    `external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/${segmentName}`
+                  );
+                }
+                retainedSegments.delete(segmentName);
+              } catch (error) {
+                this.logger.error({ err: error }, 'Live segment cleanup will retry');
+                break; // Retry next publication without spinning through a failed backlog.
+              }
+            }
+          };
+          context.cleanup = cleanup().finally(() => {
+            context.cleanup = undefined;
+          });
         }
       }
 
@@ -514,21 +560,11 @@ export class LiveStreamService {
       manifestFileName,
       segmentFileName,
       storageConfig,
-      isCloudflareCdnEnabled,
-      externalVideosBaseUrl,
       manifestFilePath,
     } = options;
 
-    let processedManifestBuffer = manifestBuffer;
+    const processedManifestBuffer = manifestBuffer;
     const signal = this.activeStreams.get(videoId)?.aborter.signal;
-
-    if (isCloudflareCdnEnabled) {
-      const lines = processedManifestBuffer.toString().split(/\r?\n/);
-      if (lines.length >= 10) {
-        lines.splice(-3, 3);
-        processedManifestBuffer = Buffer.from(lines.join('\n'));
-      }
-    }
 
     if (storageConfig.storageMode === 'filesystem') {
       const manifest = manifestFilePath
@@ -576,32 +612,6 @@ export class LiveStreamService {
         if (manifestFilePath) {
           (manifest as fs.ReadStream).destroy();
         }
-      }
-    }
-
-    if (isCloudflareCdnEnabled) {
-      const segmentUrl = `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/${segmentFileName}`;
-      try {
-        const response = await axios.get(segmentUrl, {
-          responseType: 'stream',
-          timeout: 5000,
-          maxRedirects: 0,
-          signal: AbortSignal.timeout(10_000),
-        });
-        let bytes = 0;
-        await pipeline(
-          response.data,
-          new Writable({
-            write(chunk: Buffer, _encoding, callback) {
-              bytes += chunk.length;
-              callback(
-                bytes > 64 * 1024 ** 2 ? new Error('Cache response exceeds byte limit') : null
-              );
-            },
-          })
-        );
-      } catch {
-        /* Warming is optional; delivery has already completed. */
       }
     }
   }

@@ -24,6 +24,12 @@ it.each([
   vi.resetModules();
   const { Config } = await import('../src/config/index.js');
   const root = fs.mkdtempSync(path.join(tmpdir(), 'moartube-gpu-config-'));
+  if (
+    path.dirname(root) !== path.resolve(tmpdir()) ||
+    !path.basename(root).startsWith('moartube-gpu-config-')
+  ) {
+    throw new Error('Unexpected GPU config test directory');
+  }
   let config: Config | undefined;
   try {
     fs.mkdirSync(path.join(root, 'data'));
@@ -43,12 +49,6 @@ it.each([
     expect(config.clientSettings.processingAgent).toEqual(agent);
   } finally {
     config?.stopWatching();
-    if (
-      path.dirname(root) !== path.resolve(tmpdir()) ||
-      !path.basename(root).startsWith('moartube-gpu-config-')
-    ) {
-      throw new Error('Unexpected GPU config test directory');
-    }
     fs.rmSync(root, { recursive: true, force: true });
   }
 });

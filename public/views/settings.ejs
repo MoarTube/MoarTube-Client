@@ -36,6 +36,8 @@
 			margin: 0;
 			border-radius: 0;
 			flex-shrink: 0;
+			flex-grow: 0;
+			flex-basis: auto;
 			max-width: 100%;
 			transition: none;
 		}
@@ -333,6 +335,14 @@
 							<div>
 								<h5 id="metrics-heading">Metrics</h5>
 							</div>
+							<div class="d-flex align-items-center gap-2 mb-3">
+								<label for="metrics-refresh-interval" class="text-sm mb-0 text-nowrap">Refresh every</label>
+								<select id="metrics-refresh-interval" class="form-select form-select-sm w-auto">
+									<% for (let seconds = 1; seconds <= 10; seconds++) { %>
+									<option value="<%= seconds %>" <%= seconds === 2 ? 'selected' : '' %>><%= seconds %> <%= seconds === 1 ? 'second' : 'seconds' %></option>
+										<% } %>
+								</select>
+							</div>
 						</div>
 						<div class="card-body pt-0">
 							<div class="row g-3">
@@ -342,6 +352,32 @@
 										<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
 											<h6 class="mb-0"><%= target === 'client' ? 'Client' : 'Node' %></h6>
 										</div>
+										<div id="metrics-<%= target %>-cpu" class="mb-3" aria-busy="true">
+											<p class="text-sm text-secondary mb-1">CPU Used</p>
+											<p id="metrics-<%= target %>-cpu-used" class="font-weight-bold mb-0">—</p>
+											<div id="metrics-<%= target %>-cpu-capacity" class="progress metrics-capacity bg-gray-200 mt-3" role="progressbar" aria-label="<%= target === 'client' ? 'Client' : 'Node' %> CPU usage" aria-valuemin="0" aria-valuemax="100" style="visibility: hidden">
+												<div id="metrics-<%= target %>-cpu-occupied" class="metrics-occupied" style="width: 0%">
+													<div class="metrics-other-usage"></div>
+													<div id="metrics-<%= target %>-cpu-usage-bar" class="progress-bar bg-gradient-primary" style="width: 0%"></div>
+												</div>
+											</div>
+										</div>
+										<% if (target === 'client') { %>
+										<div id="metrics-client-gpu" class="row g-3 mb-3" aria-busy="true" title="All activity on the GPU selected in GPU Acceleration. Values are zero when acceleration is disabled.">
+											<% for (const [field, label] of [['encode', 'Video Encode'], ['decode', 'Video Decode'], ['memory', 'GPU Memory']]) { %>
+											<div class="col-sm-4">
+												<p class="text-sm text-secondary mb-1"><%= label %></p>
+												<p id="metrics-client-gpu-<%= field %>-used" class="font-weight-bold mb-0">—</p>
+												<div id="metrics-client-gpu-<%= field %>-capacity" class="progress metrics-capacity bg-gray-200 mt-3" role="progressbar" aria-label="<%= label %> usage" aria-valuemin="0" aria-valuemax="100" style="visibility: hidden">
+													<div id="metrics-client-gpu-<%= field %>-occupied" class="metrics-occupied" style="width: 0%">
+														<div class="metrics-other-usage"></div>
+														<div id="metrics-client-gpu-<%= field %>-usage-bar" class="progress-bar bg-gradient-primary" style="width: 0%"></div>
+													</div>
+												</div>
+											</div>
+											<% } %>
+										</div>
+										<% } %>
 										<div id="metrics-<%= target %>-local" class="row g-3">
 											<% for (const [key, label] of [['media', 'Disk Used'], ['available', 'Disk Available'], ['total', 'Disk Capacity']]) { %>
 											<div class="col-sm-4">
@@ -1197,8 +1233,8 @@
 									self.showAlert(true, data.message);
 								}
 								else {
+									Swal.close();
 									document.querySelectorAll('.node-avatar').forEach(image => MoarTubeMemory.refreshImage(image, '/settings/node/avatar', 0));
-self.showAlert(false);
 								}
 							})
 							.fail(function () {
@@ -1232,8 +1268,8 @@ self.showAlert(false);
 								self.showAlert(true, data.message);
 							}
 							else {
+								Swal.close();
 								document.querySelectorAll('#node-banner').forEach(image => MoarTubeMemory.refreshImage(image, '/settings/node/banner', 0));
-self.showAlert(false);
 							}
 						})
 						.fail(function () {
@@ -1780,7 +1816,7 @@ self.showAlert(false);
 
 				const html = '\
 					Your MoarTube Node can perform human verification through <a href="https://www.cloudflare.com/products/turnstile/" target="_blank">Cloudflare Turnstile</a>,\
-					providing anti-bot detection for video comments, live chat, likes, dislikes, and reports. This will empower your node with the protections necessary for public audiences.';
+					providing anti-bot detection for video comments, live chat, likes, dislikes, and reports. This will empower your node with the protections necessary to handle public audiences.';
 
 				Swal.fire({
 					title: title,

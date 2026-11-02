@@ -178,9 +178,21 @@ test('viewer comments and replies persist and can be moderated through Client', 
   await expect(viewer.locator('#comments-container')).toContainText(text);
   await expect(viewer.locator('#comments-container')).toContainText(reply);
   await page.goto('/comments');
-  const searched = clientResponse(page, '/comments/search', 'GET');
+  const searched = observe(
+    page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname === '/comments/search' &&
+        url.searchParams.get('searchTerm') === text &&
+        response.request().method() === 'GET'
+      );
+    })
+  );
   await page.locator('#search-input').fill(text);
   await expectSuccess(searched);
+  expect((await (await searched).json()).comments).toEqual(
+    expect.arrayContaining([expect.objectContaining({ comment_id: Number(id) })])
+  );
   const row = page.locator('#comments-table tbody tr').filter({
     has: page.locator(`.delete-comment-button[data-commentid="${id}"]`),
   });
@@ -214,9 +226,21 @@ test('sanitized Node comments containing ampersands remain searchable through Cl
     text
   );
   await page.goto('/comments');
-  const searched = clientResponse(page, '/comments/search', 'GET');
+  const searched = observe(
+    page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname === '/comments/search' &&
+        url.searchParams.get('searchTerm') === text &&
+        response.request().method() === 'GET'
+      );
+    })
+  );
   await page.locator('#search-input').fill(text);
   await expectSuccess(searched);
+  expect((await (await searched).json()).comments).toEqual(
+    expect.arrayContaining([expect.objectContaining({ comment_id: Number(id) })])
+  );
   await expect(page.locator(`.delete-comment-button[data-commentid="${id}"]`)).toBeVisible();
 });
 

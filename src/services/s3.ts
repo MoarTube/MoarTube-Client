@@ -4,7 +4,6 @@ import type { Logger } from '@/utils/logger.js';
 import {
   S3Client,
   PutObjectCommand,
-  DeleteObjectsCommand,
   DeleteObjectCommand,
   ListObjectsV2Command,
   GetObjectCommand,
@@ -21,6 +20,7 @@ import { STSClient, GetCallerIdentityCommand } from '@aws-sdk/client-sts';
 import type { STSClientConfig } from '@aws-sdk/client-sts';
 import { Readable } from 'node:stream';
 import { transformManifest } from '@/utils/manifest-transform.js';
+import { deleteS3Objects } from '@/utils/s3-delete.js';
 import * as fs from 'node:fs';
 import type { S3ProviderClientConfig as S3ProviderClientConfigType } from '@/types/node-api.js';
 
@@ -88,164 +88,171 @@ export class S3Service extends BaseService {
   public async validateS3Config(s3Config: S3ValidationConfig): Promise<void> {
     const { bucketName, s3ProviderClientConfig } = s3Config;
     this.logger.debug(`Validating S3 config for bucket: ${bucketName}`);
-    const s3Client = this.createClientFromConfig(s3ProviderClientConfig);
+    // Candidate validation runs before Node's settings admission check; preserve active uploads.
+    const validation = new S3Service(this.logger);
+    const s3Client = validation.createClientFromConfig(s3ProviderClientConfig);
+    try {
+      // Check if bucket exists
+      const buckets = (await s3Client.send(new ListBucketsCommand({}))).Buckets ?? [];
+      const bucketExists = buckets.some((b) => b.Name === bucketName);
 
-    // Check if bucket exists
-    const buckets = (await s3Client.send(new ListBucketsCommand({}))).Buckets ?? [];
-    const bucketExists = buckets.some((b) => b.Name === bucketName);
+      if (bucketExists) {
+        this.logger.debug('Bucket exists');
+      } else {
+        this.logger.debug(`Creating bucket: ${bucketName}`);
+        await s3Client.send(new CreateBucketCommand({ Bucket: bucketName }));
 
-    if (bucketExists) {
-      this.logger.debug('Bucket exists');
-    } else {
-      this.logger.debug(`Creating bucket: ${bucketName}`);
-      await s3Client.send(new CreateBucketCommand({ Bucket: bucketName }));
-
-      // Configure Public Access
-      try {
-        await s3Client.send(
-          new PutPublicAccessBlockCommand({
-            Bucket: bucketName,
-            PublicAccessBlockConfiguration: {
-              BlockPublicAcls: false,
-              IgnorePublicAcls: false,
-              BlockPublicPolicy: false,
-              RestrictPublicBuckets: false,
-            },
-          })
-        );
-      } catch {
-        /* Ignore */
-      }
-
-      // Disable ACLs
-      try {
-        await s3Client.send(
-          new PutBucketOwnershipControlsCommand({
-            Bucket: bucketName,
-            OwnershipControls: { Rules: [{ ObjectOwnership: 'BucketOwnerEnforced' }] },
-          })
-        );
-      } catch {
-        /* Ignore */
-      }
-
-      // Set Policy
-      try {
-        const { endpoint, region, credentials } = s3ProviderClientConfig;
-
-        const stsConfig: STSClientConfig = {
-          credentials: {
-            accessKeyId: credentials.accessKeyId,
-            secretAccessKey: credentials.secretAccessKey,
-            ...(credentials.sessionToken !== undefined && credentials.sessionToken !== ''
-              ? { sessionToken: credentials.sessionToken }
-              : {}),
-          },
-          region: region ?? 'us-east-1',
-        };
-        if (endpoint !== undefined && endpoint !== '') {
-          stsConfig.endpoint = endpoint;
+        // Configure Public Access
+        try {
+          await s3Client.send(
+            new PutPublicAccessBlockCommand({
+              Bucket: bucketName,
+              PublicAccessBlockConfiguration: {
+                BlockPublicAcls: false,
+                IgnorePublicAcls: false,
+                BlockPublicPolicy: false,
+                RestrictPublicBuckets: false,
+              },
+            })
+          );
+        } catch {
+          /* Ignore */
         }
 
-        const stsClient = new STSClient(stsConfig);
-        const principalArn = (await stsClient.send(new GetCallerIdentityCommand({}))).Arn;
+        // Disable ACLs
+        try {
+          await s3Client.send(
+            new PutBucketOwnershipControlsCommand({
+              Bucket: bucketName,
+              OwnershipControls: { Rules: [{ ObjectOwnership: 'BucketOwnerEnforced' }] },
+            })
+          );
+        } catch {
+          /* Ignore */
+        }
 
-        await s3Client.send(
-          new PutBucketPolicyCommand({
-            Bucket: bucketName,
-            Policy: JSON.stringify({
-              Version: '2012-10-17',
-              Statement: [
-                {
-                  Sid: 'PublicGetObject',
-                  Effect: 'Allow',
-                  Principal: '*',
-                  Action: 's3:GetObject',
-                  Resource: `arn:aws:s3:::${bucketName}/*`,
-                },
-                {
-                  Sid: 'PrivateDeleteObject',
-                  Effect: 'Allow',
-                  Principal: { AWS: principalArn },
-                  Action: 's3:DeleteObject',
-                  Resource: `arn:aws:s3:::${bucketName}/*`,
-                },
-                {
-                  Sid: 'PrivatePutObject',
-                  Effect: 'Allow',
-                  Principal: { AWS: principalArn },
-                  Action: 's3:PutObject',
-                  Resource: `arn:aws:s3:::${bucketName}/*`,
-                },
-              ],
-            }),
-          })
-        );
-      } catch {
-        // Fallback policy: some non-AWS S3-compatible providers (e.g. DigitalOcean
-        // Spaces, Minio) don't support STS GetCallerIdentity, so we can't scope
-        // delete/put to a specific principal. Grant only public read in that case -
-        // never public write/delete - matching the legacy security posture.
-        await s3Client.send(
-          new PutBucketPolicyCommand({
-            Bucket: bucketName,
-            Policy: JSON.stringify({
-              Version: '2012-10-17',
-              Statement: [
-                {
-                  Sid: 'PublicFullAccess',
-                  Effect: 'Allow',
-                  Principal: '*',
-                  Action: 's3:GetObject',
-                  Resource: `arn:aws:s3:::${bucketName}/*`,
-                },
-              ],
-            }),
-          })
-        );
-      }
+        // Set Policy
+        try {
+          const { endpoint, region, credentials } = s3ProviderClientConfig;
 
-      // Configure CORS so browsers can fetch video segments/manifests directly
-      // from the bucket when served cross-origin.
-      try {
-        await s3Client.send(
-          new PutBucketCorsCommand({
-            Bucket: bucketName,
-            CORSConfiguration: {
-              CORSRules: [
-                {
-                  AllowedHeaders: ['*'],
-                  AllowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'HEAD'],
-                  AllowedOrigins: ['*'],
-                  ExposeHeaders: [],
-                },
-              ],
+          const stsConfig: STSClientConfig = {
+            credentials: {
+              accessKeyId: credentials.accessKeyId,
+              secretAccessKey: credentials.secretAccessKey,
+              ...(credentials.sessionToken !== undefined && credentials.sessionToken !== ''
+                ? { sessionToken: credentials.sessionToken }
+                : {}),
             },
-          })
-        );
-      } catch {
-        /* Ignore */
-      }
-    }
+            region: region ?? 'us-east-1',
+          };
+          if (endpoint !== undefined && endpoint !== '') {
+            stsConfig.endpoint = endpoint;
+          }
 
-    // Verify the supplied credentials actually have read/write/delete access by
-    // round-tripping a test object. Run this unconditionally (not just for newly
-    // created buckets) so misconfigured credentials are caught immediately here
-    // rather than later during video publishing/uploading.
-    this.logger.debug('Verifying MoarTube Client can put/get/delete a test object in the bucket');
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: bucketName,
-        Key: 'Moartube-Client-Test',
-        Body: 'testing',
-        ContentType: 'text/plain; charset=utf-8',
-      })
-    );
-    await s3Client.send(new GetObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test' }));
-    await s3Client.send(
-      new DeleteObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test' })
-    );
-    this.logger.debug('S3 provider credentials validated');
+          const stsClient = new STSClient(stsConfig);
+          const principalArn = (await stsClient.send(new GetCallerIdentityCommand({}))).Arn;
+
+          await s3Client.send(
+            new PutBucketPolicyCommand({
+              Bucket: bucketName,
+              Policy: JSON.stringify({
+                Version: '2012-10-17',
+                Statement: [
+                  {
+                    Sid: 'PublicGetObject',
+                    Effect: 'Allow',
+                    Principal: '*',
+                    Action: 's3:GetObject',
+                    Resource: `arn:aws:s3:::${bucketName}/*`,
+                  },
+                  {
+                    Sid: 'PrivateDeleteObject',
+                    Effect: 'Allow',
+                    Principal: { AWS: principalArn },
+                    Action: 's3:DeleteObject',
+                    Resource: `arn:aws:s3:::${bucketName}/*`,
+                  },
+                  {
+                    Sid: 'PrivatePutObject',
+                    Effect: 'Allow',
+                    Principal: { AWS: principalArn },
+                    Action: 's3:PutObject',
+                    Resource: `arn:aws:s3:::${bucketName}/*`,
+                  },
+                ],
+              }),
+            })
+          );
+        } catch {
+          // Fallback policy: some non-AWS S3-compatible providers (e.g. DigitalOcean
+          // Spaces, Minio) don't support STS GetCallerIdentity, so we can't scope
+          // delete/put to a specific principal. Grant only public read in that case -
+          // never public write/delete - matching the legacy security posture.
+          await s3Client.send(
+            new PutBucketPolicyCommand({
+              Bucket: bucketName,
+              Policy: JSON.stringify({
+                Version: '2012-10-17',
+                Statement: [
+                  {
+                    Sid: 'PublicFullAccess',
+                    Effect: 'Allow',
+                    Principal: '*',
+                    Action: 's3:GetObject',
+                    Resource: `arn:aws:s3:::${bucketName}/*`,
+                  },
+                ],
+              }),
+            })
+          );
+        }
+
+        // Configure CORS so browsers can fetch video segments/manifests directly
+        // from the bucket when served cross-origin.
+        try {
+          await s3Client.send(
+            new PutBucketCorsCommand({
+              Bucket: bucketName,
+              CORSConfiguration: {
+                CORSRules: [
+                  {
+                    AllowedHeaders: ['*'],
+                    AllowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'HEAD'],
+                    AllowedOrigins: ['*'],
+                    ExposeHeaders: [],
+                  },
+                ],
+              },
+            })
+          );
+        } catch {
+          /* Ignore */
+        }
+      }
+
+      // Verify the supplied credentials actually have read/write/delete access by
+      // round-tripping a test object. Run this unconditionally (not just for newly
+      // created buckets) so misconfigured credentials are caught immediately here
+      // rather than later during video publishing/uploading.
+      this.logger.debug('Verifying MoarTube Client can put/get/delete a test object in the bucket');
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: bucketName,
+          Key: 'Moartube-Client-Test',
+          Body: 'testing',
+          ContentType: 'text/plain; charset=utf-8',
+        })
+      );
+      await s3Client.send(
+        new GetObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test' })
+      );
+      await s3Client.send(
+        new DeleteObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test' })
+      );
+      this.logger.debug('S3 provider credentials validated');
+    } finally {
+      validation.close();
+    }
   }
 
   public async updateM3u8ManifestsWithExternalVideosBaseUrl(
@@ -262,7 +269,7 @@ export class S3Service extends BaseService {
           new GetObjectCommand({ Bucket: bucketName, Key: manifestKey })
         );
         if (!response.Body) {
-          return;
+          throw new Error(`Empty manifest: ${manifestKey}`);
         }
 
         const body = response.Body as Readable;
@@ -281,8 +288,8 @@ export class S3Service extends BaseService {
         } finally {
           body.destroy();
         }
-      } catch {
-        // Ignore errors as per legacy
+      } catch (error) {
+        throw new Error(`Failed to rewrite S3 manifest ${manifestKey}`, { cause: error });
       }
     };
 
@@ -307,7 +314,8 @@ export class S3Service extends BaseService {
     key: string,
     data: Buffer | string | Readable | Blob | Uint8Array,
     contentType: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    options: { terminalPlaylist?: boolean } = {}
   ): Promise<void> {
     const { bucketName, s3ProviderClientConfig } = s3Config;
     const client = this.createClientFromConfig(s3ProviderClientConfig);
@@ -324,6 +332,11 @@ export class S3Service extends BaseService {
           Key: key,
           Body: data,
           ContentType: contentType,
+          CacheControl: key.includes('/dynamic/')
+            ? options.terminalPlaylist === true || contentType !== 'application/vnd.apple.mpegurl'
+              ? 'no-store'
+              : 'public, max-age=0, s-maxage=1, must-revalidate'
+            : 'public, max-age=0, s-maxage=30, must-revalidate',
         },
       });
 
@@ -381,6 +394,7 @@ export class S3Service extends BaseService {
             return;
           }
           const size = (await fs.promises.stat(file.filePath)).size;
+          signal?.throwIfAborted();
           const input = fs.createReadStream(file.filePath);
           const upload = new Upload({
             client,
@@ -391,6 +405,7 @@ export class S3Service extends BaseService {
               Key: file.key,
               Body: input,
               ContentType: file.contentType,
+              CacheControl: 'public, max-age=0, s-maxage=30, must-revalidate',
             },
           });
           pending.add(upload);
@@ -441,6 +456,7 @@ export class S3Service extends BaseService {
       // the full listing (via ContinuationToken) before we can be sure everything
       // under this prefix has been deleted.
       let continuationToken: string | undefined;
+      const seenTokens = new Set<string>();
 
       do {
         const listResponse = await client.send(
@@ -456,21 +472,21 @@ export class S3Service extends BaseService {
         if (contents.length > 0) {
           // DeleteObjectsCommand also accepts at most 1000 keys per call, which
           // matches the page size returned above, so one delete call per page suffices.
-          const objectsToDelete = contents.map((obj) => ({ Key: obj.Key }));
-
-          await client.send(
-            new DeleteObjectsCommand({
-              Bucket: bucket,
-              Delete: {
-                Objects: objectsToDelete,
-                Quiet: true,
-              },
-            })
-          );
+          const keys = contents.flatMap((object) => (object.Key ? [object.Key] : []));
+          if (keys.length > 0) {
+            await deleteS3Objects(client, bucket, keys);
+          }
         }
 
-        continuationToken =
+        const next =
           listResponse.IsTruncated === true ? listResponse.NextContinuationToken : undefined;
+        if (listResponse.IsTruncated === true && (!next || seenTokens.has(next))) {
+          throw new Error('Invalid S3 continuation token');
+        }
+        if (next !== undefined) {
+          seenTokens.add(next);
+        }
+        continuationToken = next;
       } while (continuationToken !== undefined);
     } catch (error) {
       this.logger.error(`Failed to delete prefix ${prefix}`, error as Error);
@@ -549,26 +565,46 @@ export class S3Service extends BaseService {
           body.destroy();
         }
 
-        this.logger.debug(`Deleting dynamic manifest: ${dynamicKey}`);
-        await client.send(new DeleteObjectCommand({ Bucket: bucketName, Key: dynamicKey }));
+        // Existing players keep polling the dynamic URL. Publish a terminal snapshot there too.
+        if (!dynamicKey.includes('manifest-master.m3u8')) {
+          const finalized = await client.send(
+            new GetObjectCommand({ Bucket: bucketName, Key: staticKey })
+          );
+          if (!finalized.Body) {
+            throw new Error(`Empty finalized manifest: ${staticKey}`);
+          }
+          const terminal = finalized.Body as Readable;
+          try {
+            await this.putObjectFromData(
+              s3Config,
+              dynamicKey,
+              terminal,
+              'application/vnd.apple.mpegurl',
+              undefined,
+              { terminalPlaylist: true }
+            );
+          } finally {
+            terminal.destroy();
+          }
+        }
       } catch (error) {
-        // Log but continue
         this.logger.error(
           `Error converting manifest ${dynamicKey} to ${staticKey}`,
           error as Error
         );
+        throw error;
       }
     };
 
-    await performConversion(
-      'external/videos/' + videoId + '/adaptive/m3u8/dynamic/manifests/manifest-master.m3u8',
-      'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-master.m3u8'
-    );
     for (const resolution of resolutions) {
       const dynamicManifestKey = `external/videos/${videoId}/adaptive/m3u8/dynamic/manifests/manifest-${resolution}.m3u8`;
       const staticManifestKey = `external/videos/${videoId}/adaptive/m3u8/static/manifests/manifest-${resolution}.m3u8`;
 
       await performConversion(dynamicManifestKey, staticManifestKey);
     }
+    await performConversion(
+      'external/videos/' + videoId + '/adaptive/m3u8/dynamic/manifests/manifest-master.m3u8',
+      'external/videos/' + videoId + '/adaptive/m3u8/static/manifests/manifest-master.m3u8'
+    );
   }
 }

@@ -4,27 +4,34 @@ import path from 'node:path';
 /** Only a file handle and the largest duration remain in memory as recordings grow. */
 export class PlaylistArchive {
   private handle: FileHandle | undefined;
-  private target = 0;
+  private target: number;
   private readonly prefix = '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:';
-  constructor(public readonly file: string) {}
-  async append(duration: number, url: string): Promise<void> {
+  constructor(
+    public readonly file: string,
+    targetDuration = 0
+  ) {
+    this.target = targetDuration;
+  }
+  async append(duration: number, url: string, targetDuration = 0): Promise<void> {
     if (!Number.isFinite(duration) || duration <= 0 || duration > 86400 || /[\r\n]/.test(url)) {
       throw new Error('Invalid playlist entry');
+    }
+    if (this.target === 0) {
+      if (!Number.isInteger(targetDuration) || targetDuration < 0 || targetDuration > 86400) {
+        throw new Error('Invalid HLS target duration');
+      }
+      this.target = Math.max(targetDuration, Math.ceil(duration));
+    }
+    if (Math.round(duration) > this.target) {
+      throw new Error('Recording segment exceeds fixed HLS target duration');
     }
     if (!this.handle) {
       await mkdir(path.dirname(this.file), { recursive: true });
       this.handle = await open(this.file, 'wx+');
       await this.handle.write(
-        this.prefix + '0000000001\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-PLAYLIST-TYPE:EVENT\n'
-      );
-    }
-    const target = Math.ceil(duration);
-    if (target > this.target) {
-      this.target = target;
-      await this.handle.write(
-        String(target).padStart(10, '0'),
-        Buffer.byteLength(this.prefix),
-        'utf8'
+        this.prefix +
+          String(this.target).padStart(10, '0') +
+          '\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-PLAYLIST-TYPE:EVENT\n'
       );
     }
     await this.handle.write(`#EXTINF:${String(duration)},\n${url}\n`);

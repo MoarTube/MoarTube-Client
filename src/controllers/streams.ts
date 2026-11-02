@@ -3,7 +3,6 @@ import { BaseController } from './base.js';
 import type { LiveStreamService } from '@/services/live-stream.js';
 import type { NodeApiService } from '@/services/node-api.js';
 import { checkNetworkPortStatus, isPortValid } from '@/utils/network.js';
-import type { S3Service } from '@/services/s3.js';
 import type { NodeSocketService } from '@/services/node-socket.js';
 import type {
   StartStreamBody,
@@ -15,19 +14,16 @@ import type {
 export class StreamsController extends BaseController {
   private readonly liveStreamService: LiveStreamService;
   private readonly nodeApiService: NodeApiService;
-  private readonly s3Service: S3Service;
   private readonly nodeSocketService: NodeSocketService;
 
   constructor(
     liveStreamService: LiveStreamService,
     nodeApiService: NodeApiService,
-    s3Service: S3Service,
     nodeSocketService: NodeSocketService
   ) {
     super('StreamsController');
     this.liveStreamService = liveStreamService;
     this.nodeApiService = nodeApiService;
-    this.s3Service = s3Service;
     this.nodeSocketService = nodeSocketService;
   }
 
@@ -121,30 +117,14 @@ export class StreamsController extends BaseController {
     const jwtToken = request.session.jwtToken ?? '';
 
     try {
-      await this.liveStreamService.stopLiveStream(videoId);
+      const drainSeconds = await this.liveStreamService.stopLiveStream(videoId);
       this.nodeSocketService.sendVideoStatusEcho(jwtToken, 'streaming_stopping', videoId);
 
-      // S3 Conversion Logic
-      const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
-      const storageConfig = nodeSettings.storageConfig;
-
-      if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
-        const s3Config = storageConfig.s3Config;
-
-        const videoDataResponse = await this.nodeApiService.getVideoData(jwtToken, videoId);
-        const videoData = videoDataResponse.videoData;
-        const isStreamRecordedRemotely = videoData.isStreamRecordedRemotely;
-
-        if (isStreamRecordedRemotely === true) {
-          const resolutions = videoData.outputs?.m3u8 ?? [];
-          await this.s3Service.convertM3u8DynamicManifestsToStatic(s3Config, videoId, resolutions);
-        } else {
-          const prefix = `external/videos/${videoId}/adaptive/m3u8`;
-          await this.s3Service.deleteDirectoryRecursive(s3Config, prefix);
-        }
-      }
-
-      const stopResponse = await this.nodeApiService.stopVideoStreaming(jwtToken, videoId);
+      const stopResponse = await this.nodeApiService.stopVideoStreaming(
+        jwtToken,
+        videoId,
+        drainSeconds
+      );
 
       if (!stopResponse.isError) {
         // Broadcast streaming_stopped to Node (Node will echo back to all clients)

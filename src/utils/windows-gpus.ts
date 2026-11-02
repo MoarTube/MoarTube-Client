@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { z } from 'zod';
+import type { GpuMetrics } from './gpu-metrics.js';
 
 const run = promisify(execFile);
 
@@ -56,7 +57,8 @@ public class MoarTubeAdapters {
     }
     public class Adapter {
         public uint Index, Vendor;
-        public string Name, Id;
+        public string Name, Id, Luid;
+        public ulong VideoMemory;
     }
     public static Adapter[] List() {
         Guid iid = new Guid("7b7166ec-21c7-44ae-b21a-c9ae321ae369");
@@ -77,7 +79,8 @@ public class MoarTubeAdapters {
                     Desc d;
                     Marshal.ThrowExceptionForHR(describe(adapter, out d));
                     result.Add(new Adapter { Index = i, Vendor = d.Vendor, Name = d.Name,
-                        Id = Identity(d) });
+                        Id = Identity(d), VideoMemory = d.VideoMemory.ToUInt64(),
+                        Luid = "luid_0x" + d.LuidHigh.ToString("X8") + "_0x" + d.LuidLow.ToString("X8") });
                 } finally { Marshal.Release(adapter); }
             }
         } finally { Marshal.Release(factory); }
@@ -85,7 +88,6 @@ public class MoarTubeAdapters {
     }
 }
 '@
-ConvertTo-Json -InputObject @([MoarTubeAdapters]::List()) -Compress
 `;
 
 const adaptersSchema = z.array(
@@ -98,6 +100,13 @@ const adaptersSchema = z.array(
 );
 
 export async function getDirectXAdapters(): Promise<z.infer<typeof adaptersSchema>> {
+  const stdout = await runAdapterScript(
+    'ConvertTo-Json -InputObject @([MoarTubeAdapters]::List()) -Compress'
+  );
+  return adaptersSchema.parse(JSON.parse(stdout.replace(/^\uFEFF/, '')));
+}
+
+async function runAdapterScript(command: string): Promise<string> {
   // Send source through stdin rather than Windows command-line quoting/limits.
   const pending = run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '-'], {
     windowsHide: true,
@@ -110,9 +119,116 @@ export async function getDirectXAdapters(): Promise<z.infer<typeof adaptersSchem
     throw new Error('PowerShell stdin is unavailable');
   }
   input.on('error', () => pending.child.kill());
-  input.end(`${adapterScript}\n`);
+  input.end(`${adapterScript}\n${command}\n`);
   const { stdout } = await pending;
-  return adaptersSchema.parse(JSON.parse(stdout.replace(/^\uFEFF/, '')));
+  return stdout;
+}
+
+/** Video engine usage and dedicated memory for the selected physical adapter. */
+export async function getDirectXGpuMetrics(
+  gpuId: string,
+  rootPid: number = process.pid
+): Promise<GpuMetrics> {
+  if (!Number.isInteger(rootPid) || rootPid <= 0) {
+    throw new Error('Invalid application process');
+  }
+  // The ID is base64 encoded rather than interpolated as PowerShell source.
+  const encodedId = Buffer.from(gpuId, 'utf8').toString('base64');
+  const stdout = await runAdapterScript(`
+$gpuId = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${encodedId}'))
+$adapter = @([MoarTubeAdapters]::List()) | Where-Object {
+    $vendor = if ($_.Vendor -eq 0x8086) { 'Intel' } elseif ($_.Vendor -eq 0x1002) { 'AMD' } else { 'Other' }
+    (($vendor + ':' + $_.Id) -eq $gpuId) -or
+        ($_.Vendor -eq 0x10de -and $_.Id -notlike 'luid:*' -and
+        ('NVIDIA:' + (($_.Id -split ':')[-3..-1] -join ':')) -eq $gpuId)
+} | Select-Object -First 1
+if ($null -eq $adapter) { throw 'Selected GPU is unavailable' }
+$appPids = [System.Collections.Generic.HashSet[uint32]]::new()
+$hasApp = $false
+try {
+    $processes = @(Get-CimInstance Win32_Process -ErrorAction Stop)
+    $hasApp = @($processes | Where-Object { $_.ProcessId -eq ${String(rootPid)} }).Count -gt 0
+    if ($hasApp) {
+        [void]$appPids.Add(${String(rootPid)})
+        do {
+            $added = $false
+            foreach ($entry in $processes) {
+                if ($entry.ProcessId -ne $PID -and $appPids.Contains($entry.ParentProcessId)) {
+                    if ($appPids.Add($entry.ProcessId)) { $added = $true }
+                }
+            }
+        } while ($added)
+    }
+} catch { $hasApp = $false }
+$engines = @(Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine -ErrorAction Stop |
+    Where-Object { $_.Name -like ('*_' + $adapter.Luid + '_*') })
+$totals = @{}
+$appTotals = @{}
+foreach ($engine in $engines) {
+    $key = $engine.Name -replace '^pid_\\d+_', ''
+    $totals[$key] += [double]$engine.UtilizationPercentage
+    if ($hasApp -and $engine.Name -match '^pid_(\\d+)_') {
+        if ($appPids.Contains([uint32]$Matches[1])) { $appTotals[$key] += [double]$engine.UtilizationPercentage }
+    }
+}
+$encode = 0.0
+$decode = 0.0
+$appEncode = if ($hasApp) { 0.0 } else { $null }
+$appDecode = if ($hasApp) { 0.0 } else { $null }
+foreach ($key in $totals.Keys) {
+    if ($key -match '_engtype_VideoEncode$' -and $totals[$key] -ge $encode) {
+        $encode = [Math]::Min(100.0, $totals[$key])
+        if ($hasApp) { $appEncode = [Math]::Min($encode, [double]$appTotals[$key]) }
+    }
+    if ($key -match '_engtype_VideoDecode$' -and $totals[$key] -ge $decode) {
+        $decode = [Math]::Min(100.0, $totals[$key])
+        if ($hasApp) { $appDecode = [Math]::Min($decode, [double]$appTotals[$key]) }
+    }
+}
+$memoryUsed = $null
+$memoryTotal = $null
+try {
+    $memory = @(Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUAdapterMemory -ErrorAction Stop |
+        Where-Object { $_.Name -like ('*' + $adapter.Luid + '_*') })
+    if ($adapter.VideoMemory -gt 0 -and $memory.Count -gt 0) {
+        $memoryUsed = ($memory | Measure-Object -Property DedicatedUsage -Sum).Sum
+        $memoryTotal = $adapter.VideoMemory
+    }
+} catch { }
+$appMemory = $null
+if ($hasApp) {
+    try {
+        $allocations = @(Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUProcessMemory -ErrorAction Stop |
+            Where-Object { $_.Name -like ('*_' + $adapter.Luid + '_*') })
+        $appMemory = 0.0
+        foreach ($allocation in $allocations) {
+            if ($allocation.Name -match '^pid_(\\d+)_') {
+                if ($appPids.Contains([uint32]$Matches[1])) { $appMemory += [double]$allocation.DedicatedUsage }
+            }
+        }
+    } catch { $appMemory = $null }
+}
+ConvertTo-Json -InputObject @{
+    encodePercent = [Math]::Min(100.0, $encode)
+    decodePercent = [Math]::Min(100.0, $decode)
+    memoryUsedBytes = $memoryUsed
+    memoryTotalBytes = $memoryTotal
+    appEncodePercent = $appEncode
+    appDecodePercent = $appDecode
+    appMemoryBytes = $appMemory
+} -Compress
+`);
+  return z
+    .object({
+      encodePercent: z.number().min(0).max(100).nullable(),
+      decodePercent: z.number().min(0).max(100).nullable(),
+      memoryUsedBytes: z.number().nonnegative().nullable(),
+      memoryTotalBytes: z.number().nonnegative().nullable(),
+      appEncodePercent: z.number().min(0).max(100).nullable(),
+      appDecodePercent: z.number().min(0).max(100).nullable(),
+      appMemoryBytes: z.number().nonnegative().nullable(),
+    })
+    .parse(JSON.parse(stdout.replace(/^\uFEFF/, '')));
 }
 
 export async function getNvidiaDevices(): Promise<{ uuid: string; model: string }[]> {

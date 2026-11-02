@@ -68,7 +68,7 @@ describe('GPU settings and startup', () => {
       const reply = await select(intel.id);
       expect(assess).toHaveBeenCalledWith(true);
       expect(save).toHaveBeenCalledWith({
-        processingAgent: expect.objectContaining({
+        processingAgent: matchingObject({
           processingAgentType: 'gpu',
           gpuId: intel.id,
           backend: intel.backend,
@@ -93,7 +93,7 @@ describe('GPU settings and startup', () => {
         assess.mockResolvedValue([intel]);
         await startup();
         expect(save).toHaveBeenCalledWith({
-          processingAgent: expect.objectContaining({
+          processingAgent: matchingObject({
             gpuId: intel.id,
             backend: intel.backend,
             deviceIndex: intel.deviceIndex,
@@ -127,7 +127,7 @@ describe('GPU settings and startup', () => {
     const reply = await select(gpu.id);
     expect(assess).toHaveBeenCalledWith(true);
     expect(save).toHaveBeenCalledWith({
-      processingAgent: expect.objectContaining({
+      processingAgent: matchingObject({
         processingAgentType: 'gpu',
         backend: 'vaapi',
         renderDevice: '/dev/dri/renderD129',
@@ -141,7 +141,7 @@ describe('GPU settings and startup', () => {
     const reply = await select(mac.id);
     expect(assess).toHaveBeenCalledWith(true);
     expect(save).toHaveBeenCalledWith({
-      processingAgent: expect.objectContaining({
+      processingAgent: matchingObject({
         processingAgentType: 'gpu',
         gpuId: mac.id,
         backend: 'videotoolbox',
@@ -164,7 +164,7 @@ describe('GPU settings and startup', () => {
     await select('');
     expect(assess).not.toHaveBeenCalled();
     expect(save).toHaveBeenCalledWith({
-      processingAgent: expect.objectContaining({ processingAgentType: 'cpu' }),
+      processingAgent: matchingObject({ processingAgentType: 'cpu' }),
     });
   });
 
@@ -186,7 +186,7 @@ describe('GPU settings and startup', () => {
   it('restores a Linux GPU by identity and refreshes its changed render node', async () => {
     await startup();
     expect(save).toHaveBeenCalledWith({
-      processingAgent: expect.objectContaining({
+      processingAgent: matchingObject({
         gpuId: gpu.id,
         backend: 'vaapi',
         renderDevice: '/dev/dri/renderD129',
@@ -205,7 +205,7 @@ describe('GPU settings and startup', () => {
       assess.mockResolvedValue([mac]);
       await startup();
       expect(save).toHaveBeenCalledWith({
-        processingAgent: expect.objectContaining({
+        processingAgent: matchingObject({
           gpuId: mac.id,
           backend: 'videotoolbox',
           processingAgentName: 'VideoToolbox',
@@ -220,7 +220,12 @@ describe('GPU settings and startup', () => {
     assess.mockResolvedValue([{ ...gpu, available: false }]);
     await startup();
     expect(save).toHaveBeenCalledWith({
-      processingAgent: expect.objectContaining({ processingAgentType: 'cpu' }),
+      processingAgent: matchingObject({ processingAgentType: 'cpu' }),
     });
   });
 });
+
+// Preserve the runtime asymmetric matcher while exposing a safe assertion-boundary type.
+function matchingObject(value: Record<string, unknown>): unknown {
+  return expect.objectContaining(value) as unknown;
+}

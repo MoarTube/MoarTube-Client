@@ -911,15 +911,7 @@
 
 										setTimeout(function () {
 
-											let recommendedSetting = '';
-
-											if (format === 'm3u8' || format === 'mp4') {
-												if (resolution === '1080p' || resolution === '720p' || resolution === '480p') {
-													recommendedSetting = 'recommended-publish-checkbox';
-												}
-											}
-
-											$('#' + videoId + '_' + format + '_' + resolution + '_publish_progress_circle').replaceWith('<div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input data-format="' + format + '" data-resolution="' + resolution + '" id="' + videoId + '_' + format + '_' + resolution + '_publish_checkbox" class="form-check-input ' + recommendedSetting + ' form-check-input-is-published" type="checkbox"> </div>');
+											$('#' + videoId + '_' + format + '_' + resolution + '_publish_progress_circle').replaceWith('<div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input data-format="' + format + '" data-resolution="' + resolution + '" id="' + videoId + '_' + format + '_' + resolution + '_publish_checkbox" class="form-check-input form-check-input-is-published" type="checkbox"> </div>');
 										}, 2000);
 									}
 								}
@@ -1367,9 +1359,9 @@ MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId
 					<span class="text-dark d-block text-sm">HLS</span>  </div> </td> \
 					<td class="align-middle"> <div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input id="' + videoId + '_m3u8_2160p_publish_checkbox" data-format="m3u8" data-resolution="2160p" class="form-check-input" type="checkbox"> </div> </td> \
 					<td class="align-middle"> <div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input id="' + videoId + '_m3u8_1440p_publish_checkbox" data-format="m3u8" data-resolution="1440p" class="form-check-input" type="checkbox"> </div> </td> \
-					<td class="align-middle"> <div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input id="' + videoId + '_m3u8_1080p_publish_checkbox" data-format="m3u8" data-resolution="1080p" class="form-check-input recommended-publish-checkbox" type="checkbox"> </div> </td> \
-					<td class="align-middle"> <div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input id="' + videoId + '_m3u8_720p_publish_checkbox" data-format="m3u8" data-resolution="720p" class="form-check-input recommended-publish-checkbox" type="checkbox"> </div> </td> \
-					<td class="align-middle"> <div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input id="' + videoId + '_m3u8_480p_publish_checkbox" data-format="m3u8" data-resolution="480p" class="form-check-input recommended-publish-checkbox" type="checkbox"> </div> </td> \
+					<td class="align-middle"> <div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input id="' + videoId + '_m3u8_1080p_publish_checkbox" data-format="m3u8" data-resolution="1080p" class="form-check-input" type="checkbox"> </div> </td> \
+					<td class="align-middle"> <div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input id="' + videoId + '_m3u8_720p_publish_checkbox" data-format="m3u8" data-resolution="720p" class="form-check-input" type="checkbox"> </div> </td> \
+					<td class="align-middle"> <div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input id="' + videoId + '_m3u8_480p_publish_checkbox" data-format="m3u8" data-resolution="480p" class="form-check-input" type="checkbox"> </div> </td> \
 					<td class="align-middle"> <div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input id="' + videoId + '_m3u8_360p_publish_checkbox" data-format="m3u8" data-resolution="360p" class="form-check-input" type="checkbox"> </div> </td> \
 					<td class="align-middle"> <div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input id="' + videoId + '_m3u8_240p_publish_checkbox" data-format="m3u8" data-resolution="240p" class="form-check-input" type="checkbox"> </div> </td> \
 					</tr> \
@@ -1405,7 +1397,6 @@ MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId
 					</tr> \
 					</tbody> \
 					</table> </div> </div> </div>',
-				footer: '<a id="publish-modal-recommended-settings" class="cursor-pointer">click here for recommended settings</a>',
 				willOpen: () => {
 					$.ajax({ type: 'GET', url: '/videos/' + videoId + '/publishes' })
 						.done(function (data, textStatus, xhr) {
@@ -1429,19 +1420,6 @@ MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId
 						.fail(function () {
 							console.log('unable to communicate with node');
 						});
-
-					$('#publish-modal-recommended-settings').click(function () {
-						let isChecked = false;
-
-						$('#publish-modal-table input:checkbox').each(function () {
-							if ($(this).prop('checked')) {
-								isChecked = true;
-							}
-						});
-
-						$('#publish-modal-table input:checkbox:not(.recommended-publish-checkbox)').prop('checked', false);
-						$('.recommended-publish-checkbox').prop('checked', true);
-					});
 				},
 				showCloseButton: true,
 				showCancelButton: false,

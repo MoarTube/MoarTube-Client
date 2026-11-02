@@ -28,6 +28,18 @@ export function settingsRoutes(
 
   // Client API
   fastify.get(
+    '/metrics/client/gpu',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiGetGpuMetrics
+  );
+
+  fastify.get(
+    '/metrics/:target/cpu',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiGetCpuMetrics
+  );
+
+  fastify.get(
     '/metrics/:target/memory',
     { schema: { tags: ['Settings'] } },
     settingsController.apiGetMemoryMetrics

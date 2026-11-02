@@ -87,6 +87,12 @@ export default tseslint.config(
     },
   },
   {
+    // The Silo global setup is JavaScript and is not part of a TypeScript project.
+    ...tseslint.configs.disableTypeChecked,
+    files: ['tests/support/*.mjs'],
+    languageOptions: { parserOptions: { project: false } },
+  },
+  {
     // Playwright response.json() is intentionally untyped at the HTTP boundary.
     // Keep syntax/style linting here; typecheck:e2e checks the complete test project.
     ...tseslint.configs.disableTypeChecked,

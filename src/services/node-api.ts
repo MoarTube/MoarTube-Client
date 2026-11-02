@@ -10,6 +10,7 @@ import type { Logger } from '@/utils/logger.js';
 import type { Config } from '@/config/index.js';
 import type { StorageMetrics } from '@/utils/storage-metrics.js';
 import type { MemoryMetrics } from '@/utils/memory-metrics.js';
+import type { CpuMetrics } from '@/utils/cpu-metrics.js';
 import type {
   AuthResponse,
   NodeSettings,
@@ -240,6 +241,15 @@ export class NodeApiService extends BaseService {
       externalVideosBaseUrl: string;
     };
     return data.externalVideosBaseUrl;
+  }
+
+  public async getCpuMetrics(jwtToken: string): Promise<CpuMetrics> {
+    const client = await this.getClient();
+    const response = await client.get('/settings/metrics/cpu', {
+      headers: { Authorization: `Bearer ${jwtToken}` },
+    });
+    const data = this.unwrapOrThrow(response.data, 'getCpuMetrics') as { metrics: CpuMetrics };
+    return data.metrics;
   }
 
   public async getMemoryMetrics(jwtToken: string): Promise<MemoryMetrics> {
@@ -488,6 +498,13 @@ export class NodeApiService extends BaseService {
 
   public async clearCloudflareConfiguration(jwtToken: string): Promise<BaseNodeResponse> {
     return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/cloudflare/clear');
+  }
+
+  public async invalidateVideoCache(jwtToken: string, videoId: string): Promise<BaseNodeResponse> {
+    return this.postAuthenticated<BaseNodeResponse>(
+      jwtToken,
+      `/videos/${videoId}/cache/invalidate`
+    );
   }
 
   public async setCloudflareTurnstileConfiguration(
@@ -1095,8 +1112,16 @@ export class NodeApiService extends BaseService {
     return response.data as VideoBandwidthResponse;
   }
 
-  public async stopVideoStreaming(jwtToken: string, videoId: string): Promise<BaseNodeResponse> {
-    return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/streams/${videoId}/stop`, {});
+  public async stopVideoStreaming(
+    jwtToken: string,
+    videoId: string,
+    drainSeconds = 0
+  ): Promise<BaseNodeResponse> {
+    return this.postAuthenticated<BaseNodeResponse>(
+      jwtToken,
+      `/streams/${videoId}/stop`,
+      drainSeconds > 0 ? { drainSeconds } : {}
+    );
   }
 
   public async setThumbnail(
