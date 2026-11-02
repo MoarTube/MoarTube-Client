@@ -42,6 +42,124 @@
 			transition: none;
 		}
 
+		.form-label {
+			font-size: 0.875rem;
+		}
+
+		.settings-section-heading {
+			display: flex;
+			align-items: center;
+			min-height: 2.5rem;
+		}
+
+		.settings-horizontal {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+			gap: 1.5rem 2rem;
+			text-align: center;
+		}
+
+		.settings-permissions {
+			grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+		}
+
+		.settings-configurations {
+			grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+		}
+
+		.settings-horizontal .card-body {
+			padding: 0;
+			min-width: 0;
+		}
+
+		.settings-horizontal > .card-body {
+			padding-right: 1.5rem;
+			padding-left: 1.5rem;
+		}
+
+		.settings-horizontal > .card-body > .card-body {
+			margin-top: 1rem;
+			padding-bottom: 1.5rem;
+		}
+
+		.settings-horizontal .row {
+			margin: 0;
+		}
+
+		.settings-horizontal .row > * {
+			width: 100%;
+			padding: 0;
+		}
+
+		.settings-horizontal > .card-body > div:first-child {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			min-height: 3rem;
+		}
+
+		.settings-horizontal > .card-body > div:first-child > a {
+			min-width: 0;
+			max-width: 100%;
+		}
+
+		.settings-horizontal .form-label {
+			overflow-wrap: anywhere;
+		}
+
+		.settings-horizontal p.form-label {
+			justify-content: center;
+		}
+
+		.form-label .bi-box-arrow-up-right {
+			width: 16px;
+			height: 16px;
+			flex-shrink: 0;
+		}
+
+		.settings-horizontal .form-switch {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			padding-left: 0;
+			min-height: 1.5rem;
+		}
+
+		.settings-horizontal .form-switch .form-check-input {
+			float: none;
+			margin: 0;
+		}
+
+		.settings-horizontal .radio-group,
+		.settings-configuration-actions {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: center;
+			align-items: center;
+			gap: 0.75rem 1.25rem;
+		}
+
+		.settings-horizontal .radio-group .form-check-label {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.5rem;
+			margin: 0 !important;
+		}
+
+		.settings-horizontal .radio-group .form-check-input {
+			flex-shrink: 0;
+			margin: 0;
+		}
+
+		.settings-configuration-actions {
+			margin-top: 1.25rem;
+			gap: 0.75rem;
+		}
+
+		.settings-configuration-actions .btn {
+			margin: 0;
+		}
+
 		.node-avatar {
 			border-radius: 50%;
 			max-width: 128px;
@@ -331,12 +449,12 @@
 			<div class="row my-4">
 				<div class="col-12">
 					<section id="metrics-container" class="card mt-4" aria-labelledby="metrics-heading">
-						<div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2 pb-0">
-							<div>
-								<h5 id="metrics-heading">Metrics</h5>
+						<div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2 pb-3">
+							<div class="settings-section-heading">
+								<h5 id="metrics-heading" class="mb-0">Metrics</h5>
 							</div>
-							<div class="d-flex align-items-center gap-2 mb-3">
-								<label for="metrics-refresh-interval" class="text-sm mb-0 text-nowrap">Refresh every</label>
+							<div class="d-flex align-items-center gap-2">
+								<label for="metrics-refresh-interval" class="form-label mb-0 text-nowrap">Refresh every</label>
 								<select id="metrics-refresh-interval" class="form-select form-select-sm w-auto">
 									<% for (let seconds = 1; seconds <= 10; seconds++) { %>
 									<option value="<%= seconds %>" <%= seconds === 2 ? 'selected' : '' %>><%= seconds %> <%= seconds === 1 ? 'second' : 'seconds' %></option>
@@ -418,16 +536,19 @@
 						</div>
 					</section>
 					<div id="client-settings-container" class="card mt-4">
-						<div class="card-header">
-							<h5>Client Settings (<i>version <span id="client-version"></span></i> )</h5>
+						<div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2 pb-3">
+							<div class="settings-section-heading">
+								<h5 class="mb-0">Client Settings (<i>version <span id="client-version"></span></i> )</h5>
+							</div>
 						</div>
 						<div class="card-body pt-0">
+							<section class="border border-radius-lg p-3" aria-label="Client settings">
 							<div class="card-body pt-0 d-flex">
 								<div class="my-auto ">
 									<div class="h-100">
 										<a href="https://www.moartube.com/guides/how-to-enable-gpu-acceleration"
 											target="_blank">
-											<p class="mb-0 d-flex">GPU Acceleration<svg
+											<p class="form-label mb-0 d-flex">GPU Acceleration<svg
 													xmlns="http://www.w3.org/2000/svg" width="16" height="16"
 													fill="currentColor" class="bi bi-box-arrow-up-right ps-1"
 													viewBox="0 0 16 16">
@@ -451,7 +572,7 @@
 									<div class="h-100">
 										<a href="https://www.moartube.com/guides/how-to-configure-video-encoding"
 											target="_blank">
-											<p class="mb-0 d-flex">Video Encoding<svg xmlns="http://www.w3.org/2000/svg"
+											<p class="form-label mb-0 d-flex">Video Encoding<svg xmlns="http://www.w3.org/2000/svg"
 													width="16" height="16" fill="currentColor"
 													class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
 													<path fill-rule="evenodd"
@@ -473,7 +594,7 @@
 									<div class="h-100">
 										<a href="https://www.moartube.com/guides/how-to-configure-live-encoding"
 											target="_blank">
-											<p class="mb-0 d-flex">Live Encoding<svg xmlns="http://www.w3.org/2000/svg"
+											<p class="form-label mb-0 d-flex">Live Encoding<svg xmlns="http://www.w3.org/2000/svg"
 													width="16" height="16" fill="currentColor"
 													class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
 													<path fill-rule="evenodd"
@@ -490,18 +611,22 @@
 									<button id="show-live-encoding-btn" class="btn btn-primary" type="button">Settings</button>
 								</div>
 							</div>
+							</section>
 						</div>
 					</div>
 					<div id="node-settings-container" class="card mt-4">
-						<div class="card-header">
-							<h5>Node Settings (<i>version <span id="node-version"></span></i> )</h5>
+						<div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2 pb-3">
+							<div class="settings-section-heading">
+								<h5 class="mb-0">Node Settings (<i>version <span id="node-version"></span></i> )</h5>
+							</div>
 						</div>
 						<div class="card-body pt-0">
+							<section class="border border-radius-lg p-3 mb-3" aria-label="Personalization">
 							<div class="card-body pt-0 pb-0">
 								<div class="">
 									<a href="https://www.moartube.com/guides/how-to-personalize-your-node"
 										target="_blank">
-										<p class="mb-0 d-flex">Personalize<svg xmlns="http://www.w3.org/2000/svg"
+										<p class="form-label mb-0 d-flex">Personalize<svg xmlns="http://www.w3.org/2000/svg"
 												width="16" height="16" fill="currentColor"
 												class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
 												<path fill-rule="evenodd"
@@ -583,12 +708,14 @@
 									</div>
 								</div>
 							</form>
+							</section>
 
+							<section class="border border-radius-lg p-3 mb-3 settings-horizontal settings-security" aria-label="Security and delivery">
 							<div class="card-body pt-0 pb-0">
 								<div class="">
 									<a href="https://www.moartube.com/guides/how-to-secure-your-node-with-https"
 										target="_blank">
-										<p class="mb-0 d-flex">Secure Mode (HTTPS)<svg
+										<p class="form-label mb-0 d-flex">Secure Mode (HTTPS)<svg
 												xmlns="http://www.w3.org/2000/svg" width="16" height="16"
 												fill="currentColor" class="bi bi-box-arrow-up-right ps-1"
 												viewBox="0 0 16 16">
@@ -614,7 +741,7 @@
 								<div class="">
 									<a href="https://www.moartube.com/guides/how-to-enable-cloudflare-cdn"
 										target="_blank">
-										<p class="mb-0 d-flex">Cloudflare CDN<svg xmlns="http://www.w3.org/2000/svg"
+										<p class="form-label mb-0 d-flex">Cloudflare CDN<svg xmlns="http://www.w3.org/2000/svg"
 												width="16" height="16" fill="currentColor"
 												class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
 												<path fill-rule="evenodd"
@@ -639,7 +766,7 @@
 								<div class="">
 									<a href="https://www.moartube.com/guides/how-to-enable-cloudflare-turnstile"
 										target="_blank">
-										<p class="mb-0 d-flex">Cloudflare Turnstile (human verification)<svg
+										<p class="form-label mb-0 d-flex">Cloudflare Turnstile (human verification)<svg
 												xmlns="http://www.w3.org/2000/svg" width="16" height="16"
 												fill="currentColor" class="bi bi-box-arrow-up-right ps-1"
 												viewBox="0 0 16 16">
@@ -661,11 +788,13 @@
 									</div>
 								</div>
 							</div>
+							</section>
+							<section class="border border-radius-lg p-3 mb-3 settings-horizontal settings-configurations" aria-label="Storage and database">
 							<div class="card-body pt-0 pb-0">
 								<div class="">
 									<a href="https://www.moartube.com/guides/how-to-database-configuration"
 										target="_blank">
-										<p class="mb-0 d-flex">Database Configuration<svg
+										<p class="form-label mb-0 d-flex">Database Configuration<svg
 												xmlns="http://www.w3.org/2000/svg" width="16" height="16"
 												fill="currentColor" class="bi bi-box-arrow-up-right ps-1"
 												viewBox="0 0 16 16">
@@ -679,14 +808,14 @@
 								<div class="card-body pt-0">
 									<div class="row">
 										<div class="radio-group">
-											<label class="form-check-label me-3" for="database-dialect-sqlite-radio">
+											<label class="form-label form-check-label me-3" for="database-dialect-sqlite-radio">
 												<input id="database-dialect-sqlite-radio"
 													class="form-check-input database-dialect-radio toggle-database-config" type="radio"
 													name="database-dialect" data-databasedialect="sqlite"
 													onkeyup="void(0)">
 												SQLite (local)
 											</label>
-											<label class="form-check-label" for="database-dialect-postgres-radio">
+											<label class="form-label form-check-label" for="database-dialect-postgres-radio">
 												<input id="database-dialect-postgres-radio"
 													class="form-check-input database-dialect-radio toggle-database-config" type="radio"
 													name="database-dialect" data-databasedialect="postgres"
@@ -695,16 +824,18 @@
 											</label>
 										</div>
 									</div>
-									<button type="button" class="btn btn-outline-primary me-1 trigger-database-import">import</button>
+									<div class="settings-configuration-actions">
+									<button type="button" class="btn btn-outline-primary trigger-database-import">import</button>
 									<a href="/settings/node/export/database"><button type="button"
 											class="btn btn-outline-primary">export</button></a>
+									</div>
 								</div>
 							</div>
 							<div class="card-body pt-0 pb-0">
 								<div class="">
 									<a href="https://www.moartube.com/guides/how-to-storage-configuration"
 										target="_blank">
-										<p class="mb-0 d-flex">Storage Configuration<svg
+										<p class="form-label mb-0 d-flex">Storage Configuration<svg
 												xmlns="http://www.w3.org/2000/svg" width="16" height="16"
 												fill="currentColor" class="bi bi-box-arrow-up-right ps-1"
 												viewBox="0 0 16 16">
@@ -719,7 +850,7 @@
 									<div class="row">
 										<div class="col-6">
 											<div class="radio-group">
-												<label class="form-check-label me-3"
+												<label class="form-label form-check-label me-3"
 													for="storage-configuration-filesystem-radio">
 													<input id="storage-configuration-filesystem-radio"
 														class="form-check-input storage-configuration-radio toggle-storage-config"
@@ -728,7 +859,7 @@
 														onkeyup="void(0)">
 													Filesystem (local)
 												</label>
-												<label class="form-check-label"
+												<label class="form-label form-check-label"
 													for="storage-configuration-s3provider-radio">
 													<input id="storage-configuration-s3provider-radio"
 														class="form-check-input storage-configuration-radio toggle-storage-config"
@@ -742,9 +873,11 @@
 									</div>
 								</div>
 							</div>
+							</section>
+							<section class="border border-radius-lg p-3 mb-3 settings-horizontal settings-permissions" aria-label="Community">
 							<div class="card-body pt-0 pb-0">
 								<div class="">
-									<p class="mb-0 d-flex">Comments</p>
+									<label class="form-label mb-0" for="comments-checkbox">Comments</label>
 								</div>
 								<div class="card-body pt-0">
 									<div class="row">
@@ -759,7 +892,7 @@
 
 							<div class="card-body pt-0 pb-0">
 								<div class="">
-									<p class="mb-0 d-flex">Likes</p>
+									<label class="form-label mb-0" for="likes-checkbox">Likes</label>
 								</div>
 								<div class="card-body pt-0">
 									<div class="row">
@@ -774,7 +907,7 @@
 
 							<div class="card-body pt-0 pb-0">
 								<div class="">
-									<p class="mb-0 d-flex">Dislikes</p>
+									<label class="form-label mb-0" for="dislikes-checkbox">Dislikes</label>
 								</div>
 								<div class="card-body pt-0">
 									<div class="row">
@@ -789,7 +922,7 @@
 
 							<div class="card-body pt-0 pb-0">
 								<div class="">
-									<p class="mb-0 d-flex">Reports</p>
+									<label class="form-label mb-0" for="reports-checkbox">Reports</label>
 								</div>
 								<div class="card-body pt-0">
 									<div class="row">
@@ -804,7 +937,7 @@
 
 							<div class="card-body pt-0 pb-0">
 								<div class="">
-									<p class="mb-0 d-flex">Live Chat</p>
+									<label class="form-label mb-0" for="live-chat-checkbox">Live Chat</label>
 								</div>
 								<div class="card-body pt-0">
 									<div class="row">
@@ -816,13 +949,15 @@
 									</div>
 								</div>
 							</div>
+							</section>
+							<section class="border border-radius-lg p-3 mb-3" aria-label="Network">
 							<form id="internal_network_settings_form" aria-label="Internal Network Settings Form" method="POST"
 								action="/settings/node/network/internal">
 								<div class="card-body pt-0 pb-0">
 									<div class="">
 										<a href="https://www.moartube.com/guides/how-to-change-your-nodes-listening-port"
 											target="_blank">
-											<p class="mb-0 d-flex">What port is your node listening on?<svg
+											<p class="form-label mb-0 d-flex">What port is your node listening on?<svg
 													xmlns="http://www.w3.org/2000/svg" width="16" height="16"
 													fill="currentColor" class="bi bi-box-arrow-up-right ps-1"
 													viewBox="0 0 16 16">
@@ -858,7 +993,7 @@
 									<div class="">
 										<a href="https://www.moartube.com/guides/how-can-moartube-find-your-node"
 											target="_blank">
-											<p class="mb-0 d-flex">What do people type into their web browser's address
+											<p class="form-label mb-0 d-flex">What do people type into their web browser's address
 												bar to find your node?<svg xmlns="http://www.w3.org/2000/svg" width="16"
 													height="16" fill="currentColor"
 													class="bi bi-box-arrow-up-right ps-1" viewBox="0 0 16 16">
@@ -908,13 +1043,15 @@
 									</div>
 								</div>
 							</form>
+							</section>
+							<section class="border border-radius-lg p-3" aria-label="Account">
 							<form id="account_credentials_settings_form" method="POST"
 								action="/settings/node/account">
 								<div class="card-body pt-0 pb-0">
 									<div class="">
 										<a href="https://www.moartube.com/guides/how-to-change-node-account-credentials"
 											target="_blank">
-											<p class="mb-0 d-flex">Account Credentials<svg
+											<p class="form-label mb-0 d-flex">Account Credentials<svg
 													xmlns="http://www.w3.org/2000/svg" width="16" height="16"
 													fill="currentColor" class="bi bi-box-arrow-up-right ps-1"
 													viewBox="0 0 16 16">
@@ -952,6 +1089,7 @@
 									</div>
 								</div>
 							</form>
+							</section>
 						</div>
 					</div>
 				</div>
