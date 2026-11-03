@@ -1,7 +1,7 @@
 class MoarTubeReportsSearch {
   constructor({ loadReports, loadArchives, onError }) {
     this.input = document.getElementById('search-input');
-    this.form = this.input.form;
+    this.form = this.input?.form;
     this.icon = document.getElementById('search_input_icon');
     this.spinner = document.getElementById('search_input_spinner');
     this.loadReports = loadReports;
@@ -12,9 +12,9 @@ class MoarTubeReportsSearch {
     this.active = true;
     this.timer = null;
     this.controller = null;
-    this.input.addEventListener('input', (event) => this.schedule(event.isComposing));
-    this.input.addEventListener('compositionend', () => this.schedule(false));
-    this.form.addEventListener('submit', (event) => {
+    this.input?.addEventListener('input', (event) => this.schedule(event.isComposing));
+    this.input?.addEventListener('compositionend', () => this.schedule(false));
+    this.form?.addEventListener('submit', (event) => {
       event.preventDefault();
       this.search();
     });
@@ -27,7 +27,7 @@ class MoarTubeReportsSearch {
       });
     }
     window.addEventListener('popstate', () => {
-      this.input.value = new URL(location.href).searchParams.get('search') || '';
+      if (this.input) this.input.value = new URL(location.href).searchParams.get('search') || '';
       this.load(new URL(location.href));
     });
     window.addEventListener('pagehide', () => {
@@ -37,16 +37,16 @@ class MoarTubeReportsSearch {
     window.addEventListener('pageshow', (event) => {
       if (event.persisted) {
         this.active = true;
-        this.input.value = new URL(location.href).searchParams.get('search') || '';
+        if (this.input) this.input.value = new URL(location.href).searchParams.get('search') || '';
         this.load(new URL(location.href));
       }
     });
   }
 
   setBusy(busy) {
-    this.icon.classList.toggle('hidden-elem', busy);
-    this.spinner.classList.toggle('hidden-elem', !busy);
-    this.form.setAttribute('aria-busy', String(busy));
+    this.icon?.classList.toggle('hidden-elem', busy);
+    this.spinner?.classList.toggle('hidden-elem', !busy);
+    this.form?.setAttribute('aria-busy', String(busy));
   }
 
   cancel() {

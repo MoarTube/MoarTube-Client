@@ -210,20 +210,7 @@
 					<h6 class="font-weight-bolder mb-0">Video Reports</h6>
 				</nav>
 				<div class="collapse navbar-collapse mt-sm-0 mt-2 me-md-0 me-sm-4" id="navbar">
-					<form method="get" role="search" class="ms-md-auto pe-md-3 d-flex align-items-center">
-						<div class="input-group">
-							<span class="input-group-text text-body">
-								<i id="search_input_icon" class="fas fa-search" aria-hidden="true"></i>
-								<output id="search_input_spinner" class="spinner-grow text-primary spinner-grow-sm hidden-elem">
-									<span class="sr-only">Loading...</span>
-								</output>
-							</span>
-							<input type="text" id="search-input" class="form-control" name="search" value="<%=model.search%>"
-								placeholder="Search here..." maxlength="100" aria-label="Search reports and archives"
-								onfocus="focused(this)" onfocusout="defocused(this)">
-						</div>
-					</form>
-					<ul class="navbar-nav  justify-content-end">
+					<ul class="navbar-nav ms-md-auto justify-content-end">
 						<li class="nav-item d-flex align-items-center">
 							<a href="/account/signout" class="nav-link text-body font-weight-bold px-0">
 								<i class="fa fa-user me-sm-1" aria-hidden="true"></i>
