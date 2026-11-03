@@ -93,6 +93,17 @@ export default tseslint.config(
     languageOptions: { parserOptions: { project: false } },
   },
   {
+    // Cross-repository aliases are resolved by the opt-in Vitest runner per importer.
+    // Keep syntax/style linting; each repository typechecks its own source separately.
+    ...tseslint.configs.disableTypeChecked,
+    files: ['tests/node-contracts/**/*.ts'],
+    languageOptions: { parserOptions: { project: false } },
+    rules: {
+      ...tseslint.configs.disableTypeChecked.rules,
+      '@typescript-eslint/explicit-function-return-type': 'off',
+    },
+  },
+  {
     // Playwright response.json() is intentionally untyped at the HTTP boundary.
     // Keep syntax/style linting here; typecheck:e2e checks the complete test project.
     ...tseslint.configs.disableTypeChecked,

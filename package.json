@@ -84,6 +84,7 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "knip": "knip",
     "test": "vitest run",
+    "test:node-contracts": "vitest run --config vitest.node-contracts.config.ts",
     "test:coverage": "vitest run --coverage",
     "test:integration": "node --import tsx tests/integration/run.ts all",
     "test:integration:preflight": "node --import tsx tests/integration/run.ts preflight",

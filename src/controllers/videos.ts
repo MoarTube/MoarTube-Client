@@ -1,3 +1,4 @@
+import { requireNodeSuccess } from '@/utils/node-actions.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { pipeline } from 'node:stream/promises';
 import { randomUUID } from 'node:crypto';
@@ -31,12 +32,13 @@ export class VideosController extends BaseController {
     private readonly videoImportService: VideoImportService,
     private readonly videoPublishService: VideoPublishService,
     private readonly settingsRepository: SettingsRepository,
-    private readonly manifestService: ManifestService,
+    manifestService: ManifestService,
     private readonly s3Service: S3Service,
     private readonly socketService: SocketService,
     private readonly nodeSocketService: NodeSocketService
   ) {
     super('VideosController');
+    void manifestService;
   }
 
   public getRoot = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
@@ -406,9 +408,6 @@ export class VideosController extends BaseController {
       const { videoId } = request.params as VideoIdParams;
       const { format, resolution } = request.body as UnpublishBody;
 
-      const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
-      const storageConfig = nodeSettings.storageConfig;
-
       const response = await this.nodeApiService.unpublishVideo(
         jwtToken,
         videoId,
@@ -417,24 +416,6 @@ export class VideosController extends BaseController {
       );
       if (response.isError) {
         return await reply.send(response);
-      }
-
-      if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
-        const s3Config = storageConfig.s3Config;
-        if (format === 'm3u8') {
-          const segmentsPrefix = `external/videos/${videoId}/adaptive/m3u8/${resolution}`;
-          const manifestKey = `external/videos/${videoId}/adaptive/m3u8/static/manifests/manifest-${resolution}.m3u8`;
-
-          await this.s3Service.deleteDirectoryRecursive(s3Config, segmentsPrefix);
-          await this.s3Service.deleteObjectWithKey(s3Config, manifestKey);
-        } else if (['mp4', 'webm', 'ogv'].includes(format)) {
-          const key = `external/videos/${videoId}/progressive/${format}/${resolution}.${format}`;
-          await this.s3Service.deleteObjectWithKey(s3Config, key);
-        }
-      }
-
-      if (format === 'm3u8') {
-        await this.manifestService.refreshMasterManifest(jwtToken, videoId);
       }
 
       return await this.sendSuccess(reply, {});
@@ -600,16 +581,6 @@ export class VideosController extends BaseController {
         await fs.promises.rm(videoPath, { recursive: true, force: true });
       }
 
-      const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
-      const storageConfig = nodeSettings.storageConfig;
-
-      if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
-        for (const videoId of deletedVideoIds) {
-          const videoPrefix = `external/videos/${videoId}`;
-          await this.s3Service.deleteDirectoryRecursive(storageConfig.s3Config, videoPrefix);
-        }
-      }
-
       return await this.sendSuccess(reply, { deletedVideoIds, nonDeletedVideoIds });
     } catch (error) {
       this.logger.error('Error in postDelete', error);
@@ -675,11 +646,18 @@ export class VideosController extends BaseController {
       const storageConfig = nodeSettings.storageConfig;
 
       if (storageConfig?.storageMode === 'filesystem') {
-        await this.nodeApiService.setThumbnail(jwtToken, videoId, thumbnailBuffer);
+        requireNodeSuccess(
+          await this.nodeApiService.setThumbnail(jwtToken, videoId, thumbnailBuffer)
+        );
       } else if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
         const s3Config = storageConfig.s3Config;
         const key = `external/videos/${videoId}/images/thumbnail.jpg`;
-        await this.s3Service.putObjectFromData(s3Config, key, thumbnailBuffer, 'image/jpeg');
+        await this.nodeApiService.withVideoCacheInvalidation(
+          jwtToken,
+          videoId,
+          ['images/thumbnail.jpg'],
+          () => this.s3Service.putObjectFromData(s3Config, key, thumbnailBuffer, 'image/jpeg')
+        );
       }
 
       return await this.sendSuccess(reply, {});
@@ -714,11 +692,16 @@ export class VideosController extends BaseController {
       const storageConfig = nodeSettings.storageConfig;
 
       if (storageConfig?.storageMode === 'filesystem') {
-        await this.nodeApiService.setPreview(jwtToken, videoId, previewBuffer);
+        requireNodeSuccess(await this.nodeApiService.setPreview(jwtToken, videoId, previewBuffer));
       } else if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
         const s3Config = storageConfig.s3Config;
         const key = `external/videos/${videoId}/images/preview.jpg`;
-        await this.s3Service.putObjectFromData(s3Config, key, previewBuffer, 'image/jpeg');
+        await this.nodeApiService.withVideoCacheInvalidation(
+          jwtToken,
+          videoId,
+          ['images/preview.jpg'],
+          () => this.s3Service.putObjectFromData(s3Config, key, previewBuffer, 'image/jpeg')
+        );
       }
 
       return await this.sendSuccess(reply, {});
@@ -753,11 +736,16 @@ export class VideosController extends BaseController {
       const storageConfig = nodeSettings.storageConfig;
 
       if (storageConfig?.storageMode === 'filesystem') {
-        await this.nodeApiService.setPoster(jwtToken, videoId, posterBuffer);
+        requireNodeSuccess(await this.nodeApiService.setPoster(jwtToken, videoId, posterBuffer));
       } else if (storageConfig?.storageMode === 's3provider' && storageConfig.s3Config) {
         const s3Config = storageConfig.s3Config;
         const key = `external/videos/${videoId}/images/poster.jpg`;
-        await this.s3Service.putObjectFromData(s3Config, key, posterBuffer, 'image/jpeg');
+        await this.nodeApiService.withVideoCacheInvalidation(
+          jwtToken,
+          videoId,
+          ['images/poster.jpg'],
+          () => this.s3Service.putObjectFromData(s3Config, key, posterBuffer, 'image/jpeg')
+        );
       }
 
       return await this.sendSuccess(reply, {});

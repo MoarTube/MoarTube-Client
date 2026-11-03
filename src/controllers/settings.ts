@@ -1,3 +1,4 @@
+import { requireNodeSuccess } from '@/utils/node-actions.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { BaseController } from './base.js';
 import type { NodeApiService } from '@/services/node-api.js';
@@ -530,6 +531,15 @@ export class SettingsController extends BaseController {
     );
 
     if (!response.isError) {
+      try {
+        requireNodeSuccess(await this.nodeApiService.restartNode(request.session.jwtToken ?? ''));
+      } catch (error) {
+        this.logger.error('Failed to restart node after secure connection change', error as Error);
+        return await this.sendError(
+          reply,
+          'Settings saved, but Node restart failed; the previous connection remains selected.'
+        );
+      }
       const settings = this.config.clientSettings;
       if (isSecure) {
         settings.nodeHttpProtocol = 'https';
@@ -539,12 +549,6 @@ export class SettingsController extends BaseController {
         settings.nodeWebsocketProtocol = 'ws';
       }
       this.config.saveClientSettings(settings);
-
-      try {
-        await this.nodeApiService.restartNode(request.session.jwtToken ?? '');
-      } catch (error) {
-        this.logger.error('Failed to restart node after secure connection change', error as Error);
-      }
     }
     return await reply.send(response);
   };
@@ -597,15 +601,18 @@ export class SettingsController extends BaseController {
     const jwtToken = request.session.jwtToken ?? '';
     const response = await this.nodeApiService.setNetworkInternal(jwtToken, nodeListeningPort);
     if (!response.isError) {
+      try {
+        requireNodeSuccess(await this.nodeApiService.restartNode(jwtToken));
+      } catch (error) {
+        this.logger.error('Failed to restart node after network internal change', error as Error);
+        return await this.sendError(
+          reply,
+          'Settings saved, but Node restart failed; the previous connection remains selected.'
+        );
+      }
       const settings = this.config.clientSettings;
       settings.nodePort = nodeListeningPort;
       this.config.saveClientSettings(settings);
-
-      try {
-        await this.nodeApiService.restartNode(jwtToken);
-      } catch (error) {
-        this.logger.error('Failed to restart node after network internal change', error as Error);
-      }
     }
     return await reply.send(response);
   };
@@ -747,9 +754,13 @@ export class SettingsController extends BaseController {
 
     if (!response.isError) {
       try {
-        await this.nodeApiService.restartNode(jwtToken);
+        requireNodeSuccess(await this.nodeApiService.restartNode(jwtToken));
       } catch (error) {
         this.logger.error('Failed to restart node after database toggle', error as Error);
+        return await this.sendError(
+          reply,
+          'Database settings saved, but Node restart failed; activation is pending.'
+        );
       }
     }
 

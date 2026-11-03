@@ -1,3 +1,4 @@
+import { requireNodeSuccess } from '@/utils/node-actions.js';
 import type { ChildProcess } from 'node:child_process';
 import { spawnMediaProcess as spawn } from '@/utils/media-processes.js';
 import { getGpuProcessEnvironment } from '@/utils/hardware.js';
@@ -166,7 +167,16 @@ export class LiveStreamService {
 
       if (storageConfig.storageMode === 's3provider' && storageConfig.s3Config) {
         const prefix = `external/videos/${videoId}/adaptive/m3u8`;
-        await this.s3Service.deleteDirectoryRecursive(storageConfig.s3Config, prefix);
+        await this.nodeApiService.withVideoCacheInvalidation(
+          jwtToken,
+          videoId,
+          ['adaptive/m3u8/'],
+          () =>
+            this.s3Service.deleteDirectoryRecursive(
+              storageConfig.s3Config as NonNullable<typeof storageConfig.s3Config>,
+              prefix
+            )
+        );
       }
 
       await this.manifestService.refreshMasterManifest(jwtToken, videoId);
@@ -516,9 +526,16 @@ export class LiveStreamService {
                     throw new Error('Segment cleanup rejected');
                   }
                 } else if (storageConfig.s3Config) {
-                  await this.s3Service.deleteObjectWithKey(
-                    storageConfig.s3Config,
-                    `external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/${segmentName}`
+                  await this.nodeApiService.withVideoCacheInvalidation(
+                    jwtToken,
+                    videoId,
+                    [`adaptive/m3u8/${resolution}/segments/${segmentName}`],
+                    async () => {
+                      await this.s3Service.deleteObjectWithKey(
+                        storageConfig.s3Config as NonNullable<typeof storageConfig.s3Config>,
+                        `external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/${segmentName}`
+                      );
+                    }
                   );
                 }
                 retainedSegments.delete(segmentName);
@@ -590,29 +607,36 @@ export class LiveStreamService {
       const segmentKey = `external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/${segmentFileName}`;
       const manifestKey = `external/videos/${videoId}/adaptive/m3u8/dynamic/manifests/manifest-${resolution}.m3u8`;
 
-      await this.s3Service.putObjectFromData(
-        storageConfig.s3Config,
-        segmentKey,
-        segmentBuffer,
-        'video/mp2t',
-        signal
-      );
-      const manifest = manifestFilePath
-        ? fs.createReadStream(manifestFilePath)
-        : processedManifestBuffer;
-      try {
-        await this.s3Service.putObjectFromData(
-          storageConfig.s3Config,
-          manifestKey,
-          manifest,
-          'application/vnd.apple.mpegurl',
-          signal
-        );
-      } finally {
-        if (manifestFilePath) {
-          (manifest as fs.ReadStream).destroy();
+      await this.nodeApiService.withVideoCacheInvalidation(
+        jwtToken,
+        videoId,
+        [`adaptive/m3u8/dynamic/manifests/manifest-${resolution}.m3u8`],
+        async () => {
+          await this.s3Service.putObjectFromData(
+            storageConfig.s3Config as NonNullable<typeof storageConfig.s3Config>,
+            segmentKey,
+            segmentBuffer,
+            'video/mp2t',
+            signal
+          );
+          const manifest = manifestFilePath
+            ? fs.createReadStream(manifestFilePath)
+            : processedManifestBuffer;
+          try {
+            await this.s3Service.putObjectFromData(
+              storageConfig.s3Config as NonNullable<typeof storageConfig.s3Config>,
+              manifestKey,
+              manifest,
+              'application/vnd.apple.mpegurl',
+              signal
+            );
+          } finally {
+            if (manifestFilePath) {
+              (manifest as fs.ReadStream).destroy();
+            }
+          }
         }
-      }
+      );
     }
   }
 
@@ -696,28 +720,39 @@ export class LiveStreamService {
 
               if (storageConfig.storageMode === 'filesystem') {
                 // Node API methods: setThumbnail, setPreview, setPoster
-                await this.nodeApiService.setThumbnail(jwtToken, videoId, thumbnail);
-                await this.nodeApiService.setPreview(jwtToken, videoId, preview);
-                await this.nodeApiService.setPoster(jwtToken, videoId, poster);
+                requireNodeSuccess(
+                  await this.nodeApiService.setThumbnail(jwtToken, videoId, thumbnail)
+                );
+                requireNodeSuccess(
+                  await this.nodeApiService.setPreview(jwtToken, videoId, preview)
+                );
+                requireNodeSuccess(await this.nodeApiService.setPoster(jwtToken, videoId, poster));
               } else if (storageConfig.s3Config !== undefined) {
                 const s3Config = storageConfig.s3Config;
-                await this.s3Service.putObjectFromData(
-                  s3Config,
-                  `external/videos/${videoId}/images/thumbnail.jpg`,
-                  thumbnail,
-                  'image/jpeg'
-                );
-                await this.s3Service.putObjectFromData(
-                  s3Config,
-                  `external/videos/${videoId}/images/preview.jpg`,
-                  preview,
-                  'image/jpeg'
-                );
-                await this.s3Service.putObjectFromData(
-                  s3Config,
-                  `external/videos/${videoId}/images/poster.jpg`,
-                  poster,
-                  'image/jpeg'
+                await this.nodeApiService.withVideoCacheInvalidation(
+                  jwtToken,
+                  videoId,
+                  ['images/thumbnail.jpg', 'images/preview.jpg', 'images/poster.jpg'],
+                  async () => {
+                    await this.s3Service.putObjectFromData(
+                      s3Config,
+                      `external/videos/${videoId}/images/thumbnail.jpg`,
+                      thumbnail,
+                      'image/jpeg'
+                    );
+                    await this.s3Service.putObjectFromData(
+                      s3Config,
+                      `external/videos/${videoId}/images/preview.jpg`,
+                      preview,
+                      'image/jpeg'
+                    );
+                    await this.s3Service.putObjectFromData(
+                      s3Config,
+                      `external/videos/${videoId}/images/poster.jpg`,
+                      poster,
+                      'image/jpeg'
+                    );
+                  }
                 );
               }
             } catch (err) {

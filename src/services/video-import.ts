@@ -1,3 +1,4 @@
+import { requireNodeSuccess } from '@/utils/node-actions.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import { type ChildProcess } from 'node:child_process';
@@ -158,32 +159,43 @@ export class VideoImportService extends BaseService {
     const storageMode = storageConfig?.storageMode;
 
     if (storageMode === 'filesystem') {
-      await this.nodeApiService.setThumbnail(jwtToken, videoId, thumbnailBuffer);
-      await this.nodeApiService.setPreview(jwtToken, videoId, previewFileBuffer);
-      await this.nodeApiService.setPoster(jwtToken, videoId, posterFileBuffer);
+      requireNodeSuccess(
+        await this.nodeApiService.setThumbnail(jwtToken, videoId, thumbnailBuffer)
+      );
+      requireNodeSuccess(
+        await this.nodeApiService.setPreview(jwtToken, videoId, previewFileBuffer)
+      );
+      requireNodeSuccess(await this.nodeApiService.setPoster(jwtToken, videoId, posterFileBuffer));
     } else if (storageMode === 's3provider' && storageConfig?.s3Config) {
       const s3Config = storageConfig.s3Config;
       const thumbnailImageKey = `external/videos/${videoId}/images/thumbnail.jpg`;
       const previewImageKey = `external/videos/${videoId}/images/preview.jpg`;
       const posterImageKey = `external/videos/${videoId}/images/poster.jpg`;
 
-      await this.s3Service.putObjectFromData(
-        s3Config,
-        thumbnailImageKey,
-        thumbnailBuffer,
-        'image/jpeg'
-      );
-      await this.s3Service.putObjectFromData(
-        s3Config,
-        previewImageKey,
-        previewFileBuffer,
-        'image/jpeg'
-      );
-      await this.s3Service.putObjectFromData(
-        s3Config,
-        posterImageKey,
-        posterFileBuffer,
-        'image/jpeg'
+      await this.nodeApiService.withVideoCacheInvalidation(
+        jwtToken,
+        videoId,
+        ['images/thumbnail.jpg', 'images/preview.jpg', 'images/poster.jpg'],
+        async () => {
+          await this.s3Service.putObjectFromData(
+            s3Config,
+            thumbnailImageKey,
+            thumbnailBuffer,
+            'image/jpeg'
+          );
+          await this.s3Service.putObjectFromData(
+            s3Config,
+            previewImageKey,
+            previewFileBuffer,
+            'image/jpeg'
+          );
+          await this.s3Service.putObjectFromData(
+            s3Config,
+            posterImageKey,
+            posterFileBuffer,
+            'image/jpeg'
+          );
+        }
       );
     }
   }
@@ -234,8 +246,12 @@ export class VideoImportService extends BaseService {
         throw new Error('Import cancelled');
       }
 
-      await this.nodeApiService.setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp);
-      await this.nodeApiService.setSourceFileExtension(jwtToken, videoId, sourceFileExtension);
+      requireNodeSuccess(
+        await this.nodeApiService.setVideoLengths(jwtToken, videoId, lengthSeconds, lengthTimestamp)
+      );
+      requireNodeSuccess(
+        await this.nodeApiService.setSourceFileExtension(jwtToken, videoId, sourceFileExtension)
+      );
 
       // Generate Images
       await this.generateImages(jwtToken, videoId, videoFilePath, imageExtractionTimestamp);
@@ -244,7 +260,7 @@ export class VideoImportService extends BaseService {
         throw new Error('Import cancelled');
       }
 
-      await this.nodeApiService.setVideoImported(jwtToken, videoId);
+      requireNodeSuccess(await this.nodeApiService.setVideoImported(jwtToken, videoId));
 
       this.socketService.broadcastToUser(jwtToken, 'echo', {
         eventName: 'video_status',

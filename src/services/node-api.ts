@@ -1,3 +1,5 @@
+import { NodeActions, requireNodeSuccess, type NodeAction } from '@/utils/node-actions.js';
+import path from 'node:path';
 import type { AxiosInstance } from 'axios';
 import axios from 'axios';
 import FormData from 'form-data';
@@ -76,7 +78,13 @@ export class NodeApiService extends BaseService {
   });
   private readonly shutdown = new AbortController();
 
+  private readonly actions: NodeActions;
+  private readonly retryTimer: NodeJS.Timeout;
+  private replaying = false;
+  private readonly streamSessions = new Map<string, NodeAction>();
+
   public close(): void {
+    clearInterval(this.retryTimer);
     this.shutdown.abort();
     this.httpAgent.destroy();
     this.httpsAgent.destroy();
@@ -87,6 +95,16 @@ export class NodeApiService extends BaseService {
   constructor(logger: Logger, config: Config) {
     super('nodeApiService', logger);
     this.config = config;
+    const paths = (config as { paths?: { data?: string } }).paths;
+    this.actions = new NodeActions(
+      paths?.data !== undefined ? path.join(paths.data, 'node-actions') : undefined
+    );
+    this.retryTimer = setInterval(() => {
+      void this.retryPendingActions().catch((error: unknown) => {
+        this.logger.error('Pending Node actions could not be replayed', error);
+      });
+    }, 10_000);
+    this.retryTimer.unref();
     // this.settingsRepo = settingsRepository;
   }
 
@@ -98,8 +116,8 @@ export class NodeApiService extends BaseService {
     );
   }
 
-  private async getClient(): Promise<AxiosInstance> {
-    const baseURL = await this.getBaseUrl();
+  private async getClient(origin?: string): Promise<AxiosInstance> {
+    const baseURL = origin ?? (await this.getBaseUrl());
 
     return axios.create({
       baseURL,
@@ -155,7 +173,7 @@ export class NodeApiService extends BaseService {
     };
 
     const response = await client.post('/account/signin', payload);
-    return response.data as AuthResponse;
+    return this.mutationResult<AuthResponse>(response);
   }
 
   /**
@@ -196,7 +214,123 @@ export class NodeApiService extends BaseService {
     const response = await client.post(url, data, {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
-    return response.data as T;
+    return this.mutationResult<T>(response);
+  }
+
+  private mutationResult<T>(response: { status?: number; data: T }): T {
+    if (response.status !== undefined && (response.status < 200 || response.status >= 300)) {
+      const body = response.data as { message?: string } | null | undefined;
+      throw new Error(body?.message ?? `Node request failed (HTTP ${String(response.status)})`);
+    }
+    if (
+      response.data === null ||
+      typeof response.data !== 'object' ||
+      typeof (response.data as { isError?: unknown }).isError !== 'boolean'
+    ) {
+      throw new Error('Invalid Node mutation response');
+    }
+    return requireNodeSuccess(response.data);
+  }
+
+  private async sendAction(action: NodeAction): Promise<unknown> {
+    const client = await this.getClient(action.origin);
+    if (!this.actions.isCurrent(action)) {
+      throw new Error('Node action was cancelled or superseded');
+    }
+    const headers = { Authorization: `Bearer ${action.jwtToken}` };
+    const result = this.mutationResult(await client.post(action.route, action.data, { headers }));
+    if (action.followup && !this.actions.isCurrent(action)) {
+      throw new Error('Publication reconciliation was cancelled or superseded');
+    }
+    return action.followup
+      ? this.mutationResult(
+          await client.post(action.followup.route, action.followup.data, { headers })
+        )
+      : result;
+  }
+
+  public async retryPendingActions(): Promise<void> {
+    if (this.replaying) {
+      return;
+    }
+    this.replaying = true;
+    try {
+      await this.actions.replay((action) => this.sendAction(action));
+      if (this.actions.pending().some((action) => action.state === 'ready')) {
+        this.logger.warn(
+          'Node reconciliation remains pending; retrying with its original origin and credentials.'
+        );
+      }
+    } finally {
+      this.replaying = false;
+    }
+  }
+
+  private async durablePost(
+    jwtToken: string,
+    videoId: string,
+    route: string,
+    data: unknown,
+    followup?: { route: string; data: unknown }
+  ): Promise<BaseNodeResponse> {
+    const origin = await this.getBaseUrl();
+    const action = this.actions.prepare(
+      origin,
+      jwtToken,
+      route,
+      data,
+      origin + '/' + videoId,
+      false,
+      followup
+    );
+    let result: unknown;
+    await this.actions.deliver(action, async (entry) => {
+      result = await this.sendAction(entry);
+      return result;
+    });
+    return result as BaseNodeResponse;
+  }
+
+  /** Persist intent before direct storage I/O; even partial writes need invalidation. */
+  public async withVideoCacheInvalidation<T>(
+    jwtToken: string,
+    videoId: string,
+    paths: string[],
+    write: () => Promise<T>
+  ): Promise<T> {
+    const origin = await this.getBaseUrl();
+    const action = this.actions.prepare(
+      origin,
+      jwtToken,
+      `/videos/${videoId}/cache/invalidate`,
+      { paths },
+      origin + '/' + videoId,
+      true
+    );
+    let outcome: { value: T } | { error: unknown };
+    try {
+      outcome = { value: await write() };
+    } catch (error) {
+      outcome = { error };
+    }
+    this.actions.ready(action);
+    try {
+      await this.actions.deliver(action, (entry) => this.sendAction(entry));
+    } catch (error) {
+      if ('error' in outcome) {
+        throw new AggregateError(
+          [outcome.error, error],
+          'Storage change failed; invalidation remains pending.'
+        );
+      }
+      throw new Error('Storage write completed; Node invalidation remains queued for retry.', {
+        cause: error,
+      });
+    }
+    if ('error' in outcome) {
+      throw outcome.error;
+    }
+    return outcome.value;
   }
 
   /**
@@ -321,12 +455,19 @@ export class NodeApiService extends BaseService {
     jwtToken: string,
     videoId: string,
     format: string,
-    resolution: string
+    resolution: string,
+    finalize = false
   ): Promise<BaseNodeResponse> {
-    return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/videos/${videoId}/published`, {
-      format,
-      resolution,
-    });
+    return this.durablePost(
+      jwtToken,
+      videoId,
+      `/videos/${videoId}/published`,
+      {
+        format,
+        resolution,
+      },
+      finalize ? { route: '/videos/published', data: { videoId } } : undefined
+    );
   }
 
   public async getVideoDataAll(jwtToken: string, offset = 0): Promise<VideoDataAllResponse> {
@@ -458,7 +599,7 @@ export class NodeApiService extends BaseService {
       params: { isSecure },
       headers,
     });
-    return response.data as BaseNodeResponse;
+    return this.mutationResult<BaseNodeResponse>(response);
   }
 
   public async setNetworkInternal(
@@ -571,7 +712,7 @@ export class NodeApiService extends BaseService {
     headers['Authorization'] = `Bearer ${jwtToken}`;
 
     const response = await client.post('/settings/import/database', formData, { headers });
-    return response.data as BaseNodeResponse;
+    return this.mutationResult<BaseNodeResponse>(response);
   }
 
   public async settingsExportDatabase(jwtToken: string): Promise<Readable> {
@@ -703,7 +844,7 @@ export class NodeApiService extends BaseService {
         headers: { Authorization: `Bearer ${jwtToken}` },
       }
     );
-    return response.data as BaseNodeResponse;
+    return this.mutationResult<BaseNodeResponse>(response);
   }
 
   // Reports Methods - Videos
@@ -743,7 +884,7 @@ export class NodeApiService extends BaseService {
     const response = await client.delete(`/reports/videos/${String(reportId)}/delete`, {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
-    return response.data as BaseNodeResponse;
+    return this.mutationResult<BaseNodeResponse>(response);
   }
 
   public async removeVideoReportArchive(
@@ -754,7 +895,7 @@ export class NodeApiService extends BaseService {
     const response = await client.delete(`/reports/archive/videos/${String(archiveId)}/delete`, {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
-    return response.data as BaseNodeResponse;
+    return this.mutationResult<BaseNodeResponse>(response);
   }
 
   // Reports Methods - Comments
@@ -794,7 +935,7 @@ export class NodeApiService extends BaseService {
     const response = await client.delete(`/reports/comments/${String(reportId)}/delete`, {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
-    return response.data as BaseNodeResponse;
+    return this.mutationResult<BaseNodeResponse>(response);
   }
 
   public async removeCommentReportArchive(
@@ -805,7 +946,7 @@ export class NodeApiService extends BaseService {
     const response = await client.delete(`/reports/archive/comments/${String(archiveId)}/delete`, {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
-    return response.data as BaseNodeResponse;
+    return this.mutationResult<BaseNodeResponse>(response);
   }
 
   public async reportVideosToggle(jwtToken: string, isEnabled: boolean): Promise<BaseNodeResponse> {
@@ -858,6 +999,10 @@ export class NodeApiService extends BaseService {
   }
 
   public async deleteVideos(jwtToken: string, videoIds: string[]): Promise<DeleteVideosResponse> {
+    const origin = await this.getBaseUrl();
+    for (const videoId of videoIds) {
+      this.actions.cancelPublication(origin + '/' + videoId);
+    }
     return this.postAuthenticated<DeleteVideosResponse>(jwtToken, '/videos/delete', { videoIds });
   }
 
@@ -928,6 +1073,8 @@ export class NodeApiService extends BaseService {
   }
 
   public async stopVideoPublishing(jwtToken: string, videoId: string): Promise<BaseNodeResponse> {
+    const origin = await this.getBaseUrl();
+    this.actions.cancelPublication(origin + '/' + videoId);
     return this.postAuthenticated<BaseNodeResponse>(
       jwtToken,
       `/videos/${videoId}/publishing/stop`,
@@ -941,6 +1088,8 @@ export class NodeApiService extends BaseService {
     format: string,
     resolution: string
   ): Promise<BaseNodeResponse> {
+    const origin = await this.getBaseUrl();
+    this.actions.cancelPublication(origin + '/' + videoId, { format, resolution });
     return this.postAuthenticated<BaseNodeResponse>(jwtToken, `/videos/${videoId}/unpublish`, {
       format,
       resolution,
@@ -969,7 +1118,7 @@ export class NodeApiService extends BaseService {
   }
 
   public async setVideoPublished(jwtToken: string, videoId: string): Promise<unknown> {
-    return this.postAuthenticated(jwtToken, '/videos/published', { videoId });
+    return this.durablePost(jwtToken, videoId, '/videos/published', { videoId });
   }
 
   public async uploadVideo(
@@ -1013,14 +1162,7 @@ export class NodeApiService extends BaseService {
           params: { format, resolution, finalBatch: offset + 64 >= ordered.length },
           headers: { ...formData.getHeaders(), Authorization: 'Bearer ' + jwtToken },
         });
-        if (
-          response.status < 200 ||
-          response.status >= 300 ||
-          (response.data as { isError?: boolean }).isError
-        ) {
-          throw new Error('Media upload failed');
-        }
-        result = response.data;
+        result = this.mutationResult(response);
       } finally {
         for (const input of streams) {
           input.destroy();
@@ -1065,14 +1207,7 @@ export class NodeApiService extends BaseService {
       headers,
     });
 
-    if (
-      response.status < 200 ||
-      response.status >= 300 ||
-      (response.data as { isError?: boolean }).isError
-    ) {
-      throw new Error('Live upload failed');
-    }
-    return response.data;
+    return this.mutationResult(response);
   }
 
   public async setVideoLengths(
@@ -1117,11 +1252,20 @@ export class NodeApiService extends BaseService {
     videoId: string,
     drainSeconds = 0
   ): Promise<BaseNodeResponse> {
-    return this.postAuthenticated<BaseNodeResponse>(
-      jwtToken,
-      `/streams/${videoId}/stop`,
-      drainSeconds > 0 ? { drainSeconds } : {}
-    );
+    const data = drainSeconds > 0 ? { drainSeconds } : {};
+    const session = this.streamSessions.get(videoId);
+    if (session) {
+      const action = { ...session, data };
+      this.actions.ready(action);
+      this.streamSessions.delete(videoId);
+      let result: unknown;
+      await this.actions.deliver(action, async (entry) => {
+        result = await this.sendAction(entry);
+        return result;
+      });
+      return result as BaseNodeResponse;
+    }
+    return this.durablePost(jwtToken, videoId, `/streams/${videoId}/stop`, data);
   }
 
   public async setThumbnail(
@@ -1139,7 +1283,7 @@ export class NodeApiService extends BaseService {
     const response = await client.post(`/videos/${videoId}/images/thumbnail`, formData, {
       headers,
     });
-    return response.data as BaseNodeResponse;
+    return this.mutationResult<BaseNodeResponse>(response);
   }
 
   public async setPreview(
@@ -1155,7 +1299,7 @@ export class NodeApiService extends BaseService {
     headers['Authorization'] = `Bearer ${jwtToken}`;
 
     const response = await client.post(`/videos/${videoId}/images/preview`, formData, { headers });
-    return response.data as BaseNodeResponse;
+    return this.mutationResult<BaseNodeResponse>(response);
   }
 
   public async setPoster(
@@ -1171,7 +1315,7 @@ export class NodeApiService extends BaseService {
     headers['Authorization'] = `Bearer ${jwtToken}`;
 
     const response = await client.post(`/videos/${videoId}/images/poster`, formData, { headers });
-    return response.data as BaseNodeResponse;
+    return this.mutationResult<BaseNodeResponse>(response);
   }
 
   public async streamVideo(
@@ -1190,7 +1334,19 @@ export class NodeApiService extends BaseService {
       networkAddress,
       videoId,
     } = options;
-    return this.postAuthenticated<StreamVideoResponse>(jwtToken, '/streams/start', {
+    const selectedOrigin = await this.getBaseUrl();
+    if (
+      videoId !== undefined &&
+      this.actions
+        .pending()
+        .some(
+          (action) =>
+            action.scope === selectedOrigin + '/' + videoId && action.route.startsWith('/streams/')
+        )
+    ) {
+      throw new Error('Stop or reconcile the previous stream session before resuming it.');
+    }
+    const response = await this.postAuthenticated<StreamVideoResponse>(jwtToken, '/streams/start', {
       title,
       description,
       tags,
@@ -1202,6 +1358,17 @@ export class NodeApiService extends BaseService {
       networkAddress,
       videoId,
     });
+    const origin = selectedOrigin;
+    const action = this.actions.prepare(
+      origin,
+      jwtToken,
+      `/streams/${response.videoId}/stop`,
+      {},
+      origin + '/' + response.videoId,
+      true
+    );
+    this.streamSessions.set(response.videoId, action);
+    return response;
   }
 
   public async setVideoChatSettings(
@@ -1222,16 +1389,11 @@ export class NodeApiService extends BaseService {
     type: string,
     masterManifest: string
   ): Promise<BaseNodeResponse> {
-    const client = await this.getClient();
-    const response = await client.post(
+    return this.durablePost(
+      jwtToken,
+      videoId,
       `/videos/${videoId}/adaptive/m3u8/${type}/manifests/masterManifest`,
-      {
-        masterManifest,
-      },
-      {
-        headers: { Authorization: `Bearer ${jwtToken}` },
-      }
+      { masterManifest }
     );
-    return response.data as BaseNodeResponse;
   }
 }

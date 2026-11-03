@@ -1,3 +1,4 @@
+import { requireNodeSuccess } from '@/utils/node-actions.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { BaseController } from './base.js';
 import type { LiveStreamService } from '@/services/live-stream.js';
@@ -48,6 +49,7 @@ export class StreamsController extends BaseController {
       return await this.sendError(reply, 'rtmpPort is not valid', 400);
     }
 
+    let admitted: string | undefined;
     try {
       const portStatus = await checkNetworkPortStatus(Number.parseInt(rtmpPort, 10), '127.0.0.1');
 
@@ -75,11 +77,10 @@ export class StreamsController extends BaseController {
         }
 
         const newVideoId = response.videoId;
+        admitted = newVideoId;
 
-        const setExtResponse = await this.nodeApiService.setSourceFileExtension(
-          jwtToken,
-          newVideoId,
-          '.ts'
+        const setExtResponse = requireNodeSuccess(
+          await this.nodeApiService.setSourceFileExtension(jwtToken, newVideoId, '.ts')
         );
 
         if (setExtResponse.isError) {
@@ -103,6 +104,13 @@ export class StreamsController extends BaseController {
         return await this.sendError(reply, `port ${rtmpPort} is not available`, 400);
       }
     } catch (error) {
+      if (admitted !== undefined) {
+        try {
+          await this.nodeApiService.stopVideoStreaming(request.session.jwtToken ?? '', admitted);
+        } catch (cleanupError) {
+          this.logger.error('Stream startup cleanup remains pending', cleanupError as Error);
+        }
+      }
       this.logger.error('Error starting stream', error as Error);
       return await this.sendError(reply, (error as Error).message || 'Unknown error');
     }

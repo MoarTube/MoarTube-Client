@@ -363,6 +363,27 @@ export class S3Service extends BaseService {
     onProgress: (percent: number) => void,
     signal?: AbortSignal
   ): Promise<void> {
+    const media = files.filter((file) => !file.key.endsWith('.m3u8'));
+    const playlists = files.filter((file) => file.key.endsWith('.m3u8'));
+    if (media.length && playlists.length) {
+      await this.uploadFilesWithProgress(
+        s3Config,
+        media,
+        (percent) => {
+          onProgress(percent * 0.9);
+        },
+        signal
+      );
+      await this.uploadFilesWithProgress(
+        s3Config,
+        playlists,
+        (percent) => {
+          onProgress(90 + percent * 0.1);
+        },
+        signal
+      );
+      return;
+    }
     const { bucketName, s3ProviderClientConfig } = s3Config;
     const client = this.createClientFromConfig(s3ProviderClientConfig);
 

@@ -1,3 +1,4 @@
+import { requireNodeSuccess } from '@/utils/node-actions.js';
 import type { ChildProcess } from 'node:child_process';
 import { spawnMediaProcess as spawn } from '@/utils/media-processes.js';
 import { encodingPool } from '@/utils/work-pool.js';
@@ -9,6 +10,7 @@ import {
 } from '@/utils/gpu-encoding.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { createHash, randomUUID } from 'node:crypto';
 import type { Logger } from 'pino';
 import type { NodeApiService } from './node-api.js';
 import type { S3Service, S3ValidationConfig } from './s3.js';
@@ -24,6 +26,10 @@ interface VideoPublishJob {
   resolution: string;
   sourceFileExtension: string;
   idleInterval?: NodeJS.Timeout;
+  uploadCompleted?: boolean;
+  hasEncodingSlot?: boolean;
+  encodingCompleted?: boolean;
+  connection?: string;
 }
 
 interface EncodingJobState {
@@ -41,6 +47,7 @@ export class VideoPublishService {
   private readonly activeEncodingJobs: Map<string, EncodingJobState> = new Map();
   private publishTimer: ReturnType<typeof setInterval> | undefined;
   private closing = false;
+  private readonly cancelled = new Set<string>();
 
   constructor(
     private readonly logger: Logger,
@@ -48,13 +55,99 @@ export class VideoPublishService {
     private readonly s3Service: S3Service,
     private readonly settingsRepository: SettingsRepository,
     private readonly socketService: SocketService,
-    private readonly manifestService: ManifestService,
+    manifestService: ManifestService,
     private readonly ffmpegService: FfmpegService
   ) {
+    void manifestService;
+    this.recoverUploads();
     this.startVideoPublishInterval();
   }
 
+  private connection(): string {
+    const settings = this.settingsRepository.getClientSettings();
+    return JSON.stringify([settings.nodeHttpProtocol, settings.nodeIp, settings.nodePort]);
+  }
+
+  private checkpointFile(job: VideoPublishJob): string {
+    const id = createHash('sha256')
+      .update(JSON.stringify([job.connection, job.videoId, job.format, job.resolution]))
+      .digest('hex');
+    return path.join(
+      this.settingsRepository.getVideosDirectoryPath(),
+      '.publish-recovery',
+      id + '.json'
+    );
+  }
+
+  private checkpoint(job: VideoPublishJob): void {
+    // Bind durable recovery to the selected Node connection.
+    if (job.connection === undefined) {
+      return;
+    }
+    if (this.cancelled.has(job.videoId)) {
+      if (!this.closing) {
+        this.removeCheckpoint(job);
+      }
+      return;
+    }
+    const file = this.checkpointFile(job);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const temporary = file + '.' + randomUUID() + '.part';
+    const receipt = {
+      jwtToken: job.jwtToken,
+      videoId: job.videoId,
+      format: job.format,
+      resolution: job.resolution,
+      sourceFileExtension: job.sourceFileExtension,
+      encodingCompleted: job.encodingCompleted,
+      uploadCompleted: job.uploadCompleted,
+      connection: job.connection,
+    };
+    fs.writeFileSync(temporary, JSON.stringify(receipt), { flag: 'wx', mode: 0o600 });
+    fs.renameSync(temporary, file);
+  }
+
+  private removeCheckpoint(job: VideoPublishJob): void {
+    if (job.connection !== undefined) {
+      fs.rmSync(this.checkpointFile(job), { force: true });
+    }
+  }
+
+  private recoverUploads(): void {
+    try {
+      const directory = path.join(
+        this.settingsRepository.getVideosDirectoryPath(),
+        '.publish-recovery'
+      );
+      if (!fs.existsSync(directory)) {
+        return;
+      }
+      for (const name of fs.readdirSync(directory)) {
+        if (!/^[a-f0-9]{64}\.json$/.test(name)) {
+          continue;
+        }
+        const job = JSON.parse(
+          fs.readFileSync(path.join(directory, name), 'utf8')
+        ) as VideoPublishJob;
+        if (job.encodingCompleted === true) {
+          this.enqueuePendingPublishVideo(job);
+        }
+      }
+    } catch (error) {
+      this.logger.error({ err: error }, 'Publishing recovery receipts could not be loaded');
+    }
+  }
+
   public enqueuePendingPublishVideo(job: VideoPublishJob): void {
+    if (job.connection === undefined) {
+      // Preserve in-memory operation for callers without a settings provider.
+      if (typeof this.settingsRepository.getClientSettings === 'function') {
+        job.connection = this.connection();
+      }
+    }
+    if (job.uploadCompleted !== true) {
+      this.cancelled.delete(job.videoId);
+    }
     if (this.closing) {
       return;
     }
@@ -83,6 +176,7 @@ export class VideoPublishService {
     for (let i = this.pendingPublishVideoQueue.length - 1; i >= 0; i--) {
       const job = this.pendingPublishVideoQueue[i];
       if (job?.videoId === videoId) {
+        this.removeCheckpoint(job);
         if (job.idleInterval) {
           clearInterval(job.idleInterval);
         }
@@ -98,10 +192,16 @@ export class VideoPublishService {
   }
 
   public isPublishVideoEncodingStopping(videoId: string): boolean {
-    return this.activeEncodingJobs.get(videoId)?.stopping ?? false;
+    return this.cancelled.has(videoId) || (this.activeEncodingJobs.get(videoId)?.stopping ?? false);
   }
 
   public stoppingPublishVideoEncoding(videoId: string): void {
+    this.cancelled.add(videoId);
+    for (const job of [...this.pendingPublishVideoQueue, ...this.inProgressPublishingJobs]) {
+      if (!this.closing && job.videoId === videoId) {
+        this.removeCheckpoint(job);
+      }
+    }
     const state = this.activeEncodingJobs.get(videoId);
     if (state) {
       state.stopping = true;
@@ -126,59 +226,48 @@ export class VideoPublishService {
           this.inProgressPublishingJobs.push(job);
           this.startPublishingJob(job)
             .then(async () => {
-              await this.nodeApiService.setVideoFormatResolutionPublished(
-                job.jwtToken,
-                job.videoId,
-                job.format,
-                job.resolution
+              if (job.connection !== undefined && job.connection !== this.connection()) {
+                throw new Error(
+                  'Publication confirmation is waiting for its original Node connection'
+                );
+              }
+              if (this.isPublishVideoEncodingStopping(job.videoId)) {
+                throw new Error('Publishing cancelled');
+              }
+              const lastOutput =
+                !this.pendingPublishVideoQueue.some((p) => p.videoId === job.videoId) &&
+                !this.inProgressPublishingJobs.some((p) => p !== job && p.videoId === job.videoId);
+              requireNodeSuccess(
+                await this.nodeApiService.setVideoFormatResolutionPublished(
+                  job.jwtToken,
+                  job.videoId,
+                  job.format,
+                  job.resolution,
+                  lastOutput
+                )
               );
-
-              this.logger.info(
-                `[VideoPublishService] Video finished publishing: ${job.videoId} ${job.format} ${job.resolution}`
-              );
-
+              // Node updates the master and, for the last output, publication in one replayable task.
               const index = this.findInProgressPublishJobIndex(job);
               if (index !== -1) {
                 this.inProgressPublishingJobs.splice(index, 1);
               }
-
-              const videoIdHasPending = this.pendingPublishVideoQueue.some(
-                (p) => p.videoId === job.videoId
-              );
-              const videoIdHasInProgress = this.inProgressPublishingJobs.some(
-                (p) => p.videoId === job.videoId
-              );
-
-              if (job.format === 'm3u8') {
-                try {
-                  await this.manifestService.refreshMasterManifest(job.jwtToken, job.videoId);
-                } catch (error) {
-                  this.logger.error(
-                    error,
-                    `[VideoPublishService] Failed to refresh/upload manifest for video ${job.videoId}`
+              if (
+                !this.pendingPublishVideoQueue.some((p) => p.videoId === job.videoId) &&
+                !this.inProgressPublishingJobs.some((p) => p.videoId === job.videoId)
+              ) {
+                if (!lastOutput) {
+                  requireNodeSuccess(
+                    await this.nodeApiService.setVideoPublished(job.jwtToken, job.videoId)
                   );
                 }
+                await this.finishVideoPublish(job.jwtToken, job.videoId);
               }
 
-              if (!videoIdHasPending && !videoIdHasInProgress) {
-                try {
-                  await this.finishVideoPublish(job.jwtToken, job.videoId);
-                  this.logger.info(
-                    `[VideoPublishService] Completed publishing job for video: ${job.videoId}`
-                  );
-                } catch (error) {
-                  // The encode+upload already succeeded here; a failure in this
-                  // finalization step (e.g. the setVideoPublished call) shouldn't
-                  // cause the whole job to be treated as failed and re-run from
-                  // scratch by the outer .catch() below.
-                  this.logger.error(
-                    error,
-                    `[VideoPublishService] Failed to finalize publish for video ${job.videoId}`
-                  );
-                }
+              if (job.hasEncodingSlot === true) {
+                this.releaseEncodingJobSlot(job.videoId);
+                job.hasEncodingSlot = false;
               }
-
-              this.releaseEncodingJobSlot(job.videoId);
+              this.removeCheckpoint(job);
               this.inProgressPublishingJobCount--;
 
               if (
@@ -207,7 +296,10 @@ export class VideoPublishService {
               // otherwise make a legitimately-stopped job look like a plain failure
               // and cause it to be incorrectly re-enqueued below.
               const wasStopping = this.isPublishVideoEncodingStopping(job.videoId);
-              this.releaseEncodingJobSlot(job.videoId);
+              if (job.hasEncodingSlot === true) {
+                this.releaseEncodingJobSlot(job.videoId);
+                job.hasEncodingSlot = false;
+              }
 
               if (!wasStopping && !this.closing) {
                 job.idleInterval = setInterval(() => {
@@ -266,11 +358,20 @@ export class VideoPublishService {
   }
 
   private async startPublishingJob(job: VideoPublishJob): Promise<void> {
+    if (job.connection !== undefined && job.connection !== this.connection()) {
+      throw new Error('Publishing recovery is waiting for its original Node connection');
+    }
     if (job.idleInterval) {
       clearInterval(job.idleInterval);
     }
+    if (job.uploadCompleted === true) {
+      this.checkpoint(job);
+      return;
+    }
 
-    const response = (await this.nodeApiService.setVideoPublishing(job.jwtToken, job.videoId)) as {
+    const response = requireNodeSuccess(
+      await this.nodeApiService.setVideoPublishing(job.jwtToken, job.videoId)
+    ) as {
       isError: boolean;
     };
     if (!response.isError) {
@@ -292,9 +393,22 @@ export class VideoPublishService {
         this.activeEncodingJobs.set(job.videoId, state);
       }
       state.activeJobCount++;
+      job.hasEncodingSlot = true;
 
-      await encodingPool.run(() => this.performEncodingJob(job));
+      if (job.encodingCompleted !== true) {
+        await encodingPool.run(() => this.performEncodingJob(job));
+        job.encodingCompleted = true;
+      }
+      this.checkpoint(job);
+      if (this.isPublishVideoEncodingStopping(job.videoId)) {
+        throw new Error('Publishing cancelled');
+      }
       await this.performUploadingJob(job);
+      if (this.isPublishVideoEncodingStopping(job.videoId)) {
+        throw new Error('Publishing cancelled');
+      }
+      job.uploadCompleted = true;
+      this.checkpoint(job);
     }
   }
 
@@ -462,6 +576,8 @@ export class VideoPublishService {
       ) {
         const s3Config = nodeSettings.storageConfig.s3Config;
         await this.handleS3Upload(job, s3Config, videosPath);
+      } else {
+        throw new Error('Node storage configuration does not allow publishing');
       }
     }
   }
@@ -528,14 +644,6 @@ export class VideoPublishService {
       },
       this.activeEncodingJobs.get(job.videoId)?.aborter.signal
     );
-
-    // Clean up local files after upload if using filesystem mode?
-    // Legacy code deletes files after upload if storageMode is filesystem.
-    for (const p of paths) {
-      if (fs.existsSync(p.filePath)) {
-        fs.unlinkSync(p.filePath);
-      }
-    }
   }
 
   private async handleS3Upload(
@@ -587,23 +695,36 @@ export class VideoPublishService {
       paths.push({ key: key, filePath: filePath, contentType: `video/${ext}` });
     }
 
-    await this.s3Service.uploadFilesWithProgress(
-      s3Config,
-      paths,
-      (percent) => {
-        const uploadProgress = Math.floor(percent / 2) + 50;
-        this.socketService.broadcastToUser(job.jwtToken, 'echo', {
-          eventName: 'video_status',
-          payload: {
-            type: 'publishing',
-            videoId: job.videoId,
-            format: job.format,
-            resolution: job.resolution,
-            progress: uploadProgress,
+    const mediaPath =
+      job.format === 'm3u8'
+        ? 'adaptive/m3u8/'
+        : `progressive/${job.format}/${job.resolution}.${job.format}`;
+    await this.nodeApiService.withVideoCacheInvalidation(
+      job.jwtToken,
+      job.videoId,
+      [mediaPath],
+      async () => {
+        await this.s3Service.uploadFilesWithProgress(
+          s3Config,
+          paths,
+          (percent) => {
+            const uploadProgress = Math.floor(percent / 2) + 50;
+            this.socketService.broadcastToUser(job.jwtToken, 'echo', {
+              eventName: 'video_status',
+              payload: {
+                type: 'publishing',
+                videoId: job.videoId,
+                format: job.format,
+                resolution: job.resolution,
+                progress: uploadProgress,
+              },
+            });
           },
-        });
-      },
-      this.activeEncodingJobs.get(job.videoId)?.aborter.signal
+          this.activeEncodingJobs.get(job.videoId)?.aborter.signal
+        );
+        job.uploadCompleted = true;
+        this.checkpoint(job);
+      }
     );
   }
 
@@ -611,8 +732,6 @@ export class VideoPublishService {
     const videosPath = this.settingsRepository.getVideosDirectoryPath();
     await this.deleteDirectoryRecursive(path.join(videosPath, videoId, 'adaptive'));
     await this.deleteDirectoryRecursive(path.join(videosPath, videoId, 'progressive'));
-
-    await this.nodeApiService.setVideoPublished(jwtToken, videoId);
 
     this.socketService.broadcastToUser(jwtToken, 'echo', {
       eventName: 'video_status',
