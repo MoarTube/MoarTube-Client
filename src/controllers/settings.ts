@@ -1,4 +1,5 @@
 import { requireNodeSuccess } from '@/utils/node-actions.js';
+import { isValidPublicHost } from '@/utils/public-host.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { BaseController } from './base.js';
 import type { NodeApiService } from '@/services/node-api.js';
@@ -624,11 +625,18 @@ export class SettingsController extends BaseController {
   ): Promise<FastifyReply> => {
     const { publicNodeProtocol, publicNodeAddress, publicNodePort } =
       request.body as SetNetworkExternalBody;
+    if (typeof publicNodeAddress !== 'string' || !isValidPublicHost(publicNodeAddress)) {
+      return await this.sendError(
+        reply,
+        'Public Node address must be a domain or IP address without a protocol, port, or path.',
+        400
+      );
+    }
     const jwtToken = request.session.jwtToken ?? '';
     const response = await this.nodeApiService.setExternalNetwork(
       jwtToken,
       publicNodeProtocol,
-      publicNodeAddress,
+      publicNodeAddress.trim(),
       publicNodePort
     );
 

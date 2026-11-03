@@ -237,6 +237,7 @@
 		}
 	</style>
 <script src="/javascript/memory-limits.js"></script>
+<script src="/javascript/public-node-url.js"></script>
 </head>
 
 <body class="g-sidenav-show bg-gray-100">
@@ -1258,7 +1259,7 @@
 		}
 
 		loadNodeSettings(nodeSettings) {
-			$('#node-link').attr('href', nodeSettings.publicNodeProtocol + '://' + nodeSettings.publicNodeAddress + ':' + nodeSettings.publicNodePort);
+			$('#node-link').attr('href', MoarTubePublicNodeUrl.build(nodeSettings));
 
 			$('#node-version').text(nodeSettings.version);
 
@@ -2501,7 +2502,15 @@
 						Swal.showLoading();
 
 						$.ajax({ type: 'POST', url: url, data: JSON.stringify({ publicNodeProtocol: publicNodeProtocol, publicNodeAddress: publicNodeAddress, publicNodePort: publicNodePort }), contentType: 'application/json; charset=utf-8' })
-							.done(function (data) {
+							.done(async function (data) {
+								try {
+									const settings = await $.ajax({ url: '/settings/node', cache: false });
+									self.loadNodeSettings(settings);
+									MoarTubePublicNodeUrl.changed(settings);
+								} catch (_) {
+									self.showAlert(true, 'Unable to refresh saved settings. Reload this page to check the current Node URL.');
+									return;
+								}
 								if (data.isError) {
 									self.showAlert(true, data.message);
 								}
@@ -2509,8 +2518,13 @@
 									self.showAlert(false);
 								}
 							})
-							.fail(function () {
-								self.showAlert(true, 'an error occurred, please try again');
+							.fail(async function (xhr) {
+								try {
+									const settings = await $.ajax({ url: '/settings/node', cache: false });
+									self.loadNodeSettings(settings);
+									MoarTubePublicNodeUrl.changed(settings);
+								} catch (_) { /* Keep the error visible if refresh also fails. */ }
+								self.showAlert(true, xhr.responseJSON?.message || 'Unable to apply settings. Reload this page to check the current Node URL.');
 							});
 					}
 				});

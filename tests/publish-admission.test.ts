@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import http from 'node:http';
+import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { NodeApiService } from '../src/services/node-api.js';
 import type { Config } from '../src/config/index.js';
 import type { Logger } from '../src/utils/logger.js';
@@ -7,6 +10,7 @@ import { VideoPublishService } from '../src/services/video-publish.js';
 
 const fixtures: { api: NodeApiService; server: http.Server }[] = [];
 const publishers: VideoPublishService[] = [];
+const directories: string[] = [];
 
 async function connect(handler: http.RequestListener): Promise<NodeApiService> {
   const server = http.createServer(handler);
@@ -38,6 +42,9 @@ afterEach(async () => {
       })
     );
   }
+  for (const directory of directories.splice(0)) {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 describe('publishing admission serialization', () => {
@@ -49,6 +56,12 @@ describe('publishing admission serialization', () => {
       request.resume();
       request.on('end', () => {
         response.setHeader('Content-Type', 'application/json');
+        if (request.url === '/external/videos/baseUrl') {
+          response.end(
+            JSON.stringify({ isError: false, externalVideosBaseUrl: 'https://current.test' })
+          );
+          return;
+        }
         if (request.url !== '/videos/publishing') {
           response.end(JSON.stringify({ isError: false }));
           return;
@@ -68,6 +81,16 @@ describe('publishing admission serialization', () => {
       });
     });
     const logger = { info: vi.fn(), error: vi.fn() };
+    const directory = await mkdtemp(path.join(tmpdir(), 'moartube-publish-admission-'));
+    directories.push(directory);
+    const manifests = path.join(directory, 'video', 'adaptive', 'm3u8');
+    await mkdir(manifests, { recursive: true });
+    for (const resolution of ['480p', '360p', '240p']) {
+      await writeFile(
+        path.join(manifests, `manifest-${resolution}.m3u8`),
+        `#EXTM3U\n#EXTINF:2,\nhttps://previous.test/external/videos/video/adaptive/m3u8/${resolution}/segments/one.ts\n#EXT-X-ENDLIST\n`
+      );
+    }
     const socket = {
       broadcastToUser:
         vi.fn<(_token: string, _event: string, data: { payload: { stage?: string } }) => void>(),
@@ -76,7 +99,7 @@ describe('publishing admission serialization', () => {
       logger as never,
       api,
       {} as never,
-      { getVideosDirectoryPath: () => 'nonexistent-admission-test-videos' } as never,
+      { getVideosDirectoryPath: () => directory } as never,
       socket as never,
       {} as never,
       {} as never
@@ -117,6 +140,11 @@ describe('publishing admission serialization', () => {
     expect(rejected).toBe(0);
     expect(peak).toBe(2);
     expect(logger.error).not.toHaveBeenCalled();
+    for (const resolution of ['480p', '360p', '240p']) {
+      expect(await readFile(path.join(manifests, `manifest-${resolution}.m3u8`), 'utf8')).toContain(
+        'https://current.test/external/'
+      );
+    }
     expect(
       socket.broadcastToUser.mock.calls.some((call) => call[2].payload.stage === 'retrying')
     ).toBe(false);

@@ -2,6 +2,7 @@ import { requireNodeSuccess } from '@/utils/node-actions.js';
 import type { ChildProcess } from 'node:child_process';
 import { spawnMediaProcess as spawn } from '@/utils/media-processes.js';
 import { encodingPool } from '@/utils/work-pool.js';
+import { rewriteManifestFile } from '@/utils/manifest-transform.js';
 import { getGpuProcessEnvironment } from '@/utils/hardware.js';
 import {
   applyGpuDeviceArguments,
@@ -38,6 +39,7 @@ interface VideoPublishJob {
   uploadCompleted?: boolean;
   hasEncodingSlot?: boolean;
   encodingCompleted?: boolean;
+  externalVideosBaseUrl?: string;
   connection?: string;
 }
 
@@ -111,6 +113,7 @@ export class VideoPublishService {
       resolution: job.resolution,
       sourceFileExtension: job.sourceFileExtension,
       encodingCompleted: job.encodingCompleted,
+      externalVideosBaseUrl: job.externalVideosBaseUrl,
       uploadCompleted: job.uploadCompleted,
       connection: job.connection,
     };
@@ -487,7 +490,7 @@ export class VideoPublishService {
     if (job.connection !== undefined && job.connection !== this.connection()) {
       throw new Error('Publishing recovery is waiting for its original Node connection');
     }
-    if (job.uploadCompleted === true) {
+    if (job.uploadCompleted === true && job.format !== 'm3u8') {
       clearInterval(job.idleInterval);
       this.checkpoint(job);
       return;
@@ -529,6 +532,33 @@ export class VideoPublishService {
         });
         job.encodingCompleted = true;
       }
+      let externalVideosBaseUrl: string | undefined;
+      if (job.format === 'm3u8') {
+        externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(job.jwtToken);
+        this.assertPublishingActive(job.videoId);
+        if (job.uploadCompleted === true && job.externalVideosBaseUrl === externalVideosBaseUrl) {
+          clearInterval(job.idleInterval);
+          return;
+        }
+        job.uploadCompleted = false;
+        this.checkpoint(job);
+        const manifest = path.join(
+          this.settingsRepository.getVideosDirectoryPath(),
+          job.videoId,
+          'adaptive',
+          'm3u8',
+          `manifest-${job.resolution}.m3u8`
+        );
+        const segmentPath = `/external/videos/${job.videoId}/adaptive/m3u8/${job.resolution}/segments/`;
+        const base = externalVideosBaseUrl;
+        await rewriteManifestFile(manifest, (line) => {
+          if (!/^https?:\/\//.test(line)) {
+            return line;
+          }
+          const index = line.indexOf(segmentPath);
+          return index < 0 ? line : base + line.slice(index);
+        });
+      }
       clearInterval(job.idleInterval);
       this.checkpoint(job);
       if (this.isPublishVideoEncodingStopping(job.videoId)) {
@@ -548,6 +578,9 @@ export class VideoPublishService {
         throw new Error('Publishing cancelled');
       }
       job.uploadCompleted = true;
+      if (externalVideosBaseUrl !== undefined) {
+        job.externalVideosBaseUrl = externalVideosBaseUrl;
+      }
       this.checkpoint(job);
     }
   }

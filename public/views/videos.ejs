@@ -154,6 +154,7 @@
 		}
 	</style>
 <script src="/javascript/memory-limits.js"></script>
+<script src="/javascript/public-node-url.js"></script>
 </head>
 
 <body class="g-sidenav-show bg-gray-100">
@@ -616,20 +617,7 @@
 			}
 
 			loadNodeSettings(nodeSettings) {
-			const nodeProtocol = nodeSettings.publicNodeProtocol;
-			const nodeAddress = nodeSettings.publicNodeAddress;
-			const nodePort = nodeSettings.publicNodePort;
-
-			let port;
-
-			if (nodeProtocol === 'http') {
-				port = nodePort == 80 ? '' : ':' + nodePort;
-			}
-			else if (nodeProtocol === 'https') {
-				port = nodePort == 443 ? '' : ':' + nodePort;
-			}
-
-			this.NODE_BASE_URL = nodeProtocol + '://' + nodeAddress + port;
+			this.NODE_BASE_URL = MoarTubePublicNodeUrl.build(nodeSettings);
 
 			$('#node-link').attr('href', this.NODE_BASE_URL);
 		}

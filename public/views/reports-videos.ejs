@@ -26,6 +26,7 @@
 			white-space: break-spaces;
 		}
 	</style>
+<script src="/javascript/public-node-url.js"></script>
 </head>
 
 <body class="g-sidenav-show bg-gray-100">
@@ -337,11 +338,7 @@
 			}
 
 			loadNodeSettings(nodeSettings) {
-				const nodeProtocol = nodeSettings.publicNodeProtocol;
-				const nodeAddress = nodeSettings.publicNodeAddress;
-				const nodePort = nodeSettings.publicNodePort;
-
-				this.NODE_BASE_URL = nodeProtocol + '://' + nodeAddress + ':' + nodePort;
+				this.NODE_BASE_URL = MoarTubePublicNodeUrl.build(nodeSettings);
 
 				$('#node-link').attr('href', this.NODE_BASE_URL);
 			}
