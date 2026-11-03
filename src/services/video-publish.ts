@@ -26,6 +26,7 @@ interface VideoPublishJob {
   resolution: string;
   sourceFileExtension: string;
   idleInterval?: NodeJS.Timeout;
+  progress?: number;
   uploadCompleted?: boolean;
   hasEncodingSlot?: boolean;
   encodingCompleted?: boolean;
@@ -139,6 +140,14 @@ export class VideoPublishService {
   }
 
   public enqueuePendingPublishVideo(job: VideoPublishJob): void {
+    // Do not reset cancellation while older jobs still share the stopped encoder state.
+    if (
+      this.activeEncodingJobs.get(job.videoId)?.stopping === true ||
+      (this.cancelled.has(job.videoId) &&
+        this.inProgressPublishingJobs.some((existing) => existing.videoId === job.videoId))
+    ) {
+      throw new Error('Publishing is still stopping; try again once it has stopped');
+    }
     if (job.connection === undefined) {
       // Preserve in-memory operation for callers without a settings provider.
       if (typeof this.settingsRepository.getClientSettings === 'function') {
@@ -152,7 +161,7 @@ export class VideoPublishService {
       return;
     }
     if (
-      this.pendingPublishVideoQueue.some(
+      [...this.pendingPublishVideoQueue, ...this.inProgressPublishingJobs].some(
         (existing) =>
           existing.videoId === job.videoId &&
           existing.format === job.format &&
@@ -165,7 +174,51 @@ export class VideoPublishService {
       throw new Error('Publishing queue is full');
     }
     this.pendingPublishVideoQueue.push(job);
+    this.broadcastPublishProgress(job, 0);
+    clearInterval(job.idleInterval);
+    job.idleInterval = setInterval(() => {
+      this.broadcastPublishProgress(job, 0);
+    }, 1000);
     this.logger.info(`[VideoPublishService] Enqueued job for video ${job.videoId}`);
+  }
+
+  public getPublishingJobs(
+    jwtToken: string,
+    videoId: string
+  ): {
+    format: string;
+    resolution: string;
+    progress: number;
+  }[] {
+    return [...this.pendingPublishVideoQueue, ...this.inProgressPublishingJobs]
+      .filter(
+        (job) =>
+          job.jwtToken === jwtToken &&
+          job.videoId === videoId &&
+          !this.isPublishVideoEncodingStopping(videoId)
+      )
+      .map((job) => ({
+        format: job.format,
+        resolution: job.resolution,
+        progress: job.progress ?? 0,
+      }));
+  }
+
+  private broadcastPublishProgress(job: VideoPublishJob, progress: number): void {
+    if (this.closing || this.isPublishVideoEncodingStopping(job.videoId)) {
+      return;
+    }
+    job.progress = progress;
+    this.socketService.broadcastToUser(job.jwtToken, 'echo', {
+      eventName: 'video_status',
+      payload: {
+        type: 'publishing',
+        videoId: job.videoId,
+        format: job.format,
+        resolution: job.resolution,
+        progress,
+      },
+    });
   }
 
   public stopPendingPublishVideo(videoId: string): void {
@@ -198,6 +251,9 @@ export class VideoPublishService {
   public stoppingPublishVideoEncoding(videoId: string): void {
     this.cancelled.add(videoId);
     for (const job of [...this.pendingPublishVideoQueue, ...this.inProgressPublishingJobs]) {
+      if (job.videoId === videoId) {
+        clearInterval(job.idleInterval);
+      }
       if (!this.closing && job.videoId === videoId) {
         this.removeCheckpoint(job);
       }
@@ -246,6 +302,7 @@ export class VideoPublishService {
                   lastOutput
                 )
               );
+              this.broadcastPublishProgress(job, 100);
               // Node updates the master and, for the last output, publication in one replayable task.
               const index = this.findInProgressPublishJobIndex(job);
               if (index !== -1) {
@@ -302,19 +359,6 @@ export class VideoPublishService {
               }
 
               if (!wasStopping && !this.closing) {
-                job.idleInterval = setInterval(() => {
-                  this.socketService.broadcastToUser(job.jwtToken, 'echo', {
-                    eventName: 'video_status',
-                    payload: {
-                      type: 'publishing',
-                      videoId: job.videoId,
-                      format: job.format,
-                      resolution: job.resolution,
-                      progress: 0,
-                    },
-                  });
-                }, 1000);
-
                 this.enqueuePendingPublishVideo(job);
 
                 if (this.maximumInProgressPublishingJobCount > 1) {
@@ -361,10 +405,8 @@ export class VideoPublishService {
     if (job.connection !== undefined && job.connection !== this.connection()) {
       throw new Error('Publishing recovery is waiting for its original Node connection');
     }
-    if (job.idleInterval) {
-      clearInterval(job.idleInterval);
-    }
     if (job.uploadCompleted === true) {
+      clearInterval(job.idleInterval);
       this.checkpoint(job);
       return;
     }
@@ -396,9 +438,13 @@ export class VideoPublishService {
       job.hasEncodingSlot = true;
 
       if (job.encodingCompleted !== true) {
-        await encodingPool.run(() => this.performEncodingJob(job));
+        await encodingPool.run(() => {
+          clearInterval(job.idleInterval);
+          return this.performEncodingJob(job);
+        });
         job.encodingCompleted = true;
       }
+      clearInterval(job.idleInterval);
       this.checkpoint(job);
       if (this.isPublishVideoEncodingStopping(job.videoId)) {
         throw new Error('Publishing cancelled');
@@ -533,16 +579,7 @@ export class VideoPublishService {
 
         if (currentTimeSeconds > 0 && lengthSeconds > 0) {
           const encodingProgress = Math.ceil(((currentTimeSeconds / lengthSeconds) * 100) / 2);
-          this.socketService.broadcastToUser(job.jwtToken, 'echo', {
-            eventName: 'video_status',
-            payload: {
-              type: 'publishing',
-              videoId: job.videoId,
-              format: job.format,
-              resolution: job.resolution,
-              progress: encodingProgress,
-            },
-          });
+          this.broadcastPublishProgress(job, encodingProgress);
         }
       } else {
         stderrOutput = (stderrOutput + stderrTemp).slice(-64 * 1024);
@@ -630,17 +667,8 @@ export class VideoPublishService {
       job.resolution,
       paths,
       (percent) => {
-        const uploadProgress = Math.floor(percent / 2) + 50;
-        this.socketService.broadcastToUser(job.jwtToken, 'echo', {
-          eventName: 'video_status',
-          payload: {
-            type: 'publishing',
-            videoId: job.videoId,
-            format: job.format,
-            resolution: job.resolution,
-            progress: uploadProgress,
-          },
-        });
+        const uploadProgress = Math.min(99, Math.floor(percent / 2) + 50);
+        this.broadcastPublishProgress(job, uploadProgress);
       },
       this.activeEncodingJobs.get(job.videoId)?.aborter.signal
     );
@@ -708,17 +736,8 @@ export class VideoPublishService {
           s3Config,
           paths,
           (percent) => {
-            const uploadProgress = Math.floor(percent / 2) + 50;
-            this.socketService.broadcastToUser(job.jwtToken, 'echo', {
-              eventName: 'video_status',
-              payload: {
-                type: 'publishing',
-                videoId: job.videoId,
-                format: job.format,
-                resolution: job.resolution,
-                progress: uploadProgress,
-              },
-            });
+            const uploadProgress = Math.min(99, Math.floor(percent / 2) + 50);
+            this.broadcastPublishProgress(job, uploadProgress);
           },
           this.activeEncodingJobs.get(job.videoId)?.aborter.signal
         );

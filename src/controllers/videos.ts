@@ -458,7 +458,13 @@ export class VideosController extends BaseController {
       const jwtToken = request.session.jwtToken ?? '';
       const { videoId } = request.params as VideoIdParams;
       const response = await this.nodeApiService.getVideoPublishes(jwtToken, videoId);
-      return await reply.send(response);
+      if (response.isError) {
+        return await reply.send(response);
+      }
+      return await reply.send({
+        ...response,
+        publishingJobs: this.videoPublishService.getPublishingJobs(jwtToken, videoId),
+      });
     } catch (error) {
       this.logger.error('Error in getVideoPublishes', error);
       return await this.sendError(reply, 'Failed to get video publishes');

@@ -808,6 +808,8 @@
 
 					ws.onopen = () => {
 						console.log('Connected to WebSocket server');
+						const root = document.getElementById('publish-modal-table') || document.getElementById('manage-modal-published-tab-pane');
+						if (root?.dataset.publishingVideoId) self.refreshPublishingState(root.dataset.publishingVideoId, root);
 					};
 
 					ws.onmessage = (message) => {
@@ -867,57 +869,11 @@
 									}
 								}
 
-								// updates manage published modal
-								if ($('#manage-modal-published-tab-pane ' + '#' + videoId + '_' + format + '_' + resolution).length) {
-									if (progress > 0) {
-										$('#' + videoId + '_' + format + '_' + resolution).css('width', progress + '%');
-										$('#' + videoId + '_' + format + '_' + resolution + '_manage_published_buttons').find('input').prop('checked', true);
-										$('#' + videoId + '_' + format + '_' + resolution + '_manage_published_buttons').find('input').prop('disabled', true);
-									}
-
-									if (progress === 100) {
-										setTimeout(function () {
-											$('#' + videoId + '_' + format + '_' + resolution).css('width', '0%');
-											$('#' + videoId + '_' + format + '_' + resolution + '_manage_published_buttons').find('input').prop('checked', true);
-											$('#' + videoId + '_' + format + '_' + resolution + '_manage_published_buttons').find('input').prop('disabled', false);
-										}, 1500);
-									}
-								}
-
-								// updates publish modal
-								if ($('#publish-modal-table ' + '#' + videoId + '_' + format + '_' + resolution + '_publish_checkbox').length) {
-									$('#' + videoId + '_' + format + '_' + resolution + '_publish_checkbox').parent().replaceWith('<div id="' + videoId + '_' + format + '_' + resolution + '_publish_progress_circle" class="second circle" data-percent=""><strong>0%</strong></div>');
-
-									$('#' + videoId + '_' + format + '_' + resolution + '_publish_progress_circle').circleProgress({
-										startAngle: -Math.PI / 2,
-										value: 0 / 100,
-										animation: false,
-										size: 50,
-										thickness: 5,
-										fill: {
-											color: '#cb0c9ff2'
-										}
-									});
-								}
-								else if ($('#publish-modal-table ' + '#' + videoId + '_' + format + '_' + resolution + '_publish_progress_circle').length) {
-									$('#' + videoId + '_' + format + '_' + resolution + '_publish_progress_circle').find('strong').text((progress).toFixed(0) + "%");
-
-									if (progress > 0) {
-										$('#' + videoId + '_' + format + '_' + resolution + '_publish_progress_circle').circleProgress('value', progress / 100);
-									}
-
-									if (progress === 100) {
-										$('#' + videoId + '_' + format + '_' + resolution + '_publish_progress_circle').circleProgress('value', 1);
-
-										setTimeout(function () {
-
-											$('#' + videoId + '_' + format + '_' + resolution + '_publish_progress_circle').replaceWith('<div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"> <input data-format="' + format + '" data-resolution="' + resolution + '" id="' + videoId + '_' + format + '_' + resolution + '_publish_checkbox" class="form-check-input form-check-input-is-published" type="checkbox"> </div>');
-										}, 2000);
-									}
-								}
+								self.updatePublishModalProgress(videoId, format, resolution, progress);
 							}
 							else if (type === 'publishing_stopped') {
 								const videoId = data.payload.videoId;
+								self.resetPublishingState(videoId);
 
 								if ($('#videos_table_row_' + videoId).length) {
 									$('#videos_table_row_' + videoId).find('td').eq(6).html('<span class="text-secondary text-sm d-flex justify-content-center align-items-center">stopped</span>');
@@ -925,6 +881,8 @@
 							}
 							else if (type === 'published') {
 								const videoId = data.payload.videoId;
+								const root = document.getElementById('publish-modal-table') || document.getElementById('manage-modal-published-tab-pane');
+								if (root?.dataset.publishingVideoId === videoId) self.refreshPublishingState(videoId, root);
 
 								const html = '<a class="text-danger cursor-pointer restream-job-start restream-job-button" data-videoid="' + videoId + '"><i class="fas fa-redo"></i></a>';
 
@@ -1398,28 +1356,7 @@ MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId
 					</tbody> \
 					</table> </div> </div> </div>',
 				willOpen: () => {
-					$.ajax({ type: 'GET', url: '/videos/' + videoId + '/publishes' })
-						.done(function (data, textStatus, xhr) {
-							if (data.isError) {
-								self.showAlert(true, data.message);
-							}
-							else {
-								const publishes = data.publishes;
-
-								for (const publish of publishes) {
-									const format = publish.format;
-									const resolution = publish.resolution;
-									const isPublished = publish.isPublished;
-
-									if (isPublished) {
-										$('#publish-modal-table tbody tr td #' + videoId + '_' + format + '_' + resolution + '_publish_checkbox').addClass('form-check-input-is-published');
-									}
-								}
-							}
-						})
-						.fail(function () {
-							console.log('unable to communicate with node');
-						});
+					self.refreshPublishingState(videoId, document.getElementById('publish-modal-table'));
 				},
 				showCloseButton: true,
 				showCancelButton: false,
@@ -1428,45 +1365,32 @@ MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId
 				preConfirm: () => {
 					const publishings = [];
 
-					$('#publish-modal-table input:checkbox:checked').each(function () {
+					$('#publish-modal-table input:checkbox:checked:enabled').each(function () {
 						const format = $(this).data('format');
 						const resolution = $(this).data('resolution');
 
-						publishings.push({ format: format, resolution: resolution, checkboxParentContainer: $(this).parent() });
+						publishings.push({ format: format, resolution: resolution });
 					});
 
+					if (publishings.length === 0) return false;
+					const root = document.getElementById('publish-modal-table');
+					Swal.disableButtons();
 					for (const publishing of publishings) {
-						const format = publishing.format;
-						const resolution = publishing.resolution;
-						const checkboxParentContainer = publishing.checkboxParentContainer;
-
-						const progressCircle = $('<div id="' + videoId + '_' + format + '_' + resolution + '_publish_progress_circle" class="second circle publish-progress-circle" data-percent="0"><strong>0%</strong></div>');
-
-						$(checkboxParentContainer).replaceWith(progressCircle);
+						self.updatePublishModalProgress(videoId, publishing.format, publishing.resolution, 0);
 					}
-
-					$('#publish-modal-table .publish-modal-table-row').find('.circle').circleProgress({
-						startAngle: -Math.PI / 2,
-						value: 0 / 100,
-						animation: false,
-						size: 50,
-						thickness: 5,
-						fill: {
-							color: '#cb0c9ff2'
-						}
-					});
 
 					$.ajax({ type: 'POST', url: '/videos/' + videoId + '/publish', data: { publishings: JSON.stringify(publishings) } })
 						.always(function () {
-							Swal.enableButtons();
+							if (root.isConnected) Swal.enableButtons();
 						})
 						.done(function (data, textStatus, xhr) {
+							if (!root.isConnected) return;
 							if (data.isError) {
 								self.showAlert(true, data.message);
 							}
 						})
 						.fail(function () {
-							self.showAlert(true, 'video publish error occurred');
+							if (root.isConnected) self.showAlert(true, 'video publish error occurred');
 						});
 
 					return false;
@@ -1477,6 +1401,132 @@ MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId
 
 					}
 				});
+		}
+
+		publishingKey(videoId, format, resolution) {
+			return videoId + '_' + format + '_' + resolution;
+		}
+
+		updatePublishModalProgress(videoId, format, resolution, progress) {
+			this.publishingStates ??= new Map();
+			const key = this.publishingKey(videoId, format, resolution);
+			const previous = this.publishingStates.get(key);
+			this.publishRevision = (this.publishRevision || 0) + 1;
+			const state = { videoId, format, resolution, progress, pending: previous?.pending,
+				active: progress < 100,
+				isPublished: progress === 100 || previous?.isPublished || false,
+				revision: this.publishRevision };
+			this.publishingStates.set(key, state);
+			this.renderPublishingState(state);
+		}
+
+		renderPublishingState(state) {
+			const { videoId, format, resolution, active, isPublished, progress } = state;
+			const key = this.publishingKey(videoId, format, resolution);
+			const table = $('#publish-modal-table');
+			let circle = table.find('#' + key + '_publish_progress_circle');
+			const checkbox = table.find('#' + key + '_publish_checkbox');
+			if (active) {
+				if (checkbox.length) {
+					checkbox.parent().replaceWith('<div id="' + key + '_publish_progress_circle" class="second circle publish-progress-circle"><strong></strong></div>');
+					circle = table.find('#' + key + '_publish_progress_circle');
+					circle.circleProgress({ startAngle: -Math.PI / 2, value: progress / 100,
+						animation: false, size: 50, thickness: 5, fill: { color: '#cb0c9ff2' } });
+				}
+				if (circle.length) {
+					circle.find('strong').text(progress.toFixed(0) + '%');
+					circle.circleProgress('value', progress / 100);
+				}
+			} else {
+				if (circle.length) {
+					circle.replaceWith('<div class="form-check form-switch mb-0 d-flex align-items-center justify-content-center"><input id="' + key + '_publish_checkbox" data-format="' + format + '" data-resolution="' + resolution + '" class="form-check-input" type="checkbox"></div>');
+				}
+				table.find('#' + key + '_publish_checkbox').prop('disabled', false)
+					.toggleClass('form-check-input-is-published', isPublished);
+			}
+			const manage = $('#manage-modal-published-tab-pane');
+			manage.find('#' + key + '_publish_checkbox').prop('checked', active || isPublished).prop('disabled', active || !!state.pending);
+			manage.find('#' + key).css('width', (active ? progress : 0) + '%')
+				.attr('aria-valuenow', active ? progress : 0);
+		}
+
+		changeManagePublishing(videoId, checkbox, root) {
+			const format = $(checkbox).data('format');
+			const resolution = $(checkbox).data('resolution');
+			const key = this.publishingKey(videoId, format, resolution);
+			const previous = this.publishingStates.get(key);
+			if (!previous || previous.active || previous.pending) {
+				if (previous) this.renderPublishingState(previous);
+				return;
+			}
+			const publishing = checkbox.checked;
+			const operation = {};
+			this.publishRevision = (this.publishRevision || 0) + 1;
+			this.publishingStates.set(key, { ...previous, pending: operation,
+				active: publishing, isPublished: publishing && previous.isPublished, revision: this.publishRevision });
+			this.renderPublishingState(this.publishingStates.get(key));
+			const finish = (error) => {
+				const state = this.publishingStates.get(key);
+				if (state?.pending !== operation) return;
+				this.publishRevision = (this.publishRevision || 0) + 1;
+				const updated = error ? { ...previous } : { ...state, isPublished: publishing ? state.isPublished : false };
+				Object.assign(updated, { pending: null, revision: this.publishRevision });
+				this.publishingStates.set(key, updated);
+				this.renderPublishingState(updated);
+				if (!root.isConnected) return;
+				if (error) this.showAlert(true, error);
+				else this.refreshPublishingState(videoId, root);
+			};
+			$.ajax({ type: 'POST', url: '/videos/' + videoId + (publishing ? '/publish' : '/unpublish'),
+				data: publishing ? { publishings: JSON.stringify([{ format, resolution }]) } : { format, resolution } })
+				.done((data) => finish(data.isError ? data.message || 'Publishing change failed' : null))
+				.fail(() => finish('Unable to change publishing state. Please reopen the modal to check its status.'));
+		}
+
+		refreshPublishingState(videoId, root) {
+			if (!root) return;
+			root.dataset.publishingVideoId = videoId;
+			this.publishingStates ??= new Map();
+			const revision = this.publishRevision || 0;
+			const request = (root.publishRequest || 0) + 1;
+			root.publishRequest = request;
+			$(root).find('input[data-format]').prop('disabled', true);
+			if (root.id === 'publish-modal-table') Swal.disableButtons();
+			const current = () => root.isConnected && root.publishRequest === request;
+			$.ajax({ type: 'GET', url: '/videos/' + videoId + '/publishes' })
+				.done((data) => {
+					if (!current()) return;
+					if (data.isError) { this.showAlert(true, data.message); return; }
+					for (const format of ['m3u8', 'mp4', 'webm', 'ogv']) {
+						for (const resolution of ['2160p', '1440p', '1080p', '720p', '480p', '360p', '240p']) {
+							const key = this.publishingKey(videoId, format, resolution);
+							let state = this.publishingStates.get(key);
+							if (!state || (!state.pending && state.revision <= revision)) {
+								const published = data.publishes.find((p) => p.format === format && p.resolution === resolution);
+								const job = (data.publishingJobs || []).find((p) => p.format === format && p.resolution === resolution);
+								state = { videoId, format, resolution, isPublished: published?.isPublished || false,
+									active: !!job, progress: job?.progress || 0, revision };
+								this.publishingStates.set(key, state);
+							}
+							this.renderPublishingState(state);
+						}
+					}
+					if (root.id === 'publish-modal-table') Swal.enableButtons();
+				})
+				.fail(() => { if (current()) this.showAlert(true, 'Unable to load publishing state. Please reopen the modal.'); });
+		}
+
+		resetPublishingState(videoId) {
+			this.publishingStates ??= new Map();
+			this.publishRevision = (this.publishRevision || 0) + 1;
+			for (const state of this.publishingStates.values()) {
+				if (state.videoId === videoId) {
+					Object.assign(state, { active: false, progress: 0, revision: this.publishRevision });
+					this.renderPublishingState(state);
+				}
+			}
+			const root = document.getElementById('publish-modal-table') || document.getElementById('manage-modal-published-tab-pane');
+			if (root?.dataset.publishingVideoId === videoId) this.refreshPublishingState(videoId, root);
 		}
 
 		showShareModal(videoId) {
@@ -1736,6 +1786,11 @@ MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId
 					</div>\
 					',
 				willOpen: () => {
+					const publishedRoot = document.getElementById('manage-modal-published-tab-pane');
+					$(publishedRoot).on('change', 'input[data-format]', function () {
+						self.changeManagePublishing(videoId, this, publishedRoot);
+					});
+					self.refreshPublishingState(videoId, publishedRoot);
 					$('#importTitleInput').val('......................');
 					$('#importDescriptionInput').val('......................');
 					$('#importTagsInput').val('');
@@ -1784,28 +1839,7 @@ MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId
 										$('.swal2-confirm').removeClass('hidden-elem');
 									}
 									else if (type === 'published') {
-										$.ajax({ type: 'GET', url: '/videos/' + videoId + '/publishes' })
-											.done(function (data, textStatus, xhr) {
-												if (data.isError) {
-													self.showAlert(true, data.message);
-												}
-												else {
-													const publishes = data.publishes;
-
-													for (const publish of publishes) {
-														const format = publish.format;
-														const resolution = publish.resolution;
-														const isPublished = publish.isPublished;
-
-														if (isPublished) {
-															$('#manage-modal-published-tab-pane #' + videoId + '_' + format + '_' + resolution + '_publish_checkbox').prop('checked', true);
-														}
-													}
-												}
-											})
-											.fail(function () {
-												console.log('unable to communicate with node');
-											});
+										self.refreshPublishingState(videoId, document.getElementById('manage-modal-published-tab-pane'));
 
 										$('.moving-tab-1').css('padding', '0px');
 										$('.moving-tab-1').css('width', '33%');
@@ -1876,56 +1910,6 @@ MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId
 									}
 								});
 
-								$('#manage-modal-published-tab-pane .form-check-input').change(function (event) {
-									const checkbox = $(this);
-
-									const format = $(checkbox).data('format');
-									const resolution = $(checkbox).data('resolution');
-
-									$(checkbox).attr('disabled', true);
-
-									if ($(checkbox).is(':checked')) {
-										const publishings = [];
-
-										publishings.push({ format: format, resolution: resolution });
-
-										$.ajax({ type: 'POST', url: '/videos/' + videoId + '/publish', data: { publishings: JSON.stringify(publishings) } })
-											.done(function (data, textStatus, xhr) {
-												if (data.isError) {
-													self.showAlert(true, data.message);
-
-													$(checkbox).prop('checked', !$(checkbox).is(':checked'));
-												}
-												else {
-
-												}
-											})
-											.fail(function () {
-												self.showAlert(true, 'video publish error occurred');
-
-												$(checkbox).attr('disabled', false);
-											})
-									}
-									else {
-										$.ajax({ type: 'POST', url: '/videos/' + videoId + '/unpublish', data: { format: format, resolution: resolution } })
-											.always(function () {
-												$(checkbox).attr('disabled', false);
-											})
-											.done(function (data, textStatus, xhr) {
-												if (data.isError) {
-													self.showAlert(true, data.message);
-
-													$(checkbox).prop('checked', !$(checkbox).is(':checked'));
-												}
-												else {
-
-												}
-											})
-											.fail(function () {
-												self.showAlert(true, 'video unpublish error occurred');
-											});
-									}
-								});
 
 								$('#manage-modal-permissions-tab-pane .form-check-input').change(function (event) {
 									const checkbox = $(this);
