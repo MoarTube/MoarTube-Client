@@ -41,8 +41,8 @@ async function check(run) {
       };
       window.WebSocket = class { constructor() { window.socket = this; } };
       videos.connectWebsocket();
-      window.emit = (type, format = 'mp4', progress = 0) => socket.onmessage({ data: JSON.stringify({
-        eventName: 'video_status', payload: { type, videoId: 'video123', format, resolution: '720p', progress }
+      window.emit = (type, format = 'mp4', progress = 0, stage) => socket.onmessage({ data: JSON.stringify({
+        eventName: 'video_status', payload: { type, videoId: 'video123', format, resolution: '720p', progress, stage }
       }) });
       window.snapshot = (publishingJobs = [], publishes = []) => ({ isError: false, publishes, publishingJobs });
       window.latestSnapshot = () => requests.filter(r => r.options.url.endsWith('/publishes')).at(-1);
@@ -54,6 +54,51 @@ async function check(run) {
   } finally {
     await page.close();
   }
+}
+
+for (const modal of ['Publish', 'Manage']) {
+  test(`${modal} shows stages at zero percent and restores the current stage from snapshots`, async () => {
+    await check(async (page) => {
+      await page.clock.install();
+      const result = await page.evaluate((modal) => {
+        if (modal === 'Publish') videos.showPublishWizardModal('video123');
+        else videos.showManageImportModal('video123');
+        latestSnapshot().deferred.resolve(
+          snapshot([{ format: 'mp4', resolution: '720p', progress: 0, stage: 'encoding' }])
+        );
+        const root = document.getElementById(
+          modal === 'Publish' ? 'publish-modal-table' : 'manage-modal-published-tab-pane'
+        );
+        const labels = [root.querySelector('.publish-stage').textContent];
+        for (const [stage, progress] of [
+          ['uploading', 50],
+          ['finalizing', 99],
+          ['retrying', 0],
+          ['queued', 0],
+        ]) {
+          emit('publishing', 'mp4', progress, stage);
+          labels.push(root.querySelector('.publish-stage').textContent);
+        }
+        const count = root.querySelectorAll('.publish-stage').length;
+        emit('publishing', 'mp4', 100, 'complete');
+        return {
+          labels,
+          count,
+          completed:
+            modal === 'Publish' ? circle()?.textContent === '100%' : !!input() && !input().disabled,
+          remainingLabel: root.querySelector('.publish-stage')?.textContent || '',
+        };
+      }, modal);
+      assert.deepEqual(result, {
+        labels: ['Encoding', 'Uploading', 'Finalizing', 'Retrying', 'Queued'],
+        count: 1,
+        completed: true,
+        remainingLabel: modal === 'Publish' ? 'Complete' : '',
+      });
+      await page.clock.runFor(2000);
+      assert.equal(await page.evaluate(() => !!input() && !input().disabled), true);
+    });
+  });
 }
 
 test('Manage restores queued switches for every format and clears stale published state', async () => {
@@ -112,9 +157,7 @@ test('confirmed completion followed by a retry stays queued without stale timers
       emit('publishing', 'mp4', 100);
     });
     assert.equal(
-      await page.evaluate(
-        () => !!input() && input().classList.contains('form-check-input-is-published')
-      ),
+      await page.evaluate(() => !!circle() && !input() && circle().textContent === '100%'),
       true
     );
     await page.evaluate(() => {
@@ -123,6 +166,60 @@ test('confirmed completion followed by a retry stays queued without stale timers
     await page.clock.fastForward(3000);
     assert.equal(
       await page.evaluate(() => !!circle() && !input() && circle().textContent === '0%'),
+      true
+    );
+  });
+});
+
+test('Publish holds 100% for two seconds even when the published snapshot arrives', async () => {
+  await check(async (page) => {
+    await page.clock.install();
+    await page.clock.pauseAt(new Date(Date.now() + 1000));
+    await page.evaluate(() => {
+      videos.showPublishWizardModal('video123');
+      latestSnapshot().deferred.resolve(snapshot());
+      emit('publishing', 'mp4', 99, 'finalizing');
+      emit('publishing', 'mp4', 100, 'complete');
+      emit('published');
+      latestSnapshot().deferred.resolve(
+        snapshot([], [{ format: 'mp4', resolution: '720p', isPublished: true }])
+      );
+    });
+    assert.deepEqual(
+      await page.evaluate(() => ({
+        text: circle().textContent,
+        value: $(circle()).circleProgress('value'),
+      })),
+      { text: '100%', value: 1 }
+    );
+    await page.clock.runFor(1999);
+    assert.equal(await page.evaluate(() => !!circle() && !input()), true);
+    await page.clock.runFor(1);
+    assert.equal(
+      await page.evaluate(
+        () => !circle() && input().classList.contains('form-check-input-is-published')
+      ),
+      true
+    );
+  });
+});
+
+test('a completion timer from a closed modal cannot change a new publish attempt', async () => {
+  await check(async (page) => {
+    await page.clock.install();
+    await page.evaluate(() => {
+      videos.showPublishWizardModal('video123');
+      latestSnapshot().deferred.resolve(snapshot());
+      emit('publishing', 'mp4', 100, 'complete');
+      Swal.close();
+      videos.showPublishWizardModal('video123');
+      latestSnapshot().deferred.resolve(
+        snapshot([{ format: 'mp4', resolution: '720p', progress: 12, stage: 'encoding' }])
+      );
+    });
+    await page.clock.runFor(3000);
+    assert.equal(
+      await page.evaluate(() => !!circle() && !input() && circle().textContent === '12%'),
       true
     );
   });

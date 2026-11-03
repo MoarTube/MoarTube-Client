@@ -82,6 +82,7 @@ export class NodeApiService extends BaseService {
   private readonly retryTimer: NodeJS.Timeout;
   private replaying = false;
   private readonly streamSessions = new Map<string, NodeAction>();
+  private publishingAdmission: Promise<void> = Promise.resolve();
 
   public close(): void {
     clearInterval(this.retryTimer);
@@ -350,7 +351,18 @@ export class NodeApiService extends BaseService {
   }
 
   public async setVideoPublishing(jwtToken: string, videoId: string): Promise<unknown> {
-    return this.postAuthenticated(jwtToken, '/videos/publishing', { videoId });
+    // The Node rejects overlapping admissions through its global settings writer lock.
+    // Serialize this short request only; encoding, uploads, and other API calls stay parallel.
+    const admission = this.publishingAdmission.then(() => {
+      this.shutdown.signal.throwIfAborted();
+      return this.postAuthenticated(jwtToken, '/videos/publishing', { videoId });
+    });
+    // Preserve the caller's failure without poisoning the queue for subsequent jobs.
+    this.publishingAdmission = admission.then(
+      () => undefined,
+      () => undefined
+    );
+    return admission;
   }
 
   public async createVideo(

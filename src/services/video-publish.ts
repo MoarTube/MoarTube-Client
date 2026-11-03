@@ -11,6 +11,7 @@ import {
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
+import { createInterface } from 'node:readline';
 import type { Logger } from 'pino';
 import type { NodeApiService } from './node-api.js';
 import type { S3Service, S3ValidationConfig } from './s3.js';
@@ -18,6 +19,8 @@ import type { SettingsRepository } from '../database/repositories/settings.js';
 import type { SocketService } from './socket.js';
 import type { ManifestService } from './manifest.js';
 import type { FfmpegService } from './ffmpeg.js';
+
+type PublishStage = 'queued' | 'encoding' | 'uploading' | 'finalizing' | 'retrying' | 'complete';
 
 interface VideoPublishJob {
   jwtToken: string;
@@ -27,6 +30,11 @@ interface VideoPublishJob {
   sourceFileExtension: string;
   idleInterval?: NodeJS.Timeout;
   progress?: number;
+  stage?: PublishStage;
+  stageStartedAt?: number;
+  queuedAt?: number;
+  retryCount?: number;
+  nextAttemptAt?: number;
   uploadCompleted?: boolean;
   hasEncodingSlot?: boolean;
   encodingCompleted?: boolean;
@@ -42,11 +50,14 @@ interface EncodingJobState {
 
 export class VideoPublishService {
   private inProgressPublishingJobCount = 0;
-  private maximumInProgressPublishingJobCount = 5;
+  private readonly maximumInProgressPublishingJobCount = 5;
+  private activeEncoderCount = 0;
+  private activeUploadCount = 0;
   private readonly inProgressPublishingJobs: VideoPublishJob[] = [];
   private readonly pendingPublishVideoQueue: VideoPublishJob[] = [];
   private readonly activeEncodingJobs: Map<string, EncodingJobState> = new Map();
-  private publishTimer: ReturnType<typeof setInterval> | undefined;
+  private retryTimer: ReturnType<typeof setTimeout> | undefined;
+  private drainScheduled = false;
   private closing = false;
   private readonly cancelled = new Set<string>();
 
@@ -61,7 +72,6 @@ export class VideoPublishService {
   ) {
     void manifestService;
     this.recoverUploads();
-    this.startVideoPublishInterval();
   }
 
   private connection(): string {
@@ -170,16 +180,18 @@ export class VideoPublishService {
     ) {
       return;
     }
-    if (this.pendingPublishVideoQueue.length >= 100) {
+    if (this.pendingPublishVideoQueue.length >= 100 && (job.retryCount ?? 0) === 0) {
       throw new Error('Publishing queue is full');
     }
     this.pendingPublishVideoQueue.push(job);
-    this.broadcastPublishProgress(job, 0);
+    job.queuedAt ??= Date.now();
+    this.setPublishStage(job, job.nextAttemptAt !== undefined ? 'retrying' : 'queued', 0);
     clearInterval(job.idleInterval);
     job.idleInterval = setInterval(() => {
-      this.broadcastPublishProgress(job, 0);
+      this.broadcastPublishProgress(job, job.progress ?? 0);
     }, 1000);
     this.logger.info(`[VideoPublishService] Enqueued job for video ${job.videoId}`);
+    this.schedulePublishingJobs();
   }
 
   public getPublishingJobs(
@@ -189,6 +201,7 @@ export class VideoPublishService {
     format: string;
     resolution: string;
     progress: number;
+    stage: PublishStage;
   }[] {
     return [...this.pendingPublishVideoQueue, ...this.inProgressPublishingJobs]
       .filter(
@@ -201,6 +214,7 @@ export class VideoPublishService {
         format: job.format,
         resolution: job.resolution,
         progress: job.progress ?? 0,
+        stage: job.stage ?? 'queued',
       }));
   }
 
@@ -217,8 +231,42 @@ export class VideoPublishService {
         format: job.format,
         resolution: job.resolution,
         progress,
+        stage: job.stage ?? 'queued',
       },
     });
+  }
+
+  private logPublishJob(
+    job: VideoPublishJob,
+    event: string,
+    extra: Record<string, unknown> = {}
+  ): void {
+    this.logger.info(
+      {
+        videoId: job.videoId,
+        format: job.format,
+        resolution: job.resolution,
+        stage: job.stage,
+        attempt: (job.retryCount ?? 0) + 1,
+        activePublishingJobs: this.inProgressPublishingJobCount,
+        activeEncoders: this.activeEncoderCount,
+        activeUploads: this.activeUploadCount,
+        queuedJobs: this.pendingPublishVideoQueue.length,
+        elapsedMs: Date.now() - (job.queuedAt ?? Date.now()),
+        ...extra,
+      },
+      `[VideoPublishService] ${event}`
+    );
+  }
+
+  private setPublishStage(job: VideoPublishJob, stage: PublishStage, progress: number): void {
+    const now = Date.now();
+    const previousStage = job.stage;
+    const stageDurationMs = job.stageStartedAt === undefined ? 0 : now - job.stageStartedAt;
+    job.stage = stage;
+    job.stageStartedAt = now;
+    this.logPublishJob(job, 'Stage changed', { previousStage, stageDurationMs });
+    this.broadcastPublishProgress(job, progress);
   }
 
   public stopPendingPublishVideo(videoId: string): void {
@@ -242,6 +290,7 @@ export class VideoPublishService {
         `[VideoPublishService] Removed ${String(removedCount)} pending job(s) for video ${videoId}`
       );
     }
+    this.schedulePublishingJobs();
   }
 
   public isPublishVideoEncodingStopping(videoId: string): boolean {
@@ -269,113 +318,139 @@ export class VideoPublishService {
     }
   }
 
-  private startVideoPublishInterval(): void {
-    this.publishTimer = setInterval(() => {
-      while (
-        this.pendingPublishVideoQueue.length > 0 &&
-        this.inProgressPublishingJobCount < this.maximumInProgressPublishingJobCount
-      ) {
-        this.inProgressPublishingJobCount++;
-        const job = this.pendingPublishVideoQueue.shift();
+  private schedulePublishingJobs(): void {
+    if (this.closing || this.drainScheduled) {
+      return;
+    }
+    this.drainScheduled = true;
+    // Coalesce a batch of enqueues before deciding which output is the last one.
+    queueMicrotask(() => {
+      this.drainScheduled = false;
+      this.drainPublishingJobs();
+    });
+  }
 
-        if (job) {
-          this.inProgressPublishingJobs.push(job);
-          this.startPublishingJob(job)
-            .then(async () => {
-              if (job.connection !== undefined && job.connection !== this.connection()) {
-                throw new Error(
-                  'Publication confirmation is waiting for its original Node connection'
-                );
-              }
-              if (this.isPublishVideoEncodingStopping(job.videoId)) {
-                throw new Error('Publishing cancelled');
-              }
-              const lastOutput =
-                !this.pendingPublishVideoQueue.some((p) => p.videoId === job.videoId) &&
-                !this.inProgressPublishingJobs.some((p) => p !== job && p.videoId === job.videoId);
-              requireNodeSuccess(
-                await this.nodeApiService.setVideoFormatResolutionPublished(
-                  job.jwtToken,
-                  job.videoId,
-                  job.format,
-                  job.resolution,
-                  lastOutput
-                )
-              );
-              this.broadcastPublishProgress(job, 100);
-              // Node updates the master and, for the last output, publication in one replayable task.
-              const index = this.findInProgressPublishJobIndex(job);
-              if (index !== -1) {
-                this.inProgressPublishingJobs.splice(index, 1);
-              }
-              if (
-                !this.pendingPublishVideoQueue.some((p) => p.videoId === job.videoId) &&
-                !this.inProgressPublishingJobs.some((p) => p.videoId === job.videoId)
-              ) {
-                if (!lastOutput) {
-                  requireNodeSuccess(
-                    await this.nodeApiService.setVideoPublished(job.jwtToken, job.videoId)
-                  );
-                }
-                await this.finishVideoPublish(job.jwtToken, job.videoId);
-              }
-
-              if (job.hasEncodingSlot === true) {
-                this.releaseEncodingJobSlot(job.videoId);
-                job.hasEncodingSlot = false;
-              }
-              this.removeCheckpoint(job);
-              this.inProgressPublishingJobCount--;
-
-              if (
-                this.inProgressPublishingJobCount === 0 &&
-                this.pendingPublishVideoQueue.length === 0
-              ) {
-                this.maximumInProgressPublishingJobCount = 5;
-              }
-            })
-            .catch((error: unknown) => {
-              const errorMessage = error instanceof Error ? error.message : String(error);
-              const errorStack = error instanceof Error ? error.stack : undefined;
-              this.logger.error(
-                { err: error, errMsg: errorMessage, stack: errorStack },
-                `[VideoPublishService] Failed publishing job: ${job.videoId}`
-              );
-
-              const index = this.findInProgressPublishJobIndex(job);
-              if (index !== -1) {
-                this.inProgressPublishingJobs.splice(index, 1);
-              }
-
-              // Check the stopping flag before releasing this job's slot - releasing
-              // may delete the shared per-videoId state entry (and its "stopping"
-              // flag) if this was the last active job for that video, which would
-              // otherwise make a legitimately-stopped job look like a plain failure
-              // and cause it to be incorrectly re-enqueued below.
-              const wasStopping = this.isPublishVideoEncodingStopping(job.videoId);
-              if (job.hasEncodingSlot === true) {
-                this.releaseEncodingJobSlot(job.videoId);
-                job.hasEncodingSlot = false;
-              }
-
-              if (!wasStopping && !this.closing) {
-                this.enqueuePendingPublishVideo(job);
-
-                if (this.maximumInProgressPublishingJobCount > 1) {
-                  this.maximumInProgressPublishingJobCount--;
-                }
-              }
-
-              this.inProgressPublishingJobCount--;
-            });
-        }
+  private drainPublishingJobs(): void {
+    clearTimeout(this.retryTimer);
+    if (this.closing) {
+      return;
+    }
+    while (this.inProgressPublishingJobCount < this.maximumInProgressPublishingJobCount) {
+      const index = this.pendingPublishVideoQueue.findIndex(
+        (job) => (job.nextAttemptAt ?? 0) <= Date.now()
+      );
+      if (index === -1) {
+        break;
       }
-    }, 3000);
+      const job = this.pendingPublishVideoQueue.splice(index, 1)[0];
+      if (!job) {
+        break;
+      }
+      delete job.nextAttemptAt;
+      this.inProgressPublishingJobCount++;
+      this.inProgressPublishingJobs.push(job);
+      this.logPublishJob(job, 'Job admitted');
+      void this.runPublishingJob(job);
+    }
+    const nextRetry = Math.min(
+      ...this.pendingPublishVideoQueue.map((job) => job.nextAttemptAt ?? Infinity)
+    );
+    if (
+      Number.isFinite(nextRetry) &&
+      this.inProgressPublishingJobCount < this.maximumInProgressPublishingJobCount
+    ) {
+      this.retryTimer = setTimeout(
+        () => {
+          this.schedulePublishingJobs();
+        },
+        Math.max(0, nextRetry - Date.now())
+      );
+    }
+  }
+
+  private async runPublishingJob(job: VideoPublishJob): Promise<void> {
+    let retry = false;
+    try {
+      await this.startPublishingJob(job);
+      if (job.connection !== undefined && job.connection !== this.connection()) {
+        throw new Error('Publication confirmation is waiting for its original Node connection');
+      }
+      if (this.isPublishVideoEncodingStopping(job.videoId)) {
+        throw new Error('Publishing cancelled');
+      }
+      this.setPublishStage(job, 'finalizing', 99);
+      const lastOutput =
+        !this.pendingPublishVideoQueue.some((p) => p.videoId === job.videoId) &&
+        !this.inProgressPublishingJobs.some((p) => p !== job && p.videoId === job.videoId);
+      requireNodeSuccess(
+        await this.nodeApiService.setVideoFormatResolutionPublished(
+          job.jwtToken,
+          job.videoId,
+          job.format,
+          job.resolution,
+          lastOutput
+        )
+      );
+      // The video-wide published event must follow the final per-output progress event.
+      this.setPublishStage(job, 'complete', 100);
+      const index = this.findInProgressPublishJobIndex(job);
+      if (index !== -1) {
+        this.inProgressPublishingJobs.splice(index, 1);
+      }
+      if (
+        !this.pendingPublishVideoQueue.some((p) => p.videoId === job.videoId) &&
+        !this.inProgressPublishingJobs.some((p) => p.videoId === job.videoId)
+      ) {
+        if (!lastOutput) {
+          requireNodeSuccess(
+            await this.nodeApiService.setVideoPublished(job.jwtToken, job.videoId)
+          );
+        }
+        await this.finishVideoPublish(job.jwtToken, job.videoId);
+      }
+      this.removeCheckpoint(job);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      // Check cancellation before releasing the last shared state entry.
+      retry = !this.isPublishVideoEncodingStopping(job.videoId) && !this.closing;
+      this.logger.error(
+        {
+          errMsg: errorMessage,
+          videoId: job.videoId,
+          format: job.format,
+          resolution: job.resolution,
+          stage: job.stage,
+          attempt: (job.retryCount ?? 0) + 1,
+        },
+        '[VideoPublishService] Failed publishing job'
+      );
+      if (retry) {
+        job.retryCount = (job.retryCount ?? 0) + 1;
+        const retryDelayMs = Math.min(60_000, 1000 * 2 ** Math.min(job.retryCount - 1, 6));
+        job.nextAttemptAt = Date.now() + retryDelayMs;
+        this.logPublishJob(job, 'Retry scheduled', { retryDelayMs });
+      }
+    } finally {
+      clearInterval(job.idleInterval);
+      const index = this.findInProgressPublishJobIndex(job);
+      if (index !== -1) {
+        this.inProgressPublishingJobs.splice(index, 1);
+      }
+      if (job.hasEncodingSlot === true) {
+        this.releaseEncodingJobSlot(job.videoId);
+        job.hasEncodingSlot = false;
+      }
+      this.inProgressPublishingJobCount--;
+      if (retry && !this.closing && !this.isPublishVideoEncodingStopping(job.videoId)) {
+        this.enqueuePendingPublishVideo(job);
+      }
+      this.schedulePublishingJobs();
+    }
   }
 
   public close(): void {
     this.closing = true;
-    clearInterval(this.publishTimer);
+    clearTimeout(this.retryTimer);
     for (const job of [...this.pendingPublishVideoQueue, ...this.inProgressPublishingJobs]) {
       clearInterval(job.idleInterval);
     }
@@ -401,7 +476,14 @@ export class VideoPublishService {
     }
   }
 
+  private assertPublishingActive(videoId: string): void {
+    if (this.closing || this.isPublishVideoEncodingStopping(videoId)) {
+      throw new Error('Publishing cancelled');
+    }
+  }
+
   private async startPublishingJob(job: VideoPublishJob): Promise<void> {
+    this.assertPublishingActive(job.videoId);
     if (job.connection !== undefined && job.connection !== this.connection()) {
       throw new Error('Publishing recovery is waiting for its original Node connection');
     }
@@ -417,13 +499,14 @@ export class VideoPublishService {
       isError: boolean;
     };
     if (!response.isError) {
+      this.assertPublishingActive(job.videoId);
       // Share one state entry per videoId (get-or-create, never overwrite) since
       // multiple format/resolution jobs for the same video may be encoding at
       // once; reference-count so this job finishing doesn't delete tracking a
       // sibling job for the same video still needs. The slot is released by the
-      // caller (startVideoPublishInterval's .then()/.catch() handlers) rather
+      // caller (runPublishingJob's finally handler) rather
       // than here, so the "stopping" flag on this entry is still observable to
-      // the .catch() handler's retry decision after a killed job rejects.
+      // the retry decision after a killed job rejects.
       let state = this.activeEncodingJobs.get(job.videoId);
       if (!state) {
         state = {
@@ -439,7 +522,9 @@ export class VideoPublishService {
 
       if (job.encodingCompleted !== true) {
         await encodingPool.run(() => {
+          this.assertPublishingActive(job.videoId);
           clearInterval(job.idleInterval);
+          this.setPublishStage(job, 'encoding', 0);
           return this.performEncodingJob(job);
         });
         job.encodingCompleted = true;
@@ -449,7 +534,16 @@ export class VideoPublishService {
       if (this.isPublishVideoEncodingStopping(job.videoId)) {
         throw new Error('Publishing cancelled');
       }
-      await this.performUploadingJob(job);
+      this.activeUploadCount++;
+      this.setPublishStage(job, 'uploading', 50);
+      try {
+        await this.performUploadingJob(job);
+      } finally {
+        this.activeUploadCount--;
+        this.logPublishJob(job, 'Upload ended', {
+          stageDurationMs: Date.now() - (job.stageStartedAt ?? Date.now()),
+        });
+      }
       if (this.isPublishVideoEncodingStopping(job.videoId)) {
         throw new Error('Publishing cancelled');
       }
@@ -459,11 +553,10 @@ export class VideoPublishService {
   }
 
   private async performEncodingJob(job: VideoPublishJob): Promise<void> {
-    if (this.isPublishVideoEncodingStopping(job.videoId)) {
-      throw new Error(`${job.videoId} attempted to encode but publishing is stopping`);
-    }
+    this.assertPublishingActive(job.videoId);
 
     const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(job.jwtToken);
+    this.assertPublishingActive(job.videoId);
     const videosPath = this.settingsRepository.getVideosDirectoryPath();
     const sourceFilePath = path.join(
       videosPath,
@@ -473,15 +566,22 @@ export class VideoPublishService {
     );
     const destinationFilePath = this.prepareDestinationDirectory(videosPath, job);
 
-    const ffmpegArguments = this.generateFfmpegVideoArguments(
-      job.videoId,
-      job.resolution,
-      job.format,
-      sourceFilePath,
-      destinationFilePath,
-      job.sourceFileExtension,
-      externalVideosBaseUrl
-    );
+    const ffmpegArguments = [
+      '-progress',
+      'pipe:1',
+      '-stats_period',
+      '0.1',
+      '-nostats',
+      ...this.generateFfmpegVideoArguments(
+        job.videoId,
+        job.resolution,
+        job.format,
+        sourceFilePath,
+        destinationFilePath,
+        job.sourceFileExtension,
+        externalVideosBaseUrl
+      ),
+    ];
 
     return new Promise((resolve, reject) => {
       this.logger.info(
@@ -493,9 +593,21 @@ export class VideoPublishService {
       });
       const state = this.activeEncodingJobs.get(job.videoId);
       state?.processes.add(process);
+      this.activeEncoderCount++;
+      const encoderStartedAt = Date.now();
+      this.logPublishJob(job, 'Encoder started');
+      let tracked = true;
 
       const untrackProcess = (): void => {
+        if (!tracked) {
+          return;
+        }
+        tracked = false;
         state?.processes.delete(process);
+        this.activeEncoderCount--;
+        this.logPublishJob(job, 'Encoder ended', {
+          encoderDurationMs: Date.now() - encoderStartedAt,
+        });
       };
 
       process.on('error', (err) => {
@@ -548,47 +660,49 @@ export class VideoPublishService {
     reject: (err: Error) => void,
     untrackProcess: () => void
   ): void {
-    process.stdout?.on('data', () => {
-      /* Prevent buffer overflow */
-    });
-
-    let lengthTimestamp = '00:00:00.00';
     let lengthSeconds = 0;
+    let currentTimeSeconds = 0;
     let stderrOutput = '';
-
+    const updateProgress = (): void => {
+      if (lengthSeconds > 0 && currentTimeSeconds > 0) {
+        const progress = Math.min(49, Math.ceil((currentTimeSeconds / lengthSeconds) * 50));
+        if (progress > (job.progress ?? 0)) {
+          this.broadcastPublishProgress(job, progress);
+        }
+      }
+    };
+    // readline retains incomplete records across arbitrary stdout chunks.
+    if (process.stdout) {
+      const progressLines = createInterface({ input: process.stdout });
+      progressLines.on('line', (line) => {
+        if (line.startsWith('out_time_us=')) {
+          const seconds = Number(line.slice('out_time_us='.length)) / 1_000_000;
+          if (Number.isFinite(seconds) && seconds >= 0) {
+            currentTimeSeconds = seconds;
+            updateProgress();
+          }
+        }
+      });
+    }
     process.stderr?.on('data', (data) => {
       if (this.isPublishVideoEncodingStopping(job.videoId)) {
         process.kill();
         return;
       }
-
-      const stderrTemp = Buffer.from(data).toString();
-
-      if (stderrTemp.includes('time=')) {
-        if (lengthSeconds === 0) {
-          const index = stderrOutput.indexOf('Duration: ');
-          if (index !== -1) {
-            lengthTimestamp = stderrOutput.substring(index + 10, index + 10 + 11);
-            lengthSeconds = this.timestampToSeconds(lengthTimestamp);
-          }
+      stderrOutput = (stderrOutput + Buffer.from(data).toString()).slice(-64 * 1024);
+      if (lengthSeconds === 0) {
+        const duration = /Duration:\s*(\d+:\d{2}:\d{2}(?:\.\d+)?)(?=,|\s)/.exec(stderrOutput);
+        if (duration?.[1] !== undefined) {
+          lengthSeconds = this.timestampToSeconds(duration[1]);
+          updateProgress();
         }
-
-        const index = stderrTemp.indexOf('time=');
-        const currentTimestamp = stderrTemp.substring(index + 5, index + 5 + 11);
-        const currentTimeSeconds = this.timestampToSeconds(currentTimestamp);
-
-        if (currentTimeSeconds > 0 && lengthSeconds > 0) {
-          const encodingProgress = Math.ceil(((currentTimeSeconds / lengthSeconds) * 100) / 2);
-          this.broadcastPublishProgress(job, encodingProgress);
-        }
-      } else {
-        stderrOutput = (stderrOutput + stderrTemp).slice(-64 * 1024);
       }
     });
 
-    process.on('exit', (code) => {
+    process.on('close', (code) => {
       untrackProcess();
       if (code === 0) {
+        this.broadcastPublishProgress(job, 50);
         resolve();
       } else {
         reject(
