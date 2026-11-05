@@ -19,32 +19,50 @@ class MoarTubeCloudflareTunnelToggle {
     });
   }
 
+  save(isEnabled) {
+    return $.ajax({
+      type: 'POST',
+      url: '/settings/node/cloudflare/tunnel/toggle',
+      data: JSON.stringify({ isEnabled }),
+      contentType: 'application/json; charset=utf-8',
+      timeout: 155000,
+    });
+  }
+
+  async resetFailedEnable(preferenceKnownOff) {
+    this.confirmed = false;
+    this.checkbox.prop('checked', false);
+    if (preferenceKnownOff) return true;
+    try {
+      const response = await this.save(false);
+      return response?.isCloudflareTunnelEnabled === false;
+    } catch (error) {
+      // A stop failure can still have successfully saved the disabled preference.
+      return error?.responseJSON?.isCloudflareTunnelEnabled === false;
+    }
+  }
+
   async update() {
     if (this.pending) return;
     const requested = this.checkbox.prop('checked');
     this.pending = true;
     this.checkbox.prop('disabled', true).attr('aria-busy', 'true');
     this.status.text('Updating Cloudflare Tunnels.');
-    let failure = null;
     try {
-      const response = await $.ajax({
-        type: 'POST',
-        url: '/settings/node/cloudflare/tunnel/toggle',
-        data: JSON.stringify({ isEnabled: requested }),
-        contentType: 'application/json; charset=utf-8',
-        timeout: 155000,
-      });
-      if (typeof response.isCloudflareTunnelEnabled === 'boolean') {
-        this.load(response);
+      let failure = null;
+      let mutationSucceeded = false;
+      try {
+        const response = await this.save(requested);
+        mutationSucceeded =
+          response?.isError === false && response.isCloudflareTunnelEnabled === requested;
+        if (typeof response?.isCloudflareTunnelEnabled === 'boolean') this.load(response);
+        if (!mutationSucceeded) failure = response || {};
+      } catch (error) {
+        failure = { ...(error?.responseJSON || {}), admissionBusy: error?.status === 409 };
+        if (typeof failure.isCloudflareTunnelEnabled === 'boolean') this.load(failure);
       }
-      if (response.isError) failure = response;
-    } catch (error) {
-      failure = { ...(error?.responseJSON || {}), admissionBusy: error?.status === 409 };
-      if (typeof failure.isCloudflareTunnelEnabled === 'boolean') this.load(failure);
-    }
 
-    // Always refresh after errors/timeouts: an interrupted request may already have persisted.
-    try {
+      // Refresh even after timeouts: the request may already have saved its preference.
       const [settings, runtime] = await Promise.allSettled([
         $.ajax({ type: 'GET', url: '/settings/node', cache: false, timeout: 15000 }),
         $.ajax({
@@ -54,38 +72,48 @@ class MoarTubeCloudflareTunnelToggle {
           timeout: 15000,
         }),
       ]);
-      if (settings.status === 'fulfilled' && settings.value && !settings.value.isError) {
-        this.load(settings.value);
-      } else {
-        this.checkbox.prop('checked', this.confirmed);
+      const refreshed =
+        settings.status === 'fulfilled' && settings.value && !settings.value.isError;
+      if (refreshed) this.load(settings.value);
+      else this.checkbox.prop('checked', this.confirmed);
+      const tunnel =
+        runtime.status === 'fulfilled' && !runtime.value?.isError ? runtime.value?.tunnel : null;
+      const refreshFailed = !refreshed || !tunnel;
+      const runtimeError = tunnel?.status === 'error';
+      const running = tunnel?.status === 'running' && ['quick', 'named'].includes(tunnel.mode);
+
+      if (requested && (failure || refreshFailed || !this.confirmed || !running)) {
+        const reset = await this.resetFailedEnable(
+          refreshed && settings.value.isCloudflareTunnelEnabled === false
+        );
+        const message = failure?.admissionBusy
+          ? 'Another settings change is in progress. The switch is off. Wait for it to finish and try again.'
+          : reset
+            ? 'Cloudflare Tunnels could not be enabled. The preference is off. Please try again.'
+            : 'Cloudflare Tunnels could not be enabled. The switch is off, but the saved preference could not be confirmed as off. Refresh settings before retrying.';
+        this.status.text(message);
+        this.showAlert(true, message);
+        return;
       }
-      const runtimeError =
-        runtime.status === 'fulfilled' && runtime.value?.tunnel?.status === 'error';
-      const refreshFailed =
-        settings.status === 'rejected' ||
-        runtime.status === 'rejected' ||
-        !settings.value ||
-        settings.value?.isError ||
-        runtime.value?.isError ||
-        !runtime.value?.tunnel;
-      const message = failure
-        ? failure.admissionBusy
+
+      if (failure || refreshFailed || runtimeError) {
+        const message = failure?.admissionBusy
           ? 'Another settings change is in progress. Wait for it to finish and try again.'
-          : failure.settingsSaved
+          : failure?.settingsSaved
             ? 'Tunnel preference saved, but the tunnel could not reach the requested state. You can retry using the toggle.'
-            : 'The tunnel change could not be confirmed. The toggle shows the last confirmed setting; refresh settings before retrying.'
-        : refreshFailed
-          ? 'The tunnel request completed, but its current state could not be refreshed. Refresh settings before retrying.'
-          : runtimeError
-            ? 'Tunnel preference saved, but the tunnel is reporting an error. You can retry using the toggle.'
-            : 'Cloudflare Tunnels preference saved.';
-      this.status.text(message);
-      // Never insert provider errors, generated names, or public URLs into Client UI.
-      this.showAlert(!!failure || !!refreshFailed || runtimeError, message);
+            : 'The tunnel change could not be confirmed. Refresh settings before retrying.';
+        this.status.text(message);
+        // Never insert provider errors, generated names, or public URLs into Client UI.
+        this.showAlert(true, message);
+      } else {
+        // Successful toggles are silent, including the live status region.
+        this.status.text('');
+      }
     } catch {
-      this.checkbox.prop('checked', this.confirmed);
+      if (requested) await this.resetFailedEnable(false);
+      else this.checkbox.prop('checked', this.confirmed);
       const message =
-        'Cloudflare Tunnel state could not be refreshed. Refresh settings before retrying.';
+        'Cloudflare Tunnel state could not be confirmed. Refresh settings before retrying.';
       this.status.text(message);
       this.showAlert(true, message);
     } finally {

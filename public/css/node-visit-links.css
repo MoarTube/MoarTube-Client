@@ -1,0 +1,49 @@
+.node-visit-links .node-visit-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 1rem;
+  padding: 0.65rem 1rem;
+  border-radius: 0.5rem;
+  color: #344767;
+  min-width: 0;
+}
+.node-visit-links .node-visit-link:hover {
+  background: rgba(203, 12, 159, 0.06);
+}
+.node-visit-links .node-visit-text {
+  flex: 1;
+  min-width: 0;
+}
+.node-visit-links .node-visit-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.node-visit-links .node-visit-address {
+  display: block;
+  font-size: 0.75rem;
+  color: #67748e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.node-visit-links .node-visit-icon {
+  flex: 0 0 1rem;
+  color: #cb0c9f;
+}
+.node-visit-links .node-visit-external {
+  flex: 0 0 auto;
+}
+.node-visit-links .node-visit-external[hidden],
+.node-visit-links [data-node-tunnel-item][hidden] {
+  display: none;
+}
+.node-visit-links .node-visit-link[aria-disabled='true'] {
+  opacity: 0.65;
+  cursor: default;
+}
+.dark-version .node-visit-links .node-visit-link,
+.dark-version .node-visit-links .node-visit-address {
+  color: rgba(255, 255, 255, 0.8);
+}

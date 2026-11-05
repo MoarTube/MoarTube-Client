@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { NodeApiService } from '../src/services/node-api.js';
 import { SettingsController } from '../src/controllers/settings.js';
 
-describe('CDN tunnel-name proxy contract', () => {
-  it('forwards the normalized fourth input and preserves partial-save HTTP responses for configure and clear', async () => {
+describe('CDN configuration proxy contract', () => {
+  it('forwards only credentials and preserves partial-save HTTP responses for configure and clear', async () => {
     const node = Fastify();
     const app = Fastify();
     const response = {
@@ -21,7 +21,6 @@ describe('CDN tunnel-name proxy contract', () => {
         cloudflareEmailAddress: 'email',
         cloudflareZoneId: 'zone',
         cloudflareGlobalApiKey: 'key',
-        cloudflareTunnelName: 'Named',
       });
       return reply.code(502).send(response);
     });
@@ -48,13 +47,18 @@ describe('CDN tunnel-name proxy contract', () => {
     app.post('/configure', controller.apiSetCloudflareConfig);
     app.post('/clear', controller.apiClearCloudflareConfig);
     try {
-      for (const cloudflareTunnelName of ['', ' ', null, 'https://invalid', 'x'.repeat(101)]) {
+      for (const credentials of [
+        null,
+        {},
+        { cloudflareEmailAddress: 'email' },
+        { cloudflareEmailAddress: 'email', cloudflareZoneId: 'zone' },
+      ]) {
         expect(
           (
             await app.inject({
               method: 'POST',
               url: '/configure',
-              payload: { cloudflareTunnelName },
+              payload: credentials,
             })
           ).statusCode
         ).toBe(400);
@@ -66,7 +70,6 @@ describe('CDN tunnel-name proxy contract', () => {
           cloudflareEmailAddress: 'email',
           cloudflareZoneId: 'zone',
           cloudflareGlobalApiKey: 'key',
-          cloudflareTunnelName: ' Named ',
         },
       });
       expect(result.statusCode).toBe(502);

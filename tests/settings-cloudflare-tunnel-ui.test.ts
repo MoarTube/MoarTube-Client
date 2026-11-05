@@ -13,9 +13,12 @@ it('places the tunnel toggle after Turnstile and reconciles saves, partial failu
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   let enabled: boolean | undefined;
   let cdn = false;
-  let behavior: 'success' | 'partial' | 'reject' | 'lost' | 'busy' = 'success';
+  let behavior: 'success' | 'partial' | 'reject' | 'lost' | 'busy' | 'reported' = 'success';
   let gate: Promise<void> | undefined;
   let runtimeError = false;
+  let runtimeStatus: 'starting' | 'stopped' | undefined;
+  let refreshFailure: 'settings' | 'runtime' | undefined;
+  let rollbackRejected = false;
   let saves = 0;
   await page.route('http://moartube.test/**', async (route) => {
     const pathname = new URL(route.request().url()).pathname;
@@ -23,6 +26,13 @@ it('places the tunnel toggle after Turnstile and reconciles saves, partial failu
       saves++;
       await gate;
       const requested = (route.request().postDataJSON() as { isEnabled: boolean }).isEnabled;
+      if (!requested && rollbackRejected) {
+        await route.fulfill({
+          status: 500,
+          json: { isError: true, isCloudflareTunnelEnabled: enabled },
+        });
+        return;
+      }
       if (behavior !== 'reject' && behavior !== 'busy') {
         enabled = requested;
       }
@@ -56,6 +66,7 @@ it('places the tunnel toggle after Turnstile and reconciles saves, partial failu
     }
     if (pathname === '/settings/node') {
       await route.fulfill({
+        status: refreshFailure === 'settings' ? 503 : 200,
         json: {
           ...(enabled === undefined ? {} : { isCloudflareTunnelEnabled: enabled }),
           isCloudflareCdnEnabled: cdn,
@@ -66,11 +77,13 @@ it('places the tunnel toggle after Turnstile and reconciles saves, partial failu
     }
     if (pathname === '/settings/node/cloudflare/tunnel') {
       await route.fulfill({
+        status: refreshFailure === 'runtime' ? 503 : 200,
         json: {
           isError: false,
           tunnel: {
             mode: enabled === false ? 'none' : cdn ? 'named' : 'quick',
-            status: runtimeError ? 'error' : enabled === false ? 'stopped' : 'running',
+            status:
+              runtimeStatus ?? (runtimeError ? 'error' : enabled === false ? 'stopped' : 'running'),
             name: 'SECRET_QUICK_NAME',
           },
         },
@@ -120,6 +133,8 @@ it('places the tunnel toggle after Turnstile and reconciles saves, partial failu
     await browserExpect(toggle).toBeEnabled();
     await browserExpect(toggle).not.toBeChecked();
     expect(saves).toBe(1);
+    expect(await page.evaluate('window.tunnelAlerts')).toEqual([]);
+    await browserExpect(page.locator('#cloudflare-tunnels-status')).toHaveText('');
     await page.evaluate(
       `window.tunnelUI.load({isCloudflareTunnelEnabled: false, isCloudflareCdnEnabled: true});`
     );
@@ -128,6 +143,8 @@ it('places the tunnel toggle after Turnstile and reconciles saves, partial failu
     await toggle.click();
     await browserExpect(toggle).toBeEnabled();
     await browserExpect(toggle).toBeChecked();
+    expect(await page.evaluate('window.tunnelAlerts')).toEqual([]);
+    await browserExpect(page.locator('#cloudflare-tunnels-status')).toHaveText('');
 
     behavior = 'partial';
     await toggle.click();
@@ -152,10 +169,68 @@ it('places the tunnel toggle after Turnstile and reconciles saves, partial failu
     behavior = 'lost';
     await toggle.click();
     await browserExpect(toggle).toBeEnabled();
-    await browserExpect(toggle).toBeChecked();
+    await browserExpect(toggle).not.toBeChecked();
+    expect(enabled).toBe(false);
     await browserExpect(page.locator('#cloudflare-tunnels-status')).toHaveText(
-      /could not be confirmed/i
+      /could not be enabled/i
     );
+
+    // A partial enable must reset both the visible switch and the persisted preference.
+    for (const failure of ['partial', 'reported'] as const) {
+      behavior = failure;
+      await toggle.click();
+      await browserExpect(toggle).toBeEnabled();
+      await browserExpect(toggle).not.toBeChecked();
+      expect(enabled).toBe(false);
+      await browserExpect(page.locator('#cloudflare-tunnels-status')).toHaveText(
+        /could not be enabled/i
+      );
+    }
+
+    behavior = 'success';
+    for (const state of ['starting', 'stopped'] as const) {
+      runtimeStatus = state;
+      await toggle.click();
+      await browserExpect(toggle).toBeEnabled();
+      await browserExpect(toggle).not.toBeChecked();
+      expect(enabled).toBe(false);
+      await browserExpect(page.locator('#cloudflare-tunnels-status')).toHaveText(
+        /could not be enabled/i
+      );
+    }
+    runtimeStatus = undefined;
+    for (const failure of ['settings', 'runtime'] as const) {
+      refreshFailure = failure;
+      await toggle.click();
+      await browserExpect(toggle).toBeEnabled();
+      await browserExpect(toggle).not.toBeChecked();
+      expect(enabled).toBe(false);
+      await browserExpect(page.locator('#cloudflare-tunnels-status')).toHaveText(
+        /could not be enabled/i
+      );
+    }
+    refreshFailure = undefined;
+    runtimeStatus = 'starting';
+    rollbackRejected = true;
+    await toggle.click();
+    await browserExpect(toggle).toBeEnabled();
+    await browserExpect(toggle).not.toBeChecked();
+    expect(enabled).toBe(true);
+    await browserExpect(page.locator('#cloudflare-tunnels-status')).toHaveText(
+      /saved preference could not be confirmed as off/i
+    );
+    runtimeStatus = undefined;
+    rollbackRejected = false;
+    enabled = false;
+    const errorsBeforeSuccess = await page.evaluate('window.tunnelAlerts.length');
+    expect(await page.evaluate('window.tunnelAlerts.every((alert) => alert.error === true)')).toBe(
+      true
+    );
+    await toggle.click();
+    await browserExpect(toggle).toBeEnabled();
+    await browserExpect(toggle).toBeChecked();
+    await browserExpect(page.locator('#cloudflare-tunnels-status')).toHaveText('');
+    expect(await page.evaluate('window.tunnelAlerts.length')).toBe(errorsBeforeSuccess);
     expect(await page.locator('body').innerText()).not.toContain('SECRET_QUICK_NAME');
     expect(await page.locator('#cloudflare-tunnels-status').textContent()).not.toContain(
       'SECRET_QUICK_NAME'

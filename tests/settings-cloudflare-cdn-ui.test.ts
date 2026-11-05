@@ -4,7 +4,7 @@ import ejs from 'ejs';
 import { chromium, expect as browserExpect } from '@playwright/test';
 import { expect, it } from 'vitest';
 
-it('validates the fourth modal field, preserves tunnel preference, and refreshes partial CDN changes', async () => {
+it('requests only CDN credentials, preserves tunnel preference, and refreshes partial CDN changes', async () => {
   const template = await readFile('public/views/settings.ejs', 'utf8');
   const html = ejs.render(template.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ''), {
     model: { clientSettings: { isGpuAccelerationSupported: false } },
@@ -105,25 +105,18 @@ it('validates the fourth modal field, preserves tunnel preference, and refreshes
       await page.getByLabel('Cloudflare Global API Key', { exact: true }).fill('key');
     };
     await openForm();
-    await browserExpect(page.getByLabel('Cloudflare Tunnel Name', { exact: true })).toHaveValue('');
-    await browserExpect(page.getByLabel('Cloudflare Tunnel Name', { exact: true })).toHaveAttribute(
-      'placeholder',
-      'name'
-    );
+    await browserExpect(page.getByLabel('Cloudflare Tunnel Name', { exact: true })).toHaveCount(0);
+    await browserExpect(page.locator('.swal2-popup .text-start input')).toHaveCount(3);
     await page.getByRole('button', { name: 'Close this dialog' }).click();
     await browserExpect(toggle).toBeEnabled();
     await browserExpect(toggle).not.toBeChecked();
     expect(writes).toBe(0);
     await openForm();
-    await fillForm();
-    await page.getByLabel('Cloudflare Tunnel Name', { exact: true }).fill('   ');
+    await page.getByLabel('Cloudflare Email Address', { exact: true }).fill('   ');
     await page.getByRole('button', { name: 'Enable', exact: true }).click();
     await browserExpect(page.locator('.swal2-validation-message')).toBeVisible();
     expect(writes).toBe(0);
-    await page.getByLabel('Cloudflare Tunnel Name', { exact: true }).fill('https://invalid');
-    await page.getByRole('button', { name: 'Enable', exact: true }).click();
-    expect(writes).toBe(0);
-    await page.getByLabel('Cloudflare Tunnel Name', { exact: true }).fill('  My Named Tunnel  ');
+    await fillForm();
     await mkdir('temp/tunnel-m4/screenshots', { recursive: true });
     await page
       .locator('.swal2-popup')
@@ -148,7 +141,6 @@ it('validates the fourth modal field, preserves tunnel preference, and refreshes
       cloudflareEmailAddress: 'email@example.com',
       cloudflareZoneId: 'zone',
       cloudflareGlobalApiKey: 'key',
-      cloudflareTunnelName: 'My Named Tunnel',
     });
     await browserExpect(page.getByRole('switch', { name: 'Cloudflare Tunnels' })).not.toBeChecked();
     await toggle.click();
@@ -157,7 +149,6 @@ it('validates the fourth modal field, preserves tunnel preference, and refreshes
     behavior = 'partial';
     await openForm();
     await fillForm();
-    await page.getByLabel('Cloudflare Tunnel Name', { exact: true }).fill('Another Name');
     await page.getByRole('button', { name: 'Enable', exact: true }).click();
     await browserExpect(toggle).toBeEnabled();
     await browserExpect(toggle).toBeChecked();

@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { chromium, expect as browserExpect } from '@playwright/test';
 import { it } from 'vitest';
 
-it('refreshes the Settings link and form from persisted values after success and rejected saves', async () => {
+it('refreshes the Settings sidebar link and form from persisted values after success and rejected saves', async () => {
   const template = await readFile('public/views/settings.ejs', 'utf8');
   const start = template.indexOf('class MoarTubeClientSettings');
   const end = template.indexOf('const moarTubeClientSettings', start);
@@ -32,7 +32,7 @@ it('refreshes the Settings link and form from persisted values after success and
     } else {
       await route.fulfill({
         contentType: 'text/html',
-        body: '<a id="node-link"></a><form id="network" action="/settings/node/network/external"><select name="publicNodeProtocol" id="public-node-protocol-select"><option value="https">HTTPS</option></select><input name="publicNodeAddress" id="public-node-address-input"><input name="publicNodePort" id="public-node-port-input"></form>',
+        body: '<div id="node-link"></div><section data-node-visit-links></section><form id="network" action="/settings/node/network/external"><select name="publicNodeProtocol" id="public-node-protocol-select"><option value="https">HTTPS</option></select><input name="publicNodeAddress" id="public-node-address-input"><input name="publicNodePort" id="public-node-port-input"></form>',
       });
     }
   });
@@ -44,27 +44,34 @@ it('refreshes the Settings link and form from persisted values after success and
     await page.addScriptTag({
       content: await readFile('public/javascript/public-node-url.js', 'utf8'),
     });
-    for (const script of ['settings-cloudflare-tunnel.js', 'settings-cloudflare-cdn.js']) {
+    for (const script of [
+      'settings-cloudflare-tunnel.js',
+      'settings-cloudflare-cdn.js',
+      'node-visit-links.js',
+    ]) {
       await page.addScriptTag({ content: await readFile(`public/javascript/${script}`, 'utf8') });
     }
     await page.addScriptTag({
       content: `const INCOMING_PARAMETERS = {}; window.Swal = { showLoading() {}, fire(options) { if (options.didOpen) options.didOpen(); else window.lastAlert = options; } }; ${template.slice(start, end)} window.auditSettings = new MoarTubeClientSettings();`,
     });
     await page.evaluate(`auditSettings.loadNodeSettings(${JSON.stringify(settings)})`);
-    await browserExpect(page.locator('#node-link')).toHaveAttribute('href', 'https://old.test');
-    await page.evaluate("auditSettings.handleExternalNetworkSettingsForm($('#network'))");
-    await browserExpect(page.locator('#node-link')).toHaveAttribute(
+    await browserExpect(page.locator('[data-node-public-link]')).toHaveAttribute(
       'href',
-      'https://[2001:db8::1]:8443'
+      'https://old.test/'
+    );
+    await page.evaluate("auditSettings.handleExternalNetworkSettingsForm($('#network'))");
+    await browserExpect(page.locator('[data-node-public-link]')).toHaveAttribute(
+      'href',
+      'https://[2001:db8::1]:8443/'
     );
     for (status of [200, 400]) {
       rejected = true;
       await page.locator('#public-node-address-input').fill('rejected.test');
       await page.evaluate("auditSettings.handleExternalNetworkSettingsForm($('#network'))");
       await browserExpect(page.locator('#public-node-address-input')).toHaveValue('2001:db8::1');
-      await browserExpect(page.locator('#node-link')).toHaveAttribute(
+      await browserExpect(page.locator('[data-node-public-link]')).toHaveAttribute(
         'href',
-        'https://[2001:db8::1]:8443'
+        'https://[2001:db8::1]:8443/'
       );
       await browserExpect
         .poll(() => page.evaluate('window.lastAlert.text'))

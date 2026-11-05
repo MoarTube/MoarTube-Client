@@ -44,40 +44,27 @@ class MoarTubeCloudflareCdn {
           confirmButtonText: 'Enable',
           didOpen: () => {
             $(
-              '#cloudflareEmailAddress, #cloudflareZoneId, #cloudflareGlobalApiKey, #cloudflareTunnelName'
+              '#cloudflareEmailAddress, #cloudflareZoneId, #cloudflareGlobalApiKey'
             ).on('input', () => Swal.resetValidationMessage());
           },
           html:
             '<div class="text-start">' +
-            '<label class="form-label" for="cloudflareEmailAddress">Cloudflare Email Address</label><input id="cloudflareEmailAddress" class="form-control mb-3" type="text" required autocomplete="off" placeholder="Cloudflare Email Address">' +
-            '<label class="form-label" for="cloudflareZoneId">Cloudflare Zone ID</label><input id="cloudflareZoneId" class="form-control mb-3" type="text" required autocomplete="off" placeholder="Cloudflare Zone ID">' +
-            '<label class="form-label" for="cloudflareGlobalApiKey">Cloudflare Global API Key</label><input id="cloudflareGlobalApiKey" class="form-control mb-3" type="password" required autocomplete="off" placeholder="Cloudflare Global API Key">' +
-            '<label class="form-label" for="cloudflareTunnelName">Cloudflare Tunnel Name</label><input id="cloudflareTunnelName" class="form-control" type="text" required autocomplete="off" placeholder="name" maxlength="100">' +
+            '<input id="cloudflareEmailAddress" aria-label="Cloudflare Email Address" class="form-control mb-3" type="text" required autocomplete="off" placeholder="Cloudflare Email Address">' +
+            '<input id="cloudflareZoneId" aria-label="Cloudflare Zone ID" class="form-control mb-3" type="text" required autocomplete="off" placeholder="Cloudflare Zone ID">' +
+            '<input id="cloudflareGlobalApiKey" aria-label="Cloudflare Global API Key" class="form-control" type="password" required autocomplete="off" placeholder="Cloudflare Global API Key">' +
             '</div>',
           preConfirm: () => {
             const cloudflareEmailAddress = String($('#cloudflareEmailAddress').val() || '').trim();
             const cloudflareZoneId = String($('#cloudflareZoneId').val() || '').trim();
             const cloudflareGlobalApiKey = String($('#cloudflareGlobalApiKey').val() || '').trim();
-            const cloudflareTunnelName = String($('#cloudflareTunnelName').val() || '').trim();
             if (!cloudflareEmailAddress || !cloudflareZoneId || !cloudflareGlobalApiKey) {
               Swal.showValidationMessage('Please enter email, zone ID, and global API key');
-              return false;
-            }
-            if (
-              !cloudflareTunnelName ||
-              cloudflareTunnelName.length > 100 ||
-              /[\u0000-\u001f\u007f/\\:?#]/u.test(cloudflareTunnelName)
-            ) {
-              Swal.showValidationMessage(
-                'Enter a tunnel name of up to 100 characters without URLs, paths, or control characters'
-              );
               return false;
             }
             return {
               cloudflareEmailAddress,
               cloudflareZoneId,
               cloudflareGlobalApiKey,
-              cloudflareTunnelName,
             };
           },
         });
@@ -126,7 +113,7 @@ class MoarTubeCloudflareCdn {
           ? 'Another settings change is in progress. Wait for it to finish and try again.'
           : failure.settingsSaved
             ? 'CDN settings saved, but distribution or tunnel reconciliation is incomplete. Refresh settings before retrying.'
-            : 'Cloudflare CDN could not be configured. Check your credentials, domain, and tunnel name; the controls show the last confirmed settings.'
+            : 'Cloudflare CDN could not be configured. Check your credentials and domain; the controls show the last confirmed settings.'
         : !refreshed || runtimeFailed
           ? 'CDN request completed, but the current tunnel state could not be confirmed. Refresh settings before retrying.'
           : 'Cloudflare CDN settings saved.';

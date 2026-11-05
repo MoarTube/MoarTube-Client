@@ -14,7 +14,7 @@ import type {
   SetNetworkInternalBody,
   SetNetworkExternalBody,
   SetAccountBody,
-  ConfigureCloudflareCdnWithTunnelBody,
+  SetCloudflareConfigBody,
   SetCloudflareTunnelEnabledBody,
   SetTurnstileConfigBody,
   ToggleDatabaseBody,
@@ -653,19 +653,7 @@ export class SettingsController extends BaseController {
     if (jwtToken === '') {
       return await this.sendError(reply, 'Sign in to configure Cloudflare CDN', 401);
     }
-    const body = request.body as Partial<ConfigureCloudflareCdnWithTunnelBody> | null;
-    const name =
-      typeof body?.cloudflareTunnelName === 'string' ? body.cloudflareTunnelName.trim() : '';
-    if (
-      !name ||
-      name.length > 100 ||
-      /[/\\:?#]/u.test(name) ||
-      Array.from(name).some(
-        (character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127
-      )
-    ) {
-      return await this.sendError(reply, 'A valid Cloudflare Tunnel Name is required', 400);
-    }
+    const body = request.body as Partial<SetCloudflareConfigBody> | null;
     if (
       typeof body?.cloudflareEmailAddress !== 'string' ||
       typeof body.cloudflareZoneId !== 'string' ||
@@ -678,8 +666,7 @@ export class SettingsController extends BaseController {
         jwtToken,
         body.cloudflareEmailAddress,
         body.cloudflareZoneId,
-        body.cloudflareGlobalApiKey,
-        name
+        body.cloudflareGlobalApiKey
       );
       return await reply.status(response.status).send(response.data);
     } catch {

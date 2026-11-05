@@ -645,14 +645,12 @@ export class NodeApiService extends BaseService {
     jwtToken: string,
     email: string,
     zoneId: string,
-    apiKey: string,
-    tunnelName: string
+    apiKey: string
   ): Promise<{ status: number; data: CloudflareTunnelMutationResponse | BaseNodeResponse }> {
     return this.postCloudflareChange(jwtToken, '/settings/cloudflare/configure', {
       cloudflareEmailAddress: email,
       cloudflareZoneId: zoneId,
       cloudflareGlobalApiKey: apiKey,
-      cloudflareTunnelName: tunnelName,
     });
   }
 

@@ -17,7 +17,8 @@ for (const [route, selector] of [
     expect(response?.status()).toBe(200);
     await expect(page.locator(selector)).toBeVisible();
     await expect(page.locator('#sidenav-main a[href="/settings"]')).toBeVisible();
-    await expect(page.locator('#node-link')).toHaveAttribute('href', /^https?:\/\//);
+    await expect(page.locator('#node-link')).toHaveJSProperty('tagName', 'DIV');
+    await expect(page.locator('[data-node-public-link]')).toHaveAttribute('href', /^https?:\/\//);
     await page.locator('#sidenav-main a[href="/videos"]').click();
     await expect(page).toHaveURL(/\/videos$/);
     await expect(page.locator('#import-button')).toBeVisible();

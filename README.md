@@ -216,6 +216,7 @@ for prerequisites, coverage, debugging and integration-test limits.
 
 ## 🛠️ Advanced Features
 - [**Cloudflare CDN**](https://www.moartube.com/guides/how-to-enable-cloudflare-cdn):
+  - The enabling modal asks for your Cloudflare email, zone ID, and global API key. Node generates and saves a `moartube-<UUID>` tunnel name automatically; no tunnel name needs to be entered.
   - Cloudflare's **global network** facilitates mass data propagation for audiences of any size, anywhere.
   - Data is transmitted throughout Cloudflare's **global network** within milliseconds of beng requested.
   - Available to a free-tier Cloudflare account.
