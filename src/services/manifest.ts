@@ -28,7 +28,6 @@ export class ManifestService extends BaseService {
       const isStreaming = videoData.isStreaming;
       const resolutions = videoData.outputs?.m3u8 ?? [];
 
-      const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(jwtToken);
       const manifestType = isStreaming ? 'dynamic' : 'static';
 
       let masterManifest = '#EXTM3U\n#EXT-X-VERSION:3\n';
@@ -36,25 +35,25 @@ export class ManifestService extends BaseService {
       for (const resolution of resolutions) {
         if (resolution === '240p') {
           masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=250000,RESOLUTION=426x240\n';
-          masterManifest += `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${manifestType}/manifests/manifest-240p.m3u8\n`;
+          masterManifest += `manifest-240p.m3u8\n`;
         } else if (resolution === '360p') {
           masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=640x360\n';
-          masterManifest += `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${manifestType}/manifests/manifest-360p.m3u8\n`;
+          masterManifest += `manifest-360p.m3u8\n`;
         } else if (resolution === '480p') {
           masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=854x480\n';
-          masterManifest += `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${manifestType}/manifests/manifest-480p.m3u8\n`;
+          masterManifest += `manifest-480p.m3u8\n`;
         } else if (resolution === '720p') {
           masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1280x720\n';
-          masterManifest += `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${manifestType}/manifests/manifest-720p.m3u8\n`;
+          masterManifest += `manifest-720p.m3u8\n`;
         } else if (resolution === '1080p') {
           masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=6000000,RESOLUTION=1920x1080\n';
-          masterManifest += `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${manifestType}/manifests/manifest-1080p.m3u8\n`;
+          masterManifest += `manifest-1080p.m3u8\n`;
         } else if (resolution === '1440p') {
           masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=8000000,RESOLUTION=2560x1440\n';
-          masterManifest += `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${manifestType}/manifests/manifest-1440p.m3u8\n`;
+          masterManifest += `manifest-1440p.m3u8\n`;
         } else if (resolution === '2160p') {
           masterManifest += '#EXT-X-STREAM-INF:BANDWIDTH=16000000,RESOLUTION=3840x2160\n';
-          masterManifest += `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${manifestType}/manifests/manifest-2160p.m3u8\n`;
+          masterManifest += `manifest-2160p.m3u8\n`;
         }
       }
 

@@ -1,3 +1,4 @@
+import { relativeHlsLine, hlsPlaylistPath } from '@/utils/hls-urls.js';
 import { requireNodeSuccess } from '@/utils/node-actions.js';
 import type { ChildProcess } from 'node:child_process';
 import { spawnMediaProcess as spawn } from '@/utils/media-processes.js';
@@ -472,7 +473,17 @@ export class LiveStreamService {
         jwtToken,
         videoId,
         resolution,
-        manifestBuffer: Buffer.from(publicLines.join('\n')),
+        manifestBuffer: Buffer.from(
+          publicLines
+            .map((line) =>
+              relativeHlsLine(
+                line,
+                hlsPlaylistPath(videoId, `manifest-${resolution}.m3u8`, 'dynamic'),
+                [externalVideosBaseUrl]
+              )
+            )
+            .join('\n')
+        ),
         segmentBuffer,
         manifestFileName,
         segmentFileName,
@@ -767,12 +778,12 @@ export class LiveStreamService {
   }
 
   private generateFfmpegLiveArguments(
-    videoId: string,
+    _videoId: string,
     resolution: string,
     format: string,
     rtmpUrl: string,
     _isRecordingStreamRemotely: boolean,
-    externalVideosBaseUrl: string
+    _externalVideosBaseUrl: string
   ): string[] {
     const clientSettings = this.settingsRepository.getClientSettings();
     let bitrate = '',
@@ -827,7 +838,7 @@ export class LiveStreamService {
           '-hls_list_size',
           '20',
           '-hls_base_url',
-          `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+          `../../${resolution}/segments/`,
           '-hls_playlist_type',
           'event',
           'pipe:1',
@@ -868,7 +879,7 @@ export class LiveStreamService {
             '-hls_list_size',
             '20',
             '-hls_base_url',
-            `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+            `../../${resolution}/segments/`,
             '-hls_playlist_type',
             'event',
             'pipe:1',
@@ -908,7 +919,7 @@ export class LiveStreamService {
             '-hls_list_size',
             '20',
             '-hls_base_url',
-            `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+            `../../${resolution}/segments/`,
             '-hls_playlist_type',
             'event',
             'pipe:1',

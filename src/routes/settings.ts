@@ -167,6 +167,16 @@ export function settingsRoutes(
 
   // Cloudflare
   fastify.post(
+    '/node/cloudflare/tunnel/toggle',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiSetCloudflareTunnelEnabled
+  );
+  fastify.get(
+    '/node/cloudflare/tunnel',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiGetCloudflareTunnel
+  );
+  fastify.post(
     '/node/cloudflare/configure',
     {
       schema: { tags: ['Settings'] },

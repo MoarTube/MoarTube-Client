@@ -88,7 +88,7 @@ describe('publishing admission serialization', () => {
     for (const resolution of ['480p', '360p', '240p']) {
       await writeFile(
         path.join(manifests, `manifest-${resolution}.m3u8`),
-        `#EXTM3U\n#EXTINF:2,\nhttps://previous.test/external/videos/video/adaptive/m3u8/${resolution}/segments/one.ts\n#EXT-X-ENDLIST\n`
+        `#EXTM3U\n#EXTINF:2,\n../../${resolution}/segments/one.ts\n#EXT-X-ENDLIST\n`
       );
     }
     const socket = {
@@ -142,7 +142,7 @@ describe('publishing admission serialization', () => {
     expect(logger.error).not.toHaveBeenCalled();
     for (const resolution of ['480p', '360p', '240p']) {
       expect(await readFile(path.join(manifests, `manifest-${resolution}.m3u8`), 'utf8')).toContain(
-        'https://current.test/external/'
+        `../../${resolution}/segments/`
       );
     }
     expect(

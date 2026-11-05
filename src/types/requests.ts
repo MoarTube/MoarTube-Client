@@ -107,6 +107,15 @@ export interface SetCloudflareConfigBody {
   cloudflareGlobalApiKey: string;
 }
 
+/** Planned fourth input in the CDN enabling modal. */
+export interface ConfigureCloudflareCdnWithTunnelBody extends SetCloudflareConfigBody {
+  cloudflareTunnelName: string;
+}
+
+export interface SetCloudflareTunnelEnabledBody {
+  isEnabled: boolean;
+}
+
 export interface SetTurnstileConfigBody {
   cloudflareTurnstileSiteKey: string;
   cloudflareTurnstileSecretKey: string;

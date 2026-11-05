@@ -34,6 +34,10 @@ export interface NodeSettings {
   password?: string;
   storageConfig?: StorageConfig;
   isCloudflareCdnEnabled?: boolean;
+  /** Defaults to true on the Node; controls both quick and named tunnels. */
+  isCloudflareTunnelEnabled?: boolean;
+  /** Current generated quick name or configured named-tunnel name. */
+  cloudflareTunnelName?: string;
   [key: string]: unknown;
 }
 
@@ -55,6 +59,24 @@ export interface BaseNodeResponse {
   isError: boolean;
   message?: string;
   [key: string]: unknown;
+}
+
+/** Safe lifecycle snapshot returned by tunnel operations; never contains credentials. */
+export interface CloudflareTunnelState {
+  mode: 'none' | 'quick' | 'named';
+  status: 'stopped' | 'starting' | 'running' | 'error';
+  name: string;
+  publicUrl?: string;
+  message?: string;
+}
+
+export interface CloudflareTunnelMutationResponse extends BaseNodeResponse {
+  /** True even when persistence succeeds but the subsequent lifecycle operation fails. */
+  settingsSaved: boolean;
+  cloudflareTunnelName: string;
+  isCloudflareCdnEnabled: boolean;
+  isCloudflareTunnelEnabled: boolean;
+  tunnel: CloudflareTunnelState;
 }
 
 export interface StreamVideoResponse extends BaseNodeResponse {

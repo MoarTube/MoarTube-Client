@@ -20,6 +20,8 @@ import type {
   Video,
   VideoDataAllResponse,
   BaseNodeResponse,
+  CloudflareTunnelMutationResponse,
+  CloudflareTunnelState,
   StreamVideoResponse,
   CreateVideoResponse,
   SourceFileExtensionResponse,
@@ -112,9 +114,11 @@ export class NodeApiService extends BaseService {
   private getBaseUrl(): Promise<string> {
     // We read fresh settings every time to ensure we use valid IP/Port if they change
     const settings = this.config.clientSettings;
-    return Promise.resolve(
-      `${settings.nodeHttpProtocol}://${settings.nodeIp}:${String(settings.nodePort)}`
-    );
+    const host =
+      settings.nodeIp.includes(':') && !settings.nodeIp.startsWith('[')
+        ? `[${settings.nodeIp}]`
+        : settings.nodeIp;
+    return Promise.resolve(`${settings.nodeHttpProtocol}://${host}:${String(settings.nodePort)}`);
   }
 
   private async getClient(origin?: string): Promise<AxiosInstance> {
@@ -379,14 +383,15 @@ export class NodeApiService extends BaseService {
   }
 
   public async getExternalVideosBaseUrl(jwtToken: string): Promise<string> {
-    const client = await this.getClient();
+    const origin = await this.getBaseUrl();
+    const client = await this.getClient(origin);
     const response = await client.get('/external/videos/baseUrl', {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
     const data = this.unwrapOrThrow(response.data, 'getExternalVideosBaseUrl') as {
       externalVideosBaseUrl: string;
     };
-    return data.externalVideosBaseUrl;
+    return data.externalVideosBaseUrl === '' ? origin : data.externalVideosBaseUrl;
   }
 
   public async getCpuMetrics(jwtToken: string): Promise<CpuMetrics> {
@@ -640,17 +645,63 @@ export class NodeApiService extends BaseService {
     jwtToken: string,
     email: string,
     zoneId: string,
-    apiKey: string
-  ): Promise<BaseNodeResponse> {
-    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/cloudflare/configure', {
+    apiKey: string,
+    tunnelName: string
+  ): Promise<{ status: number; data: CloudflareTunnelMutationResponse | BaseNodeResponse }> {
+    return this.postCloudflareChange(jwtToken, '/settings/cloudflare/configure', {
       cloudflareEmailAddress: email,
       cloudflareZoneId: zoneId,
       cloudflareGlobalApiKey: apiKey,
+      cloudflareTunnelName: tunnelName,
     });
   }
 
-  public async clearCloudflareConfiguration(jwtToken: string): Promise<BaseNodeResponse> {
-    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/cloudflare/clear');
+  public async clearCloudflareConfiguration(
+    jwtToken: string
+  ): Promise<{ status: number; data: CloudflareTunnelMutationResponse | BaseNodeResponse }> {
+    return this.postCloudflareChange(jwtToken, '/settings/cloudflare/clear', {});
+  }
+
+  private async postCloudflareChange(
+    jwtToken: string,
+    url: string,
+    data: object
+  ): Promise<{ status: number; data: CloudflareTunnelMutationResponse | BaseNodeResponse }> {
+    const client = await this.getClient();
+    const response = await client.post<CloudflareTunnelMutationResponse | BaseNodeResponse>(
+      url,
+      data,
+      { headers: { Authorization: `Bearer ${jwtToken}` }, timeout: 270_000 }
+    );
+    return { status: response.status, data: response.data };
+  }
+
+  /** Preserve HTTP status and partial-save error bodies for tunnel preference mutations. */
+  public async setCloudflareTunnelEnabled(
+    jwtToken: string,
+    isEnabled: boolean
+  ): Promise<{
+    status: number;
+    data: CloudflareTunnelMutationResponse | BaseNodeResponse;
+  }> {
+    const client = await this.getClient();
+    const response = await client.post<CloudflareTunnelMutationResponse | BaseNodeResponse>(
+      '/settings/cloudflare/tunnel/toggle',
+      { isEnabled },
+      { headers: { Authorization: `Bearer ${jwtToken}` }, timeout: 150_000 }
+    );
+    return { status: response.status, data: response.data };
+  }
+
+  public async getCloudflareTunnel(jwtToken: string): Promise<CloudflareTunnelState> {
+    const client = await this.getClient();
+    const response = await client.get('/settings/cloudflare/tunnel', {
+      headers: { Authorization: `Bearer ${jwtToken}` },
+    });
+    const data = this.unwrapOrThrow(response.data, 'getCloudflareTunnel') as {
+      tunnel: CloudflareTunnelState;
+    };
+    return data.tunnel;
   }
 
   public async invalidateVideoCache(jwtToken: string, videoId: string): Promise<BaseNodeResponse> {
@@ -1051,9 +1102,19 @@ export class NodeApiService extends BaseService {
   }
 
   public async getVideoSources(videoId: string): Promise<VideoSourcesResponse> {
-    const client = await this.getClient();
+    const origin = await this.getBaseUrl();
+    const client = await this.getClient(origin);
     const response = await client.get(`/videos/${videoId}/sources`);
-    return response.data as VideoSourcesResponse;
+    const data = response.data as VideoSourcesResponse;
+    if (data.isError) {
+      return data;
+    }
+    for (const sources of [data.adaptiveSources, data.progressiveSources]) {
+      for (const source of sources) {
+        source.src = new URL(source.src, origin).href;
+      }
+    }
+    return data;
   }
 
   public async liveChatToggle(jwtToken: string, isEnabled: boolean): Promise<BaseNodeResponse> {

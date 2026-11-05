@@ -14,7 +14,8 @@ import type {
   SetNetworkInternalBody,
   SetNetworkExternalBody,
   SetAccountBody,
-  SetCloudflareConfigBody,
+  ConfigureCloudflareCdnWithTunnelBody,
+  SetCloudflareTunnelEnabledBody,
   SetTurnstileConfigBody,
   ToggleDatabaseBody,
   ToggleStorageBody,
@@ -647,25 +648,115 @@ export class SettingsController extends BaseController {
     request: FastifyRequest,
     reply: FastifyReply
   ): Promise<FastifyReply> => {
-    const { cloudflareEmailAddress, cloudflareZoneId, cloudflareGlobalApiKey } =
-      request.body as SetCloudflareConfigBody;
+    reply.header('Cache-Control', 'no-store');
     const jwtToken = request.session.jwtToken ?? '';
-    const response = await this.nodeApiService.setCloudflareConfiguration(
-      jwtToken,
-      cloudflareEmailAddress,
-      cloudflareZoneId,
-      cloudflareGlobalApiKey
-    );
-    return await reply.send(response);
+    if (jwtToken === '') {
+      return await this.sendError(reply, 'Sign in to configure Cloudflare CDN', 401);
+    }
+    const body = request.body as Partial<ConfigureCloudflareCdnWithTunnelBody> | null;
+    const name =
+      typeof body?.cloudflareTunnelName === 'string' ? body.cloudflareTunnelName.trim() : '';
+    if (
+      !name ||
+      name.length > 100 ||
+      /[/\\:?#]/u.test(name) ||
+      Array.from(name).some(
+        (character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127
+      )
+    ) {
+      return await this.sendError(reply, 'A valid Cloudflare Tunnel Name is required', 400);
+    }
+    if (
+      typeof body?.cloudflareEmailAddress !== 'string' ||
+      typeof body.cloudflareZoneId !== 'string' ||
+      typeof body.cloudflareGlobalApiKey !== 'string'
+    ) {
+      return await this.sendError(reply, 'Cloudflare credentials are required', 400);
+    }
+    try {
+      const response = await this.nodeApiService.setCloudflareConfiguration(
+        jwtToken,
+        body.cloudflareEmailAddress,
+        body.cloudflareZoneId,
+        body.cloudflareGlobalApiKey,
+        name
+      );
+      return await reply.status(response.status).send(response.data);
+    } catch {
+      return await this.sendError(
+        reply,
+        'CDN settings could not be confirmed. Refresh settings before retrying.',
+        502
+      );
+    }
   };
 
   public apiClearCloudflareConfig = async (
     request: FastifyRequest,
     reply: FastifyReply
   ): Promise<FastifyReply> => {
+    reply.header('Cache-Control', 'no-store');
     const jwtToken = request.session.jwtToken ?? '';
-    const response = await this.nodeApiService.clearCloudflareConfiguration(jwtToken);
-    return await reply.send(response);
+    if (jwtToken === '') {
+      return await this.sendError(reply, 'Sign in to configure Cloudflare CDN', 401);
+    }
+    try {
+      const response = await this.nodeApiService.clearCloudflareConfiguration(jwtToken);
+      return await reply.status(response.status).send(response.data);
+    } catch {
+      return await this.sendError(
+        reply,
+        'CDN settings could not be confirmed. Refresh settings before retrying.',
+        502
+      );
+    }
+  };
+
+  public apiSetCloudflareTunnelEnabled = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    reply.header('Cache-Control', 'no-store');
+    const jwtToken = request.session.jwtToken ?? '';
+    if (jwtToken === '') {
+      return this.sendError(reply, 'Sign in to change Cloudflare Tunnels', 401);
+    }
+    const body = request.body as Partial<SetCloudflareTunnelEnabledBody> | null;
+    if (typeof body?.isEnabled !== 'boolean') {
+      return this.sendError(reply, 'isEnabled must be a boolean', 400);
+    }
+    try {
+      const response = await this.nodeApiService.setCloudflareTunnelEnabled(
+        jwtToken,
+        body.isEnabled
+      );
+      return await reply.status(response.status).send(response.data);
+    } catch {
+      return this.sendError(
+        reply,
+        'Tunnel preference could not be confirmed. Refresh settings before retrying.',
+        502
+      );
+    }
+  };
+
+  public apiGetCloudflareTunnel = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    reply.header('Cache-Control', 'no-store');
+    const jwtToken = request.session.jwtToken ?? '';
+    if (jwtToken === '') {
+      return this.sendError(reply, 'Sign in to view Cloudflare Tunnels', 401);
+    }
+    try {
+      return await reply.send({
+        isError: false,
+        tunnel: await this.nodeApiService.getCloudflareTunnel(jwtToken),
+      });
+    } catch {
+      return this.sendError(reply, 'Cloudflare Tunnel status is unavailable', 503);
+    }
   };
 
   public apiSetTurnstileConfig = async (

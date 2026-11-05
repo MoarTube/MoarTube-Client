@@ -71,7 +71,7 @@ it.each(['filesystem', 's3provider'] as const)(
     const directory = path.join(root, 'video123', 'adaptive', 'm3u8');
     fs.mkdirSync(directory, { recursive: true });
     const manifest = path.join(directory, 'manifest-720p.m3u8');
-    const tail = '/external/videos/video123/adaptive/m3u8/720p/segments/one.ts';
+    const tail = '/external/videos/video123/adaptive/m3u8/720p/segments/segment-720p-0.ts';
     const original =
       '#EXTM3U\n#EXT-X-PLAYLIST-TYPE:VOD\n#EXTINF:2,\nhttps://old.test/bucket' +
       tail +
@@ -123,11 +123,13 @@ it.each(['filesystem', 's3provider'] as const)(
       {} as never
     );
     const internal = service as unknown as { startPublishingJob(job: Job): Promise<void> };
+    let checkedUploadFailure = false;
     try {
       for (const savedState of [
         { uploadCompleted: false },
         { uploadCompleted: true },
         { uploadCompleted: true, externalVideosBaseUrl: 'https://old.test/bucket' },
+        { uploadCompleted: true, externalVideosBaseUrl: 'https://latest.test' },
       ]) {
         fs.writeFileSync(manifest, original);
         const job: Job = {
@@ -140,9 +142,32 @@ it.each(['filesystem', 's3provider'] as const)(
           ...savedState,
           connection: JSON.stringify(['http', 'localhost', 3000]),
         };
+        await expect(
+          internal.startPublishingJob({ ...job, connection: 'different-node' })
+        ).rejects.toThrow('original Node connection');
+        expect(fs.readFileSync(manifest, 'utf8')).toBe(original);
+        if (!checkedUploadFailure) {
+          const uploader = storageMode === 'filesystem' ? upload : uploadS3;
+          uploader.mockRejectedValueOnce(new Error('Upload interrupted'));
+          await expect(internal.startPublishingJob(job)).rejects.toThrow('Upload interrupted');
+          expect(job.uploadCompleted).toBe(false);
+          expect(job.manifestUrlVersion).toBeUndefined();
+          const receipt = fs.readdirSync(path.join(root, '.publish-recovery'))[0];
+          const failedReceipt = JSON.parse(
+            fs.readFileSync(path.join(root, '.publish-recovery', receipt ?? ''), 'utf8')
+          ) as { uploadCompleted: boolean };
+          expect(failedReceipt.uploadCompleted).toBe(false);
+          checkedUploadFailure = true;
+        }
         await internal.startPublishingJob(job);
-        expect(uploaded).toBe(original.replace('https://old.test/bucket', currentBase));
+        expect(uploaded).toBe(
+          original.replace(
+            'https://old.test/bucket' + tail,
+            '../../720p/segments/segment-720p-0.ts'
+          )
+        );
         expect(job.externalVideosBaseUrl).toBe(currentBase);
+        expect(job.manifestUrlVersion).toBe(1);
         const receipts = fs.readdirSync(path.join(root, '.publish-recovery'));
         expect(
           (
@@ -158,7 +183,7 @@ it.each(['filesystem', 's3provider'] as const)(
         expect(uploadS3).not.toHaveBeenCalled();
         currentBase = 'https://latest.test';
       }
-      expect(setVideoPublishing).toHaveBeenCalledTimes(6);
+      expect(setVideoPublishing).toHaveBeenCalledTimes(9);
     } finally {
       service.close();
       fs.rmSync(root, { recursive: true, force: true });

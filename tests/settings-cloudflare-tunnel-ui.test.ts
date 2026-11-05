@@ -1,0 +1,185 @@
+import { readFile, mkdir } from 'node:fs/promises';
+import path from 'node:path';
+import ejs from 'ejs';
+import { chromium, expect as browserExpect } from '@playwright/test';
+import { expect, it } from 'vitest';
+
+it('places the tunnel toggle after Turnstile and reconciles saves, partial failures, and lost responses', async () => {
+  const template = await readFile('public/views/settings.ejs', 'utf8');
+  const html = ejs.render(template.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ''), {
+    model: { clientSettings: { isGpuAccelerationSupported: false } },
+  });
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  let enabled: boolean | undefined;
+  let cdn = false;
+  let behavior: 'success' | 'partial' | 'reject' | 'lost' | 'busy' = 'success';
+  let gate: Promise<void> | undefined;
+  let runtimeError = false;
+  let saves = 0;
+  await page.route('http://moartube.test/**', async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname.endsWith('/tunnel/toggle')) {
+      saves++;
+      await gate;
+      const requested = (route.request().postDataJSON() as { isEnabled: boolean }).isEnabled;
+      if (behavior !== 'reject' && behavior !== 'busy') {
+        enabled = requested;
+      }
+      runtimeError = behavior === 'partial';
+      if (behavior === 'lost') {
+        await route.abort('timedout');
+        return;
+      }
+      await route.fulfill({
+        status:
+          behavior === 'partial'
+            ? 502
+            : behavior === 'reject'
+              ? 500
+              : behavior === 'busy'
+                ? 409
+                : 200,
+        json: {
+          isError: behavior !== 'success',
+          settingsSaved: behavior !== 'reject' && behavior !== 'busy',
+          isCloudflareTunnelEnabled: enabled ?? true,
+          cloudflareTunnelName: 'SECRET_QUICK_NAME',
+          tunnel: {
+            mode: 'quick',
+            status: runtimeError ? 'error' : 'running',
+            name: 'SECRET_QUICK_NAME',
+          },
+        },
+      });
+      return;
+    }
+    if (pathname === '/settings/node') {
+      await route.fulfill({
+        json: {
+          ...(enabled === undefined ? {} : { isCloudflareTunnelEnabled: enabled }),
+          isCloudflareCdnEnabled: cdn,
+          cloudflareTunnelName: 'SECRET_QUICK_NAME',
+        },
+      });
+      return;
+    }
+    if (pathname === '/settings/node/cloudflare/tunnel') {
+      await route.fulfill({
+        json: {
+          isError: false,
+          tunnel: {
+            mode: enabled === false ? 'none' : cdn ? 'named' : 'quick',
+            status: runtimeError ? 'error' : enabled === false ? 'stopped' : 'running',
+            name: 'SECRET_QUICK_NAME',
+          },
+        },
+      });
+      return;
+    }
+    if (pathname === '/') {
+      await route.fulfill({ contentType: 'text/html', body: html });
+      return;
+    }
+    try {
+      await route.fulfill({ path: path.join(process.cwd(), 'public', pathname) });
+    } catch {
+      await route.fulfill({ status: 404, body: '' });
+    }
+  });
+  try {
+    await page.goto('http://moartube.test/');
+    await page.addScriptTag({ path: 'public/javascript/jquery-3.6.4.min.js' });
+    await page.addScriptTag({ path: 'public/javascript/settings-cloudflare-tunnel.js' });
+    await page.evaluate(
+      `window.tunnelAlerts = []; window.tunnelUI = new MoarTubeCloudflareTunnelToggle((error, message) => window.tunnelAlerts.push({ error, message })); window.tunnelUI.load({}); window.tunnelUI.start(); window.tunnelUI.start();`
+    );
+    const toggle = page.getByRole('switch', { name: 'Cloudflare Tunnels' });
+    await browserExpect(toggle).toBeChecked();
+    await browserExpect(toggle).toBeEnabled();
+    const turnstile = await page.locator('#cloudflare-turnstile-checkbox').boundingBox();
+    const tunnel = await toggle.boundingBox();
+    if (!tunnel || !turnstile) {
+      throw new Error('Cloudflare controls are not visible');
+    }
+    expect(tunnel.x).toBeGreaterThan(turnstile.x);
+    expect(Math.abs(tunnel.y - turnstile.y)).toBeLessThan(3);
+    await mkdir('temp/tunnel-m3/screenshots', { recursive: true });
+    await page
+      .locator('.settings-security')
+      .screenshot({ path: 'temp/tunnel-m3/screenshots/desktop.png' });
+
+    let release!: () => void;
+    gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await toggle.click();
+    await browserExpect(toggle).toBeDisabled();
+    release();
+    gate = undefined;
+    await browserExpect(toggle).toBeEnabled();
+    await browserExpect(toggle).not.toBeChecked();
+    expect(saves).toBe(1);
+    await page.evaluate(
+      `window.tunnelUI.load({isCloudflareTunnelEnabled: false, isCloudflareCdnEnabled: true});`
+    );
+    cdn = true;
+    await browserExpect(toggle).toBeEnabled();
+    await toggle.click();
+    await browserExpect(toggle).toBeEnabled();
+    await browserExpect(toggle).toBeChecked();
+
+    behavior = 'partial';
+    await toggle.click();
+    await browserExpect(toggle).toBeEnabled();
+    await browserExpect(toggle).not.toBeChecked();
+    await browserExpect(page.locator('#cloudflare-tunnels-status')).toHaveText(
+      /preference saved, but/i
+    );
+
+    behavior = 'reject';
+    await toggle.click();
+    await browserExpect(toggle).toBeEnabled();
+    await browserExpect(toggle).not.toBeChecked();
+
+    behavior = 'busy';
+    await toggle.click();
+    await browserExpect(toggle).toBeEnabled();
+    await browserExpect(toggle).not.toBeChecked();
+    await browserExpect(page.locator('#cloudflare-tunnels-status')).toHaveText(
+      /another settings change/i
+    );
+    behavior = 'lost';
+    await toggle.click();
+    await browserExpect(toggle).toBeEnabled();
+    await browserExpect(toggle).toBeChecked();
+    await browserExpect(page.locator('#cloudflare-tunnels-status')).toHaveText(
+      /could not be confirmed/i
+    );
+    expect(await page.locator('body').innerText()).not.toContain('SECRET_QUICK_NAME');
+    expect(await page.locator('#cloudflare-tunnels-status').textContent()).not.toContain(
+      'SECRET_QUICK_NAME'
+    );
+    expect(await page.locator('input[placeholder="name"]').count()).toBe(0);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const mobileTurnstile = await page.locator('#cloudflare-turnstile-checkbox').boundingBox();
+    const mobileTunnel = await toggle.boundingBox();
+    if (!mobileTunnel || !mobileTurnstile) {
+      throw new Error('Mobile Cloudflare controls are not visible');
+    }
+    expect(mobileTunnel.y).toBeGreaterThan(mobileTurnstile.y);
+    await page
+      .locator('.settings-security')
+      .screenshot({ path: 'temp/tunnel-m3/screenshots/mobile.png' });
+    const overflow = await page
+      .locator('.settings-security')
+      .evaluate(
+        (element: { scrollWidth: number; clientWidth: number }) =>
+          element.scrollWidth - element.clientWidth
+      );
+    expect(overflow).toBeLessThanOrEqual(1);
+  } finally {
+    await browser.close();
+  }
+}, 30000);

@@ -44,6 +44,9 @@ it('refreshes the Settings link and form from persisted values after success and
     await page.addScriptTag({
       content: await readFile('public/javascript/public-node-url.js', 'utf8'),
     });
+    for (const script of ['settings-cloudflare-tunnel.js', 'settings-cloudflare-cdn.js']) {
+      await page.addScriptTag({ content: await readFile(`public/javascript/${script}`, 'utf8') });
+    }
     await page.addScriptTag({
       content: `const INCOMING_PARAMETERS = {}; window.Swal = { showLoading() {}, fire(options) { if (options.didOpen) options.didOpen(); else window.lastAlert = options; } }; ${template.slice(start, end)} window.auditSettings = new MoarTubeClientSettings();`,
     });

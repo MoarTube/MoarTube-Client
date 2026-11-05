@@ -1,3 +1,4 @@
+import { relativeHlsLine } from '@/utils/hls-urls.js';
 import { BaseService } from './base.js';
 import { uploadPool } from '@/utils/work-pool.js';
 import type { Logger } from '@/utils/logger.js';
@@ -276,7 +277,7 @@ export class S3Service extends BaseService {
         try {
           const rewritten = Readable.from(
             transformManifest(body, (line) =>
-              line.replaceAll(/(https?:\/\/).*?(\/external\/)/g, externalVideosBaseUrl + '$2')
+              relativeHlsLine(line, '/' + manifestKey, [externalVideosBaseUrl])
             )
           );
           await this.putObjectFromData(

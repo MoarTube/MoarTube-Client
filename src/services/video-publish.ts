@@ -1,3 +1,4 @@
+import { recoveredEncoderHlsLine } from '@/utils/recovered-hls.js';
 import { requireNodeSuccess } from '@/utils/node-actions.js';
 import type { ChildProcess } from 'node:child_process';
 import { spawnMediaProcess as spawn } from '@/utils/media-processes.js';
@@ -40,6 +41,7 @@ interface VideoPublishJob {
   hasEncodingSlot?: boolean;
   encodingCompleted?: boolean;
   externalVideosBaseUrl?: string;
+  manifestUrlVersion?: number;
   connection?: string;
 }
 
@@ -114,6 +116,7 @@ export class VideoPublishService {
       sourceFileExtension: job.sourceFileExtension,
       encodingCompleted: job.encodingCompleted,
       externalVideosBaseUrl: job.externalVideosBaseUrl,
+      manifestUrlVersion: job.manifestUrlVersion,
       uploadCompleted: job.uploadCompleted,
       connection: job.connection,
     };
@@ -536,7 +539,11 @@ export class VideoPublishService {
       if (job.format === 'm3u8') {
         externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(job.jwtToken);
         this.assertPublishingActive(job.videoId);
-        if (job.uploadCompleted === true && job.externalVideosBaseUrl === externalVideosBaseUrl) {
+        if (
+          job.uploadCompleted === true &&
+          job.externalVideosBaseUrl === externalVideosBaseUrl &&
+          job.manifestUrlVersion === 1
+        ) {
           clearInterval(job.idleInterval);
           return;
         }
@@ -549,15 +556,16 @@ export class VideoPublishService {
           'm3u8',
           `manifest-${job.resolution}.m3u8`
         );
-        const segmentPath = `/external/videos/${job.videoId}/adaptive/m3u8/${job.resolution}/segments/`;
-        const base = externalVideosBaseUrl;
-        await rewriteManifestFile(manifest, (line) => {
-          if (!/^https?:\/\//.test(line)) {
-            return line;
-          }
-          const index = line.indexOf(segmentPath);
-          return index < 0 ? line : base + line.slice(index);
-        });
+        const currentMediaBase = externalVideosBaseUrl;
+        await rewriteManifestFile(manifest, (line) =>
+          recoveredEncoderHlsLine(
+            line,
+            job.videoId,
+            job.resolution,
+            [currentMediaBase, job.externalVideosBaseUrl ?? ''],
+            job.manifestUrlVersion !== 1
+          )
+        );
       }
       clearInterval(job.idleInterval);
       this.checkpoint(job);
@@ -580,6 +588,7 @@ export class VideoPublishService {
       job.uploadCompleted = true;
       if (externalVideosBaseUrl !== undefined) {
         job.externalVideosBaseUrl = externalVideosBaseUrl;
+        job.manifestUrlVersion = 1;
       }
       this.checkpoint(job);
     }
@@ -914,7 +923,7 @@ export class VideoPublishService {
     sourceFilePath: string,
     destinationFilePath: string,
     sourceFileExtension: string,
-    externalVideosBaseUrl: string
+    _externalVideosBaseUrl: string
   ): string[] {
     const clientSettings = this.settingsRepository.getClientSettings();
     let width: string;
@@ -1033,7 +1042,7 @@ export class VideoPublishService {
           '-hls_segment_filename',
           hlsSegmentOutputPath,
           '-hls_base_url',
-          `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+          `../../${resolution}/segments/`,
           '-hls_playlist_type',
           'vod',
           destinationFilePath,
@@ -1138,7 +1147,7 @@ export class VideoPublishService {
             '-hls_segment_filename',
             hlsSegmentOutputPath,
             '-hls_base_url',
-            `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+            `../../${resolution}/segments/`,
             '-hls_playlist_type',
             'vod',
             destinationFilePath,
@@ -1245,7 +1254,7 @@ export class VideoPublishService {
             '-hls_segment_filename',
             hlsSegmentOutputPath,
             '-hls_base_url',
-            `${externalVideosBaseUrl}/external/videos/${videoId}/adaptive/m3u8/${resolution}/segments/`,
+            `../../${resolution}/segments/`,
             '-hls_playlist_type',
             'vod',
             destinationFilePath,
