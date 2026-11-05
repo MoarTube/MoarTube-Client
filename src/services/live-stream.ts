@@ -10,7 +10,7 @@ import {
 } from '@/utils/gpu-encoding.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { Logger } from 'pino';
+import type { Logger } from '@/utils/logger.js';
 import sharp from 'sharp';
 import type { NodeApiService } from './node-api.js';
 import type { S3Service } from './s3.js';
@@ -215,13 +215,14 @@ export class LiveStreamService {
       this.addProcessToLiveStreamTracker(videoId, process);
       process.once('error', (error) => {
         release();
-        this.logger.error({ err: error }, 'Live encoder failed');
+        this.logger.error(`Live encoder failed for video ${videoId}`, error);
       });
 
       let lengthSeconds = 0;
       let lengthTimestamp = '';
       let lengthUpdatePending = false;
       let stderrTail = '';
+      let deliveryFailed = false;
 
       const context: StreamContext = {
         generation: randomUUID(),
@@ -296,7 +297,11 @@ export class LiveStreamService {
       })()
         .catch((error: unknown) => {
           if (!this.isLiveStreamStopping(videoId)) {
-            this.logger.error({ err: error }, 'Live delivery failed');
+            deliveryFailed = true;
+            this.logger.error(
+              `Live delivery failed for video ${videoId}; terminating encoder`,
+              error
+            );
           }
           process.kill();
         })
@@ -312,15 +317,19 @@ export class LiveStreamService {
         active.finished = consumption;
       }
 
-      process.on('close', (code): void => {
+      process.on('close', (code, signal): void => {
         void (async (): Promise<void> => {
           await consumption;
-          this.logger.info(`[LiveStreamService] Stream process exited with code ${String(code)}`);
-          if (code !== 0 && !this.isLiveStreamStopping(videoId)) {
-            this.logger.error(
-              { videoId, code, stderr: stderrTail },
-              'Live encoder exited unexpectedly'
-            );
+          this.logger.info(
+            `[LiveStreamService] Stream process for video ${videoId} exited with code ${String(code)}, signal ${String(signal)}${deliveryFailed ? ' after delivery failure' : ''}`
+          );
+          if (code !== 0 && !deliveryFailed && !this.isLiveStreamStopping(videoId)) {
+            this.logger.error(`Live encoder exited unexpectedly for video ${videoId}`, {
+              videoId,
+              code,
+              signal,
+              stderr: stderrTail,
+            });
           }
           if (this.liveStreamExists(videoId)) {
             if (!this.isLiveStreamStopping(videoId)) {
@@ -346,8 +355,8 @@ export class LiveStreamService {
                 }
               } catch (exitError) {
                 this.logger.error(
-                  exitError instanceof Error ? exitError : new Error(String(exitError)),
-                  'Error during stream exit cleanup'
+                  `Error during stream exit cleanup for video ${videoId}`,
+                  exitError instanceof Error ? exitError : new Error(String(exitError))
                 );
               }
             }
@@ -551,7 +560,7 @@ export class LiveStreamService {
                 }
                 retainedSegments.delete(segmentName);
               } catch (error) {
-                this.logger.error({ err: error }, 'Live segment cleanup will retry');
+                this.logger.error(`Live segment cleanup will retry for video ${videoId}`, error);
                 break; // Retry next publication without spinning through a failed backlog.
               }
             }
@@ -767,7 +776,7 @@ export class LiveStreamService {
                 );
               }
             } catch (err) {
-              this.logger.error(err, `Failed to update images for live stream ${videoId}`);
+              this.logger.error(`Failed to update images for live stream ${videoId}`, err);
             } finally {
               this.uploadingImages = { thumbnail: false, preview: false, poster: false };
             }
@@ -959,7 +968,7 @@ export class LiveStreamService {
     try {
       await fs.promises.rm(directoryPath, { recursive: true, force: true });
     } catch (error) {
-      this.logger.error(error, `failed to delete directory path: ${directoryPath}`);
+      this.logger.error(`failed to delete directory path: ${directoryPath}`, error);
     }
   }
 }

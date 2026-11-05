@@ -16,7 +16,7 @@ import { spawnMediaProcess } from '../src/utils/media-processes.js';
 vi.mock('../src/utils/media-processes.js', () => ({ spawnMediaProcess: vi.fn() }));
 
 describe('Client stop drain contract', () => {
-  it.each(['explicit', 'natural'] as const)(
+  it.each(['explicit', 'natural', 'delivery failure'] as const)(
     'sends the observed playback window to Node exactly once on %s stop',
     async (mode) => {
       const root = await mkdtemp(path.join(tmpdir(), 'moartube-live-stop-'));
@@ -48,6 +48,10 @@ describe('Client stop drain contract', () => {
         getVideoBandwidth: vi.fn().mockResolvedValue({ isError: true }),
         stopVideoStreaming: http.stopVideoStreaming.bind(http),
       };
+      const deliveryError = new Error('Node upload connection reset');
+      if (mode === 'delivery failure') {
+        api.uploadStream.mockRejectedValue(deliveryError);
+      }
       const child = Object.assign(new EventEmitter(), {
         stdout: new PassThrough(),
         stderr: new PassThrough(),
@@ -107,17 +111,28 @@ describe('Client stop drain contract', () => {
             { params: { videoId: 'video' }, session: { jwtToken: 'token' } } as never,
             reply as never
           );
-        } else {
+        } else if (mode === 'natural') {
           child.exitCode = 0;
           child.emit('close', 0);
         }
         await vi.waitFor(() => {
-          expect(received).toEqual([{ drainSeconds: 86 }]);
+          expect(received).toEqual([{ drainSeconds: mode === 'delivery failure' ? 6 : 86 }]);
         });
         await vi.waitFor(() => {
           expect(service.liveStreamExists('video')).toBe(false);
         });
-        expect(logger.error).not.toHaveBeenCalled();
+        if (mode === 'delivery failure') {
+          expect(child.kill).toHaveBeenCalledOnce();
+          expect(logger.error).toHaveBeenCalledExactlyOnceWith(
+            'Live delivery failed for video video; terminating encoder',
+            deliveryError
+          );
+          expect(logger.info).toHaveBeenCalledWith(
+            expect.stringContaining('after delivery failure')
+          );
+        } else {
+          expect(logger.error).not.toHaveBeenCalled();
+        }
       } finally {
         service.close();
         http.close();
