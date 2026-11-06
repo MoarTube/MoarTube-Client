@@ -52,6 +52,33 @@ describe('publishing queue state', () => {
     vi.restoreAllMocks();
   });
 
+  it('waits for canceled uploads to settle before declaring publishing drained', async () => {
+    const internal = service as unknown as {
+      performEncodingJob: () => Promise<void>;
+      performUploadingJob: () => Promise<void>;
+    };
+    vi.spyOn(internal, 'performEncodingJob').mockResolvedValue(undefined);
+    let finish!: () => void;
+    const uploading = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const upload = vi.spyOn(internal, 'performUploadingJob').mockReturnValue(uploading);
+    service.enqueuePendingPublishVideo(job());
+    await vi.advanceTimersByTimeAsync(0);
+    expect(upload).toHaveBeenCalledOnce();
+    service.stoppingPublishVideoEncoding('video123');
+    service.stopPendingPublishVideo('video123');
+    let drained = false;
+    const wait = service.waitForPublishingDrain('video123').then(() => {
+      drained = true;
+    });
+    await Promise.resolve();
+    expect(drained).toBe(false);
+    finish();
+    await wait;
+    expect(drained).toBe(true);
+  });
+
   it('broadcasts zero immediately and repeatedly for new queued jobs, and stops on cancellation', async () => {
     const releases = [await encodingPool.acquire(), await encodingPool.acquire()];
     service.enqueuePendingPublishVideo(job());
@@ -272,7 +299,9 @@ describe('publishing queue state', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(service.getPublishingJobs('token', 'video123')).toEqual([]);
     const events = broadcastToUser.mock.calls.map((call) => call[2].payload);
-    const complete = events.findIndex((event) => event.type === 'publishing' && event.progress === 100);
+    const complete = events.findIndex(
+      (event) => event.type === 'publishing' && event.progress === 100
+    );
     const published = events.findIndex((event) => event.type === 'published');
     expect(complete).toBeGreaterThanOrEqual(0);
     expect(published).toBeGreaterThan(complete);

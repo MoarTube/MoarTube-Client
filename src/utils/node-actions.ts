@@ -204,6 +204,12 @@ export class NodeActions {
           }
           continue;
         }
+        if (typeof (action.data as { activityId?: string } | undefined)?.activityId === 'string') {
+          // A dead Client cannot acknowledge that remote writes drained. Preserve the
+          // lease for operator reconciliation rather than allowing a migration race.
+          blocked.add(action.scope);
+          continue;
+        }
         this.ready(action);
       }
       try {

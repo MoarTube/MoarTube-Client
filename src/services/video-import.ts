@@ -18,6 +18,7 @@ export class VideoImportService extends BaseService {
   private readonly activeImports: Map<string, ChildProcess> = new Map();
   private readonly cancelledImports: Set<string> = new Set();
   private readonly cancellationRejectors: Map<string, (err: Error) => void> = new Map();
+  private readonly importRequests = new Map<string, { done: Promise<void>; finish: () => void }>();
   private closing = false;
 
   constructor(
@@ -37,6 +38,16 @@ export class VideoImportService extends BaseService {
       throw new Error('MoarTube Client is shutting down');
     }
     this.cancelledImports.delete(videoId);
+    let finish!: () => void;
+    const done = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    this.importRequests.set(videoId, { done, finish });
+  }
+
+  public endImport(videoId: string): void {
+    this.importRequests.get(videoId)?.finish();
+    this.importRequests.delete(videoId);
   }
 
   public isImportCancelled(videoId: string): boolean {
@@ -300,6 +311,7 @@ export class VideoImportService extends BaseService {
     });
 
     this.stoppingVideoImport(videoId);
+    await this.importRequests.get(videoId)?.done;
 
     const response = await this.nodeApiService.stopVideoImporting(jwtToken, videoId);
 

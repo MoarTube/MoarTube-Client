@@ -1,5 +1,6 @@
 import { NodeActions, requireNodeSuccess, type NodeAction } from '@/utils/node-actions.js';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import type { AxiosInstance } from 'axios';
 import axios from 'axios';
 import FormData from 'form-data';
@@ -304,16 +305,24 @@ export class NodeApiService extends BaseService {
     write: () => Promise<T>
   ): Promise<T> {
     const origin = await this.getBaseUrl();
+    const activityId = randomUUID();
     const action = this.actions.prepare(
       origin,
       jwtToken,
       `/videos/${videoId}/cache/invalidate`,
-      { paths },
+      { paths, activityId },
       origin + '/' + videoId,
       true
     );
     let outcome: { value: T } | { error: unknown };
     try {
+      requireNodeSuccess(
+        await this.sendAction({
+          ...action,
+          route: `/videos/${videoId}/activity`,
+          data: { activityId },
+        })
+      );
       outcome = { value: await write() };
     } catch (error) {
       outcome = { error };
@@ -658,6 +667,13 @@ export class NodeApiService extends BaseService {
     jwtToken: string
   ): Promise<{ status: number; data: CloudflareTunnelMutationResponse | BaseNodeResponse }> {
     return this.postCloudflareChange(jwtToken, '/settings/cloudflare/clear', {});
+  }
+
+  public async retryCloudflareConfiguration(
+    jwtToken: string,
+    transitionId: string
+  ): Promise<{ status: number; data: CloudflareTunnelMutationResponse | BaseNodeResponse }> {
+    return this.postCloudflareChange(jwtToken, '/settings/cloudflare/retry', { transitionId });
   }
 
   private async postCloudflareChange(

@@ -193,6 +193,12 @@ export function settingsRoutes(
   );
 
   fastify.post(
+    '/node/cloudflare/retry',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiRetryCloudflareConfig
+  );
+
+  fastify.post(
     '/node/cloudflare/turnstile/configure',
     {
       schema: { tags: ['Settings'] },

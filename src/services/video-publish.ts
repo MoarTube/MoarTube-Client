@@ -53,6 +53,7 @@ interface EncodingJobState {
 }
 
 export class VideoPublishService {
+  private readonly runningPublications = new Map<string, Set<Promise<void>>>();
   private inProgressPublishingJobCount = 0;
   private readonly maximumInProgressPublishingJobCount = 5;
   private activeEncoderCount = 0;
@@ -324,6 +325,10 @@ export class VideoPublishService {
     }
   }
 
+  public async waitForPublishingDrain(videoId: string): Promise<void> {
+    await Promise.allSettled([...(this.runningPublications.get(videoId) ?? [])]);
+  }
+
   private schedulePublishingJobs(): void {
     if (this.closing || this.drainScheduled) {
       return;
@@ -356,7 +361,18 @@ export class VideoPublishService {
       this.inProgressPublishingJobCount++;
       this.inProgressPublishingJobs.push(job);
       this.logPublishJob(job, 'Job admitted');
-      void this.runPublishingJob(job);
+      const running = this.runPublishingJob(job);
+      const group = this.runningPublications.get(job.videoId) ?? new Set<Promise<void>>();
+      group.add(running);
+      this.runningPublications.set(job.videoId, group);
+      void running
+        .finally(() => {
+          group.delete(running);
+          if (group.size === 0) {
+            this.runningPublications.delete(job.videoId);
+          }
+        })
+        .catch(() => {});
     }
     const nextRetry = Math.min(
       ...this.pendingPublishVideoQueue.map((job) => job.nextAttemptAt ?? Infinity)

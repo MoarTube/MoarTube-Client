@@ -217,6 +217,8 @@ for prerequisites, coverage, debugging and integration-test limits.
 ## 🛠️ Advanced Features
 - [**Cloudflare CDN**](https://www.moartube.com/guides/how-to-enable-cloudflare-cdn):
   - The enabling modal asks for your Cloudflare email, zone ID, and global API key. Node generates and saves a `moartube-<UUID>` tunnel name automatically; no tunnel name needs to be entered.
+  - Enabling CDN uses HTTPS on port 443 and the selected zone's root domain. Disabling CDN restores the saved public address. Imports, publishing, streaming, and stream cleanup must be inactive; incomplete migrations must be retried before new jobs can start.
+  - Incomplete CDN transitions show a persistent status panel in Settings. Retry setup/removal resumes the saved configuration without asking for credentials again; the panel disappears after recovery succeeds.
   - Cloudflare's **global network** facilitates mass data propagation for audiences of any size, anywhere.
   - Data is transmitted throughout Cloudflare's **global network** within milliseconds of beng requested.
   - Available to a free-tier Cloudflare account.

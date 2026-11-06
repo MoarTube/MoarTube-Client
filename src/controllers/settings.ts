@@ -699,6 +699,34 @@ export class SettingsController extends BaseController {
     }
   };
 
+  public apiRetryCloudflareConfig = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    reply.header('Cache-Control', 'no-store');
+    const jwtToken = request.session.jwtToken ?? '';
+    if (jwtToken === '') {
+      return await this.sendError(reply, 'Sign in to retry Cloudflare CDN setup', 401);
+    }
+    const transitionId = (request.body as { transitionId?: unknown } | undefined)?.transitionId;
+    if (typeof transitionId !== 'string' || transitionId.length > 100) {
+      return await this.sendError(reply, 'A CDN transition ID is required.', 400);
+    }
+    try {
+      const response = await this.nodeApiService.retryCloudflareConfiguration(
+        jwtToken,
+        transitionId
+      );
+      return await reply.status(response.status).send(response.data);
+    } catch {
+      return await this.sendError(
+        reply,
+        'CDN recovery could not be confirmed. Retry after checking your connection.',
+        502
+      );
+    }
+  };
+
   public apiSetCloudflareTunnelEnabled = async (
     request: FastifyRequest,
     reply: FastifyReply

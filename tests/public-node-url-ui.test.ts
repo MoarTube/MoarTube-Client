@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { chromium, expect as browserExpect } from '@playwright/test';
-import { it } from 'vitest';
+import { expect, it } from 'vitest';
 
 it('refreshes the Settings sidebar link and form from persisted values after success and rejected saves', async () => {
   const template = await readFile('public/views/settings.ejs', 'utf8');
@@ -32,7 +32,7 @@ it('refreshes the Settings sidebar link and form from persisted values after suc
     } else {
       await route.fulfill({
         contentType: 'text/html',
-        body: '<div id="node-link"></div><section data-node-visit-links></section><form id="network" action="/settings/node/network/external"><select name="publicNodeProtocol" id="public-node-protocol-select"><option value="https">HTTPS</option></select><input name="publicNodeAddress" id="public-node-address-input"><input name="publicNodePort" id="public-node-port-input"></form>',
+        body: '<div id="node-link"></div><section data-node-visit-links></section><form id="network" action="/settings/node/network/external"><select name="publicNodeProtocol" id="public-node-protocol-select"><option value="https">HTTPS</option><option value="http">HTTP</option></select><input name="publicNodeAddress" id="public-node-address-input"><input name="publicNodePort" id="public-node-port-input"></form>',
       });
     }
   });
@@ -76,6 +76,41 @@ it('refreshes the Settings sidebar link and form from persisted values after suc
       await browserExpect
         .poll(() => page.evaluate('window.lastAlert.text'))
         .toBe('Change rejected');
+    }
+    for (const address of [
+      {
+        publicNodeProtocol: 'https',
+        publicNodeAddress: 'example.com',
+        publicNodePort: 443,
+        isCloudflareCdnEnabled: true,
+      },
+      {
+        publicNodeProtocol: 'http',
+        publicNodeAddress: 'localhost',
+        publicNodePort: 9090,
+        isCloudflareCdnEnabled: false,
+      },
+    ]) {
+      Object.assign(settings, address);
+      await page.evaluate(
+        `auditSettings.cloudflareCdn.onSettingsChanged(${JSON.stringify(settings)})`
+      );
+      await browserExpect(page.locator('#public-node-protocol-select')).toHaveValue(
+        address.publicNodeProtocol
+      );
+      await browserExpect(page.locator('#public-node-address-input')).toHaveValue(
+        address.publicNodeAddress
+      );
+      await browserExpect(page.locator('#public-node-port-input')).toHaveValue(
+        String(address.publicNodePort)
+      );
+      expect(await page.evaluate("localStorage.getItem('moartube-public-node-url-change')")).toBe(
+        JSON.stringify([
+          address.publicNodeProtocol,
+          address.publicNodeAddress,
+          address.publicNodePort,
+        ])
+      );
     }
   } finally {
     await browser.close();

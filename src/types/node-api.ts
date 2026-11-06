@@ -34,6 +34,9 @@ export interface NodeSettings {
   password?: string;
   storageConfig?: StorageConfig;
   isCloudflareCdnEnabled?: boolean;
+  /** Saved CDN transition still needs media, cache, or tunnel recovery. */
+  cloudflareAddressMigrationPending?: boolean;
+  cdnTransition?: { id: string; targetEnabled: boolean; stage: string } | null;
   /** Defaults to true on the Node; controls both quick and named tunnels. */
   isCloudflareTunnelEnabled?: boolean;
   /** Current generated quick name or configured named-tunnel name. */
@@ -73,6 +76,8 @@ export interface CloudflareTunnelState {
 export interface CloudflareTunnelMutationResponse extends BaseNodeResponse {
   /** True even when persistence succeeds but the subsequent lifecycle operation fails. */
   settingsSaved: boolean;
+  cloudflareAddressMigrationPending?: boolean;
+  cdnTransition?: { id: string; targetEnabled: boolean; stage: string } | null;
   cloudflareTunnelName: string;
   isCloudflareCdnEnabled: boolean;
   isCloudflareTunnelEnabled: boolean;

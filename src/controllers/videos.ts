@@ -219,6 +219,10 @@ export class VideosController extends BaseController {
         reply,
         wasCancelled ? 'Cancelled' : err.message || 'Upload failed'
       );
+    } finally {
+      if (createdVideoId !== undefined) {
+        this.videoImportService.endImport(createdVideoId);
+      }
     }
   };
 
@@ -385,7 +389,9 @@ export class VideosController extends BaseController {
       // Stop local (removes any not-yet-started jobs for this video from the queue)
       this.videoPublishService.stopPendingPublishVideo(videoId);
 
-      // Tell node
+      await this.videoPublishService.waitForPublishingDrain(videoId);
+
+      // Tell node only after outstanding encoding and storage work has drained.
       const response = await this.nodeApiService.stopVideoPublishing(jwtToken, videoId);
 
       if (!response.isError) {

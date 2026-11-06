@@ -16,6 +16,19 @@
 	<link id="pagestyle" href="/css/soft-ui-dashboard-1.1.0.min.css" rel="stylesheet">
 	<style>
 		.cloudflare-cdn-modal { min-width: 0 !important; }
+		.cloudflare-cdn-recovery {
+			grid-column: 1 / -1;
+			grid-row: 2;
+			margin: 0;
+			padding: 1rem;
+			border: 1px solid #e9c878;
+			border-radius: .75rem;
+			background: #fff9ed;
+			color: #344767;
+			font-size: .875rem;
+			text-align: left;
+			overflow-wrap: anywhere;
+		}
 		.metrics-capacity {
 			height: 6px;
 			overflow: hidden;
@@ -74,6 +87,7 @@
 
 		@media (max-width: 575px) {
 			.settings-security { grid-template-columns: 1fr; }
+			.cloudflare-cdn-recovery { grid-row: auto; }
 		}
 
 		.settings-configurations {
@@ -782,6 +796,13 @@
 									</div>
 								</div>
 							</div>
+                            <div id="cloudflare-cdn-recovery" class="cloudflare-cdn-recovery" role="status" aria-live="polite" hidden>
+                                <p id="cloudflare-cdn-recovery-title" class="fw-bold mb-2"></p>
+								<p class="mb-2">Your settings were saved. Imports, publishing, and streaming are paused until the remaining steps finish.</p>
+                                <p id="cloudflare-cdn-recovery-error" class="small mb-2" hidden></p>
+                                <button id="cloudflare-cdn-retry" type="button" class="btn btn-primary mb-0">Retry setup</button>
+                            </div>
+
 							<div class="card-body pt-0 pb-0">
 								<div class="">
 									<a href="https://www.moartube.com/guides/how-to-enable-cloudflare-turnstile"
@@ -1149,7 +1170,10 @@
 			this.INCOMING_PARAMETERS = INCOMING_PARAMETERS;
 			this.CLIENT_SETTINGS = null;
 			this.cloudflareTunnelToggle = new MoarTubeCloudflareTunnelToggle((isError, message) => this.showAlert(isError, message));
-			this.cloudflareCdn = new MoarTubeCloudflareCdn((isError, message) => this.showAlert(isError, message), this.cloudflareTunnelToggle);
+			this.cloudflareCdn = new MoarTubeCloudflareCdn((isError, message) => this.showAlert(isError, message), this.cloudflareTunnelToggle, (settings) => {
+				this.loadNodeSettings(settings);
+				MoarTubePublicNodeUrl.changed(settings);
+			});
 		}
 
 		init() {

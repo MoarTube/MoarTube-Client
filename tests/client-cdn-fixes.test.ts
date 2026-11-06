@@ -7,6 +7,7 @@ import { NodeApiService } from '../src/services/node-api.js';
 import { NodeActions } from '../src/utils/node-actions.js';
 import { VideosController } from '../src/controllers/videos.js';
 import { VideoPublishService } from '../src/services/video-publish.js';
+import { VideoImportService } from '../src/services/video-import.js';
 import { SettingsController } from '../src/controllers/settings.js';
 import { S3Service } from '../src/services/s3.js';
 import { siloFixture, siloProxy } from './support/silo.js';
@@ -53,6 +54,58 @@ afterEach(async () => {
 });
 
 describe('Client CDN remediation', () => {
+  it('keeps Node import activity until the canceled import request has drained', async () => {
+    const stopVideoImporting = vi.fn().mockResolvedValue({ isError: false });
+    const importing = new VideoImportService(
+      logger as never,
+      {} as never,
+      { stopVideoImporting } as never,
+      { broadcastToUser: vi.fn() } as never,
+      {} as never,
+      {} as never
+    );
+    importing.beginImport('video123');
+    const stopping = importing.stopImporting('token', 'video123');
+    await Promise.resolve();
+    expect(stopVideoImporting).not.toHaveBeenCalled();
+    importing.endImport('video123');
+    await stopping;
+    expect(stopVideoImporting).toHaveBeenCalledWith('token', 'video123');
+  });
+
+  it('never starts direct storage writes when Node activity admission fails', async () => {
+    rejected = '/videos/video123/activity';
+    const write = vi.fn();
+    await expect(
+      api.withVideoCacheInvalidation('token', 'video123', ['images/poster.jpg'], write)
+    ).rejects.toThrow('test rejection');
+    expect(write).not.toHaveBeenCalled();
+    expect(calls.map((call) => call.route)).toEqual([
+      '/videos/video123/activity',
+      '/videos/video123/cache/invalidate',
+    ]);
+  });
+
+  it('does not automatically acknowledge an uncertain direct write after the owning Client dies', async () => {
+    const folder = path.join(root, 'node-actions');
+    const actions = new NodeActions(folder);
+    const action = actions.prepare(
+      'http://node',
+      'token',
+      '/videos/video/cache/invalidate',
+      { paths: ['images/poster.jpg'], activityId: 'activity' },
+      'video',
+      true
+    );
+    action.owner = 1073741823;
+    await writeFile(path.join(folder, action.id + '.json'), JSON.stringify(action));
+    const restarted = new NodeActions(folder);
+    const send = vi.fn();
+    await restarted.replay(send);
+    expect(send).not.toHaveBeenCalled();
+    expect(restarted.pending()[0]?.state).toBe('writing');
+  });
+
   it('blocks resume only for the video with an unreconciled previous session', async () => {
     const options = {
       title: 'live',
@@ -190,7 +243,7 @@ describe('Client CDN remediation', () => {
     expect(new NodeActions(path.join(root, 'node-actions')).pending()).toHaveLength(1);
     finish();
     await first;
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(4);
     expect(new NodeActions(path.join(root, 'node-actions')).pending()).toEqual([]);
   });
   it.each([false, true])(
@@ -255,16 +308,17 @@ describe('Client CDN remediation', () => {
       })
     ).rejects.toThrow('queued');
     expect(committed).toBe(true);
-    expect(calls[0]).toEqual({
+    expect(calls[0]?.route).toBe('/videos/video123/activity');
+    expect(calls[1]).toEqual({
       route: '/videos/video123/cache/invalidate',
-      body: { paths: ['images/preview.jpg'] },
+      body: { paths: ['images/preview.jpg'], activityId: expect.any(String) },
     });
     api.close();
     config.clientSettings.nodePort = 1;
     rejected = undefined;
     api = new NodeApiService(logger as never, config);
     await api.retryPendingActions();
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(3);
     expect(await readdir(path.join(root, 'node-actions'))).toEqual([]);
   });
 
@@ -274,7 +328,7 @@ describe('Client CDN remediation', () => {
         throw new Error('partial write');
       })
     ).rejects.toThrow('partial write');
-    expect(calls[0]?.route).toBe('/videos/video123/cache/invalidate');
+    expect(calls[1]?.route).toBe('/videos/video123/cache/invalidate');
   });
 
   it('does not replay before a write finishes, but recovers an interrupted writing intent', async () => {
