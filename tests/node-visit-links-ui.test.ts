@@ -195,6 +195,8 @@ it.each([
         const INCOMING_PARAMETERS = {};
         ${template.slice(start, end)}
         window.auditPage = Object.create(${className}.prototype);
+        auditPage.nodeBulletin = { load() {} };
+        auditPage.nodeNeighbors = { load() {} };
         auditPage.cloudflareCdn = { load() {} };
         auditPage.cloudflareTunnelToggle = { load() {} };
         auditPage.loadNodeSettings(${JSON.stringify(settings)});

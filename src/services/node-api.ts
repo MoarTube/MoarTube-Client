@@ -17,6 +17,7 @@ import type { CpuMetrics } from '@/utils/cpu-metrics.js';
 import type {
   AuthResponse,
   NodeSettings,
+  NodeNeighbor,
   NewContentCounts,
   Video,
   VideoDataAllResponse,
@@ -593,6 +594,24 @@ export class NodeApiService extends BaseService {
   public async setNodeAbout(jwtToken: string, nodeAbout: string): Promise<BaseNodeResponse> {
     return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/personalize/about', {
       nodeAbout,
+    });
+  }
+
+  public async setNodeBulletin(
+    jwtToken: string,
+    nodeBulletin: string[]
+  ): Promise<BaseNodeResponse> {
+    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/personalize/bulletin', {
+      nodeBulletin,
+    });
+  }
+
+  public async setNodeNeighbors(
+    jwtToken: string,
+    nodeNeighbors: NodeNeighbor[]
+  ): Promise<BaseNodeResponse> {
+    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/personalize/neighbors', {
+      nodeNeighbors,
     });
   }
 

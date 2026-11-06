@@ -766,6 +766,42 @@
 									</div>
 								</div>
 							</form>
+							<form id="personalize_settings_node_bulletin_form" method="POST"
+								action="/settings/node/personalize/bulletin" aria-label="Node Bulletin">
+								<fieldset class="border-0 p-0 m-0">
+									<div class="card-body pt-0 pb-0">
+										<div class="card-body pt-0">
+											<p class="form-label mb-1">Node Bulletin</p>
+											<p id="node-bulletin-help" class="text-sm text-secondary mb-3">Add one bulletin item per row, in the order you want them to appear. Up to 50 items, 1000 characters each. Empty rows are skipped when saving.</p>
+											<div id="node-bulletin-rows" aria-describedby="node-bulletin-help"></div>
+											<p id="node-bulletin-empty" class="text-sm text-secondary">No bulletin items. Add an item to get started.</p>
+										</div>
+									</div>
+									<div class="card-body d-flex flex-wrap justify-content-end gap-2 pt-0">
+										<button id="node-bulletin-add" class="btn btn-outline-primary mb-0" type="button">Add item</button>
+										<button class="btn btn-primary mb-0" type="submit">Save</button>
+									</div>
+								</fieldset>
+								<p id="node-bulletin-status" class="text-sm px-4" role="status" aria-live="polite"></p>
+							</form>
+							<form id="personalize_settings_node_neighbors_form" method="POST"
+								action="/settings/node/personalize/neighbors" aria-label="Neighbors">
+								<fieldset class="border-0 p-0 m-0">
+									<div class="card-body pt-0 pb-0">
+										<div class="card-body pt-0">
+											<p class="form-label mb-1">Neighbors</p>
+											<p id="node-neighbors-help" class="text-sm text-secondary mb-3">Add a URL and description for each neighbor, in display order. Up to 50 neighbors. Use http:// or https:// URLs and descriptions up to 1000 characters. Completely empty rows are skipped when saving.</p>
+											<div id="node-neighbors-rows" aria-describedby="node-neighbors-help"></div>
+											<p id="node-neighbors-empty" class="text-sm text-secondary">No neighbors. Add an item to get started.</p>
+										</div>
+									</div>
+									<div class="card-body d-flex flex-wrap justify-content-end gap-2 pt-0">
+										<button id="node-neighbors-add" class="btn btn-outline-primary mb-0" type="button">Add item</button>
+										<button class="btn btn-primary mb-0" type="submit">Save</button>
+									</div>
+								</fieldset>
+								<p id="node-neighbors-status" class="text-sm px-4" role="status" aria-live="polite"></p>
+							</form>
 							</section>
 
 							<section class="border border-radius-lg p-3 mb-3 settings-horizontal settings-security" aria-label="Security and delivery">
@@ -1184,15 +1220,19 @@
 	<script src="/javascript/settings-metrics.js"></script>
 	<script src="/javascript/settings-cloudflare-tunnel.js"></script>
 	<script src="/javascript/settings-cloudflare-cdn.js"></script>
+	<script src="/javascript/settings-bulletin.js"></script>
+	<script src="/javascript/settings-neighbors.js"></script>
 
 	<script>
-		const INCOMING_PARAMETERS = <%- JSON.stringify(model) %>;
+		const INCOMING_PARAMETERS = <%- JSON.stringify(model).replace(/</g, '\\u003c') %>;
 
 		class MoarTubeClientSettings {
 
 		constructor() {
 			this.INCOMING_PARAMETERS = INCOMING_PARAMETERS;
 			this.CLIENT_SETTINGS = null;
+			this.nodeBulletin = new MoarTubeNodeBulletin((isError, message) => this.showAlert(isError, message));
+			this.nodeNeighbors = new MoarTubeNodeNeighbors((isError, message) => this.showAlert(isError, message));
 			this.cloudflareTunnelToggle = new MoarTubeCloudflareTunnelToggle((isError, message) => this.showAlert(isError, message));
 			this.cloudflareCdn = new MoarTubeCloudflareCdn((isError, message) => this.showAlert(isError, message), this.cloudflareTunnelToggle, (settings) => {
 				this.loadNodeSettings(settings);
@@ -1215,6 +1255,8 @@
 		setupEventListeners() {
 			const self = this;
 			this.cloudflareTunnelToggle.start();
+			this.nodeBulletin.start();
+			this.nodeNeighbors.start();
 
 			// Checkbox toggles
 			$(document).off('change', '.select-gpu').on('change', '.select-gpu', function () {
@@ -1346,6 +1388,8 @@
 		}
 
 		loadNodeSettings(nodeSettings) {
+			this.nodeBulletin.load(nodeSettings);
+			this.nodeNeighbors.load(nodeSettings);
 			window.MoarTubeNodeVisitLinks?.load(nodeSettings);
 			this.cloudflareCdn.load(nodeSettings);
 			this.cloudflareTunnelToggle.load(nodeSettings);

@@ -150,6 +150,18 @@ export function settingsRoutes(
   );
 
   fastify.post(
+    '/node/personalize/bulletin',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiSetNodeBulletin
+  );
+
+  fastify.post(
+    '/node/personalize/neighbors',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiSetNodeNeighbors
+  );
+
+  fastify.post(
     '/node/secure',
     {
       schema: { tags: ['Settings'] },

@@ -24,9 +24,16 @@ export interface StorageConfig {
   [key: string]: unknown;
 }
 
+export interface NodeNeighbor {
+  url: string;
+  description: string;
+}
+
 export interface NodeSettings {
   nodeName?: string;
   nodeHeadline?: string;
+  nodeBulletin?: string[];
+  nodeNeighbors?: NodeNeighbor[];
   nodeDescription?: string;
   publicNodeProtocol?: string;
   publicNodeAddress?: string;

@@ -1,5 +1,7 @@
 import { requireNodeSuccess } from '@/utils/node-actions.js';
 import { isValidPublicHost } from '@/utils/public-host.js';
+import { setNodeBulletinBodySchema } from '@/validators/node-bulletin.js';
+import { setNodeNeighborsBodySchema } from '@/validators/node-neighbors.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { BaseController } from './base.js';
 import type { NodeApiService } from '@/services/node-api.js';
@@ -508,6 +510,62 @@ export class SettingsController extends BaseController {
       nodeAbout
     );
     return await reply.send(response);
+  };
+
+  // API: POST /settings/node/personalize/bulletin
+  public apiSetNodeBulletin = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    reply.header('Cache-Control', 'no-store');
+    const jwtToken = request.session.jwtToken ?? '';
+    if (jwtToken === '') {
+      return await this.sendError(reply, 'Sign in to edit the bulletin', 401);
+    }
+    const parsed = setNodeBulletinBodySchema.safeParse(request.body);
+    if (!parsed.success) {
+      return await this.sendError(
+        reply,
+        'Use up to 50 bulletin items, each with 1 to 1000 characters',
+        400
+      );
+    }
+    try {
+      return await reply.send(
+        await this.nodeApiService.setNodeBulletin(jwtToken, parsed.data.nodeBulletin)
+      );
+    } catch (error) {
+      this.logger.error('Unable to save node bulletin', error);
+      return await this.sendError(reply, 'Unable to save bulletin. Please try again.', 502);
+    }
+  };
+
+  // API: POST /settings/node/personalize/neighbors
+  public apiSetNodeNeighbors = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    reply.header('Cache-Control', 'no-store');
+    const jwtToken = request.session.jwtToken ?? '';
+    if (jwtToken === '') {
+      return await this.sendError(reply, 'Sign in to edit the neighbors', 401);
+    }
+    const parsed = setNodeNeighborsBodySchema.safeParse(request.body);
+    if (!parsed.success) {
+      return await this.sendError(
+        reply,
+        'Use up to 50 neighbors, each with an HTTP(S) URL and a description of 1 to 1000 characters',
+        400
+      );
+    }
+    try {
+      return await reply.send(
+        await this.nodeApiService.setNodeNeighbors(jwtToken, parsed.data.nodeNeighbors)
+      );
+    } catch (error) {
+      this.logger.error('Unable to save node neighbors', error);
+      return await this.sendError(reply, 'Unable to save neighbors. Please try again.', 502);
+    }
   };
 
   // API: POST /settings/node/secure?isSecure=true|false

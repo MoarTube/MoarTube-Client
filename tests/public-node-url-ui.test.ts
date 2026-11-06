@@ -52,7 +52,7 @@ it('refreshes the Settings sidebar link and form from persisted values after suc
       await page.addScriptTag({ content: await readFile(`public/javascript/${script}`, 'utf8') });
     }
     await page.addScriptTag({
-      content: `const INCOMING_PARAMETERS = {}; window.Swal = { showLoading() {}, fire(options) { if (options.didOpen) options.didOpen(); else window.lastAlert = options; } }; ${template.slice(start, end)} window.auditSettings = new MoarTubeClientSettings();`,
+      content: `const INCOMING_PARAMETERS = {}; class MoarTubeNodeBulletin { load() {} } class MoarTubeNodeNeighbors { load() {} } window.Swal = { showLoading() {}, fire(options) { if (options.didOpen) options.didOpen(); else window.lastAlert = options; } }; ${template.slice(start, end)} window.auditSettings = new MoarTubeClientSettings();`,
     });
     await page.evaluate(`auditSettings.loadNodeSettings(${JSON.stringify(settings)})`);
     await browserExpect(page.locator('[data-node-public-link]')).toHaveAttribute(

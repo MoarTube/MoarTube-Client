@@ -1,3 +1,5 @@
+import type { NodeNeighbor } from './node-api.js';
+
 export interface VideoSearchQuery {
   searchTerm?: string;
   sortTerm?: string;
@@ -88,6 +90,14 @@ export interface SetNodeHeadlineBody {
 
 export interface SetNodeAboutBody {
   nodeAbout: string;
+}
+
+export interface SetNodeBulletinBody {
+  nodeBulletin: string[];
+}
+
+export interface SetNodeNeighborsBody {
+  nodeNeighbors: NodeNeighbor[];
 }
 
 export interface SetNetworkInternalBody {
