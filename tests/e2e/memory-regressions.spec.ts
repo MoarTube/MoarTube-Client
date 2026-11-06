@@ -35,6 +35,7 @@ const video = (id: number) => ({
 const information = {
   nodeVideoCount: 205,
   nodeName: 'Fixture Node',
+  nodeHeadline: 'Fixture Node',
   nodeAbout: '',
   publicNodeProtocol: 'http',
   publicNodeAddress: 'memory.local',

@@ -134,6 +134,14 @@ export function settingsRoutes(
   );
 
   fastify.post(
+    '/node/personalize/headline',
+    {
+      schema: { tags: ['Settings'] },
+    },
+    settingsController.apiSetNodeHeadline.bind(settingsController)
+  );
+
+  fastify.post(
     '/node/personalize/about',
     {
       schema: { tags: ['Settings'] },

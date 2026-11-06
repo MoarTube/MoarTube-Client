@@ -584,6 +584,12 @@ export class NodeApiService extends BaseService {
     });
   }
 
+  public async setNodeHeadline(jwtToken: string, nodeHeadline: string): Promise<BaseNodeResponse> {
+    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/personalize/headline', {
+      nodeHeadline,
+    });
+  }
+
   public async setNodeAbout(jwtToken: string, nodeAbout: string): Promise<BaseNodeResponse> {
     return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/personalize/about', {
       nodeAbout,

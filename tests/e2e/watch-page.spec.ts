@@ -95,6 +95,7 @@ async function fixture(
     informationData: {
       information: {
         nodeName: 'Fixture',
+        nodeHeadline: 'Fixture',
         nodeVideoCount: 1,
         nodeAbout: text,
         publicNodeProtocol: 'http',
@@ -261,6 +262,8 @@ async function fixture(
 }
 test('metadata is inert in scripts, recommendation titles, and tags', async ({ page }) => {
   const { errors, title, text } = await fixture(page, { malicious: true });
+  await expect(page.locator('#node-name')).toHaveText('Fixture');
+  await expect(page.locator('#node-headline')).toHaveCount(0);
   await expect(page.locator('#video-title')).toHaveText(title);
   await expect(page.locator('#video-information-description')).toHaveText(text);
   expect(await page.evaluate(() => window.metadataExecuted)).toBeUndefined();

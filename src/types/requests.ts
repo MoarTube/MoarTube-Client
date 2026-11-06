@@ -82,6 +82,10 @@ export interface SetNodeNameBody {
   nodeName: string;
 }
 
+export interface SetNodeHeadlineBody {
+  nodeHeadline: string;
+}
+
 export interface SetNodeAboutBody {
   nodeAbout: string;
 }

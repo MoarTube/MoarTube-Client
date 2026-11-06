@@ -703,7 +703,31 @@
 												<label class="form-label" for="node-name-input">Node Name</label>
 												<div class="input-group">
 													<input id="node-name-input" class="form-control"
-														name="nodeNameJustCuz" type="text" placeholder="node name"
+														name="nodeName" type="text" placeholder="node name"
+														onfocus="focused(this)" onfocusout="defocused(this)">
+												</div>
+											</div>
+										</div>
+									</div>
+									<div class="card-body d-sm-flex pt-0">
+										<div class="d-flex align-items-center mb-sm-0 mb-4 ms-auto">
+											<button class="btn btn-primary mb-0" type="submit"
+												name="button">Save</button>
+										</div>
+									</div>
+								</div>
+							</form>
+
+							<form id="personalize_settings_node_headline_form" method="POST"
+								action="/settings/node/personalize/headline">
+								<div class="card-body pt-0 pb-0">
+									<div class="card-body pt-0">
+										<div class="row mt-3">
+											<div class="col-12">
+												<label class="form-label" for="node-headline-input">Node Headline</label>
+												<div class="input-group">
+													<input id="node-headline-input" class="form-control"
+														name="nodeHeadline" type="text" placeholder="node headline"
 														onfocus="focused(this)" onfocusout="defocused(this)">
 												</div>
 											</div>
@@ -1264,6 +1288,11 @@
 				self.handlePersonalizeNodeNameForm($(this));
 			});
 
+			$('#personalize_settings_node_headline_form').off('submit').on('submit', function (event) {
+				event.preventDefault();
+				self.handlePersonalizeNodeHeadlineForm($(this));
+			});
+
 			$('#personalize_settings_node_about_form').off('submit').on('submit', function (event) {
 				event.preventDefault();
 				self.handlePersonalizeNodeAboutForm($(this));
@@ -1324,6 +1353,7 @@
 			$('#node-version').text(nodeSettings.version);
 
 			$('#node-name-input').val(nodeSettings.nodeName);
+			$('#node-headline-input').val(nodeSettings.nodeHeadline);
 			$('#node-about-textarea').val(nodeSettings.nodeAbout);
 
 			$('#node-setting-secure-mode-checkbox').prop('checked', nodeSettings.isSecure);
@@ -1482,7 +1512,7 @@
 			const self = this;
 
 			let url = form.attr('action');
-			let nodeName = form.find('input[name="nodeNameJustCuz"]').val();
+			let nodeName = form.find('input[name="nodeName"]').val();
 
 			Swal.fire({
 				title: 'please wait',
@@ -1492,6 +1522,35 @@
 					Swal.showLoading();
 
 					$.ajax({ type: 'POST', url: url, data: JSON.stringify({ nodeName: nodeName }), contentType: 'application/json; charset=utf-8' })
+						.done(function (data) {
+							if (data.isError) {
+								self.showAlert(true, data.message);
+							}
+							else {
+								self.showAlert(false);
+							}
+						})
+						.fail(function () {
+							self.showAlert(true, 'an error occurred, please try again');
+						});
+				}
+			});
+		}
+
+		handlePersonalizeNodeHeadlineForm(form) {
+			const self = this;
+
+			let url = form.attr('action');
+			let nodeHeadline = form.find('input[name="nodeHeadline"]').val();
+
+			Swal.fire({
+				title: 'please wait',
+				html: '...applying your settings...',
+				allowOutsideClick: false,
+				didOpen: () => {
+					Swal.showLoading();
+
+					$.ajax({ type: 'POST', url: url, data: JSON.stringify({ nodeHeadline: nodeHeadline }), contentType: 'application/json; charset=utf-8' })
 						.done(function (data) {
 							if (data.isError) {
 								self.showAlert(true, data.message);

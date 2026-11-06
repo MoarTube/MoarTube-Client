@@ -10,6 +10,7 @@ import type {
   SetGpuAccelerationBody,
   SetClientEncodingBody,
   SetNodeNameBody,
+  SetNodeHeadlineBody,
   SetNodeAboutBody,
   SetNetworkInternalBody,
   SetNetworkExternalBody,
@@ -479,6 +480,19 @@ export class SettingsController extends BaseController {
     const response = await this.nodeApiService.setNodeName(
       request.session.jwtToken ?? '',
       nodeName
+    );
+    return await reply.send(response);
+  };
+
+  // API: POST /settings/node/personalize/headline
+  public apiSetNodeHeadline = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    const { nodeHeadline } = request.body as SetNodeHeadlineBody;
+    const response = await this.nodeApiService.setNodeHeadline(
+      request.session.jwtToken ?? '',
+      nodeHeadline
     );
     return await reply.send(response);
   };

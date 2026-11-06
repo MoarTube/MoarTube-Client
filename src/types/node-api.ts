@@ -26,6 +26,7 @@ export interface StorageConfig {
 
 export interface NodeSettings {
   nodeName?: string;
+  nodeHeadline?: string;
   nodeDescription?: string;
   publicNodeProtocol?: string;
   publicNodeAddress?: string;

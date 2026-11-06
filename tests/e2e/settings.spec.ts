@@ -3,6 +3,7 @@ import { expect, uniqueName, clientResponse, expectSuccess } from './fixtures.js
 
 for (const [kind, form, input] of [
   ['name', '#personalize_settings_node_name_form', '#node-name-input'],
+  ['headline', '#personalize_settings_node_headline_form', '#node-headline-input'],
   ['about', '#personalize_settings_node_about_form', '#node-about-textarea'],
 ] as const) {
   test(`edits node ${kind} through the Client and restores the previous value`, async ({
@@ -20,7 +21,7 @@ for (const [kind, form, input] of [
       await page.reload();
       await expect(page.locator(input)).toHaveValue(value);
       await viewer.goto('/videos');
-      await expect(viewer.locator(kind === 'name' ? '#node-name' : '#node-about')).toHaveText(
+      await expect(viewer.locator(kind === 'name' ? '#node-name' : kind === 'headline' ? '#node-headline' : '#node-about')).toHaveText(
         value
       );
     } finally {
