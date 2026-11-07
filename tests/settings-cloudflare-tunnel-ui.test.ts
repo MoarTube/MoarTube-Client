@@ -105,7 +105,7 @@ it('places the tunnel toggle after Turnstile and reconciles saves, partial failu
     await page.addScriptTag({ path: 'public/javascript/jquery-3.6.4.min.js' });
     await page.addScriptTag({ path: 'public/javascript/settings-cloudflare-tunnel.js' });
     await page.evaluate(
-      `window.tunnelAlerts = []; window.tunnelUI = new MoarTubeCloudflareTunnelToggle((error, message) => window.tunnelAlerts.push({ error, message })); window.tunnelUI.load({}); window.tunnelUI.start(); window.tunnelUI.start();`
+      `window.tunnelAlerts = []; window.linkUpdates = []; window.tunnelUI = new MoarTubeCloudflareTunnelToggle((error, message) => window.tunnelAlerts.push({ error, message }), (settings, tunnel) => window.linkUpdates.push({ settings, tunnel })); window.tunnelUI.load({}); window.tunnelUI.start(); window.tunnelUI.start();`
     );
     const toggle = page.getByRole('switch', { name: 'Cloudflare Tunnels' });
     await browserExpect(toggle).toBeChecked();
@@ -133,6 +133,10 @@ it('places the tunnel toggle after Turnstile and reconciles saves, partial failu
     await browserExpect(toggle).toBeEnabled();
     await browserExpect(toggle).not.toBeChecked();
     expect(saves).toBe(1);
+    expect(await page.evaluate('window.linkUpdates.at(-1)')).toMatchObject({
+      settings: { isCloudflareTunnelEnabled: false },
+      tunnel: { status: 'stopped' },
+    });
     expect(await page.evaluate('window.tunnelAlerts')).toEqual([]);
     await browserExpect(page.locator('#cloudflare-tunnels-status')).toHaveText('');
     await page.evaluate(

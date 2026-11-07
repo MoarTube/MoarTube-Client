@@ -1,13 +1,13 @@
 /* global $, MoarTubePublicNodeUrl */
 class MoarTubeNodeVisitLinks {
-  static load(settings) {
+  static load(settings, tunnel) {
     const root = document.querySelector('[data-node-visit-links]');
     if (!root) return;
     if (!this.current || this.current.root !== root) {
       this.current?.stop();
       this.current = new MoarTubeNodeVisitLinks(root);
     }
-    this.current.start(settings);
+    this.current.start(settings, tunnel);
   }
 
   constructor(root) {
@@ -31,7 +31,6 @@ class MoarTubeNodeVisitLinks {
     this.tunnelItem = root.querySelector('[data-node-tunnel-item]');
     this.requests = [];
     this.generation = 0;
-    this.refreshOnFocus = () => void this.refresh();
     window.addEventListener('beforeunload', () => this.stop());
     window.addEventListener('pagehide', () => this.stop());
     window.addEventListener('pageshow', (event) => {
@@ -88,43 +87,57 @@ class MoarTubeNodeVisitLinks {
     this.setLink(this.tunnelLink, running ? tunnel.publicUrl : undefined, state);
   }
 
-  start(settings) {
+  start(settings, tunnel) {
     this.stop();
     this.initialSettings = settings;
     this.active = true;
-    this.render(settings, null, true);
-    void this.refresh();
-    this.timer = window.setInterval(() => void this.refresh(), 15000);
-    window.addEventListener('focus', this.refreshOnFocus);
-    document.addEventListener('visibilitychange', this.refreshOnFocus);
+    if (settings?.isCloudflareTunnelEnabled === false || settings?.isCloudflareCdnEnabled === true) {
+      this.render(settings, null);
+    } else if (tunnel !== undefined) {
+      this.updateTunnel(tunnel);
+    } else {
+      this.render(settings, null, true);
+      void this.refresh();
+    }
+  }
+
+  updateTunnel(tunnel) {
+    this.render(this.initialSettings, tunnel);
+    // Retry unavailable status checks and follow startup until it settles.
+    if (!tunnel || tunnel.status === 'starting') {
+      this.timer = window.setTimeout(() => void this.refresh(), 2000);
+    }
   }
 
   async refresh() {
-    if (!this.active || this.pending || document.hidden) return;
+    if (!this.active || this.pending) return;
+    window.clearTimeout(this.timer);
     this.pending = true;
     const generation = this.generation;
-    this.requests = ['/settings/node', '/settings/node/cloudflare/tunnel'].map((url) =>
-      $.ajax({ type: 'GET', url, cache: false, timeout: 10000 })
-    );
-    const [settings, runtime] = await Promise.allSettled(this.requests);
+    const request = $.ajax({
+      type: 'GET', url: '/settings/node/cloudflare/tunnel', cache: false, timeout: 10000,
+    });
+    this.requests = [request];
+    let tunnel = null;
+    try {
+      const runtime = await request;
+      if (!runtime?.isError) tunnel = runtime?.tunnel ?? null;
+    } catch (_) {
+      /* Retry transient request failures without overlapping requests. */
+    }
     if (!this.active || generation !== this.generation) return;
     this.pending = false;
     this.requests = [];
-    this.render(
-      settings.status === 'fulfilled' && !settings.value?.isError ? settings.value : null,
-      runtime.status === 'fulfilled' && !runtime.value?.isError ? runtime.value?.tunnel : null
-    );
+    this.updateTunnel(tunnel);
   }
 
   stop() {
     this.active = false;
     this.pending = false;
     this.generation++;
-    window.clearInterval(this.timer);
+    window.clearTimeout(this.timer);
     this.requests.forEach((request) => request.abort());
     this.requests = [];
-    window.removeEventListener('focus', this.refreshOnFocus);
-    document.removeEventListener('visibilitychange', this.refreshOnFocus);
   }
 }
 window.MoarTubeNodeVisitLinks = MoarTubeNodeVisitLinks;

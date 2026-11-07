@@ -35,7 +35,7 @@ class MoarTubeNodeBulletin {
   refresh() {
     const rows = [...this.rows.children];
     this.empty.hidden = rows.length !== 0;
-    this.addButton.disabled = this.pending || rows.length >= 50;
+    this.addButton.disabled = this.pending || rows.length >= 10;
     rows.forEach((row, index) => {
       row.querySelector('label').textContent = `Bulletin item ${index + 1}`;
       row.querySelector('button').setAttribute('aria-label', `Remove bulletin item ${index + 1}`);
@@ -43,7 +43,7 @@ class MoarTubeNodeBulletin {
   }
 
   addRow(value, focus = false) {
-    if (this.pending || this.rows.children.length >= 50) return;
+    if (this.pending || (focus && this.rows.children.length >= 10)) return;
     const row = document.createElement('div');
     row.className = 'row align-items-end mb-3 node-bulletin-row';
     const field = document.createElement('div');
@@ -97,8 +97,8 @@ class MoarTubeNodeBulletin {
     const nodeBulletin = [...this.rows.querySelectorAll('textarea')]
       .map((input) => input.value.trim())
       .filter(Boolean);
-    if (nodeBulletin.length > 50 || nodeBulletin.some((entry) => entry.length > 1000)) {
-      this.showAlert(true, 'Use up to 50 bulletin items, each with 1 to 1000 characters');
+    if (nodeBulletin.length > 10 || nodeBulletin.some((entry) => entry.length > 1000)) {
+      this.showAlert(true, 'Use up to 10 bulletin items, each with 1 to 1000 characters');
       return;
     }
     this.pending = true;

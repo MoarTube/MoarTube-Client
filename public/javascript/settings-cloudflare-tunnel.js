@@ -1,7 +1,8 @@
 /* global $ */
 class MoarTubeCloudflareTunnelToggle {
-  constructor(showAlert) {
+  constructor(showAlert, onSettingsChanged = () => {}) {
     this.showAlert = showAlert;
+    this.onSettingsChanged = onSettingsChanged;
     this.confirmed = true;
     this.pending = false;
     this.checkbox = $('#cloudflare-tunnels-checkbox');
@@ -48,6 +49,8 @@ class MoarTubeCloudflareTunnelToggle {
     this.pending = true;
     this.checkbox.prop('disabled', true).attr('aria-busy', 'true');
     this.status.text('Updating Cloudflare Tunnels.');
+    let refreshedSettings;
+    let refreshedTunnel = null;
     try {
       let failure = null;
       let mutationSucceeded = false;
@@ -74,10 +77,13 @@ class MoarTubeCloudflareTunnelToggle {
       ]);
       const refreshed =
         settings.status === 'fulfilled' && settings.value && !settings.value.isError;
-      if (refreshed) this.load(settings.value);
-      else this.checkbox.prop('checked', this.confirmed);
+      if (refreshed) {
+        refreshedSettings = settings.value;
+        this.load(settings.value);
+      } else this.checkbox.prop('checked', this.confirmed);
       const tunnel =
         runtime.status === 'fulfilled' && !runtime.value?.isError ? runtime.value?.tunnel : null;
+      refreshedTunnel = tunnel;
       const refreshFailed = !refreshed || !tunnel;
       const runtimeError = tunnel?.status === 'error';
       const running = tunnel?.status === 'running' && ['quick', 'named'].includes(tunnel.mode);
@@ -117,6 +123,9 @@ class MoarTubeCloudflareTunnelToggle {
       this.status.text(message);
       this.showAlert(true, message);
     } finally {
+      if (refreshedSettings) {
+        this.onSettingsChanged({ ...refreshedSettings, isCloudflareTunnelEnabled: this.confirmed }, refreshedTunnel);
+      }
       this.pending = false;
       this.checkbox.prop('disabled', false).removeAttr('aria-busy');
     }

@@ -1,4 +1,4 @@
-import type { NodeNeighbor } from './node-api.js';
+import type { NodeLink } from './node-api.js';
 
 export interface VideoSearchQuery {
   searchTerm?: string;
@@ -96,8 +96,8 @@ export interface SetNodeBulletinBody {
   nodeBulletin: string[];
 }
 
-export interface SetNodeNeighborsBody {
-  nodeNeighbors: NodeNeighbor[];
+export interface SetNodeLinksBody {
+  nodeLinks: NodeLink[];
 }
 
 export interface SetNetworkInternalBody {

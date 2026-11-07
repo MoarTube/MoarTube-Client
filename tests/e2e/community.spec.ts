@@ -3,44 +3,53 @@ import { test } from './node-fixtures.js';
 import { expect, uniqueName, clientResponse, expectSuccess } from './fixtures.js';
 import { randomBytes } from 'node:crypto';
 
-test('add and delete a promotional link through the Client', async ({
+test('adds and removes a Node Icon through personalization settings', async ({
   signedInPage: page,
   viewerPage: viewer,
+  publishedVideo: video,
 }) => {
-  const url = `https://example.test/${uniqueName('link').replaceAll(' ', '-')}`;
-  await page.goto('/links');
-  await page.locator('#add-link-button').click();
-  await page.locator('#url-input').fill(url);
-  await page
-    .locator('#svg-graphic-textarea')
+  const url = `https://example.test/${uniqueName('icon').replaceAll(' ', '-')}`;
+  await page.goto('/settings');
+  const form = page.getByRole('form', { name: 'Node Icons', exact: true });
+  await form.getByRole('button', { name: 'Add item', exact: true }).click();
+  const draft = form.locator('.node-icons-row').last();
+  await draft.locator('input').fill(url);
+  await draft
+    .locator('textarea')
     .fill('<svg xmlns="http://www.w3.org/2000/svg"><circle r="5"/></svg>');
-  const added = clientResponse(page, '/links/add');
-  await page.locator('.swal2-confirm').click();
+  const added = clientResponse(page, '/settings/node/personalize/icons');
+  await form.getByRole('button', { name: 'Save', exact: true }).click();
   await expectSuccess(added);
   await page.reload();
-  const row = page.locator('#links-table tr').filter({ hasText: url });
-  await expect(row).toHaveCount(1);
-  await viewer.goto('/videos');
+  // Inputs are populated by the settings editor, so find the row by its live value.
+  const index = await form
+    .locator('.node-icons-row input')
+    .evaluateAll(
+      (inputs, target) => inputs.findIndex((input) => (input as HTMLInputElement).value === target),
+      url
+    );
+  expect(index).toBeGreaterThanOrEqual(0);
+  await viewer.goto('/watch?v=' + video.id);
   await expect(viewer.locator(`#navbar-settings-buttons a[href="${url}"]`)).toBeVisible();
-  await row.locator('.delete-link-button').click();
-  await page.locator('.swal2-cancel').click();
-  await expect(row).toHaveCount(1);
-  await row.locator('.delete-link-button').click();
-  const deleted = clientResponse(page, '/links/delete');
-  await page.locator('.swal2-confirm').click();
-  await expectSuccess(deleted);
-  await expect(row).toHaveCount(0);
-  await page.reload();
-  await expect(page.locator('#links-table')).not.toContainText(url);
+  await form
+    .locator('.node-icons-row')
+    .nth(index)
+    .getByRole('button', { name: /Remove icon/ })
+    .click();
+  const removed = clientResponse(page, '/settings/node/personalize/icons');
+  await form.getByRole('button', { name: 'Save', exact: true }).click();
+  await expectSuccess(removed);
   await viewer.reload();
   await expect(viewer.locator(`#navbar-settings-buttons a[href="${url}"]`)).toHaveCount(0);
 });
 
-test('link dialog rejects empty fields', async ({ signedInPage: page }) => {
-  await page.goto('/links');
-  await page.locator('#add-link-button').click();
-  await page.locator('.swal2-confirm').click();
-  await expect(page.locator('#url-input')).toBeVisible();
+test('Node Icons validates an incomplete row', async ({ signedInPage: page }) => {
+  await page.goto('/settings');
+  const form = page.getByRole('form', { name: 'Node Icons', exact: true });
+  await form.getByRole('button', { name: 'Add item', exact: true }).click();
+  await form.locator('.node-icons-row').last().locator('input').fill('https://example.test');
+  await form.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(form.locator('.node-icons-row').last().locator('textarea')).toBeFocused();
 });
 
 for (const chain of ['ETH', 'BNB']) {
@@ -52,31 +61,50 @@ for (const chain of ['ETH', 'BNB']) {
       body: JSON.stringify({ wallet, chain }),
       contentType: 'application/json',
     });
-    await page.goto('/monetization');
-    await page.locator('#add-wallet-button').click();
-    await expect(page.locator('#currency-select')).toBeDisabled();
-    await page.locator('#wallet-address-input').fill(wallet);
-    await page.locator('#chain-select').selectOption(chain);
-    await page.locator('#currency-select').selectOption(chain);
-    const added = clientResponse(page, '/monetization/add');
-    await page.locator('.swal2-confirm').click();
+    await page.goto('/settings');
+    const form = page.getByRole('form', { name: 'Monetization', exact: true });
+    await expect(form.locator('fieldset')).toHaveJSProperty('disabled', false);
+    await form.getByRole('button', { name: 'Add item', exact: true }).click();
+    const draft = form.locator('.node-monetization-row').last();
+    await expect(draft.locator('[name=currency]')).toBeDisabled();
+    await draft.locator('[name=walletAddress]').fill(wallet);
+    await draft.locator('[name=chain]').selectOption(chain);
+    await draft.locator('[name=currency]').selectOption(chain);
+    const added = clientResponse(page, '/settings/node/personalize/monetization/add');
+    await form.getByRole('button', { name: 'Save', exact: true }).click();
     await expectSuccess(added);
     await page.reload();
-    const row = page.locator('#crypto-wallet-addresses-table tr').filter({ hasText: wallet });
+    await expect(form.locator('fieldset')).toHaveJSProperty('disabled', false);
+    const index = await form
+      .locator('input')
+      .evaluateAll(
+        (inputs, value) => inputs.findIndex((input) => (input as HTMLInputElement).value === value),
+        wallet
+      );
+    expect(index).toBeGreaterThanOrEqual(0);
+    const row = form.locator('.node-monetization-row').nth(index);
     await expect(row).toHaveCount(1);
     const walletId = Number(
-      await row.locator('.delete-wallet-button').getAttribute('data-cryptowalletaddressid')
+      await row.evaluate((element) => (element as HTMLElement & { walletId: number }).walletId)
     );
     expect(Number.isInteger(walletId)).toBe(true);
     expect(walletId).toBeGreaterThan(0);
-    await row.locator('.delete-wallet-button').click();
-    const deleted = clientResponse(page, '/monetization/delete');
-    await page.locator('.swal2-confirm').click();
+    await row.getByRole('button', { name: /Remove donation address/ }).click();
+    const deleted = clientResponse(page, '/settings/node/personalize/monetization/delete');
+    await form.getByRole('button', { name: 'Save', exact: true }).click();
     expect((await deleted).request().postDataJSON()).toEqual({ cryptoWalletAddressId: walletId });
     await expectSuccess(deleted);
-    await expect(row).toHaveCount(0);
+    await expect(form.getByRole('status')).toBeEmpty();
     await page.reload();
-    await expect(page.locator('#crypto-wallet-addresses-table')).not.toContainText(wallet);
+    await expect(form.locator('fieldset')).toHaveJSProperty('disabled', false);
+    expect(
+      await form
+        .locator('input')
+        .evaluateAll(
+          (inputs, value) => inputs.some((input) => (input as HTMLInputElement).value === value),
+          wallet
+        )
+    ).toBe(false);
   });
 }
 

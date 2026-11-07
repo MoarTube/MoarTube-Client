@@ -16,8 +16,10 @@ import type { MemoryMetrics } from '@/utils/memory-metrics.js';
 import type { CpuMetrics } from '@/utils/cpu-metrics.js';
 import type {
   AuthResponse,
+  NodeMetricsResponse,
   NodeSettings,
-  NodeNeighbor,
+  NodeLink,
+  NodeIcon,
   NewContentCounts,
   Video,
   VideoDataAllResponse,
@@ -404,6 +406,14 @@ export class NodeApiService extends BaseService {
     return data.externalVideosBaseUrl === '' ? origin : data.externalVideosBaseUrl;
   }
 
+  public async getMetricsBundle(jwtToken: string): Promise<NodeMetricsResponse> {
+    const client = await this.getClient();
+    const response = await client.get<NodeMetricsResponse['data']>('/settings/metrics', {
+      headers: { Authorization: `Bearer ${jwtToken}` },
+    });
+    return { status: response.status, data: response.data };
+  }
+
   public async getCpuMetrics(jwtToken: string): Promise<CpuMetrics> {
     const client = await this.getClient();
     const response = await client.get('/settings/metrics/cpu', {
@@ -444,20 +454,6 @@ export class NodeApiService extends BaseService {
       nodeSettings: NodeSettings;
     };
     return data.nodeSettings;
-  }
-
-  public async searchVideosAll(
-    searchTerm: string,
-    sortTerm: string,
-    tagTerm: string,
-    tagLimit: number,
-    timestamp: number
-  ): Promise<Video[]> {
-    const client = await this.getClient();
-    const response = await client.get('/node/search', {
-      params: { searchTerm, sortTerm, tagTerm, tagLimit, timestamp },
-    });
-    return response.data as Video[];
   }
 
   public async getNewContentCounts(
@@ -606,12 +602,15 @@ export class NodeApiService extends BaseService {
     });
   }
 
-  public async setNodeNeighbors(
-    jwtToken: string,
-    nodeNeighbors: NodeNeighbor[]
-  ): Promise<BaseNodeResponse> {
-    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/personalize/neighbors', {
-      nodeNeighbors,
+  public async setNodeLinks(jwtToken: string, nodeLinks: NodeLink[]): Promise<BaseNodeResponse> {
+    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/personalize/links', {
+      nodeLinks,
+    });
+  }
+
+  public async setNodeIcons(jwtToken: string, nodeIcons: NodeIcon[]): Promise<BaseNodeResponse> {
+    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/personalize/icons', {
+      nodeIcons,
     });
   }
 
@@ -850,24 +849,6 @@ export class NodeApiService extends BaseService {
   }
 
   // Links Methods
-
-  public async getLinks(): Promise<GetLinksResponse> {
-    const client = await this.getClient();
-    const response = await client.get('/links/all');
-    return response.data as GetLinksResponse;
-  }
-
-  public async addLink(
-    jwtToken: string,
-    url: string,
-    svgGraphic: string
-  ): Promise<BaseNodeResponse> {
-    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/links/add', { url, svgGraphic });
-  }
-
-  public async deleteLink(jwtToken: string, linkId: string): Promise<BaseNodeResponse> {
-    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/links/delete', { linkId });
-  }
 
   // Monetization Methods
 

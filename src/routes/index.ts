@@ -14,8 +14,6 @@ import { homeRoutes } from '@/routes/home.js';
 import { videosRoutes } from '@/routes/videos.js';
 import { streamsRoutes } from '@/routes/streams.js';
 import { settingsRoutes } from '@/routes/settings.js';
-import { linksRoutes } from '@/routes/links.js';
-import { monetizationRoutes } from '@/routes/monetization.js';
 import { commentsRoutes } from '@/routes/comments.js';
 import { reportsRoutes } from '@/routes/reports.js';
 import { nodeRoutes } from '@/routes/node.js';
@@ -53,22 +51,12 @@ export function registerRoutes(fastify: FastifyInstance, container: Container): 
     { prefix: '/settings' }
   );
 
-  // Links routes (/links/*)
-  fastify.register(
-    (instance, _opts, done) => {
-      linksRoutes(instance.withTypeProvider<ZodTypeProvider>(), container);
-      done();
-    },
-    { prefix: '/links' }
+  fastify.get('/links', async (_request, reply) =>
+    reply.redirect('/settings#personalize_settings_node_icons_form')
   );
 
-  // Monetization routes (/monetization/*)
-  fastify.register(
-    (instance, _opts, done) => {
-      monetizationRoutes(instance.withTypeProvider<ZodTypeProvider>(), container);
-      done();
-    },
-    { prefix: '/monetization' }
+  fastify.get('/monetization', async (_request, reply) =>
+    reply.redirect('/settings#personalize_settings_node_monetization_form')
   );
 
   // Comments routes (/comments/*)

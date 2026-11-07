@@ -109,6 +109,14 @@ it('edits ordered bulletin rows, retains failed drafts, reloads saves, and clear
     await browserExpect(items).toHaveCount(0);
     await browserExpect(form.locator('#node-bulletin-empty')).toBeVisible();
     expect(saves).toBe(3);
+    const add = form.getByRole('button', { name: 'Add item', exact: true });
+    for (let index = 0; index < 10; index++) {
+      await add.click();
+    }
+    await browserExpect(items).toHaveCount(10);
+    await browserExpect(add).toBeDisabled();
+    await form.getByRole('button', { name: 'Remove bulletin item 1', exact: true }).click();
+    await browserExpect(add).toBeEnabled();
     expect(errors).toEqual([]);
   } finally {
     await browser.close();

@@ -1,12 +1,12 @@
 /* global $ */
-class MoarTubeNodeNeighbors {
+class MoarTubeNodeLinks {
   constructor(showAlert) {
     this.showAlert = showAlert;
-    this.form = document.getElementById('personalize_settings_node_neighbors_form');
-    this.rows = document.getElementById('node-neighbors-rows');
-    this.addButton = document.getElementById('node-neighbors-add');
-    this.empty = document.getElementById('node-neighbors-empty');
-    this.status = document.getElementById('node-neighbors-status');
+    this.form = document.getElementById('personalize_settings_node_links_form');
+    this.rows = document.getElementById('node-links-rows');
+    this.addButton = document.getElementById('node-links-add');
+    this.empty = document.getElementById('node-links-empty');
+    this.status = document.getElementById('node-links-status');
     this.pending = false;
     this.dirty = false;
     this.sequence = 0;
@@ -27,26 +27,26 @@ class MoarTubeNodeNeighbors {
   load(nodeSettings) {
     if (this.dirty || this.pending) return;
     this.rows.replaceChildren();
-    for (const entry of nodeSettings.nodeNeighbors || []) this.addRow(entry);
+    for (const entry of nodeSettings.nodeLinks || []) this.addRow(entry);
     this.refresh();
   }
 
   refresh() {
     const rows = [...this.rows.children];
     this.empty.hidden = rows.length !== 0;
-    this.addButton.disabled = this.pending || rows.length >= 50;
+    this.addButton.disabled = this.pending || rows.length >= 10;
     rows.forEach((row, index) => {
-      row.querySelector('[data-label="url"]').textContent = `Neighbor ${index + 1} URL`;
+      row.querySelector('[data-label="url"]').textContent = `Link ${index + 1} URL`;
       row.querySelector('[data-label="description"]').textContent =
-        `Neighbor ${index + 1} description`;
-      row.querySelector('button').setAttribute('aria-label', `Remove neighbor ${index + 1}`);
+        `Link ${index + 1} description`;
+      row.querySelector('button').setAttribute('aria-label', `Remove link ${index + 1}`);
     });
   }
 
   addRow(entry, focus = false) {
-    if (this.pending || this.rows.children.length >= 50) return;
+    if (this.pending || (focus && this.rows.children.length >= 10)) return;
     const row = document.createElement('div');
-    row.className = 'row align-items-start mb-3 node-neighbors-row';
+    row.className = 'row align-items-start mb-3 node-links-row';
     const id = ++this.sequence;
     for (const key of ['url', 'description']) {
       const field = document.createElement('div');
@@ -55,7 +55,7 @@ class MoarTubeNodeNeighbors {
       label.className = 'form-label';
       label.dataset.label = key;
       const input = document.createElement(key === 'url' ? 'input' : 'textarea');
-      input.id = `node-neighbor-${id}-${key}`;
+      input.id = `node-link-${id}-${key}`;
       label.htmlFor = input.id;
       input.className = 'form-control';
       input.name = key;
@@ -105,7 +105,7 @@ class MoarTubeNodeNeighbors {
 
   async save() {
     if (this.pending) return;
-    const nodeNeighbors = [];
+    const nodeLinks = [];
     for (const [index, row] of [...this.rows.children].entries()) {
       const input = row.querySelector('input');
       const descriptionInput = row.querySelector('textarea');
@@ -124,43 +124,43 @@ class MoarTubeNodeNeighbors {
         (!validUrl || url.length > 2048 ? input : descriptionInput).focus();
         this.showAlert(
           true,
-          `Neighbor ${index + 1} needs an http:// or https:// URL (up to 2048 characters) and a description (1 to 1000 characters).`
+          `Link ${index + 1} needs an http:// or https:// URL (up to 2048 characters) and a description (1 to 1000 characters).`
         );
         return;
       }
-      nodeNeighbors.push({ url, description });
+      nodeLinks.push({ url, description });
     }
-    if (nodeNeighbors.length > 50) {
-      this.showAlert(true, 'Use up to 50 neighbors');
+    if (nodeLinks.length > 10) {
+      this.showAlert(true, 'Use up to 10 links');
       return;
     }
     this.pending = true;
     this.form.setAttribute('aria-busy', 'true');
     this.form.querySelector('fieldset').disabled = true;
-    this.status.textContent = 'Saving neighbors...';
+    this.status.textContent = 'Saving links...';
     try {
       const result = await $.ajax({
         type: 'POST',
         url: this.form.action,
-        data: JSON.stringify({ nodeNeighbors }),
+        data: JSON.stringify({ nodeLinks }),
         contentType: 'application/json; charset=utf-8',
         timeout: 30000,
       });
       if (result?.isError !== false)
-        throw new Error(result?.message || 'Unable to save neighbors.');
+        throw new Error(result?.message || 'Unable to save links.');
       this.pending = false;
       this.dirty = false;
-      this.load({ nodeNeighbors });
+      this.load({ nodeLinks });
       this.status.textContent = '';
       this.showAlert(false);
     } catch (error) {
       this.status.textContent =
-        'Neighbors were not confirmed saved. Your entries are still here; try again.';
+        'Links were not confirmed saved. Your entries are still here; try again.';
       this.showAlert(
         true,
         error.responseJSON?.message ||
           error.message ||
-          'Unable to save neighbors. Please try again.'
+          'Unable to save links. Please try again.'
       );
     } finally {
       this.pending = false;

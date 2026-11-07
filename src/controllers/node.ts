@@ -10,34 +10,6 @@ export class NodeController extends BaseController {
     this.nodeApiService = nodeApiService;
   }
 
-  public getSearch = async (
-    request: FastifyRequest<{
-      Querystring: {
-        searchTerm: string;
-        sortTerm: string;
-        tagTerm: string;
-        tagLimit: number;
-        timestamp: number;
-      };
-    }>,
-    reply: FastifyReply
-  ): Promise<FastifyReply> => {
-    try {
-      const { searchTerm, sortTerm, tagTerm, tagLimit, timestamp } = request.query;
-      const data = await this.nodeApiService.searchVideosAll(
-        searchTerm,
-        sortTerm,
-        tagTerm,
-        tagLimit,
-        timestamp
-      );
-      return await reply.send(data);
-    } catch (error) {
-      this.logger.error('Error in getSearch', error);
-      return await this.sendError(reply, 'error communicating with the MoarTube node');
-    }
-  };
-
   public getNewContentCounts = async (
     request: FastifyRequest,
     reply: FastifyReply

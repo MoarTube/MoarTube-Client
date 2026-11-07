@@ -328,20 +328,6 @@
 								</div>
 							</li>
 							<li class="nav-item ">
-								<a class="nav-link " href="/monetization">
-									<span class="sidenav-mini-icon"> M </span>
-									<span class="sidenav-normal"> Monetization </span>
-									<span id="new-comments-count-monetization-badge" class="badge badge-primary ms-1"></span>
-								</a>
-							</li>
-							<li class="nav-item ">
-								<a class="nav-link " href="/links">
-									<span class="sidenav-mini-icon"> L </span>
-									<span class="sidenav-normal"> Links </span>
-									<span id="new-comments-count-links-badge" class="badge badge-primary ms-1"></span>
-								</a>
-							</li>
-							<li class="nav-item ">
 								<a class="nav-link active " href="/settings">
 									<span class="sidenav-mini-icon"> S </span>
 									<span class="sidenav-normal"> Settings </span>
@@ -370,6 +356,9 @@
 												<path class="color-background"
 													d="M1.855,31.4066667 C3.05106558,30.2024182 4.79973884,29.7296005 6.43969145,30.1670277 C8.07964407,30.6044549 9.36054508,31.8853559 9.7979723,33.5253085 C10.2353995,35.1652612 9.76258177,36.9139344 8.55833333,38.11 C6.70666667,39.9616667 0,40 0,40 C0,40 0,33.2566667 1.855,31.4066667 Z">
 												</path>
+												<path class="color-background"
+													d="M17.2616667,3.90166667 C12.4943643,3.07192755 7.62174065,4.61673894 4.20333333,8.04166667 C3.31200265,8.94126033 2.53706177,9.94913142 1.89666667,11.0416667 C1.5109569,11.6966059 1.61721591,12.5295394 2.155,13.0666667 L5.47,16.3833333 C8.55036617,11.4946947 12.5559074,7.25476565 17.2616667,3.90166667 L17.2616667,3.90166667 Z"
+													opacity="0.598539807"></path>
 												<path class="color-background"
 													d="M36.0983333,22.7383333 C36.9280725,27.5056357 35.3832611,32.3782594 31.9583333,35.7966667 C31.0587397,36.6879974 30.0508686,37.4629382 28.9583333,38.1033333 C28.3033941,38.4890431 27.4704606,38.3827841 26.9333333,37.845 L23.6166667,34.53 C28.5053053,31.4496338 32.7452344,27.4440926 36.0983333,22.7383333 L36.0983333,22.7383333 Z"
 													opacity="0.598539807"></path>
@@ -703,7 +692,7 @@
 												<label class="form-label" for="node-name-input">Node Name</label>
 												<div class="input-group">
 													<input id="node-name-input" class="form-control"
-														name="nodeName" type="text" placeholder="node name"
+														name="nodeDisplayName" type="text" placeholder="node name"
 														onfocus="focused(this)" onfocusout="defocused(this)">
 												</div>
 											</div>
@@ -772,9 +761,9 @@
 									<div class="card-body pt-0 pb-0">
 										<div class="card-body pt-0">
 											<p class="form-label mb-1">Node Bulletin</p>
-											<p id="node-bulletin-help" class="text-sm text-secondary mb-3">Add one bulletin item per row, in the order you want them to appear. Up to 50 items, 1000 characters each. Empty rows are skipped when saving.</p>
+											<p id="node-bulletin-help" class="text-sm text-secondary mb-3">Add a bulletin item per row. Up to 10 items.</p>
 											<div id="node-bulletin-rows" aria-describedby="node-bulletin-help"></div>
-											<p id="node-bulletin-empty" class="text-sm text-secondary">No bulletin items. Add an item to get started.</p>
+											<p id="node-bulletin-empty" class="text-sm text-secondary">No bulletin items. Add them to get started.</p>
 										</div>
 									</div>
 									<div class="card-body d-flex flex-wrap justify-content-end gap-2 pt-0">
@@ -784,24 +773,60 @@
 								</fieldset>
 								<p id="node-bulletin-status" class="text-sm px-4" role="status" aria-live="polite"></p>
 							</form>
-							<form id="personalize_settings_node_neighbors_form" method="POST"
-								action="/settings/node/personalize/neighbors" aria-label="Neighbors">
+							<form id="personalize_settings_node_links_form" method="POST"
+								action="/settings/node/personalize/links" aria-label="Links">
 								<fieldset class="border-0 p-0 m-0">
 									<div class="card-body pt-0 pb-0">
 										<div class="card-body pt-0">
-											<p class="form-label mb-1">Neighbors</p>
-											<p id="node-neighbors-help" class="text-sm text-secondary mb-3">Add a URL and description for each neighbor, in display order. Up to 50 neighbors. Use http:// or https:// URLs and descriptions up to 1000 characters. Completely empty rows are skipped when saving.</p>
-											<div id="node-neighbors-rows" aria-describedby="node-neighbors-help"></div>
-											<p id="node-neighbors-empty" class="text-sm text-secondary">No neighbors. Add an item to get started.</p>
+											<p class="form-label mb-1">Node Links</p>
+											<p id="node-links-help" class="text-sm text-secondary mb-3">Add a URL and description for each link. Up to 10 links.</p>
+											<div id="node-links-rows" aria-describedby="node-links-help"></div>
+											<p id="node-links-empty" class="text-sm text-secondary">No links. Add them to get started.</p>
 										</div>
 									</div>
 									<div class="card-body d-flex flex-wrap justify-content-end gap-2 pt-0">
-										<button id="node-neighbors-add" class="btn btn-outline-primary mb-0" type="button">Add item</button>
+										<button id="node-links-add" class="btn btn-outline-primary mb-0" type="button">Add item</button>
 										<button class="btn btn-primary mb-0" type="submit">Save</button>
 									</div>
 								</fieldset>
-								<p id="node-neighbors-status" class="text-sm px-4" role="status" aria-live="polite"></p>
+								<p id="node-links-status" class="text-sm px-4" role="status" aria-live="polite"></p>
 							</form>
+							<form id="personalize_settings_node_icons_form" method="POST"
+								action="/settings/node/personalize/icons" aria-label="Node Icons">
+								<fieldset class="border-0 p-0 m-0">
+									<div class="card-body pt-0 pb-0">
+										<div class="card-body pt-0">
+											<p class="form-label mb-1">Node Icons</p>
+											<p id="node-icons-help" class="text-sm text-secondary mb-3">Add a URL and SVG graphic for each icon. Choose a sample icon or paste your own SVG. Up to 5 icons.</p>
+											<p id="node-icons-resources" class="text-sm" hidden><a href="https://icons.getbootstrap.com" target="_blank" rel="noopener noreferrer">Bootstrap Icons</a> &middot; <a href="https://fontawesome.com/icons" target="_blank" rel="noopener noreferrer">Font Awesome Icons</a></p>
+											<div id="node-icons-rows" aria-describedby="node-icons-help"></div>
+											<p id="node-icons-empty" class="text-sm text-secondary">No icons. Add them to get started.</p>
+										</div>
+									</div>
+									<div class="card-body d-flex flex-wrap justify-content-end gap-2 pt-0">
+										<button id="node-icons-add" class="btn btn-outline-primary mb-0" type="button">Add item</button>
+										<button class="btn btn-primary mb-0" type="submit">Save</button>
+									</div>
+								</fieldset>
+								<p id="node-icons-status" class="text-sm px-4" role="status" aria-live="polite"></p>
+							</form>
+
+                            <form id="personalize_settings_node_monetization_form" aria-label="Monetization">
+                                <fieldset class="border-0 p-0 m-0" disabled>
+                                    <div class="card-body pt-0 pb-0"><div class="card-body pt-0">
+                                        <p class="form-label mb-1">Monetization</p>
+                                        <p id="node-monetization-help" class="text-sm text-secondary mb-3">Add crypto donation addresses for your viewers. Up to 10 addresses.</p>
+                                        <div id="node-monetization-rows" aria-describedby="node-monetization-help"></div>
+                                        <p id="node-monetization-empty" class="text-sm text-secondary" hidden>No crypto donation addresses. Add them to get started.</p>
+                                    </div></div>
+                                    <div class="card-body d-flex flex-wrap justify-content-end gap-2 pt-0">
+                                        <button id="node-monetization-add" class="btn btn-outline-primary mb-0" type="button">Add item</button>
+                                        <button class="btn btn-primary mb-0" type="submit">Save</button>
+                                    </div>
+                                </fieldset>
+                                <p id="node-monetization-status" class="text-sm px-4" role="status" aria-live="polite">Loading donation addresses...</p>
+                                <div class="px-4 pb-3"><button id="node-monetization-retry" class="btn btn-outline-secondary btn-sm" type="button" hidden>Retry loading</button></div>
+                            </form>
 							</section>
 
 							<section class="border border-radius-lg p-3 mb-3 settings-horizontal settings-security" aria-label="Security and delivery">
@@ -1221,7 +1246,9 @@
 	<script src="/javascript/settings-cloudflare-tunnel.js"></script>
 	<script src="/javascript/settings-cloudflare-cdn.js"></script>
 	<script src="/javascript/settings-bulletin.js"></script>
-	<script src="/javascript/settings-neighbors.js"></script>
+	<script src="/javascript/settings-links.js"></script>
+	<script src="/javascript/settings-monetization.js"></script>
+	<script src="/javascript/settings-icons.js"></script>
 
 	<script>
 		const INCOMING_PARAMETERS = <%- JSON.stringify(model).replace(/</g, '\\u003c') %>;
@@ -1232,10 +1259,12 @@
 			this.INCOMING_PARAMETERS = INCOMING_PARAMETERS;
 			this.CLIENT_SETTINGS = null;
 			this.nodeBulletin = new MoarTubeNodeBulletin((isError, message) => this.showAlert(isError, message));
-			this.nodeNeighbors = new MoarTubeNodeNeighbors((isError, message) => this.showAlert(isError, message));
-			this.cloudflareTunnelToggle = new MoarTubeCloudflareTunnelToggle((isError, message) => this.showAlert(isError, message));
-			this.cloudflareCdn = new MoarTubeCloudflareCdn((isError, message) => this.showAlert(isError, message), this.cloudflareTunnelToggle, (settings) => {
-				this.loadNodeSettings(settings);
+			this.nodeIcons = new MoarTubeNodeIcons((isError, message) => this.showAlert(isError, message));
+			this.nodeMonetization = new MoarTubeNodeMonetization((isError, message) => this.showAlert(isError, message));
+			this.nodeLinks = new MoarTubeNodeLinks((isError, message) => this.showAlert(isError, message));
+			this.cloudflareTunnelToggle = new MoarTubeCloudflareTunnelToggle((isError, message) => this.showAlert(isError, message), (settings, tunnel) => this.loadNodeSettings(settings, tunnel));
+			this.cloudflareCdn = new MoarTubeCloudflareCdn((isError, message) => this.showAlert(isError, message), this.cloudflareTunnelToggle, (settings, tunnel) => {
+				this.loadNodeSettings(settings, tunnel);
 				MoarTubePublicNodeUrl.changed(settings);
 			});
 		}
@@ -1256,7 +1285,9 @@
 			const self = this;
 			this.cloudflareTunnelToggle.start();
 			this.nodeBulletin.start();
-			this.nodeNeighbors.start();
+			this.nodeIcons.start();
+			this.nodeLinks.start();
+			void this.nodeMonetization.start();
 
 			// Checkbox toggles
 			$(document).off('change', '.select-gpu').on('change', '.select-gpu', function () {
@@ -1387,10 +1418,11 @@
 
 		}
 
-		loadNodeSettings(nodeSettings) {
+		loadNodeSettings(nodeSettings, tunnel) {
 			this.nodeBulletin.load(nodeSettings);
-			this.nodeNeighbors.load(nodeSettings);
-			window.MoarTubeNodeVisitLinks?.load(nodeSettings);
+			this.nodeIcons.load(nodeSettings);
+			this.nodeLinks.load(nodeSettings);
+			window.MoarTubeNodeVisitLinks?.load(nodeSettings, tunnel);
 			this.cloudflareCdn.load(nodeSettings);
 			this.cloudflareTunnelToggle.load(nodeSettings);
 
@@ -1556,7 +1588,7 @@
 			const self = this;
 
 			let url = form.attr('action');
-			let nodeName = form.find('input[name="nodeName"]').val();
+			let nodeName = form.find('input[name="nodeDisplayName"]').val();
 
 			Swal.fire({
 				title: 'please wait',

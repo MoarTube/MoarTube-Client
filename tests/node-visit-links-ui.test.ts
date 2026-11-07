@@ -20,7 +20,6 @@ it('truncates node addresses and respects CDN and tunnel availability', async ()
     status: 'running',
     publicUrl: 'https://a-very-long-quick-tunnel-hostname.trycloudflare.com',
   };
-  let failSettings = false;
   let failTunnel = false;
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
@@ -31,7 +30,7 @@ it('truncates node addresses and respects CDN and tunnel availability', async ()
     if (url.hostname !== 'moartube.test') {
       await route.fulfill({ contentType: 'text/html', body: '<h1>Node home page</h1>' });
     } else if (url.pathname === '/settings/node') {
-      await route.fulfill({ status: failSettings ? 503 : 200, json: settings });
+      await route.fulfill({ json: settings });
     } else if (url.pathname === '/settings/node/cloudflare/tunnel') {
       await route.fulfill({ status: failTunnel ? 503 : 200, json: { isError: false, tunnel } });
     } else if (url.pathname === '/') {
@@ -81,7 +80,7 @@ it('truncates node addresses and respects CDN and tunnel availability', async ()
     await popup.close();
 
     settings.isCloudflareCdnEnabled = true;
-    await page.evaluate('visits.refresh()');
+    await page.evaluate(`MoarTubeNodeVisitLinks.load(${JSON.stringify(settings)})`);
     await browserExpect(tunnelLink).toBeHidden();
     await browserExpect(publicLink).toHaveAttribute(
       'href',
@@ -90,18 +89,18 @@ it('truncates node addresses and respects CDN and tunnel availability', async ()
 
     settings.isCloudflareCdnEnabled = false;
     settings.isCloudflareTunnelEnabled = false;
-    await page.evaluate('visits.refresh()');
+    await page.evaluate(`MoarTubeNodeVisitLinks.load(${JSON.stringify(settings)})`);
     await browserExpect(tunnelLink).toBeVisible();
     await browserExpect(tunnelLink).not.toHaveAttribute('href');
     await browserExpect(tunnelLink).toContainText('Disabled');
     settings.isCloudflareTunnelEnabled = true;
     tunnel.status = 'starting';
-    await page.evaluate('visits.refresh()');
+    await page.evaluate(`MoarTubeNodeVisitLinks.load(${JSON.stringify(settings)})`);
     await browserExpect(tunnelLink).toContainText('Starting');
     await browserExpect(tunnelLink).not.toHaveAttribute('href');
 
     tunnel.status = 'running';
-    await page.evaluate('visits.refresh()');
+    await page.evaluate(`MoarTubeNodeVisitLinks.load(${JSON.stringify(settings)})`);
     await browserExpect(tunnelLink).toHaveAttribute('href', tunnel.publicUrl + '/');
     await page.setViewportSize({ width: 390, height: 844 });
     await page.evaluate("document.body.classList.add('g-sidenav-pinned')");
@@ -112,12 +111,10 @@ it('truncates node addresses and respects CDN and tunnel availability', async ()
     expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(390);
 
     failTunnel = true;
-    await page.evaluate('visits.refresh()');
+    await page.evaluate(`MoarTubeNodeVisitLinks.load(${JSON.stringify(settings)})`);
     await browserExpect(tunnelLink).toContainText('Unavailable');
     await browserExpect(tunnelLink).not.toHaveAttribute('href');
-    failSettings = true;
-    await page.evaluate('visits.refresh()');
-    await browserExpect(publicLink).not.toHaveAttribute('href');
+    await browserExpect(publicLink).toHaveAttribute('href', 'https://' + settings.publicNodeAddress + '/');
     await page.evaluate('visits.stop()');
     expect(errors).toEqual([]);
   } finally {
@@ -128,8 +125,6 @@ it('truncates node addresses and respects CDN and tunnel availability', async ()
 it.each([
   'videos',
   'comments',
-  'links',
-  'monetization',
   'reports-comments',
   'reports-videos',
   'settings',
@@ -196,7 +191,9 @@ it.each([
         ${template.slice(start, end)}
         window.auditPage = Object.create(${className}.prototype);
         auditPage.nodeBulletin = { load() {} };
-        auditPage.nodeNeighbors = { load() {} };
+        auditPage.nodeLinks = { load() {} };
+        auditPage.nodeIcons = { load() {} };
+        auditPage.nodeMonetization = { load() {} };
         auditPage.cloudflareCdn = { load() {} };
         auditPage.cloudflareTunnelToggle = { load() {} };
         auditPage.loadNodeSettings(${JSON.stringify(settings)});

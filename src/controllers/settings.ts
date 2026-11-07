@@ -1,7 +1,12 @@
+import {
+  addDonationAddressSchema,
+  deleteDonationAddressSchema,
+} from '@/validators/node-monetization.js';
+import { setNodeIconsBodySchema } from '@/validators/node-icons.js';
 import { requireNodeSuccess } from '@/utils/node-actions.js';
 import { isValidPublicHost } from '@/utils/public-host.js';
 import { setNodeBulletinBodySchema } from '@/validators/node-bulletin.js';
-import { setNodeNeighborsBodySchema } from '@/validators/node-neighbors.js';
+import { setNodeLinksBodySchema } from '@/validators/node-links.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { BaseController } from './base.js';
 import type { NodeApiService } from '@/services/node-api.js';
@@ -42,6 +47,59 @@ import { getGpuMetrics } from '@/utils/gpu-metrics.js';
 sharp.cache(false);
 
 export class SettingsController extends BaseController {
+  public apiGetMetricsBundle = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    reply.header('Cache-Control', 'no-store');
+    try {
+      const jwtToken = request.session.jwtToken ?? '';
+      if (jwtToken === '') {
+        return await this.sendError(reply, 'Sign in to view metrics', 401);
+      }
+      const desktopPid = Number(process.env['MOARTUBE_METRICS_ROOT_PID']);
+      const rootPid = Number.isInteger(desktopPid) && desktopPid > 0 ? desktopPid : process.pid;
+      const collect = async <T>(
+        name: string,
+        load: () => Promise<T>
+      ): Promise<{ isError: false; metrics: T } | { isError: true }> => {
+        try {
+          return { isError: false as const, metrics: await load() };
+        } catch (error) {
+          this.logger.debug(`Failed to load ${name} metrics`, error);
+          return { isError: true as const };
+        }
+      };
+      const [clientCpu, clientMemory, clientDisk, clientGpu, nodeResult] = await Promise.all([
+        collect('client CPU', () => getCpuMetrics(rootPid)),
+        collect('client memory', () => getMemoryMetrics(rootPid)),
+        collect('client storage', () => this.getClientStorageMetrics()),
+        collect('client GPU', () =>
+          getGpuMetrics(this.config.clientSettings.processingAgent, rootPid)
+        ),
+        collect('node', () => this.nodeApiService.getMetricsBundle(jwtToken)),
+      ]);
+      // The authenticated Node endpoint also validates the Client session's token.
+      if (!nodeResult.isError && [401, 403].includes(nodeResult.metrics.status)) {
+        return await this.sendError(reply, 'Sign in to view metrics', nodeResult.metrics.status);
+      }
+      const unavailable = { isError: true as const };
+      const node =
+        !nodeResult.isError && nodeResult.metrics.status === 200 && !nodeResult.metrics.data.isError
+          ? nodeResult.metrics.data.metrics
+          : undefined;
+      return await this.sendSuccess(reply, {
+        metrics: {
+          client: { cpu: clientCpu, memory: clientMemory, disk: clientDisk, gpu: clientGpu },
+          node: node ?? { cpu: unavailable, memory: unavailable, disk: unavailable },
+        },
+      });
+    } catch (error) {
+      this.logger.error('Failed to load metrics', error);
+      return await this.sendError(reply, 'Unable to load metrics');
+    }
+  };
+
   public apiGetMemoryMetrics = async (
     request: FastifyRequest,
     reply: FastifyReply
@@ -125,6 +183,22 @@ export class SettingsController extends BaseController {
 
   private metricsScan: Promise<StorageMetrics> | undefined;
 
+  private getClientStorageMetrics(): Promise<StorageMetrics> {
+    this.metricsScan ??= getStorageMetrics(path.join(this.config.paths.data, 'media')).finally(
+      () => {
+        this.metricsScan = undefined;
+      }
+    );
+    return this.metricsScan;
+  }
+
+  private async getNodeStorageMetrics(jwtToken: string): Promise<StorageMetrics> {
+    const settings = await this.nodeApiService.getNodeSettings(jwtToken);
+    return settings.storageConfig?.storageMode === 's3provider'
+      ? { storageMode: 's3provider', mediaBytes: null, availableBytes: null, totalBytes: null }
+      : await this.nodeApiService.getStorageMetrics(jwtToken);
+  }
+
   public apiGetMetrics = async (
     request: FastifyRequest,
     reply: FastifyReply
@@ -141,27 +215,14 @@ export class SettingsController extends BaseController {
       }
       const { target } = request.params as { target: string };
       if (target === 'node') {
-        const settings = await this.nodeApiService.getNodeSettings(jwtToken);
-        const metrics: StorageMetrics =
-          settings.storageConfig?.storageMode === 's3provider'
-            ? {
-                storageMode: 's3provider',
-                mediaBytes: null,
-                availableBytes: null,
-                totalBytes: null,
-              }
-            : await this.nodeApiService.getStorageMetrics(jwtToken);
-        return await this.sendSuccess(reply, { metrics });
+        return await this.sendSuccess(reply, {
+          metrics: await this.getNodeStorageMetrics(jwtToken),
+        });
       }
       if (target !== 'client') {
         return await this.sendError(reply, 'Unknown metrics target', 404);
       }
-      this.metricsScan ??= getStorageMetrics(path.join(this.config.paths.data, 'media')).finally(
-        () => {
-          this.metricsScan = undefined;
-        }
-      );
-      return await this.sendSuccess(reply, { metrics: await this.metricsScan });
+      return await this.sendSuccess(reply, { metrics: await this.getClientStorageMetrics() });
     } catch (error) {
       this.logger.error('Failed to load storage metrics', error);
       return await this.sendError(reply, 'Unable to load storage metrics');
@@ -526,7 +587,7 @@ export class SettingsController extends BaseController {
     if (!parsed.success) {
       return await this.sendError(
         reply,
-        'Use up to 50 bulletin items, each with 1 to 1000 characters',
+        'Use up to 10 bulletin items, each with 1 to 1000 characters',
         400
       );
     }
@@ -540,31 +601,148 @@ export class SettingsController extends BaseController {
     }
   };
 
-  // API: POST /settings/node/personalize/neighbors
-  public apiSetNodeNeighbors = async (
+  public apiGetMonetization = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    reply.header('Cache-Control', 'no-store');
+    if ((request.session.jwtToken ?? '') === '') {
+      return await this.sendError(reply, 'Sign in to edit monetization', 401);
+    }
+    try {
+      return await reply.send(await this.nodeApiService.getMonetizationAll());
+    } catch (error) {
+      this.logger.error('Unable to load donation addresses', error);
+      return await this.sendError(
+        reply,
+        'Unable to load donation addresses. Please try again.',
+        502
+      );
+    }
+  };
+
+  public apiAddDonationAddress = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    reply.header('Cache-Control', 'no-store');
+    const token = request.session.jwtToken ?? '';
+    if (token === '') {
+      return await this.sendError(reply, 'Sign in to edit monetization', 401);
+    }
+    const parsed = addDonationAddressSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return await this.sendError(
+        reply,
+        'Enter a wallet address and matching ETH or BNB chain and currency',
+        400
+      );
+    }
+    try {
+      const addresses = await this.nodeApiService.getMonetizationAll();
+      if (addresses.isError || !Array.isArray(addresses.cryptoWalletAddresses)) {
+        return await this.sendError(
+          reply,
+          'Unable to check donation addresses. Please try again.',
+          502
+        );
+      }
+      if (addresses.cryptoWalletAddresses.length >= 10) {
+        return await this.sendError(reply, 'Use up to 10 donation addresses', 400);
+      }
+      const { walletAddress, chain, currency } = parsed.data;
+      return await reply.send(
+        await this.nodeApiService.addMonetizationAddress(token, walletAddress, chain, currency)
+      );
+    } catch (error) {
+      this.logger.error('Unable to add donation address', error);
+      return await this.sendError(reply, 'Unable to add donation address. Please try again.', 502);
+    }
+  };
+
+  public apiDeleteDonationAddress = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    reply.header('Cache-Control', 'no-store');
+    const token = request.session.jwtToken ?? '';
+    if (token === '') {
+      return await this.sendError(reply, 'Sign in to edit monetization', 401);
+    }
+    const parsed = deleteDonationAddressSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return await this.sendError(reply, 'Choose a saved donation address', 400);
+    }
+    try {
+      return await reply.send(
+        await this.nodeApiService.deleteMonetizationAddress(
+          token,
+          parsed.data.cryptoWalletAddressId
+        )
+      );
+    } catch (error) {
+      this.logger.error('Unable to remove donation address', error);
+      return await this.sendError(
+        reply,
+        'Unable to remove donation address. Please try again.',
+        502
+      );
+    }
+  };
+
+  // API: POST /settings/node/personalize/links
+  public apiSetNodeLinks = async (
     request: FastifyRequest,
     reply: FastifyReply
   ): Promise<FastifyReply> => {
     reply.header('Cache-Control', 'no-store');
     const jwtToken = request.session.jwtToken ?? '';
     if (jwtToken === '') {
-      return await this.sendError(reply, 'Sign in to edit the neighbors', 401);
+      return await this.sendError(reply, 'Sign in to edit the links', 401);
     }
-    const parsed = setNodeNeighborsBodySchema.safeParse(request.body);
+    const parsed = setNodeLinksBodySchema.safeParse(request.body);
     if (!parsed.success) {
       return await this.sendError(
         reply,
-        'Use up to 50 neighbors, each with an HTTP(S) URL and a description of 1 to 1000 characters',
+        'Use up to 10 links, each with an HTTP(S) URL and a description of 1 to 1000 characters',
         400
       );
     }
     try {
       return await reply.send(
-        await this.nodeApiService.setNodeNeighbors(jwtToken, parsed.data.nodeNeighbors)
+        await this.nodeApiService.setNodeLinks(jwtToken, parsed.data.nodeLinks)
       );
     } catch (error) {
-      this.logger.error('Unable to save node neighbors', error);
-      return await this.sendError(reply, 'Unable to save neighbors. Please try again.', 502);
+      this.logger.error('Unable to save node links', error);
+      return await this.sendError(reply, 'Unable to save links. Please try again.', 502);
+    }
+  };
+
+  // API: POST /settings/node/personalize/icons
+  public apiSetNodeIcons = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    reply.header('Cache-Control', 'no-store');
+    const jwtToken = request.session.jwtToken ?? '';
+    if (jwtToken === '') {
+      return await this.sendError(reply, 'Sign in to edit the icons', 401);
+    }
+    const parsed = setNodeIconsBodySchema.safeParse(request.body);
+    if (!parsed.success) {
+      return await this.sendError(
+        reply,
+        'Use up to 5 icons, each with an HTTP(S) URL and an SVG graphic of 1 to 50000 characters',
+        400
+      );
+    }
+    try {
+      return await reply.send(
+        await this.nodeApiService.setNodeIcons(jwtToken, parsed.data.nodeIcons)
+      );
+    } catch (error) {
+      this.logger.error('Unable to save node icons', error);
+      return await this.sendError(reply, 'Unable to save icons. Please try again.', 502);
     }
   };
 

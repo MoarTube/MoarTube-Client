@@ -1,17 +1,17 @@
-import type { NodeNeighbor } from '../src/types/node-api.js';
+import type { NodeIcon } from '../src/types/node-api.js';
 import Fastify from 'fastify';
 import { expect, it, vi } from 'vitest';
 import { SettingsController } from '../src/controllers/settings.js';
 import { NodeApiService } from '../src/services/node-api.js';
 import { settingsRoutes } from '../src/routes/settings.js';
 
-it('forwards ordered neighbors arrays and clears them through the actual Client route', async () => {
+it('forwards ordered links arrays and clears them through the actual Client route', async () => {
   const node = Fastify();
-  let saved: NodeNeighbor[] = [];
-  node.post('/settings/personalize/neighbors', (request) => {
+  let saved: NodeIcon[] = [];
+  node.post('/settings/personalize/icons', (request) => {
     expect(request.headers.authorization).toBe('Bearer token');
-    saved = (request.body as { nodeNeighbors: NodeNeighbor[] }).nodeNeighbors;
-    return { isError: false, nodeNeighbors: saved };
+    saved = (request.body as { nodeIcons: NodeIcon[] }).nodeIcons;
+    return { isError: false, nodeIcons: saved };
   });
   await node.listen({ host: '127.0.0.1', port: 0 });
   const address = node.server.address() as { port: number };
@@ -38,46 +38,47 @@ it('forwards ordered neighbors arrays and clears them through the actual Client 
     { prefix: '/settings' }
   );
   try {
-    for (const nodeNeighbors of [
+    for (const nodeIcons of [
       [
-        { url: ' https://rivet.tube ', description: ' Indie film and art ' },
-        { url: 'http://localhost:9090', description: 'Local neighbor' },
+        { url: ' https://rivet.tube ', svgGraphic: ' <svg/> ' },
+        { url: 'http://localhost:9090', svgGraphic: '<svg></svg>' },
       ],
+      Array.from({ length: 5 }, () => ({ url: 'https://rivet.tube', svgGraphic: '<svg/>' })),
       [],
     ]) {
       const response = await client.inject({
         method: 'POST',
-        url: '/settings/node/personalize/neighbors',
-        payload: { nodeNeighbors },
+        url: '/settings/node/personalize/icons',
+        payload: { nodeIcons },
       });
       expect(response.statusCode).toBe(200);
       expect(saved).toEqual(
-        nodeNeighbors.map((item) => ({
+        nodeIcons.map((item) => ({
           url: item.url.trim(),
-          description: item.description.trim(),
+          svgGraphic: item.svgGraphic.trim(),
         }))
       );
-      expect(response.json()).toEqual({ isError: false, nodeNeighbors: saved });
+      expect(response.json()).toEqual({ isError: false, nodeIcons: saved });
     }
-    for (const nodeNeighbors of [
+    for (const nodeIcons of [
       null,
       'text',
       [1],
       ['text'],
-      [{ url: 'javascript:alert(1)', description: 'Bad protocol' }],
-      [{ url: 'ftp://example.com', description: 'Wrong protocol' }],
+      [{ url: 'javascript:alert(1)', svgGraphic: 'Bad protocol' }],
+      [{ url: 'ftp://example.com', svgGraphic: 'Wrong protocol' }],
       [{ url: 'https://rivet.tube' }],
-      [{ url: 'rivet.tube', description: 'Incomplete URL' }],
-      [{ url: 'https://rivet.tube', description: ' ' }],
-      [{ url: 'https://rivet.tube', description: 'x'.repeat(1001) }],
-      Array(51).fill({ url: 'https://rivet.tube', description: 'Neighbor' }),
+      [{ url: 'rivet.tube', svgGraphic: 'Incomplete URL' }],
+      [{ url: 'https://rivet.tube', svgGraphic: ' ' }],
+      [{ url: 'https://rivet.tube', svgGraphic: 'x'.repeat(50001) }],
+      Array(6).fill({ url: 'https://rivet.tube', svgGraphic: '<svg/>' }),
     ]) {
       expect(
         (
           await client.inject({
             method: 'POST',
-            url: '/settings/node/personalize/neighbors',
-            payload: { nodeNeighbors },
+            url: '/settings/node/personalize/icons',
+            payload: { nodeIcons },
           })
         ).statusCode
       ).toBe(400);
@@ -92,7 +93,7 @@ it('forwards ordered neighbors arrays and clears them through the actual Client 
 
 it('rejects unsigned requests and reports transport failures without losing the draft', async () => {
   const api = {
-    setNodeNeighbors: vi.fn().mockRejectedValue(new Error('Private transport details')),
+    setNodeIcons: vi.fn().mockRejectedValue(new Error('Private transport details')),
   };
   const controller = new SettingsController({} as never, api as never, {} as never, {} as never);
   const app = Fastify();
@@ -101,13 +102,13 @@ it('rejects unsigned requests and reports transport failures without losing the 
     request.session = { jwtToken: token } as never;
     done();
   });
-  app.post('/neighbors', controller.apiSetNodeNeighbors);
+  app.post('/icons', controller.apiSetNodeIcons);
   try {
-    const payload = { nodeNeighbors: [{ url: 'https://rivet.tube', description: 'Draft' }] };
-    expect((await app.inject({ method: 'POST', url: '/neighbors', payload })).statusCode).toBe(401);
-    expect(api.setNodeNeighbors).not.toHaveBeenCalled();
+    const payload = { nodeIcons: [{ url: 'https://rivet.tube', svgGraphic: '<svg/>' }] };
+    expect((await app.inject({ method: 'POST', url: '/icons', payload })).statusCode).toBe(401);
+    expect(api.setNodeIcons).not.toHaveBeenCalled();
     token = 'token';
-    const response = await app.inject({ method: 'POST', url: '/neighbors', payload });
+    const response = await app.inject({ method: 'POST', url: '/icons', payload });
     expect(response.statusCode).toBe(502);
     expect(response.body).not.toContain('Private transport details');
   } finally {

@@ -139,7 +139,8 @@ class MoarTubeCloudflareCdn {
       if (refreshed) {
         this.load(settings.value);
         this.tunnels.load(settings.value);
-        this.onSettingsChanged(settings.value);
+        this.onSettingsChanged(settings.value,
+          runtime.status === 'fulfilled' && !runtime.value?.isError ? runtime.value?.tunnel ?? null : null);
       } else this.checkbox.prop('checked', this.confirmed);
       const runtimeFailed =
         runtime.status === 'rejected' ||

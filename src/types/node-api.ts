@@ -1,3 +1,20 @@
+import type { CpuMetrics } from '@/utils/cpu-metrics.js';
+import type { MemoryMetrics } from '@/utils/memory-metrics.js';
+import type { StorageMetrics } from '@/utils/storage-metrics.js';
+
+export type MetricResult<T> = { isError: false; metrics: T } | { isError: true };
+
+export interface NodeMetricsBundle {
+  cpu: MetricResult<CpuMetrics>;
+  memory: MetricResult<MemoryMetrics>;
+  disk: MetricResult<StorageMetrics>;
+}
+
+export interface NodeMetricsResponse {
+  status: number;
+  data: { isError: boolean; metrics?: NodeMetricsBundle };
+}
+
 export interface S3ProviderCredentials {
   accessKeyId: string;
   secretAccessKey: string;
@@ -24,7 +41,12 @@ export interface StorageConfig {
   [key: string]: unknown;
 }
 
-export interface NodeNeighbor {
+export interface NodeIcon {
+  url: string;
+  svgGraphic: string;
+}
+
+export interface NodeLink {
   url: string;
   description: string;
 }
@@ -33,7 +55,8 @@ export interface NodeSettings {
   nodeName?: string;
   nodeHeadline?: string;
   nodeBulletin?: string[];
-  nodeNeighbors?: NodeNeighbor[];
+  nodeLinks?: NodeLink[];
+  nodeIcons?: NodeIcon[];
   nodeDescription?: string;
   publicNodeProtocol?: string;
   publicNodeAddress?: string;

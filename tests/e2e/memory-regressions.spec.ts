@@ -18,20 +18,6 @@ declare global {
 const client = path.resolve('.');
 const node = path.resolve(process.env['MOARTUBE_NODE_SOURCE_DIR'] ?? '../MoarTube-Node');
 let mediaDirectory: string;
-const video = (id: number) => ({
-  video_id: String(id),
-  title: `Video ${id}`,
-  tags: 'test',
-  views: 0,
-  comments: 0,
-  likes: 0,
-  dislikes: 0,
-  bandwidth: 0,
-  creation_timestamp: 100,
-  length_timestamp: '00:02:40',
-  is_live: false,
-  is_streaming: false,
-});
 const information = {
   nodeVideoCount: 205,
   nodeName: 'Fixture Node',
@@ -103,36 +89,6 @@ async function routes(page: Page) {
         }),
       });
     }
-    if (name === '/videos') {
-      const model = {
-        informationData: { isError: false, information },
-        linksData: { links: [] },
-        cryptoWalletAddressesData: { cryptoWalletAddresses: [] },
-        tagsData: { tags: ['test'] },
-        searchResultsData: {
-          searchResults: Array.from({ length: 5 }, (_, i) => video(i)),
-          offset: 0,
-          hasMore: true,
-        },
-        externalResourcesBaseUrl: 'http://memory.local',
-        externalVideosBaseUrl: 'http://memory.local',
-      };
-      return route.fulfill({
-        contentType: 'text/html',
-        body: await ejs.renderFile(path.join(node, 'public/views/node.ejs'), { model }),
-      });
-    }
-    if (name === '/node/search') {
-      const offset = Number(url.searchParams.get('offset') || 0);
-      return route.fulfill({
-        json: {
-          isError: false,
-          searchResults: Array.from({ length: 5 }, (_, i) => video(offset + i)),
-          offset,
-          hasMore: offset < 100,
-        },
-      });
-    }
     const asset = name.startsWith('/external/resources/')
       ? path.join(node, 'public', name.slice('/external/resources/'.length))
       : path.join(client, 'public', name);
@@ -198,7 +154,7 @@ test.afterAll(async () => {
 });
 
 for (const kind of ['videos', 'comments']) {
-  test(`moderation ${kind} pages keep navigation and search functional`, async ({ page }) => {
+  test(`moderation ${kind} pages keep pagination functional`, async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await routes(page);
@@ -208,27 +164,9 @@ for (const kind of ['videos', 'comments']) {
     await reportNav.getByRole('link', { name: 'Next reports' }).click();
     await expect(reportNav).toContainText('Page 4');
     await expect(page.getByRole('navigation', { name: 'Archive pages' })).toContainText('Page 4');
-    const search = page.getByRole('textbox', { name: 'Search reports and archives' });
-    await search.fill('other');
-    await search.press('Enter');
-    await expect(reportNav).toContainText('Page 1');
     expect(errors).toEqual([]);
   });
 }
-
-test('catalog pages replace visible results instead of retaining prior pages', async ({ page }) => {
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  await routes(page);
-  await page.goto('http://memory.local/videos');
-  await page.getByRole('button', { name: 'Next', exact: true }).click();
-  await expect(page.getByText('Video 100', { exact: true })).toBeVisible();
-  await expect(page.getByText('Video 0', { exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeDisabled();
-  await page.getByRole('button', { name: 'Previous', exact: true }).click();
-  await expect(page.getByText('Video 0', { exact: true })).toBeVisible();
-  expect(errors).toEqual([]);
-});
 
 test('HLS playback and seeking work with a finite media back buffer', async ({ page }) => {
   await page.goto('about:blank');

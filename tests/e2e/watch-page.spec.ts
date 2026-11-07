@@ -263,6 +263,7 @@ async function fixture(
 test('metadata is inert in scripts, recommendation titles, and tags', async ({ page }) => {
   const { errors, title, text } = await fixture(page, { malicious: true });
   await expect(page.locator('#node-name')).toHaveText('Fixture');
+  await expect(page.locator('a[href="/"] img[src$="/icon.png"]')).toHaveCount(1);
   await expect(page.locator('#node-headline')).toHaveCount(0);
   await expect(page.locator('#video-title')).toHaveText(title);
   await expect(page.locator('#video-information-description')).toHaveText(text);

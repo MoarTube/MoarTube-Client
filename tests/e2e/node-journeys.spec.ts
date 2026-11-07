@@ -23,18 +23,17 @@ test('Client publication is discoverable through Node search, sorting and tags',
   publishedVideo: video,
   viewerPage: viewer,
 }) => {
-  await viewer.goto('/videos');
+  await viewer.goto('/');
   await viewer.locator('#search-input').fill(video.title);
-  const card = viewer.locator(`#videos-container a[href="/watch?v=${video.id}"]`);
+  const card = viewer.locator(`#video-grid .video-title a[href="/watch?v=${video.id}"]`);
   await expect(card).toHaveCount(1);
   await expect(card).toContainText(video.title);
-  for (const sort of ['popular', 'oldest', 'latest']) {
-    const response = clientResponse(viewer, '/node/search', 'GET');
-    await viewer.locator(`#sort-button-${sort}`).click();
-    await expectSuccess(response);
+  for (const sort of ['viewed', 'discussed', 'new', 'hot']) {
+    await viewer.locator(`[data-sort="${sort}"]`).click();
+    await expect(viewer.locator(`[data-sort="${sort}"]`)).toHaveAttribute('aria-pressed', 'true');
     await expect(card).toHaveCount(1);
   }
-  await viewer.locator('.tag-button').filter({ hasText: /^e2e$/ }).click();
+  await viewer.locator('#tag-rail button').filter({ hasText: /^e2e/ }).first().click();
   await expect(card).toHaveCount(1);
   await card.click();
   await expect(viewer.locator('#video-title')).toHaveText(video.title);

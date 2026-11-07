@@ -4,8 +4,6 @@ import { test, expect } from './fixtures.js';
 for (const [route, selector] of [
   ['/videos', '#videos_table'],
   ['/settings', '#client-settings-container'],
-  ['/links', '#links-table'],
-  ['/monetization', '#crypto-wallet-addresses-table'],
   ['/comments', '#comments-table'],
   ['/reports/videos', '#video-reports-table'],
   ['/reports/comments', '#comment-reports-table'],
@@ -16,6 +14,8 @@ for (const [route, selector] of [
     const response = await page.goto(route);
     expect(response?.status()).toBe(200);
     await expect(page.locator(selector)).toBeVisible();
+    await expect(page.locator('#sidenav-main a[href="/links"]')).toHaveCount(0);
+    await expect(page.locator('#sidenav-main a[href="/monetization"]')).toHaveCount(0);
     await expect(page.locator('#sidenav-main a[href="/settings"]')).toBeVisible();
     await expect(page.locator('#node-link')).toHaveJSProperty('tagName', 'DIV');
     await expect(page.locator('[data-node-public-link]')).toHaveAttribute('href', /^https?:\/\//);
@@ -51,3 +51,17 @@ for (const [route, table] of [
     expect(await (await checked).json()).toMatchObject({ isError: false });
   });
 }
+
+test('retired Links page redirects to Node Icons settings', async ({ signedInPage: page }) => {
+  await page.goto('/links');
+  await expect(page).toHaveURL(/\/settings#personalize_settings_node_icons_form$/);
+  await expect(page.getByRole('form', { name: 'Node Icons', exact: true })).toBeVisible();
+});
+
+test('retired Monetization page redirects to personalization settings', async ({
+  signedInPage: page,
+}) => {
+  await page.goto('/monetization');
+  await expect(page).toHaveURL(/\/settings#personalize_settings_node_monetization_form$/);
+  await expect(page.getByRole('form', { name: 'Monetization', exact: true })).toBeVisible();
+});

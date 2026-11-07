@@ -26,7 +26,29 @@ export function settingsRoutes(
     settingsController.getSettingsPage.bind(settingsController)
   );
 
+  fastify.get(
+    '/node/personalize/monetization',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiGetMonetization
+  );
+  fastify.post(
+    '/node/personalize/monetization/add',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiAddDonationAddress
+  );
+  fastify.post(
+    '/node/personalize/monetization/delete',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiDeleteDonationAddress
+  );
+
   // Client API
+  fastify.get(
+    '/metrics',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiGetMetricsBundle
+  );
+
   fastify.get(
     '/metrics/client/gpu',
     { schema: { tags: ['Settings'] } },
@@ -156,9 +178,15 @@ export function settingsRoutes(
   );
 
   fastify.post(
-    '/node/personalize/neighbors',
+    '/node/personalize/icons',
+    { bodyLimit: 3 * 1024 * 1024, schema: { tags: ['Settings'] } },
+    settingsController.apiSetNodeIcons
+  );
+
+  fastify.post(
+    '/node/personalize/links',
     { schema: { tags: ['Settings'] } },
-    settingsController.apiSetNodeNeighbors
+    settingsController.apiSetNodeLinks
   );
 
   fastify.post(

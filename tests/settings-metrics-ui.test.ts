@@ -24,59 +24,19 @@ it('shows local and S3 metrics, refreshes, and isolates node failures at desktop
   let pendingDisk: Promise<void> | undefined;
   await page.route('http://moartube.test/**', async (route) => {
     const pathname = new URL(route.request().url()).pathname;
-    if (pathname === '/settings/metrics/client/gpu') {
-      await route.fulfill({
-        status: gpuFailed ? 500 : 200,
-        json: { isError: gpuFailed, metrics: { encodePercent: gpuPercent, decodePercent: gpuPercent / 10, memoryUsedBytes: gpuPercent > 0 ? 2 * 1024 ** 3 : 0, memoryTotalBytes: gpuPercent > 0 ? 16 * 1024 ** 3 : 0, appEncodePercent: gpuAppUnavailable ? null : gpuPercent * 0.75, appDecodePercent: gpuAppUnavailable ? null : gpuPercent / 20, appMemoryBytes: gpuAppUnavailable ? null : (gpuPercent > 0 ? 512 * 1024 ** 2 : 0) } },
-      });
-      return;
-    }
-    if (pathname.endsWith('/cpu')) {
-      const node = pathname.includes('/node/');
-      await route.fulfill({
-        status: cpuFailed && node ? 500 : 200,
-        json: { isError: cpuFailed && node, metrics: { usedPercent: node ? 87.5 : cpuPercent, appPercent: cpuAppUnavailable ? null : (node ? 25 : 5) } },
-      });
-      return;
-    }
-    if (pathname.endsWith('/memory')) {
-      const node = pathname.includes('/node/');
-      await route.fulfill({
-        status: memoryFailed && node ? 500 : 200,
-        json: {
-          isError: memoryFailed && node,
-          metrics: {
-            appBytes: (node ? 3 : 2) * 1024 ** 3,
-            availableBytes: 4 * 1024 ** 3,
-            totalBytes: 16 * 1024 ** 3,
-          },
-        },
-      });
-      return;
-    }
-    if (pathname.startsWith('/settings/metrics/') && pathname.endsWith('/disk')) {
+    if (pathname === '/settings/metrics') {
       await pendingDisk;
-      const node = pathname.endsWith('/node/disk');
-      await route.fulfill({
-        status: failed && node ? 500 : 200,
-        json: {
-          isError: failed && node,
-          metrics:
-            s3 && node
-              ? {
-                  storageMode: 's3provider',
-                  mediaBytes: null,
-                  availableBytes: null,
-                  totalBytes: null,
-                }
-              : {
-                  storageMode: 'filesystem',
-                  mediaBytes: node ? 1024 : bytes,
-                  availableBytes: 1073741824,
-                  totalBytes: 10737418240,
-                },
-        },
+      const targetMetrics = (node: boolean) => ({
+        cpu: { isError: cpuFailed && node, metrics: { usedPercent: node ? 87.5 : cpuPercent, appPercent: cpuAppUnavailable ? null : (node ? 25 : 5) } },
+        memory: { isError: memoryFailed && node, metrics: { appBytes: (node ? 3 : 2) * 1024 ** 3, availableBytes: 4 * 1024 ** 3, totalBytes: 16 * 1024 ** 3 } },
+        disk: { isError: failed && node, metrics: s3 && node
+          ? { storageMode: 's3provider', mediaBytes: null, availableBytes: null, totalBytes: null }
+          : { storageMode: 'filesystem', mediaBytes: node ? 1024 : bytes, availableBytes: 1073741824, totalBytes: 10737418240 } },
       });
+      await route.fulfill({ json: { isError: false, metrics: {
+        client: { ...targetMetrics(false), gpu: { isError: gpuFailed, metrics: { encodePercent: gpuPercent, decodePercent: gpuPercent / 10, memoryUsedBytes: gpuPercent > 0 ? 2 * 1024 ** 3 : 0, memoryTotalBytes: gpuPercent > 0 ? 16 * 1024 ** 3 : 0, appEncodePercent: gpuAppUnavailable ? null : gpuPercent * 0.75, appDecodePercent: gpuAppUnavailable ? null : gpuPercent / 20, appMemoryBytes: gpuAppUnavailable ? null : (gpuPercent > 0 ? 512 * 1024 ** 2 : 0) } } },
+        node: targetMetrics(true),
+      } } });
       return;
     }
     if (pathname === '/') {
@@ -167,7 +127,7 @@ it('shows local and S3 metrics, refreshes, and isolates node failures at desktop
     bytes = 2 * 1024 ** 3;
     cpuPercent = 25;
     gpuPercent = 0;
-    const refreshing = page.waitForRequest('**/settings/metrics/client/disk');
+    const refreshing = page.waitForRequest('**/settings/metrics');
     await interval.selectOption('1');
     await refreshing;
     await browserExpect(page.locator('#metrics-client')).toHaveAttribute('aria-busy', 'true');

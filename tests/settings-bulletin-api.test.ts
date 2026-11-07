@@ -37,7 +37,7 @@ it('forwards ordered bulletin arrays and clears them through the actual Client r
     { prefix: '/settings' }
   );
   try {
-    for (const nodeBulletin of [[' One ', 'Two'], []]) {
+    for (const nodeBulletin of [[' One ', 'Two'], Array.from({ length: 10 }, () => 'Item'), []]) {
       const response = await client.inject({
         method: 'POST',
         url: '/settings/node/personalize/bulletin',
@@ -53,7 +53,7 @@ it('forwards ordered bulletin arrays and clears them through the actual Client r
       [1],
       [' '],
       ['x'.repeat(1001)],
-      Array(51).fill('x'),
+      Array(11).fill('x'),
     ]) {
       expect(
         (
