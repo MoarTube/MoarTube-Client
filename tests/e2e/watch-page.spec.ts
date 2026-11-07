@@ -236,6 +236,9 @@ async function fixture(
     if (url.pathname.endsWith('/views/increment')) {
       return route.fulfill({ json: { isError: false, views: 2 } });
     }
+    if (url.pathname.endsWith('/comments/cache')) {
+      return route.fulfill({ json: { isError: false, epoch: model.commentsData.cacheEpoch, version: 1, comments: [], deletedIds: [], totalCount: 1, hasMore: false } });
+    }
     if (url.pathname.endsWith('/comments')) {
       return route.fulfill({
         json: {
@@ -257,7 +260,8 @@ async function fixture(
     return route.fulfill({ body: '', status: 404 });
   });
   await page.goto(host + '/watch?v=' + id + '&t=' + time);
-  await expect(page.locator('#pc1')).toBeVisible();
+  expect(await page.evaluate(() => document.compatMode)).toBe('CSS1Compat');
+  await expect(page.locator('#pc1')).toBeAttached();
   return { errors, mediaRequests, documentRequests, title, text };
 }
 test('metadata is inert in scripts, recommendation titles, and tags', async ({ page }) => {
@@ -542,3 +546,277 @@ test('native progressive video defers loading after blocked autoplay and starts 
   expect(documentRequests).toHaveLength(1);
   expect(errors).toEqual([]);
 });
+
+for (const width of [390, 1448]) {
+  test(`watch palette follows saved light and dark themes at width ${width}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ colorScheme: 'dark' });
+    const { errors } = await fixture(page);
+    await expect(page.locator('#moartube-logo')).toHaveAttribute('href', 'https://www.moartube.com');
+    await expect(page.locator('#watch-node-banner')).toHaveAttribute('href', '/');
+    await expect(page.locator('#watch-node-banner img')).toBeVisible();
+    const branding = await page.evaluate(() => {
+      const logo = document.querySelector('#moartube-logo-light')!.getBoundingClientRect();
+      const banner = document.querySelector('#watch-node-banner img')!.getBoundingClientRect();
+      const divider = document.querySelector('.watch-brand-divider')!.getBoundingClientRect();
+      return { logoWidth: logo.width, logoHeight: logo.height, bannerWidth: banner.width, bannerHeight: banner.height, ordered: logo.right < divider.left && divider.right < banner.left, overflow: document.documentElement.scrollWidth > innerWidth };
+    });
+    expect(branding).toEqual({ logoWidth: 90, logoHeight: 20, bannerWidth: 90, bannerHeight: 20, ordered: true, overflow: false });
+    for (const side of ['top', 'right', 'bottom', 'left']) {
+      await expect(page.locator('#video-player-information')).toHaveCSS('padding-' + side, width < 992 ? '16px' : '24px');
+    }
+    const lightPage = width < 992 ? 'rgb(255, 255, 255)' : 'rgb(237, 240, 243)';
+    await expect(page.locator('body')).toHaveCSS('background-color', lightPage);
+    await expect(page.locator('#video-player-information')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+    await page.locator('#navbar-settings-button').click();
+    await page.locator('#darkModeSwitch').check();
+    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(24, 26, 30)');
+    await expect(page.locator('#video-player-information')).toHaveCSS('background-color', 'rgb(34, 37, 42)');
+    await expect(page.locator('#video-comments-outer')).toHaveCSS('color', 'rgb(238, 238, 238)');
+    await expect(page.locator('.video-recommendation-card').first()).toHaveCSS('background-color', 'rgb(34, 37, 42)');
+    await expect(page.locator('#comment-input-form-static textarea')).toHaveCSS('color', 'rgb(238, 238, 238)');
+    await expect(page.locator('#pc1 .postInfo .postNum a').first()).toHaveCSS('color', 'rgb(170, 170, 170)');
+    await expect(page.locator('#video-player-information a').first()).toHaveCSS('text-decoration-line', 'none');
+    await page.locator('#settingsModal .btn-close').click();
+    await expect(page.locator('#settingsModal')).toBeHidden();
+    await expect(page.locator('.modal-backdrop')).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath('watch-dark.png') });
+    await page.reload();
+    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(24, 26, 30)');
+    await page.locator('#navbar-settings-button').click();
+    await page.locator('#darkModeSwitch').uncheck();
+    await expect(page.locator('body')).toHaveCSS('background-color', lightPage);
+    expect(errors).toEqual([]);
+  });
+}
+
+test('selected tag recommendations survive a desktop comment permalink and mobile breakpoint changes', async ({ page }) => {
+  await page.setViewportSize({ width: 1448, height: 900 });
+  const { errors } = await fixture(page);
+  await page.locator('[data-tagterm="test"]').click();
+  await expect(page.locator('#recommended-videos-list > li')).toHaveCount(1);
+  await page.locator('#pc1 .postInfo.desktop a[href="#p1"]').click();
+  await expect(page).toHaveURL(/#p1$/);
+  await expect(page.locator('#recommended-videos-list-container')).toBeVisible();
+  await expect(page.locator('#recommended-videos-list > li')).toHaveCount(1);
+  await page.locator('[data-tagterm=""]').click();
+  await expect(page.locator('#recommended-videos-list > li')).toHaveCount(1);
+  await page.setViewportSize({ width: 390, height: 900 });
+  await expect(page.locator('#recommended-videos-list-container')).toBeHidden();
+  await page.setViewportSize({ width: 1448, height: 900 });
+  await expect(page.locator('#recommended-videos-list-container')).toBeVisible();
+  await expect(page.locator('#recommended-videos-list > li')).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+for (const width of [390, 1448]) {
+  test(`watch details and comment composer match the approved layout at width ${width}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const { errors } = await fixture(page);
+    for (const tag of await page.locator('.recommendation-category-button').all()) {
+      await expect(tag).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+      await expect(tag).toHaveCSS('color', 'rgb(0, 0, 0)');
+      await tag.hover();
+      await expect(tag).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+    }
+    await page.locator('[data-tagterm="test"]').click();
+    await expect(page.locator('[data-tagterm="test"]')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+    if (width < 992) await page.locator('#expand-comment-section').click();
+    await expect(page.locator('.watch-comments-heading')).toHaveText('Comments ' + String.fromCodePoint(0xb7) + ' 1');
+    await expect(page.locator('#video-title')).toHaveCSS('font-weight', '700');
+    const input = page.locator('#comment-input-form-static textarea');
+    await expect(input).toHaveCSS('border-top-width', '1px');
+    await expect(input).toHaveCSS('border-radius', '8px');
+    expect((await input.boundingBox())!.height).toBeGreaterThanOrEqual(80);
+    await input.fill('Testing the composer');
+    await input.fill('');
+    expect((await input.boundingBox())!.height).toBeGreaterThanOrEqual(80);
+    await expect(page.locator('#pc1 .postMenuBtn')).toHaveText(String.fromCodePoint(0x25b6));
+    for (const selector of ['#video-like-button', '#video-dislike-button', '#video-share-button', '#video-donate-button', '#update-comments-button', '#comment-input-form-static button[type="submit"]']) {
+      await expect(page.locator(selector)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+      await expect(page.locator(selector)).toHaveCSS('color', 'rgb(0, 0, 0)');
+    }
+    for (const selector of ['#navbar-settings-button', '#navbar-donate-button', '#pc1 .postMenuBtn']) {
+      await expect(page.locator(selector)).toHaveCSS('color', 'rgb(203, 12, 159)');
+      await page.locator(selector).hover();
+      await expect(page.locator(selector)).toHaveCSS('color', 'rgb(203, 12, 159)');
+    }
+    await page.locator('#update-comments-button').hover();
+    await expect(page.locator('#update-comments-button')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    const refresh = page.waitForResponse(response => response.url().includes('/comments/cache'));
+    await page.locator('#update-comments-button').click();
+    await refresh;
+    await expect(page.locator('#update-comments-button')).toBeVisible();
+    await expect(page.locator('#comment-section-update-descriptor')).toBeEmpty();
+    expect(await page.locator('#video-information-container').evaluate(el => getComputedStyle(el).backgroundColor.startsWith('rgba(203, 12, 159,'))).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+    await page.locator('#video-player-information').screenshot({ path: testInfo.outputPath('watch-details-light.png') });
+    await page.locator('#navbar-donate-button').click();
+    await expect(page.locator('.swal2-confirm')).toHaveCSS('color', 'rgb(0, 0, 0)');
+    await expect(page.locator('.swal2-confirm a')).toHaveCSS('color', 'rgb(0, 0, 0)');
+    await expect(page.locator('.swal2-cancel')).toHaveCSS('color', 'rgb(0, 0, 0)');
+    await page.locator('.swal2-close').click();
+    await expect(page.locator('.swal2-container')).toHaveCount(0);
+    await page.locator('#navbar-settings-button').click();
+    await page.locator('#darkModeSwitch').check();
+    await page.locator('#settingsModal .btn-close').click();
+    await expect(page.locator('.modal-backdrop')).toHaveCount(0);
+    await expect(page.locator('#update-comments-button')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    for (const selector of ['#video-like-button', '#video-dislike-button', '#video-share-button', '#video-donate-button', '#update-comments-button', '#comment-input-form-static button[type="submit"]']) {
+      await expect(page.locator(selector)).toHaveCSS('color', 'rgb(255, 255, 255)');
+    }
+    for (const selector of ['#navbar-settings-button', '#navbar-donate-button', '#pc1 .postMenuBtn']) {
+      await expect(page.locator(selector)).toHaveCSS('color', 'rgb(203, 12, 159)');
+      await page.locator(selector).hover();
+      await expect(page.locator(selector)).toHaveCSS('color', 'rgb(203, 12, 159)');
+      await page.locator(selector).focus();
+      await expect(page.locator(selector)).toHaveCSS('color', 'rgb(203, 12, 159)');
+    }
+    await page.locator('#pc1 .postMenuBtn').click();
+    await expect(page.locator('#pc1 .postMenuBtn')).toHaveClass(/show/);
+    await expect(page.locator('#pc1 .postMenuBtn')).toHaveCSS('color', 'rgb(203, 12, 159)');
+    await page.keyboard.press('Escape');
+    await page.locator('#video-player-information').screenshot({ path: testInfo.outputPath('watch-details-dark.png') });
+    expect(errors).toEqual([]);
+  });
+}
+
+for (const width of [390, 1448]) {
+  test(`watch action buttons keep active contrast until their popup closes at width ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const { errors } = await fixture(page);
+    await page.route('**/videos/aaaaaaaaaaa/like', route => route.fulfill({ json: { isError: false } }));
+    await page.route('**/videos/aaaaaaaaaaa/dislike', route => route.fulfill({ json: { isError: false } }));
+    await page.route('**/videos/aaaaaaaaaaa/data', route => route.fulfill({ json: { isError: false } }));
+    const normal = async (selector: string) => {
+      await expect(page.locator(selector)).toHaveCSS('color', 'rgb(0, 0, 0)');
+      await expect(page.locator(selector)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    };
+    const active = async (selector: string) => {
+      await expect(page.locator(selector)).toHaveCSS('color', 'rgb(255, 255, 255)');
+      await expect(page.locator(selector)).toHaveCSS('background-color', 'rgb(203, 12, 159)');
+      await expect(page.locator(selector + ' svg')).toHaveCSS('fill', 'rgb(255, 255, 255)');
+    };
+    await normal('#video-like-button');
+    await page.locator('#video-like-button').click();
+    await active('#video-like-button');
+    await expect(page.locator('#video-like-button')).toBeEnabled();
+    await page.locator('#video-dislike-button').click();
+    await active('#video-dislike-button');
+    await normal('#video-like-button');
+    await expect(page.locator('#video-dislike-button')).toBeEnabled();
+    await page.locator('#video-share-button').click();
+    await expect(page.locator('.watch-share-dialog')).toBeVisible();
+    await active('#video-share-button');
+    await page.locator('.swal2-close').click();
+    await expect(page.locator('.swal2-container')).toHaveCount(0);
+    await normal('#video-share-button');
+    await page.locator('#video-share-button').click();
+    await active('#video-share-button');
+    await page.evaluate('window.watchFixture.showAlert(true, "Replacement")');
+    await expect(page.locator('.swal2-container')).toBeVisible();
+    await normal('#video-share-button');
+    await page.locator('.swal2-confirm').click();
+    await expect(page.locator('.swal2-container')).toHaveCount(0);
+    for (const walletInstalled of [false, true]) {
+      if (walletInstalled) await page.evaluate('window.ethereum = {}');
+      await page.locator('#video-donate-button').click();
+      await expect(page.locator('.watch-video-donate-dialog')).toBeVisible();
+      await active('#video-donate-button');
+      await page.locator('.swal2-cancel').click();
+      await expect(page.locator('.swal2-container')).toHaveCount(0);
+      await normal('#video-donate-button');
+    }
+    await page.locator('#navbar-donate-button').click();
+    await expect(page.locator('.watch-navbar-donate-dialog')).toBeVisible();
+    await expect(page.locator('#navbar-donate-button svg')).toHaveCSS('fill', 'rgb(203, 12, 159)');
+    await normal('#video-donate-button');
+    await page.locator('.swal2-close').click();
+    await expect(page.locator('.swal2-container')).toHaveCount(0);
+    await expect(page.locator('#navbar-donate-button')).toHaveCSS('color', 'rgb(203, 12, 159)');
+    await page.locator('#overflow-dropdown-button').click();
+    await expect(page.locator('.dropdown-menu.show')).toBeVisible();
+    await active('#overflow-dropdown-button');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.dropdown-menu.show')).toHaveCount(0);
+    await normal('#overflow-dropdown-button');
+    await page.locator('#overflow-dropdown-button').click();
+    await active('#overflow-dropdown-button');
+    await page.locator('#video-title').click();
+    await expect(page.locator('.dropdown-menu.show')).toHaveCount(0);
+    await normal('#overflow-dropdown-button');
+    expect(errors).toEqual([]);
+  });
+}
+
+for (const width of [390, 1448]) {
+  test(`comment quote highlights preserve geometry and selection at width ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1100 });
+    const { errors } = await fixture(page);
+    if (width < 992) await page.locator('#expand-comment-section').click();
+    await page.evaluate(() => {
+      const watch = (window as any).watchFixture;
+      watch.loadComments([{ commentId: 2, timestamp: 2, commentPlainTextSanitized: '&gt;&gt;1 reply', replyIds: [], hasMoreReplies: false }], false);
+      document.querySelector('#comment-section')!.scrollIntoView({ block: 'start' });
+    });
+    const target = page.locator('#comments-container #p1');
+    const quote = page.locator('#pc2 blockquote .quotelink');
+    const backlink = page.locator('#pc1 .backlink .quotelink[data-comment-id="2"]');
+    const geometry = () => page.locator('#comments-container').evaluate(el =>
+      [...el.querySelectorAll('.postContainer, .post.reply, .quotelink')].map(item => {
+        const r = item.getBoundingClientRect();
+        return { x: r.x, y: r.y, width: r.width, height: r.height };
+      })
+    );
+    for (const dark of [false, true]) {
+      if (dark) {
+        await page.locator('#navbar-settings-button').click();
+        await page.locator('#darkModeSwitch').check();
+        await page.locator('#settingsModal .btn-close').click();
+        await expect(page.locator('.modal-backdrop')).toHaveCount(0);
+      }
+      await page.evaluate(() => (window as any).watchFixture.clearCommentHighlights());
+      await page.mouse.move(0, 0);
+      await page.locator('#comments-container').evaluate(el => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+      const baseline = await geometry();
+      await quote.hover();
+      await expect(target).toHaveClass(/\bhighlight\b/);
+      expect(await geometry()).toEqual(baseline);
+      await page.mouse.move(0, 0);
+      await expect(target).not.toHaveClass(/\bhighlight\b/);
+      expect(await geometry()).toEqual(baseline);
+      // A backlink in the target's preceding row must stay under a stationary pointer.
+      await backlink.hover();
+      await expect(page.locator('#p2')).toHaveClass(/\bhighlight\b/);
+      expect(await geometry()).toEqual(baseline);
+      await page.mouse.move(0, 0);
+      await page.evaluate(() => {
+        const watch = (window as any).watchFixture;
+        watch.COMMENT_HIGHLIGHT_ID = 1;
+        watch.restoreCommentHighlight();
+      });
+      const selected = await geometry();
+      await expect(target).toHaveCSS('background-color', dark ? 'rgb(50, 54, 62)' : 'rgb(237, 227, 235)');
+      await quote.hover();
+      await expect(target).toHaveClass(/\bhighlight-anti\b/);
+      await expect(target).toHaveCSS('background-color', dark ? 'rgb(39, 39, 39)' : 'rgb(191, 166, 186)');
+      expect(await geometry()).toEqual(selected);
+      await page.mouse.move(0, 0);
+      await expect(target).not.toHaveClass(/\bhighlight-anti\b/);
+      await expect(target).toHaveClass(/\bhighlight\b/);
+      expect(await geometry()).toEqual(selected);
+      await page.evaluate(() => {
+        (window as any).watchFixture.clearCommentHighlights();
+        document.querySelector('#p1')!.classList.add('new-comment-highlight');
+      });
+      await quote.hover();
+      await expect(target).toHaveClass(/\bhighlight-anti\b/);
+      await page.mouse.move(0, 0);
+      await expect(target).not.toHaveClass(/\bhighlight-anti\b/);
+      await expect(target).toHaveClass(/\bnew-comment-highlight\b/);
+      expect(await geometry()).toEqual(baseline);
+      await page.evaluate(() => (window as any).watchFixture.clearCommentHighlights());
+    }
+    expect(errors).toEqual([]);
+  });
+}

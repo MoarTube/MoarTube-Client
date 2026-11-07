@@ -171,10 +171,10 @@ async function fixture(page: Page, storageFailure = false) {
       const term = (url.searchParams.get('commentSearch') || '').toLowerCase();
       const matches = comments.filter((comment) => comment.text!.toLowerCase().includes(term));
       data = {
-        comments: matches.slice(cursor, cursor + 5),
+        comments: matches.slice(cursor, cursor + 10),
         totalCount: matches.length,
-        nextCursor: cursor + 5 < matches.length ? cursor + 5 : null,
-        hasMore: cursor + 5 < matches.length,
+        nextCursor: cursor + 10 < matches.length ? cursor + 10 : null,
+        hasMore: cursor + 10 < matches.length,
         snapshot: 'c',
         revision: state.commentsRevision,
       };
@@ -187,7 +187,7 @@ async function fixture(page: Page, storageFailure = false) {
   return { errors, requests };
 }
 
-test('desktop grid, five-row comments pagination, filters, history, cache reuse and infinite videos', async ({
+test('desktop grid, ten-row comments pagination, filters, history, cache reuse and infinite videos', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1584, height: 1086 });
@@ -227,12 +227,12 @@ test('desktop grid, five-row comments pagination, filters, history, cache reuse 
   });
 
   await expect(page.locator('#video-refresh')).toHaveCount(0);
-  await expect(page.locator('.comment-row')).toHaveCount(5);
+  await expect(page.locator('.comment-row')).toHaveCount(10);
   await expect(page.locator('#comments-prev')).toBeDisabled();
   const first = await page.locator('.comment-row').first().getAttribute('data-comment');
   await page.locator('#comments-next').click();
   await expect(page.locator('#comment-page')).toHaveText('Page 2');
-  await expect(page.locator('.comment-row')).toHaveCount(5);
+  await expect(page.locator('.comment-row')).toHaveCount(10);
   expect(await page.locator('.comment-row').first().getAttribute('data-comment')).not.toBe(first);
   await page.locator('#comments-prev').click();
   await expect(page.locator('.comment-row').first()).toHaveAttribute('data-comment', first!);
@@ -250,7 +250,7 @@ test('desktop grid, five-row comments pagination, filters, history, cache reuse 
   await page.locator('#video-search').evaluate((form: HTMLFormElement) => form.requestSubmit());
   await expect(page.locator('.video-card')).toHaveCount(6);
   await expect(page.locator('.video-card')).toHaveCount(6);
-  await expect(page.locator('.comment-row')).toHaveCount(5);
+  await expect(page.locator('.comment-row')).toHaveCount(10);
   await page.goBack();
   await expect(page.locator('#search-input')).toHaveValue('');
   await page.goto(host);
@@ -293,7 +293,7 @@ test('mobile compact controls, About, global comment infinite scroll, totals, br
     animations: 'disabled',
   });
   await page.locator('#tab-community').click();
-  await expect.poll(() => page.locator('.comment-row').count()).toBeGreaterThanOrEqual(5);
+  await expect.poll(() => page.locator('.comment-row').count()).toBeGreaterThanOrEqual(10);
   await expect(page.locator('.comment-link').first()).toHaveText(/View 327 comments/);
   await expect(page.locator('#comments-next')).toBeHidden();
   await page.screenshot({
@@ -305,7 +305,7 @@ test('mobile compact controls, About, global comment infinite scroll, totals, br
   await page.locator('#comment-sentinel').scrollIntoViewIfNeeded();
   await expect.poll(() => page.locator('.comment-row').count()).toBeGreaterThan(beforeComments);
   await page.setViewportSize({ width: 1448, height: 1086 });
-  await expect(page.locator('.comment-row')).toHaveCount(5);
+  await expect(page.locator('.comment-row')).toHaveCount(10);
   await expect(page.locator('#comments-next')).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('#tab-videos').click();
@@ -387,7 +387,7 @@ test('mobile traverses all comments exactly once and desktop reaches the termina
   await page.setViewportSize({ width: 390, height: 844 });
   await fixture(page);
   await page.goto(host + '/?view=community');
-  await expect.poll(() => page.locator('.comment-row').count()).toBeGreaterThanOrEqual(5);
+  await expect.poll(() => page.locator('.comment-row').count()).toBeGreaterThanOrEqual(10);
   while ((await page.locator('.comment-row').count()) < 23) {
     const before = await page.locator('.comment-row').count();
     await page.locator('#comment-sentinel').scrollIntoViewIfNeeded();
@@ -408,7 +408,7 @@ test('mobile traverses all comments exactly once and desktop reaches the termina
   }
   await expect(page.locator('.comment-pagination')).toBeVisible();
   await expect(page.locator('#comments-prev')).toBeEnabled();
-  await expect(page.locator('#comment-page')).toHaveText('Page 5');
+  await expect(page.locator('#comment-page')).toHaveText('Page 3');
   await expect(page.locator('.comment-row')).toHaveCount(3);
 });
 
@@ -430,7 +430,7 @@ test('revisioned pages survive reload in IndexedDB and narrow layouts do not ove
   await page.locator('#tab-about').click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.locator('#tab-community').click();
-  await expect.poll(() => page.locator('.comment-row').count()).toBeGreaterThanOrEqual(5);
+  await expect.poll(() => page.locator('.comment-row').count()).toBeGreaterThanOrEqual(10);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(f.errors).toEqual([]);
 });
@@ -487,19 +487,19 @@ for (const width of [1448, 390]) {
     await expect(page.locator('.comment-link').first()).toHaveText(/View 327 comments/);
     await expect(page.locator('#comment-search')).toBeHidden();
     await page.locator('#comments-search-toggle').click();
-    await page.locator('#comment-search-input').fill('the');
+    await page.locator('#comment-search-input').fill('e');
     await page.locator('#comment-search-input').press('Enter');
-    await expect.poll(() => page.locator('.comment-row').count()).toBeGreaterThanOrEqual(5);
+    await expect.poll(() => page.locator('.comment-row').count()).toBeGreaterThanOrEqual(10);
     if (width >= 992) {
       await expect(page.locator('#comments-next')).toBeEnabled();
       await page.locator('#comments-next').click();
       await expect(page.locator('#comment-page')).toHaveText('Page 2');
     } else {
       await page.locator('#comment-sentinel').scrollIntoViewIfNeeded();
-      await expect(page.locator('.comment-row')).toHaveCount(10);
+      await expect(page.locator('.comment-row')).toHaveCount(20);
     }
     const excerpts = await page.locator('.comment-text').allTextContents();
-    expect(excerpts.every((text) => text.toLowerCase().includes('the'))).toBe(true);
+    expect(excerpts.every((text) => text.toLowerCase().includes('e'))).toBe(true);
     await page.locator('#comment-search-input').scrollIntoViewIfNeeded();
     await page.locator('#comment-search-input').press('Escape');
     await expect(page.locator('#comment-search')).toBeHidden();
@@ -543,13 +543,21 @@ for (const width of [1448, 390]) {
     ).toBe('none');
     await page.locator('#navbar-settings-button').click();
     await expect(page.locator('#settings-dialog')).toBeVisible();
+    await expect(page.locator('#settings-dialog')).toHaveClass(/modal/);
+    await expect(page.locator('#settings-dialog .modal-header')).toContainText('Settings');
     await page.locator('#darkModeSwitch').check();
     await expect(page.locator('body')).toHaveClass(/home-dark/);
+    await expect(page.locator('.sort-tabs button[data-sort="new"]')).toHaveCSS('color', 'rgb(238, 238, 238)');
+    await expect(page.locator('.sort-tabs button[aria-pressed="true"]')).toHaveCSS('color', 'rgb(203, 12, 159)');
+    expect(await page.locator('#bulletin li').first().evaluate((el) => getComputedStyle(el, '::before').color)).toBe('rgb(203, 12, 159)');
+    await expect(page.locator('.node-link a').first()).toHaveCSS('text-decoration-line', 'none');
     await page.locator('#settings-dialog .dialog-close').click();
     await page.reload();
     await expect(page.locator('body')).toHaveClass(/home-dark/);
     await page.locator('#navbar-donate-button').click();
     await expect(page.locator('#wallet-install')).toBeVisible();
+    await expect(page.locator('.swal2-title')).toHaveText('Missing Crypto Wallet');
+    await expect(page.locator('.swal2-cancel')).toBeVisible();
     await expect(page.locator('#donate-form')).toBeHidden();
     expect(f.errors).toEqual([]);
   });
@@ -583,6 +591,14 @@ test('homepage donation opens the configured chain and wallet with an exact deci
   await page.goto(host);
   await page.locator('#navbar-donate-button').click();
   await expect(page.locator('#donate-form')).toBeVisible();
+  await expect(page.locator('#donate-modal img')).toBeVisible();
+  await expect(page.locator('#donation-continue')).toBeDisabled();
+  await expect(page.locator('#donation-amount-input')).toBeDisabled();
+  await page.locator('#wallet-address-select').selectOption('0');
+  await page.locator('#donation-amount-input').fill('0');
+  await page.locator('#donation-continue').click();
+  await expect(page.locator('#donate-status')).toHaveText('Enter an amount greater than zero.');
+  expect(await page.evaluate('window.walletRequests')).toEqual([]);
   await page.locator('#donation-amount-input').fill('0.000000000000000001');
   await page.locator('#donation-continue').click();
   await expect(page.locator('#donate-status')).toHaveText('Transaction submitted to your wallet.');
@@ -598,7 +614,7 @@ test('homepage donation opens the configured chain and wallet with an exact deci
   ]);
 });
 
-for (const width of [390, 992, 1448, 1599, 1600, 2048]) {
+for (const width of [320, 390, 992, 1448, 1599, 1600, 2048, 2559]) {
   test(`homepage navigation matches watch page coordinates at width ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await fixture(page);
@@ -636,18 +652,19 @@ for (const width of [390, 992, 1448, 1599, 1600, 2048]) {
       expect(edges.sidebarRight).toBeCloseTo(edges.viewport - 14, 1);
     }
     const watch = await readFile(path.join(root, 'public/views/watch.ejs'), 'utf8');
+    expect(watch).toMatch(/^<!doctype html>/i);
     const style = watch.match(/<style>([\s\S]*?)<\/style>/)![1]!;
     const navigation = watch.slice(
       watch.indexOf('<nav class="navbar'),
       watch.indexOf('<div id="theater-container"')
-    );
+    ).replaceAll('<%=model.externalResourcesBaseUrl%>', host);
     const positions = await page.evaluate(
       async ({ style, navigation, host }) => {
         const iframe = document.createElement('iframe');
         iframe.style.cssText =
           'position:fixed;inset:0;width:100%;height:100%;border:0;visibility:hidden';
         iframe.srcdoc =
-          '<html><head><link rel="stylesheet" href="' +
+          '<!doctype html><html><head><link rel="stylesheet" href="' +
           host +
           '/external/resources/css/bootstrap.min-5.3.0.css"><style>' +
           style +
@@ -659,24 +676,63 @@ for (const width of [390, 992, 1448, 1599, 1600, 2048]) {
         });
         document.body.append(iframe);
         await loaded;
+        for (const doc of [document, iframe.contentDocument!]) {
+          const actions = doc.querySelector('#viewer-links') || doc.querySelector('#navbar-settings-buttons')!;
+          for (let i = 0; i < 2; i++) {
+            const link = doc.createElement('a');
+            link.className = 'navbar-brand navbar-settings-button';
+            link.innerHTML = '<img width="16" height="16" alt="Social link" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2216%22 height=%2216%22/%3E">';
+            actions.prepend(link);
+          }
+        }
         const coordinates = (doc: Document) =>
-          ['#moartube-logo', '#navbar-donate-button', '#navbar-settings-button'].map((selector) => {
+          ['nav.navbar', '#moartube-logo', '#moartube-logo-light', '#navbar-donate-button', '#navbar-donate-button svg', '#navbar-settings-button', '#navbar-settings-button svg'].map((selector) => {
             const rect = doc.querySelector(selector)!.getBoundingClientRect();
             return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
           });
         const result = {
           index: coordinates(document),
           watch: coordinates(iframe.contentDocument!),
+          indexMode: document.compatMode,
+          watchMode: iframe.contentDocument!.compatMode,
+          indexBackground: getComputedStyle(document.body).backgroundColor,
+          watchBackground: iframe.contentWindow!.getComputedStyle(iframe.contentDocument!.querySelector('nav')!).backgroundColor,
         };
         iframe.remove();
         return result;
       },
       { style, navigation, host }
     );
+    expect(positions.indexMode).toBe('CSS1Compat');
+    expect(positions.watchMode).toBe('CSS1Compat');
+    expect(positions.watchBackground).toBe(positions.indexBackground);
     for (let i = 0; i < positions.index.length; i++) {
       for (const key of ['x', 'y', 'width', 'height'] as const) {
         expect(positions.index[i]![key]).toBeCloseTo(positions.watch[i]![key], 1);
       }
     }
+  });
+}
+
+for (const width of [390, 992, 1448]) {
+  test(`recent discussion sort order and browser history at width ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    const f = await fixture(page);
+    await page.goto(host);
+    const values = await page.locator(width < 992 ? '#sort-select option' : '.sort-tabs button').evaluateAll((items) =>
+      items.map((item) => item.getAttribute('value') || (item as HTMLElement).dataset.sort)
+    );
+    expect(values).toEqual(['hot', 'new', 'recently-discussed', 'discussed', 'viewed']);
+    if (width < 992) await page.locator('#sort-select').selectOption('recently-discussed');
+    else await page.getByRole('button', { name: 'Recently discussed', exact: true }).click();
+    await expect(page).toHaveURL(/sortTerm=recently-discussed/);
+    await expect.poll(() => f.requests.some((url) => url.includes('/home/videos?') && url.includes('sortTerm=recently-discussed'))).toBe(true);
+    await page.goBack();
+    await expect(page.locator('#sort-select')).toHaveValue('hot');
+    await page.goForward();
+    await expect(page.locator('#sort-select')).toHaveValue('recently-discussed');
+    if (width >= 992) await expect(page.getByRole('button', { name: 'Recently discussed', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+    expect(f.errors).toEqual([]);
   });
 }

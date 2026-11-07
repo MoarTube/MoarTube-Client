@@ -429,13 +429,16 @@ test('mobile comment controls open and close the section and hide on desktop res
   await page.locator('#expand-comment-section').click();
   await expect(page.locator('#comment-section')).toBeVisible();
   await expect(page.locator('#comment-section-back-button-container')).toBeVisible();
+  await expect(page.locator('#recommended-videos-list-container')).toBeHidden();
   await page.setViewportSize({ width: 992, height: 800 });
   await expect(page.locator('#comment-section-back-button-container')).toBeHidden();
+  await expect(page.locator('#recommended-videos-list-container')).toBeVisible();
   await page.setViewportSize({ width: 991, height: 800 });
   await expect(page.locator('#comment-section-back-button-container')).toBeVisible();
   await page.locator('#comment-section-back-button').click();
   await expect(page.locator('#comment-section')).toBeHidden();
   await expect(page.locator('#expand-comment-section')).toBeVisible();
+  await expect(page.locator('#recommended-videos-list-container')).toBeVisible();
   await page.locator('#expand-comment-section').click();
   await expect(page.locator('#comment-section-back-button-container')).toBeVisible();
 });
@@ -446,6 +449,7 @@ test('desktop comment navigation never displays the mobile back control', async 
   await expect(page.locator('#comment-section-back-button-container')).toBeHidden();
   await page.evaluate(() => window.commentFixture.navigateToComment(200));
   await expect(page.locator('#p200')).toHaveClass(/\bhighlight\b/);
+  await expect(page.locator('#recommended-videos-list-container')).toBeVisible();
   await expect(page.locator('#comment-section-back-button-container')).toBeHidden();
   await page.setViewportSize({ width: 992, height: 800 });
   await expect(page.locator('#comment-section-back-button-container')).toBeHidden();
@@ -668,11 +672,12 @@ async function applyCommentHighlightTheme(page: Page, dark = false) {
   const end = template.indexOf('      .mobile,', start);
   let css = template.slice(start, end);
   css += template.match(/\.new-comment-highlight\s*\{[^}]*\}/)![0];
-  if (dark) {
-    const darkStart = template.indexOf('        .reply:target:not(.comment-unselected),');
-    css += template.slice(darkStart, template.indexOf('        #moartube-logo-light', darkStart));
-    css += [...template.matchAll(/\.reply\.highlight-anti[^{}]*\{[^}]*\}/g)][1]![0];
-  }
+  // Use the production theme tokens and highlight rules without importing page layout.
+  const tokens = [...template.matchAll(/--watch-highlight(?:-hover)?:[^;]+;/g)];
+  css += 'body {' + tokens.slice(dark ? 2 : 0, dark ? 4 : 2).map(match => match[0]).join('') + '}';
+  const selectedRules = [...template.matchAll(/\.reply:target:not\(\.comment-unselected\),\s*\.reply\.highlight\s*\{[^}]*\}/g)];
+  const hoverRules = [...template.matchAll(/\.reply\.highlight-anti,\s*\.reply:target\.highlight-anti\s*\{[^}]*\}/g)];
+  css += selectedRules[selectedRules.length - 1]![0] + hoverRules[hoverRules.length - 1]![0];
   await page.addStyleTag({ content: css });
 }
 
@@ -709,7 +714,7 @@ for (const dark of [false, true]) {
       const target = page.locator('#p240');
       await expect(target).toHaveCSS(
         'background-color',
-        dark ? 'rgb(47, 47, 47)' : 'rgb(237, 227, 235)'
+        dark ? 'rgb(50, 54, 62)' : 'rgb(237, 227, 235)'
       );
       await page.locator('#pc241 blockquote .quotelink').hover();
       await expect(target).toHaveClass(/\bhighlight-anti\b/);
@@ -723,7 +728,7 @@ for (const dark of [false, true]) {
       await expect(target).toHaveClass(/\bhighlight\b/);
       await expect(target).toHaveCSS(
         'background-color',
-        dark ? 'rgb(47, 47, 47)' : 'rgb(237, 227, 235)'
+        dark ? 'rgb(50, 54, 62)' : 'rgb(237, 227, 235)'
       );
     });
   }
