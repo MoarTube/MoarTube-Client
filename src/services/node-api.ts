@@ -652,6 +652,25 @@ export class NodeApiService extends BaseService {
     return this.mutationResult<BaseNodeResponse>(response);
   }
 
+  public async getWorkerCount(jwtToken: string): Promise<BaseNodeResponse> {
+    const client = await this.getClient();
+    const response = await client.get('/settings/workers', {
+      headers: { Authorization: `Bearer ${jwtToken}` },
+    });
+    return this.mutationResult<BaseNodeResponse>(response);
+  }
+
+  public async setWorkerCount(
+    jwtToken: string,
+    workerCount: number,
+    confirmDecrease: boolean
+  ): Promise<BaseNodeResponse> {
+    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/workers', {
+      workerCount,
+      confirmDecrease,
+    });
+  }
+
   public async setNetworkInternal(
     jwtToken: string,
     nodeListeningPort: number

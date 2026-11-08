@@ -42,6 +42,17 @@ export function settingsRoutes(
     settingsController.apiDeleteDonationAddress
   );
 
+  fastify.get(
+    '/node/workers',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiGetWorkerCount
+  );
+  fastify.post(
+    '/node/workers',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiSetWorkerCount
+  );
+
   // Client API
   fastify.get(
     '/metrics',

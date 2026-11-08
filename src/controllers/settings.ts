@@ -844,6 +844,61 @@ export class SettingsController extends BaseController {
     return result;
   }
 
+  public apiGetWorkerCount = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    reply.header('Cache-Control', 'no-store');
+    if ((request.session.jwtToken ?? '') === '') {
+      return await this.sendError(reply, 'Sign in to the Node first.', 401);
+    }
+    try {
+      return await reply.send(
+        await this.nodeApiService.getWorkerCount(request.session.jwtToken ?? '')
+      );
+    } catch (error) {
+      return await this.sendError(
+        reply,
+        error instanceof Error ? error.message : 'Unable to read worker count.',
+        409
+      );
+    }
+  };
+
+  public apiSetWorkerCount = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    if ((request.session.jwtToken ?? '') === '') {
+      return await this.sendError(reply, 'Sign in to the Node first.', 401);
+    }
+    const body = request.body as { workerCount?: unknown; confirmDecrease?: unknown } | null;
+    if (
+      !body ||
+      typeof body.workerCount !== 'number' ||
+      !Number.isInteger(body.workerCount) ||
+      body.workerCount < 0 ||
+      (body.confirmDecrease !== undefined && typeof body.confirmDecrease !== 'boolean')
+    ) {
+      return await this.sendError(reply, 'Invalid worker count request.', 400);
+    }
+    try {
+      return await reply.send(
+        await this.nodeApiService.setWorkerCount(
+          request.session.jwtToken ?? '',
+          body.workerCount,
+          body.confirmDecrease === true
+        )
+      );
+    } catch (error) {
+      return await this.sendError(
+        reply,
+        error instanceof Error ? error.message : 'Unable to change worker count.',
+        409
+      );
+    }
+  };
+
   // API: POST /settings/node/network/internal
   public apiSetNetworkInternal = async (
     request: FastifyRequest,

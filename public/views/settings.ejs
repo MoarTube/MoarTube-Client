@@ -1124,6 +1124,26 @@
 									</div>
 								</div>
 							</form>
+							<form id="worker-count-form" aria-label="Node Worker Settings" method="POST" action="/settings/node/workers">
+								<div class="card-body pt-0 pb-0">
+									<div class="card-body pt-0">
+										<div class="row">
+											<div class="col-12">
+												<label class="form-label" for="worker-count-select">worker count</label>
+												<div class="input-group">
+													<select id="worker-count-select" name="workerCount" class="multisteps-form__select form-control" aria-describedby="worker-count-status" disabled></select>
+												</div>
+												<p id="worker-count-status" class="text-sm mb-0 mt-2" hidden role="status" aria-live="polite"></p>
+											</div>
+										</div>
+									</div>
+									<div class="card-body d-sm-flex pt-0">
+										<div class="d-flex align-items-center mb-sm-0 mb-4 ms-auto">
+											<button id="worker-count-save" class="btn btn-primary mb-0" type="submit" name="button" disabled>Save</button>
+										</div>
+									</div>
+								</div>
+							</form>
 							<form id="external_network_settings_form" aria-label="External Network Settings Form" method="POST"
 								action="/settings/node/network/external">
 								<div class="card-body pt-0 pb-0">
@@ -1244,6 +1264,7 @@
 	<script src="/javascript/soft-ui-dashboard-1.1.0.min.js"></script>
 	<script src="/javascript/settings-metrics.js"></script>
 	<script src="/javascript/settings-cloudflare-tunnel.js"></script>
+	<script src="/javascript/settings-workers.js"></script>
 	<script src="/javascript/settings-cloudflare-cdn.js"></script>
 	<script src="/javascript/settings-bulletin.js"></script>
 	<script src="/javascript/settings-links.js"></script>
@@ -1284,6 +1305,7 @@
 		setupEventListeners() {
 			const self = this;
 			this.cloudflareTunnelToggle.start();
+			void new MoarTubeWorkerSettings((isError, message) => this.showAlert(isError, message)).start();
 			this.nodeBulletin.start();
 			this.nodeIcons.start();
 			this.nodeLinks.start();
