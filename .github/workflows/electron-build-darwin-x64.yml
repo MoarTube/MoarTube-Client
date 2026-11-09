@@ -3,9 +3,16 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Draft release tag
+        description: Existing draft release tag (leave empty for build artifacts only)
         type: string
-        required: true
+        required: false
+        default: ''
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Existing draft release tag (leave empty for build artifacts only)
+        type: string
+        required: false
         default: ''
 permissions:
   contents: read
@@ -199,7 +206,7 @@ jobs:
     needs:
       - build
       - verify
-    if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+    if: inputs.release_tag != ''
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:

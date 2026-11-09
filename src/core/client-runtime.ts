@@ -5,6 +5,7 @@ import { createFastifyApp } from '@/plugins/index.js';
 import { Logger } from '@/utils/logger.js';
 import { LifecycleManager } from '@/core/lifecycle.js';
 import { stopMediaProcesses } from '@/utils/media-processes.js';
+import { prepareData } from '@/config/data-layout.cjs';
 
 export interface ClientRuntime {
   url: string;
@@ -16,7 +17,16 @@ export async function startClient(
   entryPointDir: string,
   desktop = false
 ): Promise<ClientRuntime> {
-  const config = initializeConfig(root, entryPointDir);
+  const releaseData = await prepareData('client');
+  process.once('exit', releaseData);
+  let config;
+  try {
+    config = initializeConfig(root, entryPointDir);
+  } catch (error) {
+    process.removeListener('exit', releaseData);
+    releaseData();
+    throw error;
+  }
   let container: Container | undefined;
   let app: FastifyInstance | undefined;
   let closed = false;
@@ -38,15 +48,18 @@ export async function startClient(
     await stopMediaProcesses();
     await app?.close();
     await container?.dispose();
+    process.removeListener('exit', releaseData);
+    releaseData();
   };
   try {
     container = await createAppContainer();
     app = await createFastifyApp(container);
     if (desktop) {
       app.addHook('onSend', (_request, reply, payload, done) => {
+        // Share previews embed the selected Node's HTTP(S) player, including tunnels.
         reply.header(
           'Content-Security-Policy',
-          "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://127.0.0.1:*; img-src 'self' data: http: https:; media-src 'self' blob: http: https:; font-src 'self' data:; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'self'"
+          "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://127.0.0.1:*; img-src 'self' data: http: https:; media-src 'self' blob: http: https:; font-src 'self' data:; object-src 'none'; frame-src http: https:; base-uri 'self'; form-action 'self'"
         );
         done(null, payload);
       });
@@ -55,7 +68,7 @@ export async function startClient(
     await lifecycle.onStartup(desktop);
     const url = await app.listen({
       port: desktop ? 0 : config.clientSettings.clientPort,
-      host: desktop ? '127.0.0.1' : '0.0.0.0',
+      host: config.clientSettings.allowRemoteConnections ? '0.0.0.0' : '127.0.0.1',
     });
     Logger.getInstance().info(`Server listening on ${url}`);
     return { url, close };

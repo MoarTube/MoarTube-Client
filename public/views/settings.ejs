@@ -78,15 +78,31 @@
 		}
 
 		.settings-security {
-			grid-template-columns: repeat(4, minmax(0, 1fr));
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: center;
+		}
+
+		.settings-security > .card-body {
+            display: flex;
+            flex-direction: column;
+			flex: 0 1 calc((100% - 8rem) / 5);
+			max-width: 18rem;
+		}
+
+		.settings-horizontal.settings-security > .card-body > .card-body { flex: 0 0 auto; margin-top: auto; padding-top: 1rem; }
+
+		.settings-security > .cloudflare-cdn-recovery {
+			flex-basis: 100%;
+			order: 1;
 		}
 
 		@media (max-width: 991px) {
-			.settings-security { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+			.settings-security > .card-body { flex-basis: calc((100% - 2rem) / 2); }
 		}
 
 		@media (max-width: 575px) {
-			.settings-security { grid-template-columns: 1fr; }
+			.settings-security > .card-body { flex-basis: 100%; }
 			.cloudflare-cdn-recovery { grid-row: auto; }
 		}
 
@@ -445,10 +461,10 @@
 					</div>
 					<ul class="navbar-nav  justify-content-end">
 						<li class="nav-item d-flex align-items-center">
-							<a href="/account/signout" class="nav-link text-body font-weight-bold px-0">
+							<% if (typeof bundledDesktop === "undefined" || !bundledDesktop || (typeof bundledAutoLogin !== "undefined" && !bundledAutoLogin)) { %><a href="/account/signout" class="nav-link text-body font-weight-bold px-0">
 								<i class="fa fa-user me-sm-1" aria-hidden="true"></i>
 								<span class="d-sm-inline d-none">Sign Out</span>
-							</a>
+							</a><% } %>
 						</li>
 						<li class="nav-item d-xl-none ps-3 d-flex align-items-center">
 							<a href="javascript:;" class="nav-link text-body p-0" id="iconNavbarSidenav" aria-label="Toggle navigation">
@@ -634,7 +650,16 @@
 									<button id="show-live-encoding-btn" class="btn btn-primary" type="button">Settings</button>
 								</div>
 							</div>
-							</section>
+
+                                <div class="card-body pt-0 pb-0 border-top pt-3">
+                                    <div class="d-flex align-items-center justify-content-between gap-3">
+                                        <label class="form-label mb-0" for="client-allow-remote-connections">Allow connections from other computers</label>
+                                        <div class="form-check form-switch mb-0">
+                                            <input id="client-allow-remote-connections" class="form-check-input toggle-network-access" type="checkbox" role="switch" data-target="client">
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
 						</div>
 					</div>
 					<div id="node-settings-container" class="card mt-4">
@@ -830,6 +855,7 @@
 							</section>
 
 							<section class="border border-radius-lg p-3 mb-3 settings-horizontal settings-security" aria-label="Security and delivery">
+							<% if (typeof bundledDesktop === "undefined" || !bundledDesktop) { %>
 							<div class="card-body pt-0 pb-0">
 								<div class="">
 									<a href="https://www.moartube.com/guides/how-to-secure-your-node-with-https"
@@ -856,7 +882,16 @@
 									</div>
 								</div>
 							</div>
+							<% } %>
 							<div class="card-body pt-0 pb-0">
+                                    <div><label class="form-label mb-0" for="node-allow-remote-connections">Allow connections from other computers</label></div>
+                                    <div class="card-body pt-0">
+                                        <div class="form-check form-switch my-auto">
+                                            <input id="node-allow-remote-connections" class="form-check-input toggle-network-access" type="checkbox" role="switch" data-target="node">
+                                        </div>
+                                    </div>
+                                </div>
+                            <div class="card-body pt-0 pb-0">
 								<div class="">
 									<a href="https://www.moartube.com/guides/how-to-enable-cloudflare-cdn"
 										target="_blank">
@@ -1088,7 +1123,7 @@
 							</div>
 							</section>
 							<section class="border border-radius-lg p-3 mb-3" aria-label="Network">
-							<form id="internal_network_settings_form" aria-label="Internal Network Settings Form" method="POST"
+							<% if (typeof bundledDesktop === "undefined" || !bundledDesktop) { %><form id="internal_network_settings_form" aria-label="Internal Network Settings Form" method="POST"
 								action="/settings/node/network/internal">
 								<div class="card-body pt-0 pb-0">
 									<div class="">
@@ -1123,7 +1158,7 @@
 										</div>
 									</div>
 								</div>
-							</form>
+							</form><% } %>
 							<form id="worker-count-form" aria-label="Node Worker Settings" method="POST" action="/settings/node/workers">
 								<div class="card-body pt-0 pb-0">
 									<div class="card-body pt-0">
@@ -1203,6 +1238,9 @@
 							<section class="border border-radius-lg p-3" aria-label="Account">
 							<form id="account_credentials_settings_form" method="POST"
 								action="/settings/node/account">
+								<% if (typeof bundledDesktop !== "undefined" && bundledDesktop) { %>
+								<p class="text-sm px-4">Set both fields to require sign-in on next start. Leave both fields blank and save to enable automatic sign-in.</p>
+								<% } %>
 								<div class="card-body pt-0 pb-0">
 									<div class="">
 										<a href="https://www.moartube.com/guides/how-to-change-node-account-credentials"
@@ -1231,7 +1269,7 @@
 											<div class="col-6">
 												<label class="form-label" for="password-input">Password</label>
 												<div class="input-group">
-													<input id="password-input" name="password" class="form-control" type="text"
+													<input id="password-input" name="password" class="form-control" type="password"
 														placeholder="password" onfocus="focused(this)"
 														onfocusout="defocused(this)" autocomplete="off">
 												</div>
@@ -1310,6 +1348,10 @@
 			this.nodeIcons.start();
 			this.nodeLinks.start();
 			void this.nodeMonetization.start();
+
+            $(document).off('change', '.toggle-network-access').on('change', '.toggle-network-access', function () {
+                self.toggleNetworkAccess(this);
+            });
 
 			// Checkbox toggles
 			$(document).off('change', '.select-gpu').on('change', '.select-gpu', function () {
@@ -1423,10 +1465,31 @@
 			});
 		}
 
+        toggleNetworkAccess(checkbox) {
+            const target = checkbox.dataset.target;
+            const enabled = checkbox.checked;
+            $(checkbox).prop('disabled', true);
+            $.ajax({
+                type: 'POST', url: '/settings/' + target + '/network/access',
+                data: JSON.stringify({ allowRemoteConnections: enabled }),
+                contentType: 'application/json; charset=utf-8'
+            }).done(function (response) {
+                if (!response || response.isError) {
+                    checkbox.checked = !enabled;
+                    return;
+                }
+            }).fail(function () {
+                checkbox.checked = !enabled;
+            }).always(function () {
+                $(checkbox).prop('disabled', false);
+            });
+        }
+
 		loadClientSettings(clientSettings) {
 			this.CLIENT_SETTINGS = clientSettings;
 
 			$('#client-version').text(clientSettings.version);
+            $('#client-allow-remote-connections').prop('checked', clientSettings.allowRemoteConnections === true);
 
             const select = $('#client-setting-gpu-select').empty();
             select.append($('<option>').val('').text('disabled (CPU)'));
@@ -1449,6 +1512,7 @@
 			this.cloudflareTunnelToggle.load(nodeSettings);
 
 			$('#node-version').text(nodeSettings.version);
+            $('#node-allow-remote-connections').prop('checked', nodeSettings.allowRemoteConnections !== false);
 
 			$('#node-name-input').val(nodeSettings.nodeName);
 			$('#node-headline-input').val(nodeSettings.nodeHeadline);
@@ -1992,7 +2056,7 @@
 							Swal.showValidationMessage('Key file is missing');
 							return false;
 						}
-						
+
 						if (!certFile) {
 							Swal.showValidationMessage('Certificate file is missing');
 							return false;
@@ -2267,7 +2331,7 @@
 
 							$(radio).data('selected', 'selected');
 
-							self.showAlert(false, 'Database configuration saved. Your node is restarting...');
+							self.showAlert(false, data.restartRequired ? (data.message || 'Database selection saved. Restart MoarTube Node before continuing.') : 'Database configuration saved. Your node is restarting...');
 						}
 					})
 					.fail(function () {
@@ -2655,8 +2719,12 @@
 			let url = form.attr('action');
 			let username = form.find('input[name="username"]').val();
 			let password = form.find('input[name="password"]').val();
+			if (<%= typeof bundledDesktop !== 'undefined' && bundledDesktop %> && (username === '') !== (password === '')) {
+				self.showAlert(true, 'Enter both username and password, or leave both blank for automatic sign-in.');
+				return;
+			}
 
-			if (username !== '' && password !== '') {
+			if ((username !== '' && password !== '') || (<%= typeof bundledDesktop !== 'undefined' && bundledDesktop %> && username === '' && password === '')) {
 				Swal.fire({
 					title: 'please wait',
 					html: '...applying your settings...',
@@ -2673,7 +2741,7 @@
 									form.find('input[name="username"]').val('');
 									form.find('input[name="password"]').val('');
 
-									self.showAlert(false);
+									self.showAlert(false, data.message);
 								}
 							})
 							.fail(function () {

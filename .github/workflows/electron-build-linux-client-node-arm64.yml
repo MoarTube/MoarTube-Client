@@ -1,22 +1,36 @@
-name: Linux ARM64 Electron candidate
+name: Linux ARM64 - Client + Node
 on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Draft release tag
+        description: Existing draft release tag (leave empty for build artifacts only)
         type: string
-        required: true
+        required: false
+        default: ''
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Existing draft release tag (leave empty for build artifacts only)
+        type: string
+        required: false
         default: ''
 permissions:
   contents: read
 env:
   MOARTUBE_RELEASE_TAG: ${{ inputs.release_tag }}
+  MOARTUBE_NODE_SOURCE: ${{ github.workspace }}/build/desktop/node-source
 jobs:
-  linux:
+  linux-client-node:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 150
     steps:
       - uses: actions/checkout@v6
+      - name: Check out bundled MoarTube Node
+        uses: actions/checkout@v6
+        with:
+          repository: MoarTube/MoarTube-Node
+          path: build/desktop/node-source
+          persist-credentials: false
       - uses: actions/setup-node@v6
         with:
           package-manager-cache: false
@@ -60,6 +74,20 @@ jobs:
         with:
           path: build/desktop/cache/dependencies/arm64
           key: ${{ steps.desktop-dependencies.outputs.cache-primary-key }}
+      - name: Restore bundled Node dependency downloads
+        id: node-downloads
+        uses: actions/cache/restore@v5
+        with:
+          path: build/desktop/cache/node-dependencies/arm64
+          key: linux-node-arm64-v1-${{ hashFiles('build/desktop/node-source/package-lock.json', 'build/desktop/node-source/scripts/cloudflared-release.mjs', 'desktop/linux/node-dependencies.Dockerfile') }}
+      - name: Prepare native Node, SQLite and verified Cloudflared
+        run: node scripts/prepare-linux-node-dependencies.mjs --arch=arm64
+      - name: Save bundled Node dependency downloads
+        if: steps.node-downloads.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: build/desktop/cache/node-dependencies/arm64
+          key: ${{ steps.node-downloads.outputs.cache-primary-key }}
       - name: Download and verify all FFmpeg inputs
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
         run: node tooling/ffmpeg/scripts/download-inputs.mjs linux-arm64
@@ -95,18 +123,18 @@ jobs:
             build/ffmpeg/reports/linux-arm64/*.json
             build/ffmpeg/reports/linux-arm64/software/result.json
           key: ${{ steps.compiled-ffmpeg.outputs.cache-primary-key }}
-      - run: npm run desktop:build:linux -- --arch=arm64
-      - run: npm run desktop:verify:linux -- --arch=arm64
+      - run: npm run desktop:build:linux:client-node -- --arch=arm64 --variant=bundled
+      - run: npm run desktop:verify:linux:client-node -- --arch=arm64 --variant=bundled
       - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
-          name: moartube-client-linux-arm64-candidate
+          name: moartube-client-node-linux-arm64-candidate
           path: |
-            build/desktop/releases/linux-arm64/*/*.deb
-            build/desktop/releases/linux-arm64/*/*.tar.gz
+            build/desktop/releases/linux-arm64/*/MoarTube-Client-Node-[0-9]*-linux-arm64.deb
+            build/desktop/releases/linux-arm64/*/MoarTube-Client-Node-[0-9]*-linux-arm64-portable.tar.gz
             build/desktop/releases/linux-arm64/*/*.tar.xz
-            build/desktop/releases/linux-arm64/*/SHA256SUMS-linux-arm64.txt
-            build/desktop/releases/linux-arm64/*/RELEASE-NOTES-linux-arm64.md
+            build/desktop/releases/linux-arm64/*/SHA256SUMS-linux-arm64-bundled.txt
+            build/desktop/releases/linux-arm64/*/RELEASE-NOTES-linux-arm64-bundled.md
             build/desktop/reports/linux-arm64/
           retention-days: 14
     env:
@@ -114,14 +142,14 @@ jobs:
       MOARTUBE_DEPENDENCIES_PREPARED: '1'
   upload-draft:
     name: Upload verified linux-arm64 assets to draft
-    needs: linux
-    if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+    needs: linux-client-node
+    if: inputs.release_tag != ''
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: write
     concurrency:
-      group: draft-upload-${{ github.repository }}-${{ inputs.release_tag }}-linux-arm64
+      group: draft-upload-${{ github.repository }}-${{ inputs.release_tag }}-linux-arm64-bundled
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v6
@@ -133,9 +161,9 @@ jobs:
           node-version: 24.22.1
       - uses: actions/download-artifact@v7
         with:
-          name: moartube-client-linux-arm64-candidate
+          name: moartube-client-node-linux-arm64-candidate
           path: build/release-upload
       - name: Upload linux-arm64 downloads to existing draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/upload-desktop-draft.mjs linux-arm64 build/release-upload
+        run: node scripts/upload-desktop-draft.mjs linux-arm64-bundled build/release-upload

@@ -1,4 +1,4 @@
-import { recipeHash, windowsCommandFiles, windowsDocumentation } from './recipe-hash.mjs';
+import { recipeHash, windowsCommandFiles } from './recipe-hash.mjs';
 import { ffmpegPaths } from '../../build-paths.cjs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -57,7 +57,6 @@ if (
   throw new Error('Candidate has failing verification evidence');
 const sources = JSON.parse(readFileSync(path.join(tooling, 'sources.lock.json'), 'utf8'));
 const commandFiles = windowsCommandFiles;
-const documentation = windowsDocumentation;
 const recipeSha256 = recipeHash(root, 'win32-x64');
 const buildId = `9.0.2-moartube-${digest(binaries[0]).slice(0, 16)}-r${recipeSha256.slice(0, 8)}`;
 const finalOutput = path.join(layout.candidates, buildId);
@@ -131,10 +130,6 @@ copyFileSync(
   path.join(root, 'tooling/build-paths.cjs'),
   path.join(output, 'recipe/tooling/build-paths.cjs')
 );
-for (const name of documentation) {
-  mkdirSync(path.join(output, 'recipe/docs'), { recursive: true });
-  copyFileSync(path.join(root, 'docs', name), path.join(output, 'recipe/docs', name));
-}
 for (const name of commandFiles) {
   mkdirSync(path.dirname(path.join(output, 'client-command-snapshot', name)), { recursive: true });
   copyFileSync(path.join(root, name), path.join(output, 'client-command-snapshot', name));

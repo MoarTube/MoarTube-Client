@@ -42,6 +42,7 @@ import { CLIENT_VERSION } from '@/utils/version.js';
 import { getMemoryMetrics } from '@/utils/memory-metrics.js';
 import { getCpuMetrics } from '@/utils/cpu-metrics.js';
 import { getGpuMetrics } from '@/utils/gpu-metrics.js';
+import { bundledNodePort } from '@/config/bundled-desktop.js';
 
 // Disable sharp cache
 sharp.cache(false);
@@ -249,6 +250,57 @@ export class SettingsController extends BaseController {
     return this.config.clientSettings;
   }
 
+  public apiSetClientNetworkAccess = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    const jwtToken = request.session.jwtToken ?? '';
+    if (!jwtToken) {
+      return await this.sendError(reply, 'Sign in to the Node first.', 401);
+    }
+    const body = request.body as { allowRemoteConnections?: unknown } | null;
+    if (typeof body?.allowRemoteConnections !== 'boolean') {
+      return await this.sendError(reply, 'Invalid network access setting.', 400);
+    }
+    try {
+      const auth = await this.nodeApiService.isAuthenticated(jwtToken);
+      if (auth.isError || !auth.isAuthenticated) {
+        return await this.sendError(reply, 'Sign in to the Node first.', 401);
+      }
+      this.config.saveClientSettings({ allowRemoteConnections: body.allowRemoteConnections });
+      return await this.sendSuccess(reply, { restartRequired: true });
+    } catch (error) {
+      this.logger.error('Failed to save Client network access', error as Error);
+      return await this.sendError(reply, 'Unable to save Client network access.', 500);
+    }
+  };
+
+  public apiSetNodeNetworkAccess = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    const jwtToken = request.session.jwtToken ?? '';
+    if (!jwtToken) {
+      return await this.sendError(reply, 'Sign in to the Node first.', 401);
+    }
+    const body = request.body as { allowRemoteConnections?: unknown } | null;
+    if (typeof body?.allowRemoteConnections !== 'boolean') {
+      return await this.sendError(reply, 'Invalid network access setting.', 400);
+    }
+    try {
+      return await reply.send(
+        await this.nodeApiService.setNetworkAccess(jwtToken, body.allowRemoteConnections)
+      );
+    } catch (error) {
+      this.logger.error('Failed to save Node network access', error as Error);
+      return await this.sendError(
+        reply,
+        error instanceof Error ? error.message : 'Unable to save Node network access.',
+        502
+      );
+    }
+  };
+
   // View: GET /settings
   public getSettingsPage = async (
     request: FastifyRequest,
@@ -307,6 +359,7 @@ export class SettingsController extends BaseController {
     const clientSettings = this.getClientSettings();
     const settings = {
       ...(await this.getGpuSettings()),
+      allowRemoteConnections: clientSettings.allowRemoteConnections,
       videoEncoderSettings: clientSettings.videoEncoderSettings,
       liveEncoderSettings: clientSettings.liveEncoderSettings,
       version: CLIENT_VERSION,
@@ -1169,9 +1222,17 @@ export class SettingsController extends BaseController {
   ): Promise<FastifyReply> => {
     const { databaseConfig } = request.body as ToggleDatabaseBody;
     const jwtToken = request.session.jwtToken ?? '';
-    const response = await this.nodeApiService.databaseConfigToggle(jwtToken, databaseConfig);
+    let response;
+    try {
+      response = await this.nodeApiService.databaseConfigToggle(jwtToken, databaseConfig);
+    } catch (error) {
+      return await this.sendError(
+        reply,
+        error instanceof Error ? error.message : 'Could not change database configuration'
+      );
+    }
 
-    if (!response.isError) {
+    if (!response.isError && response['restartRequired'] !== true) {
       try {
         requireNodeSuccess(await this.nodeApiService.restartNode(jwtToken));
       } catch (error) {
@@ -1212,7 +1273,34 @@ export class SettingsController extends BaseController {
   ): Promise<FastifyReply> => {
     const { username, password } = request.body as SetAccountBody;
     const jwtToken = request.session.jwtToken ?? '';
-    const response = await this.nodeApiService.setAccountCredentials(jwtToken, username, password);
+    const bundled = bundledNodePort() !== undefined;
+    if (
+      typeof username !== 'string' ||
+      typeof password !== 'string' ||
+      (username === '') !== (password === '') ||
+      (!bundled && username === '')
+    ) {
+      return await this.sendError(
+        reply,
+        'Enter both username and password, or clear both for automatic sign-in.',
+        400
+      );
+    }
+    const automatic = bundled && username === '' && password === '';
+    const response = await this.nodeApiService.setAccountCredentials(
+      jwtToken,
+      automatic ? 'admin' : username,
+      automatic ? 'admin' : password
+    );
+    if (bundled && !response.isError) {
+      this.config.saveClientSettings({ bundledNodeLoginRequired: !automatic });
+      return await reply.send({
+        ...response,
+        message: automatic
+          ? 'Automatic sign-in will be enabled the next time you start MoarTube.'
+          : 'Sign-in will be required the next time you start MoarTube.',
+      });
+    }
     return await reply.send(response);
   };
 

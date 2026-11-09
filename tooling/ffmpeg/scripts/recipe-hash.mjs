@@ -16,12 +16,6 @@ export const windowsCommandFiles = [
   'tests/windows-live-hardware.test.ts',
   'tests/integration/gpu-policy.ts',
 ];
-export const windowsDocumentation = [
-  'ffmpeg-distribution-plan.md',
-  'gpu-acceleration.md',
-  'windows-ffmpeg-validation.md',
-];
-
 export function recipeHash(root, target) {
   const tooling = path.join(root, 'tooling/ffmpeg');
   const hash = createHash('sha256');
@@ -32,15 +26,14 @@ export function recipeHash(root, target) {
     )) {
       const file = path.join(directory, entry.name);
       if (entry.isDirectory()) visit(file);
-      else files.push(file);
+      else if (!/\.md$/i.test(entry.name)) files.push(file);
     }
   }
   visit(tooling);
   if (target === 'win32-x64') {
     files.push(
       path.join(root, 'tooling/build-paths.cjs'),
-      ...windowsCommandFiles.map((name) => path.join(root, name)),
-      ...windowsDocumentation.map((name) => path.join(root, 'docs', name))
+      ...windowsCommandFiles.map((name) => path.join(root, name))
     );
     for (const file of files.sort())
       hash

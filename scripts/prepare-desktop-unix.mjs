@@ -13,6 +13,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { writeLinuxReleaseNotes } from './lib/linux-release-notes.mjs';
 import { sha256 } from './lib/desktop-ffmpeg.mjs';
 
 const darwin = process.platform === 'darwin';
@@ -64,6 +65,7 @@ if (!expected || sourceSha256 !== expected)
 execFileSync(process.execPath, [path.join(root, 'scripts/desktop-icon.mjs')], { stdio: 'inherit' });
 const output = layout.release;
 mkdirSync(output, { recursive: true });
+mkdirSync(layout.reports, { recursive: true });
 mkdirSync(layout.state, { recursive: true });
 const runtimeDirectory = path.join(layout.staging, selection.buildId, 'runtime');
 const nodeRuntimeDirectory = path.join(layout.staging, `node-${arch}-${process.version}`);
@@ -126,17 +128,7 @@ if (darwin) {
       'Ad-hoc signed, not notarized. macOS may block browser downloads; see docs/electron-darwin.md for manual approval. Node.js, FFmpeg and FFprobe are bundled. Connect to an existing MoarTube Node. Publish and retain matching FFmpeg sources beside the app. Hardware VideoToolbox and physical Mac qualification remain pending.\n'
   );
 } else {
-  writeFileSync(
-    path.join(output, `RELEASE-NOTES-${target}.md`),
-    `# MoarTube Client ${version} - Ubuntu 24.04 and 26.04 ${arch}\n\n` +
-      `- [Ubuntu installer](${releaseBase}/MoarTube-Client-${version}-${target}.deb)\n` +
-      `- [Standalone archive](${releaseBase}/MoarTube-Client-${version}-${target}.tar.gz)\n` +
-      `- [FFmpeg corresponding sources](${sourceUrl}) - optional\n` +
-      `- [Checksums](${releaseBase}/SHA256SUMS-${target}.txt)\n\n` +
-      `Install the DEB with sudo apt install ./MoarTube-Client-<version>-${target}.deb so system dependencies are resolved. Node.js, FFmpeg and FFprobe are bundled. GPU drivers are host prerequisites. Connect to your existing MoarTube Node.\n\n` +
-      'The standalone archive requires the documented desktop/FFmpeg libraries and a working Chromium sandbox. Use the DEB for Ubuntu integration. Sources remain separate; publish and retain the linked archive beside the app.\n\n' +
-      `Publish using tag ${releaseTag}. Native GPU, Wayland and full Node-connected desktop qualification remain release work; see docs/electron-linux.md.\n`
-  );
+  writeLinuxReleaseNotes({ output, version, target, releaseBase, sourceUrl });
 }
 
 console.log(

@@ -110,6 +110,7 @@ it('places the tunnel toggle after Turnstile and reconciles saves, partial failu
     const toggle = page.getByRole('switch', { name: 'Cloudflare Tunnels' });
     await browserExpect(toggle).toBeChecked();
     await browserExpect(toggle).toBeEnabled();
+    await page.evaluate(() => document.fonts.ready);
     const turnstile = await page.locator('#cloudflare-turnstile-checkbox').boundingBox();
     const tunnel = await toggle.boundingBox();
     if (!tunnel || !turnstile) {

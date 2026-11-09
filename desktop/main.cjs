@@ -1,4 +1,15 @@
-const { app, BrowserWindow, Menu, dialog, shell, utilityProcess } = require('electron');
+const {
+  app,
+  BrowserWindow,
+  Menu,
+  Tray,
+  nativeImage,
+  dialog,
+  shell,
+  screen,
+  utilityProcess,
+} = require('electron');
+const { randomBytes } = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, fork } = require('node:child_process');
@@ -10,21 +21,41 @@ const {
   allowPermission,
 } = require('./policy.cjs');
 const linuxProcesses = require('./linux-processes.cjs');
+const { createAutostart, AUTOSTART_ARGUMENT } = require('./autostart.cjs');
+const { desktopLayout, prepareData } = require('../src/config/data-layout.cjs');
 
 app.setName('MoarTube Client');
 const applicationRoot = app.isPackaged ? app.getAppPath() : path.resolve(__dirname, '..');
 const version = require('../package.json').version;
-if (process.platform === 'win32') app.setAppUserModelId('com.moartube.client');
-if (process.platform === 'linux') app.setDesktopName('moartube-client.desktop');
+const bundled =
+  ['win32', 'linux'].includes(process.platform) &&
+  (app.isPackaged
+    ? require('../package.json').moartubeBundledNode === true
+    : process.env.MOARTUBE_DESKTOP_BUNDLED === '1');
+const desktopKey = bundled ? randomBytes(32).toString('hex') : undefined;
+if (bundled) app.setName('MoarTube Client + Node');
+const startedInTray =
+  process.argv.includes(AUTOSTART_ARGUMENT) ||
+  (process.platform === 'darwin' && app.getLoginItemSettings().wasOpenedAtLogin);
+let showMainWindow = !startedInTray;
+if (process.platform === 'win32') {
+  app.setAppUserModelId(bundled ? 'com.moartube.desktop' : 'com.moartube.client');
+  if (bundled) app.setName('MoarTube Client + Node');
+}
+if (process.platform === 'linux')
+  app.setDesktopName(bundled ? 'moartube-client-node.desktop' : 'moartube-client.desktop');
 // Development never modifies the installed app's data or the CLI checkout's data.
-const userDirectory = process.env.MOARTUBE_DESKTOP_TEST_DATA_DIR
+const isolatedProfile = Boolean(process.env.MOARTUBE_DESKTOP_TEST_DATA_DIR) || !app.isPackaged;
+const isolatedBase = process.env.MOARTUBE_DESKTOP_TEST_DATA_DIR
   ? path.resolve(process.env.MOARTUBE_DESKTOP_TEST_DATA_DIR)
-  : app.isPackaged
-    ? path.join(app.getPath('appData'), 'MoarTube Client')
-    : path.join(
-        __dirname,
-        `../build/desktop/profiles/${process.platform}-${process.arch}/development`
-      );
+  : path.join(
+      applicationRoot,
+      `build/desktop/profiles/${process.platform}-${process.arch}/development`
+    );
+const dataLayout = desktopLayout(bundled, {
+  env: isolatedProfile ? { ...process.env, MOARTUBE_DATA_ROOT: isolatedBase } : process.env,
+});
+const userDirectory = dataLayout.userData;
 fs.mkdirSync(userDirectory, { recursive: true });
 app.setPath('userData', userDirectory);
 let window;
@@ -37,6 +68,21 @@ let log;
 let startupTimer;
 let failureShown = false;
 let exitCode = 0;
+let tray;
+let bundledNode;
+let autostart;
+let trayMenu;
+let windowMenu;
+const startupAbort = new AbortController();
+
+function showWindow() {
+  showMainWindow = true;
+  if (!window || window.isDestroyed()) return;
+  if (window.isMinimized()) window.restore();
+  window.setSkipTaskbar(false);
+  window.show();
+  window.focus();
+}
 
 function fail(message) {
   if (quitting || failureShown) return;
@@ -44,7 +90,7 @@ function fail(message) {
   exitCode = 1;
   clearTimeout(startupTimer);
   const detail = `${message}\n\nLog: ${path.join(app.getPath('userData'), 'logs/client.log')}`;
-  if (process.env.MOARTUBE_DESKTOP_SMOKE === '1') console.error(detail);
+  if (process.env.MOARTUBE_DESKTOP_SMOKE === '1' || startedInTray) console.error(detail);
   else dialog.showErrorBox('MoarTube Client could not start', detail);
   app.quit();
 }
@@ -90,27 +136,34 @@ async function stopBackend() {
   });
 }
 
-if (!app.requestSingleInstanceLock()) {
-  app.exit(0);
+const ownsInstance = app.requestSingleInstanceLock({ autostart: startedInTray });
+if (!ownsInstance) {
+  app.quit();
 } else {
-  app.on('second-instance', () => {
-    if (window && !window.isDestroyed()) {
-      if (window.isMinimized()) window.restore();
-      window.show();
-      window.focus();
-    }
+  app.on('second-instance', (_event, argv, _directory, data) => {
+    if (process.env.MOARTUBE_DESKTOP_SMOKE === '1') app.moartubeLastLaunch = { argv, data };
+    if (data?.autostart ?? argv.includes(AUTOSTART_ARGUMENT)) return;
+    showWindow();
+  });
+  app.on('activate', () => {
+    if (window && origin) showWindow();
   });
   app.on('before-quit', (event) => {
     if (quitting) return;
     event.preventDefault();
     quitting = true;
+    startupAbort.abort();
     if (window && !window.isDestroyed()) window.hide();
-    void stopBackend().finally(() => {
+    void stopBackend().finally(async () => {
+      await bundledNode?.stop();
+      tray?.destroy();
       log?.end();
       app.exit(exitCode);
     });
   });
-  app.on('window-all-closed', () => app.quit());
+  app.on('window-all-closed', () => {
+    if (!bundled) app.quit();
+  });
   app
     .whenReady()
     .then(async () => {
@@ -118,6 +171,11 @@ if (!app.requestSingleInstanceLock()) {
         throw new Error(
           'This Electron candidate supports Windows x64, Linux x64/ARM64 and macOS x64/ARM64.'
         );
+      for (const component of bundled ? ['node', 'client'] : ['client']) {
+        const release = await prepareData(component, { target: dataLayout[component] });
+        release();
+      }
+      if (quitting) return;
       const userData = app.getPath('userData');
       fs.mkdirSync(path.join(userData, 'logs'), { recursive: true });
       const logPath = path.join(userData, 'logs/client.log');
@@ -128,11 +186,89 @@ if (!app.requestSingleInstanceLock()) {
       log = fs.createWriteStream(logPath, { flags: 'a' });
       log.on('error', (error) => console.error('Desktop log:', error));
       log.write(`\nMoarTube Client ${version} starting ${new Date().toISOString()}\n`);
+      {
+        try {
+          // Development and automated profiles never register Electron or test
+          // executables in the user's real system startup configuration.
+          autostart = createAutostart({
+            app,
+            userData,
+            appId: bundled ? 'com.moartube.desktop' : 'com.moartube.client',
+            manageLoginItem: app.isPackaged && process.env.MOARTUBE_DESKTOP_SMOKE !== '1',
+          });
+          if (autostart.startupError) log.write(`Autostart: ${autostart.startupError.message}\n`);
+        } catch (error) {
+          log.write(`Autostart: ${error.message}\n`);
+        }
+      }
+      function syncAutostart() {
+        for (const menu of [trayMenu, windowMenu]) {
+          const item = menu?.getMenuItemById('autostart');
+          if (item) item.checked = autostart?.enabled ?? false;
+          const closeItem = menu?.getMenuItemById('minimize-on-close');
+          if (closeItem) closeItem.checked = autostart?.minimizeOnClose ?? true;
+        }
+        if (trayMenu) tray?.setContextMenu(trayMenu);
+      }
+      function autostartItem() {
+        return {
+          id: 'autostart',
+          label: 'Autostart',
+          type: 'checkbox',
+          checked: autostart?.enabled ?? false,
+          enabled: Boolean(
+            autostart && (app.isPackaged || process.env.MOARTUBE_DESKTOP_SMOKE === '1')
+          ),
+          click: (item) => {
+            try {
+              autostart.setEnabled(item.checked);
+            } catch (error) {
+              log.write(`Autostart: ${error.message}\n`);
+              void dialog.showMessageBox(window, {
+                type: 'error',
+                message: 'Could not update Autostart',
+                detail: error.message,
+              });
+            } finally {
+              syncAutostart();
+            }
+          },
+        };
+      }
+      function minimizeOnCloseItem() {
+        return {
+          id: 'minimize-on-close',
+          label: 'Minimize on Close',
+          type: 'checkbox',
+          checked: autostart?.minimizeOnClose ?? true,
+          enabled: Boolean(autostart),
+          click: (item) => {
+            try {
+              autostart.setMinimizeOnClose(item.checked);
+            } catch (error) {
+              void dialog.showMessageBox(window, {
+                type: 'error',
+                message: 'Could not update Minimize on Close',
+                detail: error.message,
+              });
+            } finally {
+              syncAutostart();
+            }
+          },
+        };
+      }
+      const workArea = screen.getPrimaryDisplay().workArea;
+      const width = Math.round(workArea.width * 0.80);
+      const height = Math.round(workArea.height * 0.80);
       window = new BrowserWindow({
-        width: 1280,
-        height: 900,
-        minWidth: 960,
-        minHeight: 650,
+        show: showMainWindow,
+        skipTaskbar: !showMainWindow,
+        width,
+        height,
+        x: workArea.x + Math.round((workArea.width - width) / 2),
+        y: workArea.y + Math.round((workArea.height - height) / 2),
+        minWidth: Math.min(960, width),
+        minHeight: Math.min(650, height),
         title: 'MoarTube Client',
         backgroundColor: '#f8f9fa',
         icon: path.join(
@@ -150,6 +286,79 @@ if (!app.requestSingleInstanceLock()) {
       window.on('closed', () => {
         window = undefined;
       });
+      if (process.env.MOARTUBE_DESKTOP_SMOKE === '1') {
+        app.moartubeWindowShowCount = window.isVisible() ? 1 : 0;
+        window.on('show', () => {
+          app.moartubeWindowShowCount++;
+        });
+      }
+      {
+        window.on('close', (event) => {
+          if (!quitting) {
+            event.preventDefault();
+            if (!(autostart?.minimizeOnClose ?? true)) {
+              app.quit();
+            } else if (!tray || process.platform === 'linux') {
+              // Some Linux desktops do not display status icons. Keep a taskbar
+              // entry so the running app can always be restored.
+              window.minimize();
+            } else {
+              window.hide();
+              window.setSkipTaskbar(true);
+            }
+          }
+        });
+        const icon = nativeImage.createFromPath(
+          path.join(
+            applicationRoot,
+            process.platform === 'win32'
+              ? 'dist/public/images/favicon.ico'
+              : app.isPackaged
+                ? 'desktop/icon.png'
+                : 'build/desktop/assets/icon.png'
+          )
+        );
+        const trayIcon = icon.resize({ width: 16, height: 16 });
+        if (process.platform === 'darwin') trayIcon.setTemplateImage(true);
+        try {
+          tray = new Tray(trayIcon);
+        } catch (error) {
+          log.write(`Tray: ${error.message}\n`);
+        }
+        if (tray) {
+          tray.setToolTip('MoarTube');
+          trayMenu = Menu.buildFromTemplate([
+            { label: 'Open MoarTube', click: showWindow },
+            autostartItem(),
+            minimizeOnCloseItem(),
+            { type: 'separator' },
+            { label: 'Quit MoarTube', click: () => app.quit() },
+          ]);
+          tray.setContextMenu(trayMenu);
+          const refreshAutostart = () => {
+            try {
+              autostart?.refresh();
+              syncAutostart();
+            } catch (error) {
+              log.write(`Autostart: ${error.message}\n`);
+            }
+          };
+          window.on('focus', refreshAutostart);
+          tray.on('right-click', refreshAutostart);
+          tray.on('click', showWindow);
+          if (process.env.MOARTUBE_DESKTOP_SMOKE === '1') app.moartubeRestore = showWindow;
+          if (process.env.MOARTUBE_DESKTOP_SMOKE === '1') app.moartubeTrayMenu = trayMenu;
+        }
+      }
+      if (bundled) {
+        window.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
+          const headers = { ...details.requestHeaders };
+          if (origin && isLocalNavigation(details.url.replace(/^ws:/, 'http:'), origin)) {
+            headers['X-MoarTube-Desktop-Key'] = desktopKey;
+          }
+          callback({ requestHeaders: headers });
+        });
+      }
       window.webContents.session.setPermissionRequestHandler((contents, permission, callback) =>
         callback(
           Boolean(
@@ -197,86 +406,87 @@ if (!app.requestSingleInstanceLock()) {
         else if (isExternalLink(url)) void shell.openExternal(url);
         return { action: 'deny' };
       });
-      Menu.setApplicationMenu(
-        Menu.buildFromTemplate([
-          ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
-          {
-            label: 'File',
-            submenu: [
-              {
-                label: 'Open data folder',
-                click: () => {
-                  void shell.openPath(path.join(userData, 'client'));
-                },
+      windowMenu = Menu.buildFromTemplate([
+        ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
+        {
+          label: 'File',
+          submenu: [
+            {
+              label: 'Open data folder',
+              click: () => {
+                void shell.openPath(bundled ? dataLayout.base : dataLayout.client);
               },
-              {
-                label: 'Open log folder',
-                click: () => {
-                  void shell.openPath(path.join(userData, 'logs'));
-                },
+            },
+            {
+              label: 'Open log folder',
+              click: () => {
+                void shell.openPath(path.join(userData, 'logs'));
               },
-              { type: 'separator' },
-              { role: 'quit' },
-            ],
-          },
-          {
-            label: 'Edit',
-            submenu: [
-              { role: 'undo' },
-              { role: 'redo' },
-              { type: 'separator' },
-              { role: 'cut' },
-              { role: 'copy' },
-              { role: 'paste' },
-              { role: 'selectAll' },
-            ],
-          },
-          {
-            label: 'View',
-            submenu: [
-              { role: 'reload' },
-              { role: 'resetZoom' },
-              { role: 'zoomIn' },
-              { role: 'zoomOut' },
-              ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' }]),
-            ],
-          },
-          {
-            label: 'Help',
-            submenu: [
-              {
-                label: 'FFmpeg licenses and source information',
-                click: () => {
-                  void shell.openPath(
-                    app.isPackaged
-                      ? path.join(
-                          process.resourcesPath,
-                          `ffmpeg/${process.platform}-${process.arch}`
-                        )
-                      : path.join(applicationRoot, 'tooling/ffmpeg')
-                  );
-                },
+            },
+            autostartItem(),
+            minimizeOnCloseItem(),
+            { type: 'separator' },
+            { role: 'quit' },
+          ],
+        },
+        {
+          label: 'Edit',
+          submenu: [
+            { role: 'undo' },
+            { role: 'redo' },
+            { type: 'separator' },
+            { role: 'cut' },
+            { role: 'copy' },
+            { role: 'paste' },
+            { role: 'selectAll' },
+          ],
+        },
+        {
+          label: 'View',
+          submenu: [
+            { role: 'reload' },
+            { role: 'resetZoom' },
+            { role: 'zoomIn' },
+            { role: 'zoomOut' },
+            ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' }]),
+          ],
+        },
+        {
+          label: 'Help',
+          submenu: [
+            {
+              label: 'FFmpeg licenses and source information',
+              click: () => {
+                void shell.openPath(
+                  app.isPackaged
+                    ? path.join(process.resourcesPath, `ffmpeg/${process.platform}-${process.arch}`)
+                    : path.join(applicationRoot, 'tooling/ffmpeg')
+                );
               },
-              {
-                label: 'About MoarTube Client',
-                click: () => {
-                  void dialog.showMessageBox(window, {
-                    type: 'info',
-                    title: 'MoarTube Client',
-                    message: `MoarTube Client ${version}`,
-                    detail:
-                      'Closing the window quits the app and stops active imports, publishing and live streams.\n\nConnect to your MoarTube Node from the sign-in screen. FFmpeg and FFprobe are bundled with this application.',
-                  });
-                },
+            },
+            {
+              label: 'About MoarTube Client',
+              click: () => {
+                void dialog.showMessageBox(window, {
+                  type: 'info',
+                  title: 'MoarTube Client',
+                  message: `MoarTube Client ${version}`,
+                  detail:
+                    'Autostart and Minimize on Close are available in the File and tray menus. When Minimize on Close is off, closing the window quits MoarTube and stops its managed processes. Quit MoarTube always stops the app.\n\n' +
+                    (bundled
+                      ? 'MoarTube Client and Node run together. Node.js, Cloudflared, FFmpeg and FFprobe are bundled.'
+                      : 'Connect to your MoarTube Node from the sign-in screen. FFmpeg and FFprobe are bundled with this application.'),
+                });
               },
-            ],
-          },
-        ])
-      );
+            },
+          ],
+        },
+      ]);
+      Menu.setApplicationMenu(windowMenu);
       await window.loadFile(path.join(__dirname, 'loading.html'));
       const environment = {
         ...process.env,
-        MOARTUBE_DATA_DIR: path.join(userData, 'client'),
+        MOARTUBE_DATA_DIR: dataLayout.client,
         MOARTUBE_DESKTOP_MODE: app.isPackaged ? 'packaged' : 'development',
         MOARTUBE_METRICS_ROOT_PID: String(process.pid),
       };
@@ -286,17 +496,58 @@ if (!app.requestSingleInstanceLock()) {
         environment.MOARTUBE_RESOURCE_ROOT = process.resourcesPath;
         delete environment.FFMPEG_BIN;
       } else environment.MOARTUBE_RESOURCE_ROOT = '';
-      if (process.platform === 'linux' || process.platform === 'darwin') {
+      if (bundled) {
+        const resources = app.isPackaged
+          ? process.resourcesPath
+          : path.join(
+              applicationRoot,
+              `build/desktop/work/${process.platform}-${process.arch}/staging/bundled`
+            );
+        bundledNode = await require('./bundled-node.cjs').startNode({
+          directory: path.join(resources, 'node'),
+          runtime: path.join(
+            resources,
+            process.platform === 'win32' ? 'runtime/node.exe' : 'runtime/node'
+          ),
+          data: dataLayout.node,
+          log,
+          onFailure: fail,
+          signal: startupAbort.signal,
+          onSpawn: (pid) => {
+            if (process.env.MOARTUBE_DESKTOP_SMOKE === '1') app.moartubeNodePid = pid;
+          },
+        });
+        const port = await bundledNode.ready;
+        if (quitting) {
+          await bundledNode.stop();
+          return;
+        }
+        environment.MOARTUBE_BUNDLED_NODE_PORT = String(port);
+        environment.MOARTUBE_DESKTOP_KEY = desktopKey;
+        if (process.env.MOARTUBE_DESKTOP_SMOKE === '1') app.moartubeNodePort = port;
+      }
+      if (bundled || process.platform === 'linux' || process.platform === 'darwin') {
         environment.MOARTUBE_DESKTOP_NODE_BACKEND = '1';
         const entry = app.isPackaged
           ? path.join(process.resourcesPath, 'app.asar.unpacked/dist/desktop-backend.js')
           : path.join(applicationRoot, 'dist/desktop-backend.js');
         backend = fork(entry, [], {
-          execPath: app.isPackaged
-            ? path.join(process.resourcesPath, 'runtime/node')
-            : (process.env.npm_node_execpath ?? 'node'),
+          execPath: bundled
+            ? path.join(
+                app.isPackaged
+                  ? process.resourcesPath
+                  : path.join(
+                      applicationRoot,
+                      `build/desktop/work/${process.platform}-${process.arch}/staging/bundled`
+                    ),
+                process.platform === 'win32' ? 'runtime/node.exe' : 'runtime/node'
+              )
+            : app.isPackaged
+              ? path.join(process.resourcesPath, 'runtime/node')
+              : (process.env.npm_node_execpath ?? 'node'),
           execArgv: [],
           detached: process.platform === 'darwin',
+          windowsHide: true,
           env: environment,
           cwd: userData,
           stdio: ['ignore', 'pipe', 'pipe', 'ipc'],

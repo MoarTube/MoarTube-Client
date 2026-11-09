@@ -21,8 +21,9 @@ it('does not accept a relative desktop data directory', () => {
   expect(() => initializePaths(process.cwd())).toThrow('absolute writable directory');
 });
 
-it('retains the source checkout data layout without a desktop override', () => {
+it('uses the same MoarTube client directory for source and installed distributions', () => {
   vi.stubEnv('MOARTUBE_DATA_DIR', undefined);
+  vi.stubEnv('MOARTUBE_DATA_ROOT', path.resolve('build/test/unified-user-data'));
   const root = path.resolve('build/desktop/source-checkout');
-  expect(initializePaths(root).data).toBe(path.join(root, 'data'));
+  expect(initializePaths(root).data).toBe(path.resolve('build/test/unified-user-data/MoarTube/client'));
 });

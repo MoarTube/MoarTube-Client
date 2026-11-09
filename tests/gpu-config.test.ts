@@ -32,6 +32,7 @@ it.each([
   }
   let config: Config | undefined;
   try {
+    vi.stubEnv('MOARTUBE_DATA_DIR', path.join(root, 'data'));
     fs.mkdirSync(path.join(root, 'data'));
     const agent = {
       processingAgentType: 'gpu',
@@ -48,6 +49,7 @@ it.each([
     config = Config.initialize(root);
     expect(config.clientSettings.processingAgent).toEqual(agent);
   } finally {
+    vi.unstubAllEnvs();
     config?.stopWatching();
     fs.rmSync(root, { recursive: true, force: true });
   }

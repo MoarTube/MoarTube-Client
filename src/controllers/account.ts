@@ -4,6 +4,7 @@ import type { NodeApiService } from '@/services/node-api.js';
 import type { NodeSocketService } from '@/services/node-socket.js';
 import { getConfig } from '@/config/index.js';
 import { z } from 'zod';
+import { bundledNodePort } from '@/config/bundled-desktop.js';
 
 export class AccountController extends BaseController {
   constructor(
@@ -38,7 +39,20 @@ export class AccountController extends BaseController {
     });
 
     try {
-      const body = BodySchema.parse(request.body);
+      const port = bundledNodePort();
+      const credentials = z
+        .object({ username: z.string(), password: z.string() })
+        .parse(request.body);
+      // Ignore any supplied endpoint in Client + Node, including forged fields.
+      const body = BodySchema.parse(
+        port === undefined
+          ? request.body
+          : {
+              ...credentials,
+              moarTubeNodeIp: '127.0.0.1',
+              moarTubeNodePort: port,
+            }
+      );
       const { moarTubeNodeIp, moarTubeNodePort } = body;
 
       // Heartbeat check to determine protocol
@@ -46,23 +60,27 @@ export class AccountController extends BaseController {
       let websocketProtocol = 'ws';
       let heartbeatSuccess = false;
 
-      try {
-        this.logger.debug(
-          `Attempting heartbeat checks on ${moarTubeNodeIp}:${String(moarTubeNodePort)}...`
-        );
-        await this.nodeApiService.heartbeat('http', moarTubeNodeIp, moarTubeNodePort);
-        this.logger.debug('HTTP heartbeat successful');
+      if (port !== undefined) {
         heartbeatSuccess = true;
-      } catch {
-        this.logger.debug('HTTP heartbeat failed, trying HTTPS...');
+      } else {
         try {
-          await this.nodeApiService.heartbeat('https', moarTubeNodeIp, moarTubeNodePort);
-          this.logger.debug('HTTPS heartbeat successful');
-          protocol = 'https';
-          websocketProtocol = 'wss';
+          this.logger.debug(
+            `Attempting heartbeat checks on ${moarTubeNodeIp}:${String(moarTubeNodePort)}...`
+          );
+          await this.nodeApiService.heartbeat('http', moarTubeNodeIp, moarTubeNodePort);
+          this.logger.debug('HTTP heartbeat successful');
           heartbeatSuccess = true;
-        } catch (err) {
-          this.logger.error('HTTPS heartbeat failed', err);
+        } catch {
+          this.logger.debug('HTTP heartbeat failed, trying HTTPS...');
+          try {
+            await this.nodeApiService.heartbeat('https', moarTubeNodeIp, moarTubeNodePort);
+            this.logger.debug('HTTPS heartbeat successful');
+            protocol = 'https';
+            websocketProtocol = 'wss';
+            heartbeatSuccess = true;
+          } catch (err) {
+            this.logger.error('HTTPS heartbeat failed', err);
+          }
         }
       }
 
@@ -72,12 +90,14 @@ export class AccountController extends BaseController {
 
       // Update Configuration with successful connection details
       const config = getConfig();
-      config.saveClientSettings({
-        nodeIp: moarTubeNodeIp,
-        nodePort: moarTubeNodePort,
-        nodeHttpProtocol: protocol,
-        nodeWebsocketProtocol: websocketProtocol,
-      });
+      if (port === undefined) {
+        config.saveClientSettings({
+          nodeIp: moarTubeNodeIp,
+          nodePort: moarTubeNodePort,
+          nodeHttpProtocol: protocol,
+          nodeWebsocketProtocol: websocketProtocol,
+        });
+      }
 
       const result = await this.nodeApiService.signIn(body.username, body.password);
 

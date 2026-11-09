@@ -7,6 +7,7 @@ import websocketPlugin from '@/plugins/websocket.js';
 import staticPlugin from '@/plugins/static.js';
 import viewPlugin from '@/plugins/view.js';
 import swaggerPlugin from '@/plugins/swagger.js';
+import bundledDesktopPlugin from '@/plugins/bundled-desktop.js';
 
 import type { FastifyInstance } from 'fastify';
 import fastify from 'fastify';
@@ -35,6 +36,7 @@ export async function createFastifyApp(
   await app.register(corsPlugin);
   await app.register(bodyParserPlugin);
   await app.register(sessionPlugin, { container });
+  await app.register(bundledDesktopPlugin, { container });
   await app.register(websocketPlugin);
   await app.register(staticPlugin);
   await app.register(viewPlugin);

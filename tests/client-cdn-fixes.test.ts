@@ -273,6 +273,55 @@ describe('Client CDN remediation', () => {
     }
   );
 
+  it('shows the Node busy-work rejection without attempting a restart', async () => {
+    const restartNode = vi.fn();
+    const controller = new SettingsController(
+      config,
+      {
+        databaseConfigToggle: async () => {
+          throw new Error(
+            'Stop or finish all imports, publishing jobs, uploads, and live streams before switching databases.'
+          );
+        },
+        restartNode,
+      } as never,
+      {} as never,
+      {} as never
+    );
+    const output = reply();
+    await controller.apiToggleDatabase(
+      { body: { databaseConfig: {} }, session: { jwtToken: 'token' } } as never,
+      output as never
+    );
+    expect(output.send.mock.calls[0]?.[0]).toMatchObject({
+      isError: true,
+      message: expect.stringContaining('Stop or finish all imports'),
+    });
+    expect(restartNode).not.toHaveBeenCalled();
+  });
+
+  it('passes through the full-restart requirement without requesting a worker-only restart', async () => {
+    const response = {
+      isError: false,
+      restartRequired: true,
+      message: 'Restart MoarTube Node before continuing.',
+    };
+    const restartNode = vi.fn();
+    const controller = new SettingsController(
+      config,
+      { databaseConfigToggle: async () => response, restartNode } as never,
+      {} as never,
+      {} as never
+    );
+    const output = reply();
+    await controller.apiToggleDatabase(
+      { body: { databaseConfig: {} }, session: { jwtToken: 'token' } } as never,
+      output as never
+    );
+    expect(output.send).toHaveBeenCalledWith(response);
+    expect(restartNode).not.toHaveBeenCalled();
+  });
+
   it('reports saved database settings as activation pending when restart is rejected', async () => {
     const controller = new SettingsController(
       config,

@@ -25,6 +25,15 @@ When you’re ready, make sure to check out the [MoarTube Node](https://github.c
   - [Default Login Credentials](#default-login-credentials)
   - [Get MoarTube Node](#get-moartube-node)
 
+## Build Electron apps for all platforms
+
+Run **Electron builds - all platforms** in GitHub Actions to build and verify
+Windows x64, Linux x64/ARM64, and macOS Intel/Apple Silicon together. Leave
+`release_tag` empty to download workflow artifacts, or supply an existing draft
+release tag to upload verified downloads to that draft. The workflow never
+publishes a release. See [the desktop build guide](docs/electron-builds.md)
+for local commands, outputs, and signing limitations.
+
 ## Windows desktop option
 
 See [the build output layout](docs/build-outputs.md) for release downloads,
@@ -32,20 +41,117 @@ compiler workspaces, caches and validation evidence on both platforms.
 See [build preparation and caching](docs/build-preparation-and-caching.md) for
 dependency preflight and reuse of verified FFmpeg builds in GitHub Actions.
 
-The Windows 11 x64 Electron app bundles the client and compiled FFmpeg/FFprobe.
-Users run the installer or extract the standalone ZIP and open `MoarTube Client.exe`;
-no Node.js or command-line setup is needed. Connect it to your existing MoarTube
-Node. Closing the window stops its jobs and exits the app.
+Windows 11 x64 has two Electron distributions. Both include FFmpeg/FFprobe and
+require no Node.js installation on the user's computer.
 
-Developers can run `npm.cmd run desktop:dev` after compiling FFmpeg, or create the
-Windows installer/ZIP with `npm.cmd run desktop:build:windows`. Outputs are in
-`build/desktop/releases/win32-x64/1.1.0`, including a separate corresponding FFmpeg sources ZIP,
-checksums and release notes. Publish the sources ZIP alongside the installer;
-users do not need it to run the app. The current local builds are unsigned candidates;
-See the [Windows desktop guide](docs/electron-windows.md)
-for storage paths, build commands, verification and release limitations.
+| Variant | Windows build command | Behavior |
+| --- | --- | --- |
+| Client | `npm.cmd run desktop:build:windows:client` | Normal login and Node selection; connect to a Node managed separately. |
+| Client + Node | `npm.cmd run desktop:build:windows:client-node` | Includes Node.js and Cloudflared; automatic sign-in by default. Set credentials in Settings to require sign-in on next start, or save both fields blank to restore automatic sign-in. Always connects to its own Node. Closing hides to tray; Quit MoarTube stops both. |
+| Both | `npm.cmd run desktop:build:windows:all` | Builds installers and ZIPs for both variants. |
+
+Downloads share `build/desktop/releases/win32-x64/1.1.0`. Client filenames
+start with `MoarTube-Client-`; bundled filenames start with `MoarTube-Client-Node-`.
+Portable ZIP filenames end in `-windows-x64-portable.zip`; setup installers end
+in `-windows-x64-setup.exe`.
+Windows setup offers installation for **Just me** (selected by default on a fresh
+installation) or **All users**. Just me uses `%LOCALAPPDATA%\Programs`; All users
+requests administrator permission and uses Program Files. Upgrades retain the
+existing installation scope. Settings and media remain per-user in both modes.
+Each variant has its own installer identity and shortcut, so both can coexist.
+Packaged application folders are under
+`build/desktop/work/win32-x64/packages/client/win-unpacked` and
+`build/desktop/work/win32-x64/packages/bundled/win-unpacked`.
+Run `npm.cmd run desktop:verify:windows:all` to verify both packaged apps.
+Both Electron variants enable **Autostart** and **Minimize on Close** by default.
+Client and Node Settings each offer **Allow connections from other computers**.
+The Client defaults to local connections in every distribution. The bundled Node
+also defaults to local connections; a standalone Node defaults to network access.
+Disabled listens on `127.0.0.1`; enabled listens on `0.0.0.0`. Choices are saved
+independently and apply after restarting the respective component. Cloudflare
+Tunnel works with Node network access disabled. Enabling network access may
+trigger a firewall prompt. The Client toggle controls its web interface, not
+FFmpeg's separate live-stream input. Browsers accessing a bundled Client over
+the network must sign in; automatic admin sign-in remains exclusive to Electron.
+Toggle either from the tray's right-click menu or the window's **File** menu;
+the controls share the same saved preferences. With Minimize on Close enabled,
+closing keeps the app running in the tray (minimized in the taskbar on Linux
+so it remains accessible on desktops without status icons). With it disabled,
+closing quits the app and stops its managed Client, bundled Node and child
+processes. **Quit MoarTube** always quits regardless of this preference.
+Automatic launches stay in the tray without showing the
+window, including when credentials require sign-in. Opening the app manually
+shows its window. Development and automated test profiles do not register
+themselves for real system startup.
+GitHub Actions has two distinct Windows workflows: **Windows x64 - Client**
+and **Windows x64 - Client + Node**. Each builds and verifies only its own
+distribution. **Electron builds - all platforms** runs both Windows workflows.
+
+Compile FFmpeg first. Client builds need just the Client checkout.
+Bundled builds also need a sibling `MoarTube-Node` checkout with `npm ci` and
+`npm run install:cloudflared` completed; set `MOARTUBE_NODE_SOURCE` for another path.
+Use `desktop:dev` for Client development and `desktop:dev:client-node` for the bundle.
+Use `desktop:pack:windows:client`, `desktop:pack:windows:client-node`, or
+`desktop:pack:windows:all` to create unpacked apps.
+
+All distributions share one per-user application-data root named `MoarTube`:
+
+- Windows: `%APPDATA%/MoarTube`
+- macOS: `~/Library/Application Support/MoarTube`
+- Linux: `$XDG_DATA_HOME/MoarTube` (default `~/.local/share/MoarTube`)
+
+Standalone Client data is in `client`; standalone Node data is in `node`.
+The bundle uses `client_node/client` and `client_node/node` under that same root.
+Electron browser profiles, logs and Autostart preferences stay within the
+corresponding Client folder's `desktop` subdirectory. Development/test profiles
+remain isolated under `build/desktop/profiles`, using the same `MoarTube` layout.
+
+Startup uses only these data folders. Older folders are never searched or imported;
+a missing folder starts with fresh defaults. An active data directory is locked
+to one process.
+`MOARTUBE_DATA_ROOT` selects a custom shared parent (or a folder already named
+`MoarTube`). Existing explicit `MOARTUBE_DATA_DIR` component overrides remain
+supported. Explicit custom locations start independently. Data stays outside the installation directories.
+The source ZIP for FFmpeg accompanies the installers; Node source and licenses
+are included in the bundle's application resources. Builds are unsigned candidates.
 
 ## Linux desktop option
+
+Linux has separate **Client** and **Client + Node** distributions for x64 and
+ARM64, each with its own DEB package, launcher, executable and portable archive.
+Portable archives end in `-linux-x64-portable.tar.gz` or
+`-linux-arm64-portable.tar.gz`; DEB package names are unchanged.
+Both can coexist with each other and the `moartube-client` npm CLI.
+
+| Distribution | Build | Verify installed and portable packages |
+| --- | --- | --- |
+| Client | `npm run desktop:build:linux:client` | `npm run desktop:verify:linux:client` |
+| Client + Node | `npm run desktop:build:linux:client-node` | `npm run desktop:verify:linux:client-node` |
+| Both | `npm run desktop:build:linux:all` | `npm run desktop:verify:linux:all` |
+
+Append `-- --arch=arm64` to select ARM64. Builds use the existing Linux build
+containers, including when launched from Windows. Installed applications require
+neither Docker nor a separately installed Node.js. Compile the matching FFmpeg
+candidate first. The bundle also needs a sibling `MoarTube-Node` checkout, or
+`MOARTUBE_NODE_SOURCE` pointing to it.
+
+For prepared/offline builds, prepare the Client dependency image first with
+`node scripts/prepare-linux-dependencies.mjs --desktop --arch=x64 --downloads-only`,
+then the Node image with
+`node scripts/prepare-linux-node-dependencies.mjs --arch=x64` while
+`MOARTUBE_DEPENDENCIES_PREPARED=1`. Normal builds prepare their images automatically.
+SQLite is compiled for the target's standalone Node.js runtime; Cloudflared is
+checked against its pinned release digest. Credentials and user data are excluded.
+
+Four separate GitHub workflows cover **Linux x64 / ARM64 — Client / Client + Node**.
+The all-platform workflow calls all four. Each contributes only its own binary
+pair, checksums and notes to an existing draft release. FFmpeg source archives
+remain shared optional downloads. Bundle workflows check out MoarTube Node's
+default branch; push the matching Node changes before running CI.
+Native runners verify both Ubuntu runtime
+images; the ARM64 verifier also checks the configured Debian image. On x64 hosts,
+use `npm run desktop:verify:linux:arm64:vm:all` for full-system ARM64
+graphical checks rather than relying on user-mode emulation.
 
 Ubuntu 24.04 and 26.04 x64 and ARM64 have Electron DEB and standalone build targets,
 with Linux FFmpeg/FFprobe bundled and corresponding sources offered separately.
@@ -53,16 +159,16 @@ Install the DEB with your software installer or `sudo apt install ./<download>.d
 then launch MoarTube Client from the application menu. The command
 `moartube-client-desktop` remains separate from the npm CLI.
 
-Build from Windows/WSL/Linux with `npm run desktop:build:linux` after compiling the
-Linux FFmpeg candidate. Run `npm run desktop:verify:linux` for the container tests.
-Downloads land in `build/desktop/releases/linux-x64/1.1.0`. See the
-[Linux desktop guide](docs/electron-linux.md) for storage, dependencies and
-remaining native GPU/Wayland qualification.
+Build from Windows/WSL/Linux with `npm run desktop:build:linux:all` after compiling the
+Linux FFmpeg candidate. Run `npm run desktop:verify:linux:all` for the container tests.
+Downloads land in `build/desktop/releases/linux-x64/1.1.0`. System dependencies
+are listed in [runtime-packages.json](desktop/linux/runtime-packages.json).
+Native GPU and Wayland qualification remains separate from the software-rendered tests.
 
-For ARM64, use `npm run desktop:build:linux:arm64` after
-`npm run ffmpeg:build:linux:arm64`, and `npm run desktop:verify:linux:arm64`
+For ARM64, use `npm run desktop:build:linux:arm64:all` after
+`npm run ffmpeg:build:linux:arm64`, and `npm run desktop:verify:linux:arm64:vm:all`
 for full-system Debian Trixie VM validation. Native ARM64 Docker hosts can use
-`npm run desktop:verify:linux:arm64:native` for Ubuntu and Trixie container tests.
+`npm run desktop:verify:linux:arm64:native:all` for Ubuntu and Trixie container tests.
 Downloads land in `build/desktop/releases/linux-arm64/1.1.0`.
 ARM64 also tests Debian Trixie libraries for Raspberry Pi OS compatibility;
 physical Pi desktop/GPU qualification remains separate.
@@ -88,8 +194,7 @@ Linux x64 builds use Ubuntu 24.04 as the baseline and test exported binaries on
 Ubuntu 24.04 and 26.04. Run `npm run ffmpeg:build:linux` with Docker's Linux engine
 (WSL 2 backend on Windows). See the [Linux FFmpeg guide](docs/linux-ffmpeg.md) for
 runtime dependencies, validation and source/runtime archives. Build the Linux
-Electron DEB and standalone archive with `npm run desktop:build:linux`; see the
-[Linux desktop guide](docs/electron-linux.md) for installation and validation.
+Electron DEB and standalone archives with the variant commands above.
 
 Developers must compile the FFmpeg dependency for their operating system and CPU
 architecture. On Windows 11 x64, use native x64 Node.js 24.22.1 or newer and run from

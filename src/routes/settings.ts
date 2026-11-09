@@ -54,6 +54,16 @@ export function settingsRoutes(
   );
 
   // Client API
+  fastify.post(
+    '/client/network/access',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiSetClientNetworkAccess
+  );
+  fastify.post(
+    '/node/network/access',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiSetNodeNetworkAccess
+  );
   fastify.get(
     '/metrics',
     { schema: { tags: ['Settings'] } },

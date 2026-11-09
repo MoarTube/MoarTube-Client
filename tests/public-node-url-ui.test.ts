@@ -1,9 +1,10 @@
+import ejs from 'ejs';
 import { readFile } from 'node:fs/promises';
 import { chromium, expect as browserExpect } from '@playwright/test';
 import { expect, it } from 'vitest';
 
 it('refreshes the Settings sidebar link and form from persisted values after success and rejected saves', async () => {
-  const template = await readFile('public/views/settings.ejs', 'utf8');
+  const template = ejs.render(await readFile('public/views/settings.ejs', 'utf8'), { bundledDesktop: false, model: { clientSettings: {} } });
   const start = template.indexOf('class MoarTubeClientSettings');
   const end = template.indexOf('const moarTubeClientSettings', start);
   const browser = await chromium.launch({ headless: true });

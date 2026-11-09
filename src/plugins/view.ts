@@ -2,6 +2,7 @@ import fp from 'fastify-plugin';
 import fastifyView from '@fastify/view';
 import ejs from 'ejs';
 import { getConfig } from '@/config/index.js';
+import { bundledNodePort, bundledAutoLoginEnabled } from '@/config/bundled-desktop.js';
 
 export default fp(async (fastify) => {
   const config = getConfig();
@@ -13,7 +14,8 @@ export default fp(async (fastify) => {
     root: config.paths.views,
     viewExt: 'ejs',
     defaultContext: {
-        // Global variables available in views
-    }
+      bundledDesktop: bundledNodePort() !== undefined,
+      bundledAutoLogin: bundledAutoLoginEnabled(),
+    },
   });
 });

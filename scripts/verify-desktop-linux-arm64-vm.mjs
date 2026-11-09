@@ -13,16 +13,28 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { desktopPaths } from '../tooling/build-paths.cjs';
-
-if (process.argv.length > 2) throw new Error('Usage: npm run desktop:verify:linux:arm64');
+import { linuxPaths, linuxVariant, parseLinuxDesktopArgs } from '../desktop/linux-variant.cjs';
 
 // Full-system emulation provides an ARM64 kernel. Docker's user-mode emulator
 // cannot implement the namespace clone calls used by Chromium's sandbox.
 const root = fileURLToPath(new URL('../', import.meta.url));
 const read = (file) => JSON.parse(readFileSync(file, 'utf8'));
 const version = read(path.join(root, 'package.json')).version;
-const layout = desktopPaths(root, 'linux-arm64', version);
+const { variant, variants } = parseLinuxDesktopArgs(process.argv.slice(2), 'client');
+if (variants.length > 1) {
+  for (const selected of variants) {
+    const result = spawnSync(
+      process.execPath,
+      [fileURLToPath(import.meta.url), '--arch=arm64', '--variant=' + selected],
+      { stdio: 'inherit', windowsHide: true }
+    );
+    if (result.error || result.status !== 0)
+      throw result.error ?? new Error('ARM64 VM verification failed: ' + selected);
+  }
+  process.exit(0);
+}
+const selected = linuxVariant(variant);
+const layout = linuxPaths(root, 'arm64', version, variant);
 const token = `${Date.now()}-${process.pid}`;
 const work = path.join(layout.work, 'qemu-vm', token);
 const reports = path.join(layout.reports, 'vm-trixie', token);
@@ -66,7 +78,10 @@ const engine = JSON.parse(docker(['info', '--format', '{{json .}}'], { capture: 
 if (engine.OSType !== 'linux' || engine.MemTotal < 6 * 1024 ** 3)
   throw new Error('Use Docker Linux containers with at least 6 GiB RAM for the ARM64 VM.');
 const artifacts = [];
-for (const line of readFileSync(path.join(layout.release, 'SHA256SUMS-linux-arm64.txt'), 'utf8')
+for (const line of readFileSync(
+  path.join(layout.release, 'SHA256SUMS-linux-arm64-' + variant + '.txt'),
+  'utf8'
+)
   .trim()
   .split(/\r?\n/)) {
   const [sha256, name] = line.trim().split(/\s+/);
@@ -79,8 +94,8 @@ for (const line of readFileSync(path.join(layout.release, 'SHA256SUMS-linux-arm6
   artifacts.push({ name, sha256 });
 }
 const names = [
-  `MoarTube-Client-${version}-linux-arm64.deb`,
-  `MoarTube-Client-${version}-linux-arm64.tar.gz`,
+  `${selected.prefix}-${version}-linux-arm64.deb`,
+  `${selected.prefix}-${version}-linux-arm64-portable.tar.gz`,
 ];
 if (names.some((name) => !artifacts.some((file) => file.name === name)))
   throw new Error('Build the ARM64 desktop release before VM verification.');
@@ -113,6 +128,8 @@ try {
     'linux/arm64',
     '--name',
     guestName,
+    '-e',
+    'MOARTUBE_DESKTOP_VARIANT=' + variant,
     guestImage,
     'bash',
     '/workspace/prepare-guest.sh',
@@ -237,6 +254,7 @@ try {
   const result = {
     passed: true,
     target: 'linux-arm64',
+    variant,
     version,
     distribution: 'Debian Trixie',
     execution: 'full-system-qemu',

@@ -3,12 +3,11 @@
 Run from the repository root after building the ARM64 desktop downloads:
 
 ```powershell
-npm.cmd run desktop:verify:linux:arm64
+npm.cmd run desktop:verify:linux:arm64:vm:all
 ```
 
-The explicit `desktop:verify:linux:arm64:vm` command remains an alias.
 For native ARM64 Docker container checks across Ubuntu and Trixie, use
-`desktop:verify:linux:arm64:native`. Cross-architecture container GUI checks are
+`desktop:verify:linux:arm64:native:all`. Cross-architecture container GUI checks are
 rejected before test containers are created. ARM64 builds and FFmpeg checks
 continue to support user-mode emulation.
 

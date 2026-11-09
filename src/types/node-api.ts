@@ -52,6 +52,7 @@ export interface NodeLink {
 }
 
 export interface NodeSettings {
+  allowRemoteConnections?: boolean;
   nodeName?: string;
   nodeHeadline?: string;
   nodeBulletin?: string[];

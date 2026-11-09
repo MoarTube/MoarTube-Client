@@ -22,6 +22,8 @@ function fixture(): string {
 
 function builder(root: string, content: string): void {
   mkdirSync(path.join(root, 'src'));
+  mkdirSync(path.join(root, 'src/config'));
+  copyFileSync('src/config/data-layout.cjs', path.join(root, 'src/config/data-layout.cjs'));
   writeFileSync(path.join(root, 'src/moartube-client.ts'), '');
   const dir = path.join(root, 'node_modules/tsup/dist');
   mkdirSync(dir, { recursive: true });
@@ -31,6 +33,7 @@ function builder(root: string, content: string): void {
 function start(root: string, args: string[] = []): ReturnType<typeof spawnSync> {
   return spawnSync(process.execPath, [path.join(root, 'bin/moartube-client-start'), ...args], {
     cwd: tmpdir(),
+    env: { ...process.env, MOARTUBE_DATA_ROOT: path.join(root, 'user-data') },
     encoding: 'utf8',
   });
 }

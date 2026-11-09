@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { bundledNodePort } from './bundled-desktop.js';
 // import path from 'node:path';
 import { initializePaths, type Paths } from './paths.js';
 import { getLogger } from '@/utils/logger.js';
@@ -8,11 +9,13 @@ import { DEFAULT_CLIENT_SETTINGS } from './defaults.js';
 // Minimal schema for client settings
 const ClientSettingsSchema = z.object({
   clientPort: z.string().or(z.number()).transform(Number),
+  allowRemoteConnections: z.boolean().default(false),
   nodeIp: z.string(),
   nodePort: z.string().or(z.number()).transform(Number),
   nodeHttpProtocol: z.string(),
   nodeWebsocketProtocol: z.string(),
   ffmpegPath: z.string().optional(),
+  bundledNodeLoginRequired: z.boolean().optional(),
   processingAgent: z
     .object({
       processingAgentType: z.string(),
@@ -118,7 +121,16 @@ export class Config {
     return this._paths;
   }
   public get clientSettings(): ClientSettings {
-    return this._clientSettings;
+    const port = bundledNodePort();
+    return port === undefined
+      ? this._clientSettings
+      : {
+          ...this._clientSettings,
+          nodeIp: '127.0.0.1',
+          nodePort: port,
+          nodeHttpProtocol: 'http',
+          nodeWebsocketProtocol: 'ws',
+        };
   }
 
   public saveClientSettings(settings: Partial<ClientSettings>): void {

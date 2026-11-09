@@ -450,10 +450,19 @@ export class NodeApiService extends BaseService {
     const response = await client.get('/settings', {
       headers: { Authorization: `Bearer ${jwtToken}` },
     });
-    const data = this.unwrapOrThrow(response.data, 'getNodeSettings') as {
-      nodeSettings: NodeSettings;
-    };
-    return data.nodeSettings;
+    const data = this.unwrapOrThrow(response.data, 'getNodeSettings');
+    if (
+      response.status !== 200 ||
+      data === null ||
+      typeof data !== 'object' ||
+      !('nodeSettings' in data) ||
+      data.nodeSettings === null ||
+      typeof data.nodeSettings !== 'object' ||
+      Array.isArray(data.nodeSettings)
+    ) {
+      throw new Error('Invalid Node settings response');
+    }
+    return data.nodeSettings as NodeSettings;
   }
 
   public async getNewContentCounts(
@@ -668,6 +677,15 @@ export class NodeApiService extends BaseService {
     return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/workers', {
       workerCount,
       confirmDecrease,
+    });
+  }
+
+  public async setNetworkAccess(
+    jwtToken: string,
+    allowRemoteConnections: boolean
+  ): Promise<BaseNodeResponse> {
+    return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/network/access', {
+      allowRemoteConnections,
     });
   }
 

@@ -19,6 +19,7 @@ try {
     }
     const require = createRequire(import.meta.url);
     const builder = require.resolve('tsup/dist/cli-default.js');
+    require('../src/config/data-layout.cjs').cleanData('client');
 
     for (const name of ['data', 'dist', 'playwright-report', 'temp', 'test-results']) {
       const target = path.resolve(root, name);

@@ -131,7 +131,7 @@ it.each([
 ])(
   'loads the third sidebar group on %s and leaves branding non-clickable',
   async (view) => {
-    const template = await readFile(`public/views/${view}.ejs`, 'utf8');
+    const template = ejs.render(await readFile(`public/views/${view}.ejs`, 'utf8'), { bundledDesktop: false, model: { clientSettings: { isGpuAccelerationSupported: false } } });
     const html = ejs.render(template.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ''), {
       model: { clientSettings: { isGpuAccelerationSupported: false } },
     });

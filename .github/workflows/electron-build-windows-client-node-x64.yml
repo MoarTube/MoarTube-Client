@@ -1,18 +1,25 @@
-name: Windows x64 Electron candidate
+name: Windows x64 - Client + Node
 on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Draft release tag
+        description: Existing draft release tag (leave empty for build artifacts only)
         type: string
-        required: true
+        required: false
+        default: ''
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Existing draft release tag (leave empty for build artifacts only)
+        type: string
+        required: false
         default: ''
 permissions:
   contents: read
 env:
   MOARTUBE_RELEASE_TAG: ${{ inputs.release_tag }}
 jobs:
-  windows:
+  windows-client-node:
     runs-on: windows-2025
     timeout-minutes: 150
     env:
@@ -21,8 +28,15 @@ jobs:
       ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/build/desktop/cache/builder
       MOARTUBE_FFMPEG_OFFLINE: '1'
       MOARTUBE_DEPENDENCIES_PREPARED: '1'
+      MOARTUBE_NODE_SOURCE: ${{ github.workspace }}/build/desktop/node-source
     steps:
       - uses: actions/checkout@v6
+      - name: Check out bundled MoarTube Node
+        uses: actions/checkout@v6
+        with:
+          repository: MoarTube/MoarTube-Node
+          path: build/desktop/node-source
+          persist-credentials: false
       - uses: actions/setup-node@v6
         with:
           package-manager-cache: false
@@ -71,6 +85,11 @@ jobs:
           path: ${{ steps.npm-cache-directory.outputs.directory }}
           key: npm-downloads-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci
+      - name: Install bundled Node build dependencies
+        working-directory: build/desktop/node-source
+        run: |
+          npm ci
+          npm run install:cloudflared
       - name: Save completed npm downloads
         if: steps.npm-downloads.outputs.cache-hit != 'true'
         uses: actions/cache/save@v5
@@ -127,26 +146,30 @@ jobs:
             build/ffmpeg/reports/win32-x64/software/result.json
           key: ${{ steps.compiled-ffmpeg.outputs.cache-primary-key }}
       - run: npm run typecheck
-      - run: npm test
+      # The desktop suite is native Windows; the S3 integration suite needs its
+      # separate Silo service and does not belong in Electron packaging.
       - run: npm run desktop:test
-      - run: npm run desktop:build:windows
-      - name: Verify packaged Windows GUI
-        run: npm run desktop:verify:windows -- "build/desktop/work/win32-x64/packages/win-unpacked/MoarTube Client.exe"
+      - name: Build Client + Node installer and ZIP
+        run: npm run desktop:build:windows:client-node
+      - name: Verify packaged Client + Node
+        run: npm run desktop:verify:windows:client-node -- "build/desktop/work/win32-x64/packages/bundled/win-unpacked/MoarTube Client + Node.exe"
       - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
-          name: moartube-client-windows-candidate
+          name: moartube-windows-client-node
           path: |
             build/desktop/releases/win32-x64/*/*.exe
-            build/desktop/releases/win32-x64/*/*.zip
+            build/desktop/releases/win32-x64/*/MoarTube-Client-*-portable.zip
+            build/desktop/releases/win32-x64/*/MoarTube-FFmpeg-*-sources.zip
             build/desktop/releases/win32-x64/*/*.blockmap
-            build/desktop/releases/win32-x64/*/SHA256SUMS.txt
-            build/desktop/releases/win32-x64/*/RELEASE-NOTES.md
+            build/desktop/releases/win32-x64/*/SHA256SUMS-windows-bundled.txt
+            build/desktop/releases/win32-x64/*/RELEASE-NOTES-windows-bundled.md
+            build/desktop/reports/win32-x64/
           retention-days: 14
   upload-draft:
-    name: Upload verified windows assets to draft
-    needs: windows
-    if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+    name: Upload Windows Client + Node assets to draft
+    needs: windows-client-node
+    if: inputs.release_tag != ''
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -164,9 +187,9 @@ jobs:
           node-version: 24.22.1
       - uses: actions/download-artifact@v7
         with:
-          name: moartube-client-windows-candidate
+          name: moartube-windows-client-node
           path: build/release-upload
       - name: Upload win32-x64 downloads to existing draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/upload-desktop-draft.mjs win32-x64 build/release-upload
+        run: node scripts/upload-desktop-draft.mjs win32-x64-bundled build/release-upload

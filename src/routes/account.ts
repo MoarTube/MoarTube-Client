@@ -7,6 +7,8 @@ import type { FastifyInstance } from 'fastify';
 import { AccountController } from '@/controllers/account.js';
 import { signInBodySchema } from '@/validators/index.js';
 import type { Container } from '@/core/index.js';
+import { bundledNodePort } from '@/config/bundled-desktop.js';
+import { z } from 'zod';
 
 /**
  * Register account routes
@@ -30,7 +32,10 @@ export function accountRoutes(
     {
       schema: {
         tags: ['Account'],
-        body: signInBodySchema,
+        body:
+          bundledNodePort() === undefined
+            ? signInBodySchema
+            : z.object({ username: z.string(), password: z.string() }),
       },
     },
     controller.postSignIn.bind(controller)

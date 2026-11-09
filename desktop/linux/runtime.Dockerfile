@@ -7,8 +7,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 COPY runtime-packages.json /runtime-packages.json
 RUN apt-get update --error-on=any && apt-get install -y --no-install-recommends \
     $(node -p 'JSON.parse(require("fs").readFileSync("/runtime-packages.json")).map(x=>x.split(" ")[0]).join(" ")') \
-    xvfb xauth dbus-x11 fonts-dejavu-core procps apparmor && \
+    xvfb xauth dbus-x11 fonts-dejavu-core procps apparmor openbox && \
     useradd --create-home --uid 1100 desktop-test
 WORKDIR /workspace
-RUN printf '{"private":true,"type":"module"}\n' > package.json && npm install --ignore-scripts --no-audit --no-fund --save-exact playwright@1.64.1
+RUN printf '{"private":true,"type":"module"}\n' > package.json && npm install --ignore-scripts --no-audit --no-fund --save-exact @playwright/test@1.64.1
 RUN target="linux-$(node -p process.arch)" && mkdir -p /workspace/scripts /workspace/build/desktop/reports/$target /workspace/build/desktop/profiles/$target

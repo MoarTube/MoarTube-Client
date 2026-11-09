@@ -5,6 +5,7 @@ import electron from 'electron';
 
 const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
 const environment = { ...process.env };
+if (process.argv.includes('--bundled')) environment.MOARTUBE_DESKTOP_BUNDLED = '1';
 // Some editors launch tasks with this set; the desktop must run Electron, not Node.
 delete environment.ELECTRON_RUN_AS_NODE;
 const child = spawn(electron, [path.join(root, 'desktop/main.cjs')], {

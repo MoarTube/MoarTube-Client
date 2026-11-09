@@ -6,19 +6,10 @@
   "author": "MoarTube, LLC",
   "homepage": "https://www.moartube.com",
   "license": "MIT",
-  "main": "dist/moartube-client.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/MoarTube/MoarTube-Client.git"
   },
-  "bin": {
-    "moartube-client": "./bin/moartube-client-start"
-  },
-  "files": [
-    "dist",
-    "resources/ffmpeg",
-    "bin"
-  ],
   "keywords": [
     "alternative",
     "youtube",
@@ -28,54 +19,28 @@
     "live",
     "moartube"
   ],
-  "overrides": {
-    "esbuild": ">=0.25.0"
-  },
   "engines": {
     "node": ">=24.22.1"
   },
+  "main": "dist/moartube-client.js",
+  "bin": {
+    "moartube-client": "./bin/moartube-client-start"
+  },
+  "files": [
+    "dist",
+    "resources/ffmpeg",
+    "bin"
+  ],
   "scripts": {
     "dev": "tsx watch src/moartube-client.ts",
     "build": "tsup",
     "start": "node bin/moartube-client-start",
     "prepack": "npm run build",
     "prepare": "husky install",
-    "desktop:dev": "npm run build && node scripts/desktop.mjs",
-    "desktop:prepare": "node scripts/prepare-desktop.mjs",
-    "desktop:prepare:linux": "node scripts/prepare-desktop-linux.mjs",
-    "desktop:prepare:darwin": "node scripts/prepare-desktop-darwin.mjs",
-    "desktop:prepare:darwin:arm64": "node scripts/prepare-desktop-darwin.mjs --arch=arm64",
-    "desktop:build:windows": "npm run build && npm run desktop:prepare && electron-builder --config desktop/electron-builder.cjs --win --x64 --publish never && node scripts/desktop-checksums.mjs",
-    "desktop:build:linux": "node scripts/desktop-linux.mjs",
-    "desktop:build:linux:arm64": "node scripts/desktop-linux.mjs --arch=arm64",
-    "desktop:build:linux:native": "node scripts/desktop-linux-native.mjs",
-    "desktop:build:darwin": "node scripts/desktop-darwin.mjs",
-    "desktop:build:darwin:arm64": "node scripts/desktop-darwin.mjs --arch=arm64",
-    "desktop:pack:windows": "npm run build && npm run desktop:prepare && electron-builder --config desktop/electron-builder.cjs --win --x64 --dir --publish never",
-    "desktop:pack:linux:native": "node scripts/desktop-linux-native.mjs --dir",
-    "desktop:verify:windows": "node scripts/desktop-smoke.mjs",
-    "desktop:verify:linux": "node scripts/verify-desktop-linux.mjs",
-    "desktop:verify:linux:arm64": "node scripts/verify-desktop-linux-arm64-vm.mjs",
-    "desktop:verify:linux:arm64:native": "node scripts/verify-desktop-linux.mjs --arch=arm64",
-    "desktop:verify:linux:arm64:vm": "node scripts/verify-desktop-linux-arm64-vm.mjs",
-    "desktop:verify:darwin": "node scripts/verify-desktop-darwin.mjs",
-    "desktop:verify:darwin:arm64": "node scripts/verify-desktop-darwin.mjs --arch=arm64",
-    "desktop:test": "node --test desktop/tests/*.test.cjs",
-    "ffmpeg:build:windows": "node tooling/ffmpeg/scripts/build-windows.mjs",
-    "ffmpeg:build:linux": "node tooling/ffmpeg/scripts/build-linux.mjs",
-    "ffmpeg:build:linux:arm64": "node tooling/ffmpeg/scripts/build-linux.mjs --arch=arm64",
-    "ffmpeg:build:darwin": "node tooling/ffmpeg/scripts/build-darwin.mjs",
-    "ffmpeg:build:darwin:arm64": "node tooling/ffmpeg/scripts/build-darwin.mjs --arch=arm64",
-    "ffmpeg:package:windows": "node tooling/ffmpeg/scripts/package-windows.mjs",
-    "ffmpeg:stage:windows": "node tooling/ffmpeg/scripts/stage-windows.mjs",
-    "ffmpeg:verify:windows": "node tooling/ffmpeg/scripts/verify-features.mjs",
-    "ffmpeg:verify:software": "node tooling/ffmpeg/scripts/verify-software.mjs",
-    "ffmpeg:verify:linux:runtimes": "node tooling/ffmpeg/scripts/verify-linux-runtimes.mjs",
-    "ffmpeg:verify:linux:arm64:runtimes": "node tooling/ffmpeg/scripts/verify-linux-runtimes.mjs --arch=arm64",
-    "ffmpeg:test:tooling": "node --test tooling/ffmpeg/tests/*.test.mjs",
+
     "typecheck": "tsc --noEmit",
-    "typecheck:e2e": "tsc -p tests/e2e/tsconfig.json --noEmit",
     "typecheck:integration": "tsc -p tests/integration/tsconfig.json --noEmit",
+    "typecheck:e2e": "tsc -p tests/e2e/tsconfig.json --noEmit",
     "lint": "eslint src tests --ext .ts",
     "lint:src": "eslint src --ext .ts",
     "lint:tests": "eslint tests --ext .ts",
@@ -83,25 +48,82 @@
     "lint:fix": "eslint src tests --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "knip": "knip",
+
     "test": "vitest run",
-    "test:node-contracts": "vitest run --config vitest.node-contracts.config.ts",
     "test:coverage": "vitest run --coverage",
+    "test:node-contracts": "vitest run --config vitest.node-contracts.config.ts",
+
     "test:integration": "node --import tsx tests/integration/run.ts all",
     "test:integration:preflight": "node --import tsx tests/integration/run.ts preflight",
     "test:gpu": "node --import tsx tests/integration/run.ts gpu",
     "test:gpu:e2e": "node --import tsx tests/integration/run.ts gpu-e2e",
-    "test:runner": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/start-integration-runner.ps1",
     "test:runner:setup": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/setup-integration-runner.ps1",
-    "test:memory": "playwright test --config playwright.memory.config.ts",
-    "test:watch-page": "playwright test --config playwright.watch.config.ts",
-    "test:comments": "playwright test --config playwright.comments.config.ts",
+    "test:runner": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/start-integration-runner.ps1",
+
+    "test:e2e:install": "playwright install chromium firefox webkit",
     "test:e2e": "playwright test --project=chromium",
     "test:e2e:all": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --project=chromium --debug",
     "test:e2e:headed": "playwright test --project=chromium --headed",
     "test:e2e:report": "playwright show-report",
-    "test:e2e:install": "playwright install chromium firefox webkit"
+    "test:memory": "playwright test --config playwright.memory.config.ts",
+    "test:watch-page": "playwright test --config playwright.watch.config.ts",
+    "test:comments": "playwright test --config playwright.comments.config.ts",
+
+    "desktop:dev": "npm run build && node scripts/desktop.mjs",
+    "desktop:dev:client-node": "npm run build && node scripts/prepare-desktop-bundled.mjs && node scripts/desktop.mjs --bundled",
+    "desktop:prepare": "node scripts/prepare-desktop.mjs",
+    "desktop:prepare:client-node": "node scripts/prepare-desktop-bundled.mjs",
+    "desktop:test": "node --test desktop/tests/*.test.cjs && vitest run --config vitest.desktop.config.ts",
+
+    "desktop:build:windows:client": "node scripts/desktop-windows.mjs --variant=client",
+    "desktop:build:windows:client-node": "node scripts/desktop-windows.mjs --variant=bundled",
+    "desktop:build:windows:all": "node scripts/desktop-windows.mjs",
+    "desktop:pack:windows:client": "node scripts/desktop-windows.mjs --variant=client --dir",
+    "desktop:pack:windows:client-node": "node scripts/desktop-windows.mjs --variant=bundled --dir",
+    "desktop:pack:windows:all": "node scripts/desktop-windows.mjs --dir",
+    "desktop:verify:windows:client": "node scripts/desktop-smoke.mjs",
+    "desktop:verify:windows:client-node": "node scripts/desktop-bundled-smoke.mjs",
+    "desktop:verify:windows:all": "node scripts/verify-desktop-windows.mjs",
+
+    "desktop:prepare:linux": "node scripts/prepare-desktop-linux.mjs",
+    "desktop:build:linux:client": "node scripts/desktop-linux.mjs --variant=client",
+    "desktop:build:linux:client-node": "node scripts/desktop-linux.mjs --variant=bundled",
+    "desktop:build:linux:all": "node scripts/desktop-linux.mjs",
+    "desktop:build:linux:arm64:all": "node scripts/desktop-linux.mjs --arch=arm64",
+    "desktop:build:linux:native:all": "node scripts/desktop-linux-native.mjs",
+    "desktop:pack:linux:client": "node scripts/desktop-linux.mjs --variant=client --dir",
+    "desktop:pack:linux:client-node": "node scripts/desktop-linux.mjs --variant=bundled --dir",
+    "desktop:pack:linux:native:all": "node scripts/desktop-linux-native.mjs --dir",
+    "desktop:verify:linux:client": "node scripts/verify-desktop-linux.mjs --variant=client",
+    "desktop:verify:linux:client-node": "node scripts/verify-desktop-linux.mjs --variant=bundled",
+    "desktop:verify:linux:all": "node scripts/verify-desktop-linux.mjs",
+    "desktop:verify:linux:arm64:native:all": "node scripts/verify-desktop-linux.mjs --arch=arm64",
+    "desktop:verify:linux:arm64:vm:all": "node scripts/verify-desktop-linux-arm64-vm.mjs --variant=all",
+
+    "desktop:prepare:darwin": "node scripts/prepare-desktop-darwin.mjs",
+    "desktop:prepare:darwin:arm64": "node scripts/prepare-desktop-darwin.mjs --arch=arm64",
+    "desktop:build:darwin": "node scripts/desktop-darwin.mjs",
+    "desktop:build:darwin:arm64": "node scripts/desktop-darwin.mjs --arch=arm64",
+    "desktop:verify:darwin": "node scripts/verify-desktop-darwin.mjs",
+    "desktop:verify:darwin:arm64": "node scripts/verify-desktop-darwin.mjs --arch=arm64",
+
+    "ffmpeg:build:windows": "node tooling/ffmpeg/scripts/build-windows.mjs",
+    "ffmpeg:package:windows": "node tooling/ffmpeg/scripts/package-windows.mjs",
+    "ffmpeg:stage:windows": "node tooling/ffmpeg/scripts/stage-windows.mjs",
+    "ffmpeg:verify:windows": "node tooling/ffmpeg/scripts/verify-features.mjs",
+
+    "ffmpeg:build:linux": "node tooling/ffmpeg/scripts/build-linux.mjs",
+    "ffmpeg:build:linux:arm64": "node tooling/ffmpeg/scripts/build-linux.mjs --arch=arm64",
+    "ffmpeg:verify:linux:runtimes": "node tooling/ffmpeg/scripts/verify-linux-runtimes.mjs",
+    "ffmpeg:verify:linux:arm64:runtimes": "node tooling/ffmpeg/scripts/verify-linux-runtimes.mjs --arch=arm64",
+
+    "ffmpeg:build:darwin": "node tooling/ffmpeg/scripts/build-darwin.mjs",
+    "ffmpeg:build:darwin:arm64": "node tooling/ffmpeg/scripts/build-darwin.mjs --arch=arm64",
+
+    "ffmpeg:verify:software": "node tooling/ffmpeg/scripts/verify-software.mjs",
+    "ffmpeg:test:tooling": "node --test tooling/ffmpeg/tests/*.test.mjs"
   },
   "lint-staged": {
     "src/**/*.ts": [
@@ -160,5 +182,8 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.54.0",
     "vitest": "^4.0.18"
+  },
+  "overrides": {
+    "esbuild": ">=0.25.0"
   }
 }

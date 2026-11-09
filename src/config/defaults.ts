@@ -1,5 +1,6 @@
 export const DEFAULT_CLIENT_SETTINGS = {
   clientPort: 8080,
+  allowRemoteConnections: false,
   nodeIp: '127.0.0.1',
   nodePort: 9090,
   nodeHttpProtocol: 'http',

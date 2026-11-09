@@ -1,3 +1,4 @@
+<% const isBundled = typeof bundledDesktop !== "undefined" && bundledDesktop; %>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -50,13 +51,14 @@
 												</path>
 											</svg></a>
 									</div>
-									<p class="mb-0">Enter your node information to sign in</p>
+									<p class="mb-0"><%= isBundled ? 'Enter your username and password to sign in' : 'Enter your node information to sign in' %></p>
 								</div>
-								<div id="node-favorite-header" class="card-header pb-0 text-start" hidden>
+								<% if (!isBundled) { %><div id="node-favorite-header" class="card-header pb-0 text-start" hidden>
 									<h4 id="node-favorite-heading" class="font-weight-bolder">Add Favorite</h4>
 									<p class="mb-0">Save your node information for future sign-ins</p>
 								</div>
-								<div class="card-body">
+								<% } %><div class="card-body">
+									<% if (!isBundled) { %>
 									<section aria-label="Favorite nodes" class="mb-4">
 										<p id="node-favorites-status" role="status" class="text-sm"></p>
 										<form id="node-favorite-editor" hidden>
@@ -69,7 +71,7 @@
 											<button id="cancel-node-favorite" type="button" class="btn btn-lg btn-outline-secondary w-100 mt-3 mb-0">Cancel</button>
 										</form>
 									</section>
-									<form id="sign-in-form" role="form" method="POST" action="/account/signin">
+									<% } %><form id="sign-in-form" role="form" method="POST" action="/account/signin">
 										<div class="mb-3">
 											<label for="signin-username">Username</label>
 											<input type="text" class="form-control form-control-lg"
@@ -80,7 +82,7 @@
 											<input type="password" class="form-control form-control-lg"
 												id="signin-password" aria-label="Password" name="password" value="">
 										</div>
-										<div class="signin-address-row">
+										<% if (!isBundled) { %><div class="signin-address-row">
 										<div class="mb-3">
 											<label for="signin-address">Node IP Address</label>
 											<input type="text" class="form-control form-control-lg"
@@ -92,17 +94,17 @@
 												id="signin-port" aria-label="Port" name="moarTubeNodePort" value="">
 										</div>
 										</div>
-										<div class="text-center">
+										<% } %><div class="text-center">
 											<button id="sign-in-button" type="submit"
 												class="btn btn-lg bg-gradient-primary btn-lg w-100 mt-4 mb-0">Sign
 												in</button>
 										</div>
 									</form>
-									<button id="new-node-favorite" type="button" class="btn btn-lg btn-outline-primary w-100 mt-3 mb-0">Add favorite</button>
+									<% if (!isBundled) { %><button id="new-node-favorite" type="button" class="btn btn-lg btn-outline-primary w-100 mt-3 mb-0">Add favorite</button>
 									<details id="node-favorites-dropdown" class="mt-3" hidden>
 										<summary id="node-favorites-summary" class="btn btn-lg btn-outline-primary w-100 mb-2">Favorites &#9662;</summary>
 										<ul id="node-favorites-list" class="list-unstyled mb-0" aria-label="Saved favorites"></ul>
-									</details>
+									</details><% } %>
 								</div>
 							</div>
 						</div>
@@ -134,6 +136,7 @@
 	<script src="/javascript/sweetalert-11.0.11.min.js"></script>
 
 	<script>
+		const isBundledDesktop = <%= isBundled %>;
 		class MoarTubeClientSignIn {
 			constructor() {
 
@@ -202,7 +205,7 @@
 
 			performLogin(url, username, password, moarTubeNodeIp, moarTubeNodePort) {
 				return new Promise(function (resolve, reject) {
-					if (username != '' && password != '' && moarTubeNodeIp != '' && moarTubeNodePort != '') {
+					if (username != '' && password != '' && (isBundledDesktop || (moarTubeNodeIp != '' && moarTubeNodePort != ''))) {
 						$.ajax({
 							type: 'POST',
 							url: url,
@@ -265,7 +268,7 @@
 			moarTubeClientSignIn.init();
 		});
 	</script>
-	<script src="/javascript/node-favorites.js"></script>
+	<% if (!isBundled) { %><script src="/javascript/node-favorites.js"></script><% } %>
 
 </body>
 

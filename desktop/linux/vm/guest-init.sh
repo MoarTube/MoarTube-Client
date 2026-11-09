@@ -38,6 +38,7 @@ for namespace in pid net user; do
     echo "$namespace namespace: passed"
   else echo "$namespace namespace: failed"; fi
 done | tee /host-output/namespaces.txt
+export MOARTUBE_DESKTOP_VARIANT="$(cat /qa/desktop-variant)"
 cd /workspace
 bash scripts/linux-installed-smoke.sh > /host-output/guest-tests.log 2>&1
 code=$?

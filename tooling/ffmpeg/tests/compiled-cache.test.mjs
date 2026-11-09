@@ -5,7 +5,7 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { compiledCacheKey, verifyCompiledCache } from '../scripts/compiled-cache.mjs';
-import { windowsCommandFiles, windowsDocumentation } from '../scripts/recipe-hash.mjs';
+import { windowsCommandFiles } from '../scripts/recipe-hash.mjs';
 
 const hash = (value) => createHash('sha256').update(value).digest('hex');
 function fixture(t, target) {
@@ -30,7 +30,6 @@ function fixture(t, target) {
     sources: [{ id: 'ffmpeg', archive: 'ffmpeg.tar.xz', sha256: hash('source') }],
   });
   for (const file of windowsCommandFiles) put(file, 'command snapshot');
-  for (const file of windowsDocumentation) put(`docs/${file}`, 'documentation');
   const { recipe } = compiledCacheKey(root, target);
   const buildId = '9.0.2-test';
   const base = `build/ffmpeg`;
@@ -146,4 +145,25 @@ test('cache keys isolate CPU targets and macOS toolchain images without rebuildi
   assert.equal(compiledCacheKey(f.root, 'win32-x64').key, before);
   f.put(windowsCommandFiles[0], 'changed FFmpeg command arguments');
   assert.notEqual(compiledCacheKey(f.root, 'win32-x64').key, before);
+});
+
+test('all target cache keys work without documents and ignore documentation changes', (t) => {
+  for (const target of ['win32-x64', 'linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64']) {
+    const f = fixture(t, target);
+    const before = compiledCacheKey(f.root, target).key;
+    for (const contents of ['initial documentation', 'edited documentation']) {
+      f.put('docs/ffmpeg-distribution-plan.md', contents);
+      f.put('docs/gpu-acceleration.md', contents);
+      f.put('docs/windows-ffmpeg-validation.md', contents);
+      f.put('tooling/ffmpeg/README.md', contents);
+      f.put('tooling/ffmpeg/nested/NOTES.MD', contents);
+      assert.equal(compiledCacheKey(f.root, target).key, before);
+    }
+    rmSync(path.join(f.root, 'docs'), { recursive: true });
+    rmSync(path.join(f.root, 'tooling/ffmpeg/README.md'));
+    rmSync(path.join(f.root, 'tooling/ffmpeg/nested'), { recursive: true });
+    assert.equal(compiledCacheKey(f.root, target).key, before);
+    f.put('tooling/ffmpeg/recipe.txt', 'changed executable recipe');
+    assert.notEqual(compiledCacheKey(f.root, target).key, before);
+  }
 });

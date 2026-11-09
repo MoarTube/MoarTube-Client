@@ -1,3 +1,4 @@
+import ejs from 'ejs';
 import { readFileSync } from 'node:fs';
 import { chromium, type Browser, type Page } from '@playwright/test';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -52,7 +53,7 @@ beforeEach(async () => {
     } else if (pathname === '/account/signin') {
       await route.fulfill({
         contentType: 'text/html',
-        body: readFileSync('public/views/signin.ejs', 'utf8'),
+        body: ejs.render(readFileSync('public/views/signin.ejs', 'utf8'), { bundledDesktop: false }),
       });
     } else if (pathname.startsWith('/javascript/')) {
       await route.fulfill({

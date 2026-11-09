@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import os from 'node:os';
+import { componentDirectory } from './data-layout.cjs';
 import path from 'node:path';
 
 export interface Paths {
@@ -12,24 +12,6 @@ export interface Paths {
   videos: string;
   clientSettingsPath: string;
   clientSettingsDefaultPath: string;
-}
-
-// A package installed via npm (global or as a dependency) always lives inside a
-// node_modules folder; a git checkout run directly does not.
-function isInstalledPackage(rootPath: string): boolean {
-  return rootPath.split(path.sep).includes('node_modules');
-}
-
-// OS-standard per-user data directory, matching the legacy client's location so
-// upgrades from the pre-rewrite client keep using the same data.
-function discoverOsDataDirectory(): string {
-  const base =
-    process.env['APPDATA'] ??
-    (process.platform === 'darwin'
-      ? path.join(os.homedir(), 'Library', 'Preferences')
-      : path.join(os.homedir(), '.local', 'share'));
-
-  return path.join(base, 'moartube-client');
 }
 
 export function initializePaths(rootPath: string, entryPointDir?: string): Paths {
@@ -47,19 +29,8 @@ export function initializePaths(rootPath: string, entryPointDir?: string): Paths
   const viewsPath = path.join(publicPath, 'views');
   const distPath = path.join(projectRoot, 'dist');
 
-  // When installed via npm (global or as a dependency), user data must not live inside
-  // node_modules: it would be lost on reinstall/upgrade and may require elevated
-  // permissions to write. Use the OS-standard per-user data directory instead. When run
-  // from a git checkout, keep data alongside the source, as before.
-  const override = process.env['MOARTUBE_DATA_DIR'];
-  if (override !== undefined && !path.isAbsolute(override)) {
-    throw new Error('MOARTUBE_DATA_DIR must be an absolute writable directory');
-  }
-  const installedAsPackage = isInstalledPackage(projectRoot);
-  const dataRoot = override ?? (installedAsPackage ? discoverOsDataDirectory() : projectRoot);
-  const dataPath =
-    override !== undefined || installedAsPackage ? dataRoot : path.join(dataRoot, 'data');
-  const tempPath = path.join(dataRoot, 'temp');
+  const dataPath = componentDirectory('client');
+  const tempPath = path.join(dataPath, 'temp');
   const videosPath = path.join(dataPath, 'media', 'videos');
 
   const clientSettingsPath = path.join(dataPath, '_client_settings.json');

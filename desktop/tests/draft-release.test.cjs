@@ -21,9 +21,10 @@ async function fixture(t, target = 'win32-x64') {
   });
   const windows = target === 'win32-x64';
   const binaries = windows
-    ? ['MoarTube-Client-1.1.0-windows-x64-setup.exe', 'MoarTube-Client-1.1.0-windows-x64.zip']
+    ? ['MoarTube-Client-1.1.0-windows-x64-setup.exe', 'MoarTube-Client-1.1.0-windows-x64-portable.zip',
+      'MoarTube-Client-Node-1.1.0-windows-x64-setup.exe', 'MoarTube-Client-Node-1.1.0-windows-x64-portable.zip']
     : target.startsWith('linux')
-      ? [`MoarTube-Client-1.1.0-${target}.deb`, `MoarTube-Client-1.1.0-${target}.tar.gz`]
+      ? [`MoarTube-Client-1.1.0-${target}.deb`, `MoarTube-Client-1.1.0-${target}-portable.tar.gz`]
       : [`MoarTube-Client-1.1.0-${target}.dmg`, `MoarTube-Client-1.1.0-${target}.zip`];
   const source = windows
     ? 'MoarTube-FFmpeg-test-build-sources.zip'
@@ -87,14 +88,49 @@ function github({
   };
 }
 
+test('accepts either complete Windows variant alone and rejects an incomplete bundled pair', async (t) => {
+  const { collectReleaseAssets } = await import('../../scripts/lib/draft-release.mjs');
+  for (const prefix of ['MoarTube-Client-1.1.0-', 'MoarTube-Client-Node-1.1.0-']) {
+    const local = await fixture(t);
+    const files = local.files.filter(name => name.startsWith(prefix) || name.includes('FFmpeg'));
+    fs.writeFileSync(path.join(local.output, local.checksum), files.map(name => `${hash(name)}  ${name}`).join('\n') + '\n');
+    const assets = await collectReleaseAssets(local);
+    assert.equal(assets.length, 5);
+  }
+  const local = await fixture(t);
+  const files = local.files.filter(name => name !== 'MoarTube-Client-Node-1.1.0-windows-x64-portable.zip');
+  fs.writeFileSync(path.join(local.output, local.checksum), files.map(name => `${hash(name)}  ${name}`).join('\n') + '\n');
+  await assert.rejects(collectReleaseAssets(local), /incomplete/);
+});
+
+test('separate Windows workflows contribute disjoint assets to the same draft', async (t) => {
+  const { collectReleaseAssets } = await import('../../scripts/lib/draft-release.mjs');
+  const names = [];
+  for (const variant of ['client', 'bundled']) {
+    const local = await fixture(t);
+    const prefix = variant === 'bundled' ? 'MoarTube-Client-Node-' : 'MoarTube-Client-1.1.0-';
+    const source = `MoarTube-FFmpeg-test-build-${variant}-sources.zip`;
+    fs.writeFileSync(path.join(local.output, source), source);
+    const files = [...local.files.filter(name => name.startsWith(prefix)), source];
+    const checksum = `SHA256SUMS-windows-${variant}.txt`;
+    const notes = `RELEASE-NOTES-windows-${variant}.md`;
+    fs.writeFileSync(path.join(local.output, checksum), files.map(name => `${hash(name)}  ${name}`).join('\n') + '\n');
+    fs.writeFileSync(path.join(local.output, notes), `Sources: https://github.com/${repo}/releases/download/${tag}/${source}\n`);
+    const assets = await collectReleaseAssets({ ...local, target: `win32-x64-${variant}` });
+    assert.equal(assets.length, 5);
+    names.push(assets.map(asset => asset.name));
+  }
+  assert.deepEqual(names[0].filter(name => names[1].includes(name)), []);
+});
+
 test('uploads each target allowlist, pins an untagged draft and never publishes it', async (t) => {
   const { uploadToDraft } = await import('../../scripts/lib/draft-release.mjs');
   for (const target of ['win32-x64', 'linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64']) {
     const local = await fixture(t, target);
     const remote = github();
     const result = await uploadToDraft({ ...local, ...remote });
-    assert.equal(result.assets.length, 5);
-    assert.equal(remote.uploads.length, 5);
+    assert.equal(result.assets.length, local.files.length + 2);
+    assert.equal(remote.uploads.length, local.files.length + 2);
     assert.deepEqual(remote.writes, [{ target_commitish: commit }]);
     assert.equal(remote.release.draft, true);
     assert.ok(
@@ -155,7 +191,7 @@ test('skips identical assets and stops if the draft is published while contribut
     assets: [{ name: local.files[0], state: 'uploaded', digest: `sha256:${hash(local.files[0])}` }],
   });
   await uploadToDraft({ ...local, ...remote });
-  assert.equal(remote.uploads.length, 4);
+  assert.equal(remote.uploads.length, local.files.length + 1);
   const changing = github({ target: commit });
   await assert.rejects(
     uploadToDraft({

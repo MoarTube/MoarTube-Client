@@ -1,0 +1,44 @@
+name: Electron builds - all platforms
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing draft release tag (leave empty for build artifacts only)
+        type: string
+        required: false
+        default: ''
+permissions:
+  contents: write
+jobs:
+  windows-client:
+    uses: ./.github/workflows/electron-build-windows-client-x64.yml
+    with:
+      release_tag: ${{ inputs.release_tag }}
+  windows-client-node:
+    uses: ./.github/workflows/electron-build-windows-client-node-x64.yml
+    with:
+      release_tag: ${{ inputs.release_tag }}
+  linux-client-x64:
+    uses: ./.github/workflows/electron-build-linux-client-x64.yml
+    with:
+      release_tag: ${{ inputs.release_tag }}
+  linux-client-node-x64:
+    uses: ./.github/workflows/electron-build-linux-client-node-x64.yml
+    with:
+      release_tag: ${{ inputs.release_tag }}
+  linux-client-arm64:
+    uses: ./.github/workflows/electron-build-linux-client-arm64.yml
+    with:
+      release_tag: ${{ inputs.release_tag }}
+  linux-client-node-arm64:
+    uses: ./.github/workflows/electron-build-linux-client-node-arm64.yml
+    with:
+      release_tag: ${{ inputs.release_tag }}
+  macos-intel:
+    uses: ./.github/workflows/electron-build-darwin-x64.yml
+    with:
+      release_tag: ${{ inputs.release_tag }}
+  macos-apple-silicon:
+    uses: ./.github/workflows/electron-build-darwin-arm64.yml
+    with:
+      release_tag: ${{ inputs.release_tag }}

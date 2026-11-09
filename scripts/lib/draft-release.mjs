@@ -10,25 +10,43 @@ export const digest = async (file) => {
 
 export async function collectReleaseAssets({ directory, target, version, repo, tag }) {
   const platforms = {
+    'win32-x64-client': {
+      checksum: 'SHA256SUMS-windows-client.txt',
+      notes: 'RELEASE-NOTES-windows-client.md',
+      binaries: [
+        `MoarTube-Client-${version}-windows-x64-setup.exe`,
+        `MoarTube-Client-${version}-windows-x64-portable.zip`,
+      ],
+      source: /^MoarTube-FFmpeg-[a-zA-Z0-9._-]+-sources\.zip$/,
+    },
+    'win32-x64-bundled': {
+      checksum: 'SHA256SUMS-windows-bundled.txt',
+      notes: 'RELEASE-NOTES-windows-bundled.md',
+      binaries: [
+        `MoarTube-Client-Node-${version}-windows-x64-setup.exe`,
+        `MoarTube-Client-Node-${version}-windows-x64-portable.zip`,
+      ],
+      source: /^MoarTube-FFmpeg-[a-zA-Z0-9._-]+-sources\.zip$/,
+    },
     'win32-x64': {
       checksum: 'SHA256SUMS.txt',
       notes: 'RELEASE-NOTES.md',
       binaries: [
         `MoarTube-Client-${version}-windows-x64-setup.exe`,
-        `MoarTube-Client-${version}-windows-x64.zip`,
+        `MoarTube-Client-${version}-windows-x64-portable.zip`,
       ],
       source: /^MoarTube-FFmpeg-[a-zA-Z0-9._-]+-sources\.zip$/,
     },
     'linux-x64': {
       binaries: [
         `MoarTube-Client-${version}-linux-x64.deb`,
-        `MoarTube-Client-${version}-linux-x64.tar.gz`,
+        `MoarTube-Client-${version}-linux-x64-portable.tar.gz`,
       ],
     },
     'linux-arm64': {
       binaries: [
         `MoarTube-Client-${version}-linux-arm64.deb`,
-        `MoarTube-Client-${version}-linux-arm64.tar.gz`,
+        `MoarTube-Client-${version}-linux-arm64-portable.tar.gz`,
       ],
     },
     'darwin-arm64': {
@@ -44,6 +62,20 @@ export async function collectReleaseAssets({ directory, target, version, repo, t
       ],
     },
   };
+  for (const arch of ['x64', 'arm64'])
+    for (const variant of ['client', 'bundled']) {
+      const platform = 'linux-' + arch;
+      const prefix = variant === 'bundled' ? 'MoarTube-Client-Node' : 'MoarTube-Client';
+      platforms[platform + '-' + variant] = {
+        checksum: 'SHA256SUMS-' + platform + '-' + variant + '.txt',
+        notes: 'RELEASE-NOTES-' + platform + '-' + variant + '.md',
+        binaries: [
+          prefix + '-' + version + '-' + platform + '.deb',
+          prefix + '-' + version + '-' + platform + '-portable.tar.gz',
+        ],
+        source: new RegExp('^[a-zA-Z0-9._-]+-' + platform + '-[a-zA-Z0-9._-]+-sources\\.tar\\.xz$'),
+      };
+    }
   const platform = platforms[target];
   if (!platform) throw new Error(`Unsupported draft release target: ${target}`);
   const checksum = platform.checksum ?? `SHA256SUMS-${target}.txt`;
@@ -80,11 +112,25 @@ export async function collectReleaseAssets({ directory, target, version, repo, t
     ).test(entry.name)
   );
   const names = new Set(entries.map((entry) => entry.name));
+  const bundledBinaries =
+    target === 'win32-x64'
+      ? [
+          `MoarTube-Client-Node-${version}-windows-x64-setup.exe`,
+          `MoarTube-Client-Node-${version}-windows-x64-portable.zip`,
+        ]
+      : [];
+  const hasBundled = bundledBinaries.some((name) => names.has(name));
+  const hasClient = platform.binaries.some((name) => names.has(name));
+  const requiredBinaries =
+    target === 'win32-x64'
+      ? [...(hasClient ? platform.binaries : []), ...(hasBundled ? bundledBinaries : [])]
+      : platform.binaries;
   if (
-    entries.length !== 3 ||
-    names.size !== 3 ||
+    requiredBinaries.length === 0 ||
+    entries.length !== requiredBinaries.length + 1 ||
+    names.size !== requiredBinaries.length + 1 ||
     sources.length !== 1 ||
-    !platform.binaries.every((name) => names.has(name))
+    !requiredBinaries.every((name) => names.has(name))
   )
     throw new Error(`Release downloads are incomplete or do not match ${target} ${version}`);
   const assets = [];

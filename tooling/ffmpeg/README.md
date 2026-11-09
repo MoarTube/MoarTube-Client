@@ -147,8 +147,8 @@ pixel format. It does not download frames or introduce CPU video processing.
 
 Current-host AMD and NVIDIA publishing, portrait/geometry and real loopback
 RTMP-to-HLS checks passed on Windows 11. Intel execution and full release
-qualification remain pending. The [validation record](../../docs/windows-ffmpeg-validation.md)
-identifies the host, binary hashes, evidence and untested acceptance gates.
+qualification remain pending. Machine-readable verification evidence is retained
+under `build/ffmpeg/reports/win32-x64` and in the packaged candidate's `reports/`.
 
 Software AV1 decoding uses pinned dav1d, rather than relying on an AV1 hardware
 wrapper. zlib preserves PNG/compressed input support. HTTPS uses Windows Schannel
@@ -207,6 +207,3 @@ Linux x64 and ARM64 builds use the shared Docker recipe. Run
 `npm run ffmpeg:verify:linux:arm64:runtimes` for Ubuntu 24.04/26.04 CPU checks.
 See the [Linux guide](../../docs/linux-ffmpeg.md) for both architectures,
 runtime dependencies and GPU qualification limits.
-
-See [the distribution plan](../../docs/ffmpeg-distribution-plan.md) for the full
-acceptance criteria and later platforms.

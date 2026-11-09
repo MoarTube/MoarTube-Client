@@ -1,6 +1,7 @@
 import { desktopPaths } from '../tooling/build-paths.cjs';
+import { windowsPaths, windowsVariant } from '../desktop/windows-variant.cjs';
 import { parseDarwinTarget } from '../tooling/ffmpeg/scripts/darwin-native.mjs';
-import { parseLinuxTarget } from '../tooling/ffmpeg/scripts/linux-target.mjs';
+import { parseLinuxDesktopArgs, linuxVariant, linuxPaths } from '../desktop/linux-variant.cjs';
 import {
   createReadStream,
   readFileSync,
@@ -20,13 +21,31 @@ if (darwin && linux)
 const target = darwin
   ? parseDarwinTarget(process.argv.slice(2).filter((arg) => arg !== '--darwin')).target
   : linux
-    ? parseLinuxTarget(process.argv.slice(2).filter((arg) => arg !== '--linux')).target
+    ? parseLinuxDesktopArgs(
+        process.argv.slice(2).filter((arg) => arg !== '--linux'),
+        'client'
+      ).target
     : 'win32-x64';
 const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
 const version = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8')
 ).version;
-const layout = desktopPaths(root, target, version);
+const windowsMode =
+  process.argv.find((arg) => arg.startsWith('--windows-variant='))?.split('=')[1] ?? 'bundled';
+const selectedWindows = !linux && !darwin ? windowsVariant(windowsMode) : undefined;
+const selectedLinux = linux
+  ? linuxVariant(
+      parseLinuxDesktopArgs(
+        process.argv.slice(2).filter((arg) => arg !== '--linux'),
+        'client'
+      ).variant
+    )
+  : undefined;
+const layout = selectedLinux
+  ? linuxPaths(root, target.slice(6), version, selectedLinux.name)
+  : selectedWindows
+    ? windowsPaths(root, version, selectedWindows.name)
+    : desktopPaths(root, target, version);
 const directory = layout.release;
 mkdirSync(directory, { recursive: true });
 const selection = JSON.parse(readFileSync(layout.selection, 'utf8'));
@@ -34,10 +53,13 @@ const artifacts = [
   ...(darwin
     ? [`MoarTube-Client-${version}-${target}.dmg`, `MoarTube-Client-${version}-${target}.zip`]
     : linux
-      ? [`MoarTube-Client-${version}-${target}.deb`, `MoarTube-Client-${version}-${target}.tar.gz`]
+      ? [
+          `${selectedLinux.prefix}-${version}-${target}.deb`,
+          `${selectedLinux.prefix}-${version}-${target}-portable.tar.gz`,
+        ]
       : [
-          `MoarTube-Client-${version}-windows-x64-setup.exe`,
-          `MoarTube-Client-${version}-windows-x64.zip`,
+          `${selectedWindows.prefix}-${version}-windows-x64-setup.exe`,
+          `${selectedWindows.prefix}-${version}-windows-x64-portable.zip`,
         ]),
   selection.sourceArchive,
 ].sort();
@@ -52,9 +74,39 @@ for (const name of artifacts) {
     throw new Error('FFmpeg source archive changed after desktop preparation');
   lines.push(`${digest}  ${name}`);
 }
-const blockmap = `MoarTube-Client-${version}-windows-x64-setup.exe.blockmap`;
+if (selectedWindows) {
+  writeFileSync(
+    path.join(directory, `SHA256SUMS-windows-${selectedWindows.name}.txt`),
+    lines.slice().sort().join('\n') + '\n'
+  );
+}
+// Include the other variant only when this build explicitly produced both.
+// A single-variant build must not publish a stale binary from an earlier build.
+if (selectedWindows && process.argv.includes('--all-windows-variants')) {
+  for (const other of ['client', 'bundled'].filter((value) => value !== selectedWindows.name)) {
+    for (const suffix of ['-setup.exe', '-portable.zip']) {
+      const name = `${windowsVariant(other).prefix}-${version}-windows-x64${suffix}`;
+      const file = path.join(directory, name);
+      if (existsSync(file)) {
+        const hash = createHash('sha256');
+        for await (const chunk of createReadStream(file)) hash.update(chunk);
+        lines.push(`${hash.digest('hex')}  ${name}`);
+      }
+    }
+  }
+}
+const blockmap = `${selectedWindows?.prefix ?? 'MoarTube-Client'}-${version}-windows-x64-setup.exe.blockmap`;
 if (!linux && !darwin && existsSync(path.join(layout.packages, blockmap)))
   renameSync(path.join(layout.packages, blockmap), path.join(directory, blockmap));
-const checksumFile = linux || darwin ? `SHA256SUMS-${target}.txt` : 'SHA256SUMS.txt';
-writeFileSync(path.join(directory, checksumFile), lines.join('\n') + '\n');
+if (selectedLinux)
+  writeFileSync(
+    path.join(directory, `SHA256SUMS-${target}-${selectedLinux.name}.txt`),
+    lines.slice().sort().join('\n') + '\n'
+  );
+const checksumFile = selectedLinux?.bundled
+  ? `SHA256SUMS-${target}-bundled.txt`
+  : linux || darwin
+    ? `SHA256SUMS-${target}.txt`
+    : 'SHA256SUMS.txt';
+writeFileSync(path.join(directory, checksumFile), lines.sort().join('\n') + '\n');
 console.log(`Desktop artifact checksums: ${path.join(directory, checksumFile)}`);
