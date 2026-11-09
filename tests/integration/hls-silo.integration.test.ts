@@ -118,14 +118,14 @@ describe.skipIf(!enabled)('HLS caching against a real local Silo server', () => 
       config,
       key.dynamic,
       Buffer.from(
-        `#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-PLAYLIST-TYPE:EVENT\n#EXTINF:2,\n${publicBase}/${key.segment}\n`
+        `#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-PLAYLIST-TYPE:EVENT\n#EXTINF:2,\n../../720p/segments/segment-run-one-0.ts\n`
       ),
       contentType
     );
     await service.putObjectFromData(
       config,
       key.master,
-      Buffer.from(`#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=100\n${publicBase}/${key.dynamic}\n`),
+      Buffer.from(`#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=100\nmanifest-720p.m3u8\n`),
       contentType
     );
     return key;
@@ -136,8 +136,10 @@ describe.skipIf(!enabled)('HLS caching against a real local Silo server', () => 
     const head = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key.dynamic }));
     expect(head.CacheControl).toBe(livePolicy);
     expect(head.ContentType).toBe(contentType);
-    expect(await read(key.master, livePolicy)).toContain(`${publicBase}/${key.dynamic}`);
-    expect(await read(key.dynamic, livePolicy)).toContain(`${publicBase}/${key.segment}`);
+    expect(await read(key.master, livePolicy)).toContain('manifest-720p.m3u8');
+    expect(await read(key.dynamic, livePolicy)).toContain(
+      '../../720p/segments/segment-run-one-0.ts'
+    );
     const segment = await fetch(`${publicBase}/${key.segment}`, {
       signal: AbortSignal.timeout(5000),
     });
@@ -155,7 +157,7 @@ describe.skipIf(!enabled)('HLS caching against a real local Silo server', () => 
   it('replaces streamed growing playlists and their real object validators', async () => {
     const key = await seed('growing');
     const first = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key.dynamic }));
-    const next = `#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXT-X-PLAYLIST-TYPE:EVENT\n#EXTINF:2,\n${publicBase}/${key.segment}\n#EXTINF:2,\n${publicBase}/${key.segment}\n`;
+    const next = `#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXT-X-PLAYLIST-TYPE:EVENT\n#EXTINF:2,\n../../720p/segments/segment-run-one-0.ts\n#EXTINF:2,\n../../720p/segments/segment-run-one-0.ts\n`;
     await service.putObjectFromData(
       config,
       key.dynamic,
@@ -176,9 +178,11 @@ describe.skipIf(!enabled)('HLS caching against a real local Silo server', () => 
     expect(await read(key.vod, vodPolicy)).toBe(terminal);
     const master = await read(key.vodMaster, vodPolicy);
     expect(master).not.toContain('ENDLIST');
-    const rendition = master.split('\n').find((line) => line.startsWith('http'));
-    expect(rendition).toBe(`${publicBase}/${key.vod}`);
-    const response = await fetch(rendition ?? '', { signal: AbortSignal.timeout(5000) });
+    const rendition = master.split('\n').find((line) => line !== '' && !line.startsWith('#'));
+    expect(rendition).toBe('manifest-720p.m3u8');
+    const renditionUrl = new URL(rendition ?? '', `${publicBase}/${key.vodMaster}`).href;
+    expect(renditionUrl).toBe(`${publicBase}/${key.vod}`);
+    const response = await fetch(renditionUrl, { signal: AbortSignal.timeout(5000) });
     expect(response.status).toBe(200);
     expect(await response.text()).toBe(terminal);
     const decoded = spawnSync(
@@ -220,7 +224,7 @@ describe.skipIf(!enabled)('HLS caching against a real local Silo server', () => 
       config,
       missing.dynamic,
       Readable.from([
-        `#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXTINF:2,\n${publicBase}/${key.segment}\n`,
+        `#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXTINF:2,\n../../720p/segments/segment-run-one-0.ts\n`,
       ]),
       contentType
     );

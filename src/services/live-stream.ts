@@ -1,4 +1,3 @@
-import { relativeHlsLine, hlsPlaylistPath } from '@/utils/hls-urls.js';
 import { requireNodeSuccess } from '@/utils/node-actions.js';
 import type { ChildProcess } from 'node:child_process';
 import { spawnMediaProcess as spawn } from '@/utils/media-processes.js';
@@ -49,7 +48,6 @@ interface SendSegmentOptions {
   segmentFileName: string;
   storageConfig: StorageConfig;
   isCloudflareCdnEnabled: boolean;
-  externalVideosBaseUrl: string;
 }
 
 interface HandleStreamDataOptions extends LiveHlsSegment {
@@ -59,7 +57,6 @@ interface HandleStreamDataOptions extends LiveHlsSegment {
   resolution: string;
   storageConfig: StorageConfig;
   isCloudflareCdnEnabled: boolean;
-  externalVideosBaseUrl: string;
   isRecordingStreamLocally: boolean;
   isRecordingStreamRemotely: boolean;
   lengthTimestamp: string;
@@ -190,20 +187,12 @@ export class LiveStreamService {
       );
 
       const sourceFilePath = path.join(videoDir, 'source', `${videoId}.ts`);
-      const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(jwtToken);
 
       const encoderDirectory = path.join(videoDir, 'adaptive', 'encoder');
       fs.mkdirSync(encoderDirectory, { recursive: true });
       const livePlaylist = path.join(encoderDirectory, 'live.m3u8');
       const ffmpegArguments = withLiveHlsFiles(
-        this.generateFfmpegLiveArguments(
-          videoId,
-          resolution,
-          format,
-          rtmpUrl,
-          isRecordingStreamRemotely,
-          externalVideosBaseUrl
-        ),
+        this.generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl),
         livePlaylist,
         resolution
       );
@@ -286,7 +275,6 @@ export class LiveStreamService {
             resolution,
             storageConfig,
             isCloudflareCdnEnabled,
-            externalVideosBaseUrl,
             isRecordingStreamLocally,
             isRecordingStreamRemotely,
             lengthTimestamp,
@@ -398,7 +386,6 @@ export class LiveStreamService {
       videoId,
       storageConfig,
       isCloudflareCdnEnabled,
-      externalVideosBaseUrl,
       isRecordingStreamLocally,
       isRecordingStreamRemotely,
       lengthTimestamp,
@@ -482,23 +469,12 @@ export class LiveStreamService {
         jwtToken,
         videoId,
         resolution,
-        manifestBuffer: Buffer.from(
-          publicLines
-            .map((line) =>
-              relativeHlsLine(
-                line,
-                hlsPlaylistPath(videoId, `manifest-${resolution}.m3u8`, 'dynamic'),
-                [externalVideosBaseUrl]
-              )
-            )
-            .join('\n')
-        ),
+        manifestBuffer: Buffer.from(publicLines.join('\n')),
         segmentBuffer,
         manifestFileName,
         segmentFileName,
         storageConfig,
         isCloudflareCdnEnabled,
-        externalVideosBaseUrl,
       });
       this.sendImagesToNode(jwtToken, videoId, segmentBuffer, storageConfig);
 
@@ -790,9 +766,7 @@ export class LiveStreamService {
     _videoId: string,
     resolution: string,
     format: string,
-    rtmpUrl: string,
-    _isRecordingStreamRemotely: boolean,
-    _externalVideosBaseUrl: string
+    rtmpUrl: string
   ): string[] {
     const clientSettings = this.settingsRepository.getClientSettings();
     let bitrate = '',

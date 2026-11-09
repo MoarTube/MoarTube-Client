@@ -763,7 +763,7 @@ for (const width of [390, 1448]) {
     const quote = page.locator('#pc2 blockquote .quotelink');
     const backlink = page.locator('#pc1 .backlink .quotelink[data-comment-id="2"]');
     const geometry = () => page.locator('#comments-container').evaluate(el =>
-      [...el.querySelectorAll('.postContainer, .post.reply, .quotelink')].map(item => {
+      Array.from(el.querySelectorAll('.postContainer, .post.reply, .quotelink')).map(item => {
         const r = item.getBoundingClientRect();
         return { x: r.x, y: r.y, width: r.width, height: r.height };
       })

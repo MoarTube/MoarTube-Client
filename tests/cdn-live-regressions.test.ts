@@ -55,7 +55,7 @@ function streamHarness(generation: string, failCleanup: boolean | 'response' = f
     const start = Math.max(0, index - 19);
     let manifest = `#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXT-X-MEDIA-SEQUENCE:${String(start)}\n`;
     for (let segment = start; segment <= index; segment++) {
-      manifest += `#EXTINF:2,\nhttps://example.com/external/videos/id/adaptive/m3u8/720p/segments/segment-720p-${String(segment)}.ts\n`;
+      manifest += `#EXTINF:2,\n../../720p/segments/segment-720p-${String(segment)}.ts\n`;
     }
     await internal.handleStreamData({
       context,

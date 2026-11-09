@@ -54,7 +54,7 @@ describe('recorded live delivery', () => {
         const start = Math.max(0, index - 19);
         let text = `#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:${String(start)}\n`;
         for (let i = start; i <= index; i++) {
-          text += `#EXTINF:2,\nhttps://example.test/pipe${String(i)}.ts\n`;
+          text += `#EXTINF:2,\n../../720p/segments/segment-720p-${String(i)}.ts\n`;
         }
         yield {
           segmentBuffer: Buffer.from(`segment-${String(index)}`),
@@ -81,6 +81,7 @@ describe('recorded live delivery', () => {
         });
       }
       expect(uploads).toBe(50);
+      expect(lastManifest).not.toMatch(/^https?:\/\//m);
       expect(lastManifest.match(/#EXTINF/g)).toHaveLength(50);
       expect(lastManifest).toContain('segment-720p-0.ts');
       expect(lastManifest).toContain('segment-720p-49.ts');

@@ -1,9 +1,7 @@
-import { recoveredEncoderHlsLine } from '@/utils/recovered-hls.js';
 import { requireNodeSuccess } from '@/utils/node-actions.js';
 import type { ChildProcess } from 'node:child_process';
 import { spawnMediaProcess as spawn } from '@/utils/media-processes.js';
 import { encodingPool } from '@/utils/work-pool.js';
-import { rewriteManifestFile } from '@/utils/manifest-transform.js';
 import { getGpuProcessEnvironment } from '@/utils/hardware.js';
 import {
   applyGpuDeviceArguments,
@@ -40,8 +38,6 @@ interface VideoPublishJob {
   uploadCompleted?: boolean;
   hasEncodingSlot?: boolean;
   encodingCompleted?: boolean;
-  externalVideosBaseUrl?: string;
-  manifestUrlVersion?: number;
   connection?: string;
 }
 
@@ -116,8 +112,6 @@ export class VideoPublishService {
       resolution: job.resolution,
       sourceFileExtension: job.sourceFileExtension,
       encodingCompleted: job.encodingCompleted,
-      externalVideosBaseUrl: job.externalVideosBaseUrl,
-      manifestUrlVersion: job.manifestUrlVersion,
       uploadCompleted: job.uploadCompleted,
       connection: job.connection,
     };
@@ -551,37 +545,9 @@ export class VideoPublishService {
         });
         job.encodingCompleted = true;
       }
-      let externalVideosBaseUrl: string | undefined;
-      if (job.format === 'm3u8') {
-        externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(job.jwtToken);
-        this.assertPublishingActive(job.videoId);
-        if (
-          job.uploadCompleted === true &&
-          job.externalVideosBaseUrl === externalVideosBaseUrl &&
-          job.manifestUrlVersion === 1
-        ) {
-          clearInterval(job.idleInterval);
-          return;
-        }
-        job.uploadCompleted = false;
-        this.checkpoint(job);
-        const manifest = path.join(
-          this.settingsRepository.getVideosDirectoryPath(),
-          job.videoId,
-          'adaptive',
-          'm3u8',
-          `manifest-${job.resolution}.m3u8`
-        );
-        const currentMediaBase = externalVideosBaseUrl;
-        await rewriteManifestFile(manifest, (line) =>
-          recoveredEncoderHlsLine(
-            line,
-            job.videoId,
-            job.resolution,
-            [currentMediaBase, job.externalVideosBaseUrl ?? ''],
-            job.manifestUrlVersion !== 1
-          )
-        );
+      if (job.uploadCompleted === true) {
+        clearInterval(job.idleInterval);
+        return;
       }
       clearInterval(job.idleInterval);
       this.checkpoint(job);
@@ -602,10 +568,6 @@ export class VideoPublishService {
         throw new Error('Publishing cancelled');
       }
       job.uploadCompleted = true;
-      if (externalVideosBaseUrl !== undefined) {
-        job.externalVideosBaseUrl = externalVideosBaseUrl;
-        job.manifestUrlVersion = 1;
-      }
       this.checkpoint(job);
     }
   }
@@ -613,8 +575,6 @@ export class VideoPublishService {
   private async performEncodingJob(job: VideoPublishJob): Promise<void> {
     this.assertPublishingActive(job.videoId);
 
-    const externalVideosBaseUrl = await this.nodeApiService.getExternalVideosBaseUrl(job.jwtToken);
-    this.assertPublishingActive(job.videoId);
     const videosPath = this.settingsRepository.getVideosDirectoryPath();
     const sourceFilePath = path.join(
       videosPath,
@@ -636,8 +596,7 @@ export class VideoPublishService {
         job.format,
         sourceFilePath,
         destinationFilePath,
-        job.sourceFileExtension,
-        externalVideosBaseUrl
+        job.sourceFileExtension
       ),
     ];
 
@@ -938,8 +897,7 @@ export class VideoPublishService {
     format: string,
     sourceFilePath: string,
     destinationFilePath: string,
-    sourceFileExtension: string,
-    _externalVideosBaseUrl: string
+    sourceFileExtension: string
   ): string[] {
     const clientSettings = this.settingsRepository.getClientSettings();
     let width: string;

@@ -43,6 +43,7 @@ import { getMemoryMetrics } from '@/utils/memory-metrics.js';
 import { getCpuMetrics } from '@/utils/cpu-metrics.js';
 import { getGpuMetrics } from '@/utils/gpu-metrics.js';
 import { bundledNodePort } from '@/config/bundled-desktop.js';
+import { storageMigrationSchema } from '@/validators/storage-migration.js';
 
 // Disable sharp cache
 sharp.cache(false);
@@ -1265,6 +1266,36 @@ export class SettingsController extends BaseController {
     const response = await this.nodeApiService.storageConfigToggle(jwtToken, validStorageConfig);
 
     return await reply.send(response);
+  };
+
+  public apiMigrateStorage = async (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<FastifyReply> => {
+    const jwtToken = request.session.jwtToken ?? '';
+    if (!jwtToken) {
+      return await this.sendError(reply, 'Sign in to the Node first.', 401);
+    }
+    const parsed = storageMigrationSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return await this.sendError(reply, 'Invalid migration configuration.', 400);
+    }
+    try {
+      const migration = parsed.data;
+      if ('source' in migration) {
+        await this.s3Service.validateS3Config(migration.source, false);
+      }
+      if ('destination' in migration) {
+        await this.s3Service.validateS3Config(migration.destination, false);
+      }
+      return await reply.send(await this.nodeApiService.migrateStorage(jwtToken, migration));
+    } catch {
+      return await this.sendError(
+        reply,
+        'Migration failed. Destination data may be partially overwritten. Check the S3 configuration and Node connection before trying again.',
+        502
+      );
+    }
   };
 
   public apiSetAccountCredentials = async (

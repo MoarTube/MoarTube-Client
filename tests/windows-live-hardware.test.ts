@@ -105,9 +105,7 @@ it.skipIf(process.platform !== 'win32' || process.env['MOARTUBE_TEST_GPU'] !== '
         'live',
         '360p',
         'm3u8',
-        url,
-        false,
-        'https://node.example'
+        url
       );
       // Keep decoder/device/scaler/encoder and RTMP options exactly as generated.
       // Direct HLS output locally so the matching probe can validate the result.

@@ -73,8 +73,7 @@ it.skipIf(process.env['MOARTUBE_TEST_GPU'] !== '1')(
             format,
             source,
             output,
-            '.h264',
-            'https://node.example'
+            '.h264'
           );
           if (job === 'live') {
             args = LiveStreamService.prototype['generateFfmpegLiveArguments'].call(
@@ -82,9 +81,7 @@ it.skipIf(process.env['MOARTUBE_TEST_GPU'] !== '1')(
               videoId,
               '360p',
               'm3u8',
-              source,
-              false,
-              'https://node.example'
+              source
             );
             // Exercise the live video filter/encoder/HLS pipeline with a local
             // compressed fixture; listener/network transport is tested separately.
@@ -176,8 +173,7 @@ it.skipIf(process.env['MOARTUBE_TEST_GPU'] !== '1')(
               'mp4',
               fixture,
               output,
-              '.h264',
-              'https://node.example'
+              '.h264'
             );
             assertWindowsHardwarePipeline(args, gpu.backend ?? '');
             commands.push({ gpuId: gpu.id, job: `geometry-${size}`, args });

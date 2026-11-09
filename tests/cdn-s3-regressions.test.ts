@@ -8,8 +8,7 @@ import { siloFixture, siloProxy, type SiloFixture } from './support/silo.js';
 const prefix = 'external/videos/id/adaptive/m3u8/';
 const media =
   '#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXT-X-PLAYLIST-TYPE:EVENT\n#EXTINF:2,\nsegment.ts\n';
-const master =
-  '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=100\nhttps://example.com/external/videos/id/adaptive/m3u8/dynamic/manifests/manifest-720p.m3u8\n';
+const master = '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=100\nmanifest-720p.m3u8\n';
 let fixture: SiloFixture;
 let proxy: Awaited<ReturnType<typeof siloProxy>>;
 let config: S3ValidationConfig;
@@ -76,7 +75,7 @@ describe('S3 HLS lifecycle against Silo', () => {
     );
     expect(head.CacheControl).toBe('no-store');
     const vod = await fixture.text(prefix + 'static/manifests/manifest-master.m3u8');
-    expect(vod).toContain('/static/');
+    expect(vod).toContain('\nmanifest-720p.m3u8\n');
     expect(vod).not.toContain('ENDLIST');
     await service.convertM3u8DynamicManifestsToStatic(config, 'id', ['720p']);
     expect(
@@ -98,17 +97,5 @@ describe('S3 HLS lifecycle against Silo', () => {
       )
     ).rejects.toMatchObject({ $metadata: { httpStatusCode: 404 } });
     expect(await fixture.text(prefix + 'dynamic/manifests/manifest-720p.m3u8')).toBe(media);
-  });
-  it('reports the object key when Silo rejects a manifest migration write', async () => {
-    failedKey = prefix + 'static/manifests/manifest-master.m3u8';
-    await fixture.put(failedKey, master);
-    await expect(
-      service.updateM3u8ManifestsWithExternalVideosBaseUrl(
-        config,
-        [{ videoId: 'id', isPublished: true, outputs: { m3u8: ['720p'] } }],
-        'https://new.example'
-      )
-    ).rejects.toThrow('manifest-master.m3u8');
-    expect(await fixture.text(failedKey)).toBe(master);
   });
 });

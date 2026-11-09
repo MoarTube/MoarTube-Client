@@ -720,7 +720,7 @@ for (const width of [390, 992, 1448]) {
     const f = await fixture(page);
     await page.goto(host);
     const values = await page.locator(width < 992 ? '#sort-select option' : '.sort-tabs button').evaluateAll((items) =>
-      items.map((item) => item.getAttribute('value') || (item as HTMLElement).dataset.sort)
+      items.map((item) => item.getAttribute('value') || (item as HTMLElement).dataset['sort'])
     );
     expect(values).toEqual(['hot', 'new', 'recently-discussed', 'discussed', 'viewed']);
     if (width < 992) await page.locator('#sort-select').selectOption('recently-discussed');

@@ -15,6 +15,22 @@
 	<link href="/css/nucleo-svg.css" rel="stylesheet">
 	<link id="pagestyle" href="/css/soft-ui-dashboard-1.1.0.min.css" rel="stylesheet">
 	<style>
+		.swal2-popup.storage-migration-modal { min-width: 0 !important; max-width: calc(100vw - 2rem); padding-bottom: 1.5rem; font-family: 'Open Sans', sans-serif; }
+		.storage-migration-modal .swal2-title { padding: 1.5rem 3rem 0; font-size: 1.5rem; color: #344767; }
+		.storage-migration-modal .swal2-html-container { margin: 1.25rem 1.5rem 0; padding: 0; max-height: 60vh; overflow-y: auto; }
+		.storage-migration-content { text-align: left; color: #344767; font-size: .875rem; line-height: 1.6; }
+		.storage-migration-options { border: 0; padding: 0; margin: 0 0 1.25rem; min-width: 0; }
+		.storage-migration-options legend { float: none; width: auto; margin-bottom: .75rem; font-size: 1rem; font-weight: 600; }
+		.storage-migration-options label { display: flex; align-items: flex-start; gap: .75rem; margin: 0; padding: .5rem 0; font-size: .875rem; font-weight: 400; cursor: pointer; }
+		.storage-migration-options .form-check-input { flex: 0 0 1rem; float: none; margin: .2rem 0 0; }
+		.storage-migration-content textarea { min-height: 12rem; padding: .75rem; font-family: monospace; font-size: .8125rem; line-height: 1.5; resize: vertical; }
+		.storage-migration-help { margin: 0 0 1.25rem; color: #67748e; font-size: .8125rem; overflow-wrap: anywhere; }
+		.storage-migration-warning { padding: 1rem; border: 1px solid #edc3e3; border-radius: .5rem; background: #fcf5fa; color: #344767; font-size: .8125rem; }
+		.storage-migration-warning strong { display: block; margin-bottom: .5rem; }
+		.storage-migration-warning p { margin: 0 0 .5rem; font-size: inherit; line-height: inherit; }
+		.storage-migration-warning p:last-child { margin-bottom: 0; }
+		.storage-migration-modal .swal2-actions { width: calc(100% - 3rem); justify-content: flex-end; margin: 1.25rem 1.5rem 0; padding: 0; }
+		.storage-migration-modal .swal2-actions .btn { margin: 0; }
 		.cloudflare-cdn-modal { min-width: 0 !important; }
 		.cloudflare-cdn-recovery {
 			grid-column: 1 / -1;
@@ -86,8 +102,7 @@
 		.settings-security > .card-body {
             display: flex;
             flex-direction: column;
-			flex: 0 1 calc((100% - 8rem) / 5);
-			max-width: 18rem;
+			flex: 1 1 calc((100% - 8rem) / 5);
 		}
 
 		.settings-horizontal.settings-security > .card-body > .card-body { flex: 0 0 auto; margin-top: auto; padding-top: 1rem; }
@@ -651,9 +666,9 @@
 								</div>
 							</div>
 
-                                <div class="card-body pt-0 pb-0 border-top pt-3">
+                                <div class="card-body pt-0 pb-0 pt-3">
                                     <div class="d-flex align-items-center justify-content-between gap-3">
-                                        <label class="form-label mb-0" for="client-allow-remote-connections">Allow connections from other computers</label>
+                                        <label class="form-label mb-0" for="client-allow-remote-connections">Allow remote connections</label>
                                         <div class="form-check form-switch mb-0">
                                             <input id="client-allow-remote-connections" class="form-check-input toggle-network-access" type="checkbox" role="switch" data-target="client">
                                         </div>
@@ -884,7 +899,7 @@
 							</div>
 							<% } %>
 							<div class="card-body pt-0 pb-0">
-                                    <div><label class="form-label mb-0" for="node-allow-remote-connections">Allow connections from other computers</label></div>
+                                    <div><label class="form-label mb-0" for="node-allow-remote-connections">Allow remote connections</label></div>
                                     <div class="card-body pt-0">
                                         <div class="form-check form-switch my-auto">
                                             <input id="node-allow-remote-connections" class="form-check-input toggle-network-access" type="checkbox" role="switch" data-target="node">
@@ -927,7 +942,7 @@
 								<div class="">
 									<a href="https://www.moartube.com/guides/how-to-enable-cloudflare-turnstile"
 										target="_blank">
-										<p class="form-label mb-0 d-flex">Cloudflare Turnstile (human verification)<svg
+										<p class="form-label mb-0 d-flex">Cloudflare Turnstile<svg
 												xmlns="http://www.w3.org/2000/svg" width="16" height="16"
 												fill="currentColor" class="bi bi-box-arrow-up-right ps-1"
 												viewBox="0 0 16 16">
@@ -1029,7 +1044,7 @@
 														type="radio" name="storage-configuration"
 														data-storagemode="filesystem"
 														onkeyup="void(0)">
-													Filesystem (local)
+													File System (local)
 												</label>
 												<label class="form-label form-check-label"
 													for="storage-configuration-s3provider-radio">
@@ -1042,6 +1057,9 @@
 												</label>
 											</div>
 										</div>
+									</div>
+									<div class="settings-configuration-actions">
+										<button type="button" class="btn btn-outline-primary trigger-storage-migrate">migrate</button>
 									</div>
 								</div>
 							</div>
@@ -1303,6 +1321,7 @@
 	<script src="/javascript/settings-metrics.js"></script>
 	<script src="/javascript/settings-cloudflare-tunnel.js"></script>
 	<script src="/javascript/settings-workers.js"></script>
+	<script src="/javascript/settings-storage-migration.js"></script>
 	<script src="/javascript/settings-cloudflare-cdn.js"></script>
 	<script src="/javascript/settings-bulletin.js"></script>
 	<script src="/javascript/settings-links.js"></script>
@@ -1330,6 +1349,7 @@
 
 		init() {
 			new MoarTubeStorageMetrics().start();
+			new MoarTubeStorageMigration().start();
 			const nodeSettings = this.INCOMING_PARAMETERS.nodeSettings;
 			const newContentCounts = this.INCOMING_PARAMETERS.newContentCounts;
 			const clientSettings = this.INCOMING_PARAMETERS.clientSettings;

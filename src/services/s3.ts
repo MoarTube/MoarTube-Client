@@ -1,4 +1,3 @@
-import { relativeHlsLine } from '@/utils/hls-urls.js';
 import { BaseService } from './base.js';
 import { uploadPool } from '@/utils/work-pool.js';
 import type { Logger } from '@/utils/logger.js';
@@ -33,16 +32,6 @@ import type { S3ProviderClientConfig as S3ProviderClientConfigType } from '@/typ
 export interface S3ValidationConfig {
   bucketName: string;
   s3ProviderClientConfig: S3ProviderClientConfigType;
-}
-
-export interface VideoForManifestUpdate {
-  videoId: string;
-  isPublished?: boolean;
-  outputs?: {
-    m3u8?: string[];
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
 }
 
 export class S3Service extends BaseService {
@@ -86,7 +75,10 @@ export class S3Service extends BaseService {
     return this.client;
   }
 
-  public async validateS3Config(s3Config: S3ValidationConfig): Promise<void> {
+  public async validateS3Config(
+    s3Config: S3ValidationConfig,
+    deleteTestObject = true
+  ): Promise<void> {
     const { bucketName, s3ProviderClientConfig } = s3Config;
     this.logger.debug(`Validating S3 config for bucket: ${bucketName}`);
     // Candidate validation runs before Node's settings admission check; preserve active uploads.
@@ -231,11 +223,15 @@ export class S3Service extends BaseService {
         }
       }
 
-      // Verify the supplied credentials actually have read/write/delete access by
+      // Verify the supplied credentials have read/write (and optionally delete) access by
       // round-tripping a test object. Run this unconditionally (not just for newly
       // created buckets) so misconfigured credentials are caught immediately here
       // rather than later during video publishing/uploading.
-      this.logger.debug('Verifying MoarTube Client can put/get/delete a test object in the bucket');
+      this.logger.debug(
+        deleteTestObject
+          ? 'Verifying MoarTube Client can put/get/delete a test object in the bucket'
+          : 'Verifying MoarTube Client can put/get a test object in the bucket'
+      );
       await s3Client.send(
         new PutObjectCommand({
           Bucket: bucketName,
@@ -244,66 +240,18 @@ export class S3Service extends BaseService {
           ContentType: 'text/plain; charset=utf-8',
         })
       );
-      await s3Client.send(
+      const probe = await s3Client.send(
         new GetObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test' })
       );
-      await s3Client.send(
-        new DeleteObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test' })
-      );
+      await probe.Body?.transformToByteArray();
+      if (deleteTestObject) {
+        await s3Client.send(
+          new DeleteObjectCommand({ Bucket: bucketName, Key: 'Moartube-Client-Test' })
+        );
+      }
       this.logger.debug('S3 provider credentials validated');
     } finally {
       validation.close();
-    }
-  }
-
-  public async updateM3u8ManifestsWithExternalVideosBaseUrl(
-    s3Config: S3ValidationConfig,
-    videosData: VideoForManifestUpdate[],
-    externalVideosBaseUrl: string
-  ): Promise<void> {
-    const { bucketName, s3ProviderClientConfig } = s3Config;
-    const s3Client = this.createClientFromConfig(s3ProviderClientConfig);
-
-    const performUpdate = async (manifestKey: string): Promise<void> => {
-      try {
-        const response = await s3Client.send(
-          new GetObjectCommand({ Bucket: bucketName, Key: manifestKey })
-        );
-        if (!response.Body) {
-          throw new Error(`Empty manifest: ${manifestKey}`);
-        }
-
-        const body = response.Body as Readable;
-        try {
-          const rewritten = Readable.from(
-            transformManifest(body, (line) =>
-              relativeHlsLine(line, '/' + manifestKey, [externalVideosBaseUrl])
-            )
-          );
-          await this.putObjectFromData(
-            s3Config,
-            manifestKey,
-            rewritten,
-            'application/vnd.apple.mpegurl'
-          );
-        } finally {
-          body.destroy();
-        }
-      } catch (error) {
-        throw new Error(`Failed to rewrite S3 manifest ${manifestKey}`, { cause: error });
-      }
-    };
-
-    for (const videoData of videosData) {
-      if (videoData.isPublished === true && (videoData.outputs?.m3u8?.length ?? 0) > 0) {
-        const masterManifestKey = `external/videos/${videoData.videoId}/adaptive/m3u8/static/manifests/manifest-master.m3u8`;
-        await performUpdate(masterManifestKey);
-
-        for (const resolution of videoData.outputs?.m3u8 ?? []) {
-          const manifestKey = `external/videos/${videoData.videoId}/adaptive/m3u8/static/manifests/manifest-${resolution}.m3u8`;
-          await performUpdate(manifestKey);
-        }
-      }
     }
   }
 
@@ -570,13 +518,7 @@ export class S3Service extends BaseService {
         const body = response.Body as Readable;
         try {
           const master = dynamicKey.includes('manifest-master.m3u8');
-          const rewritten = Readable.from(
-            transformManifest(
-              body,
-              (line) => (master ? line.replaceAll('/dynamic/', '/static/') : line),
-              !master
-            )
-          );
+          const rewritten = Readable.from(transformManifest(body, (line) => line, !master));
           await this.putObjectFromData(
             s3Config,
             staticKey,

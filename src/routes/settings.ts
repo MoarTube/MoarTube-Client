@@ -342,6 +342,12 @@ export function settingsRoutes(
   );
 
   fastify.post(
+    '/node/storage/migrate',
+    { schema: { tags: ['Settings'] } },
+    settingsController.apiMigrateStorage.bind(settingsController)
+  );
+
+  fastify.post(
     '/node/account',
     {
       schema: { tags: ['Settings'] },

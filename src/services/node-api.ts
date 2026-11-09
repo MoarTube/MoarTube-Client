@@ -14,6 +14,7 @@ import type { Config } from '@/config/index.js';
 import type { StorageMetrics } from '@/utils/storage-metrics.js';
 import type { MemoryMetrics } from '@/utils/memory-metrics.js';
 import type { CpuMetrics } from '@/utils/cpu-metrics.js';
+import type { StorageMigration } from '@/validators/storage-migration.js';
 import type {
   AuthResponse,
   NodeMetricsResponse,
@@ -821,6 +822,18 @@ export class NodeApiService extends BaseService {
     return this.postAuthenticated<BaseNodeResponse>(jwtToken, '/settings/storage/config/toggle', {
       storageConfig,
     });
+  }
+
+  public async migrateStorage(
+    jwtToken: string,
+    migration: StorageMigration
+  ): Promise<BaseNodeResponse> {
+    const client = await this.getClient();
+    const response = await client.post('/settings/storage/migrate', migration, {
+      headers: { Authorization: `Bearer ${jwtToken}` },
+      timeout: 0,
+    });
+    return this.mutationResult<BaseNodeResponse>(response);
   }
 
   public async restartNode(jwtToken: string): Promise<BaseNodeResponse> {

@@ -65,41 +65,28 @@ it('validates before forwarding public settings and trims valid hosts', async ()
 
 type Job = Parameters<VideoPublishService['enqueuePendingPublishVideo']>[0];
 it.each(['filesystem', 's3provider'] as const)(
-  'repairs recovered HLS URLs with %s storage, including completed uploads',
+  'resumes fresh relative HLS uploads with %s storage without rewriting or hostname receipts',
   async (storageMode) => {
     const root = fs.mkdtempSync(path.join(tmpdir(), 'moartube-public-url-'));
-    const directory = path.join(root, 'video123', 'adaptive', 'm3u8');
+    const directory = path.join(root, 'video123/adaptive/m3u8');
     fs.mkdirSync(directory, { recursive: true });
     const manifest = path.join(directory, 'manifest-720p.m3u8');
-    const tail = '/external/videos/video123/adaptive/m3u8/720p/segments/segment-720p-0.ts';
-    const original =
-      '#EXTM3U\n#EXT-X-PLAYLIST-TYPE:VOD\n#EXTINF:2,\nhttps://old.test/bucket' +
-      tail +
-      '\n#EXT-X-ENDLIST\n';
+    const original = '#EXTM3U\n#EXTINF:2,\n../../720p/segments/segment-720p-0.ts\n#EXT-X-ENDLIST\n';
+    fs.writeFileSync(manifest, original);
     let uploaded = '';
-    let currentBase = 'http://new.test:8080/new-bucket';
-    const setVideoPublishing = vi.fn().mockResolvedValue({ isError: false });
-    const upload = vi.fn(
-      (
-        _token: unknown,
-        _id: unknown,
-        _format: unknown,
-        _resolution: unknown,
-        files: { filePath: string }[]
-      ) => {
-        uploaded = fs.readFileSync(files[0]?.filePath ?? '', 'utf8');
-        return Promise.resolve();
-      }
-    );
-    const uploadS3 = vi.fn((_config: unknown, files: { filePath: string }[]) => {
+    const upload = vi.fn((...args: unknown[]) => {
+      const files = args[storageMode === 'filesystem' ? 4 : 1] as { filePath: string }[];
       uploaded = fs.readFileSync(files[0]?.filePath ?? '', 'utf8');
       return Promise.resolve();
     });
+    const base = vi
+      .fn()
+      .mockRejectedValue(new Error('Media host is not needed to copy relative HLS'));
     const service = new VideoPublishService(
       { info: vi.fn(), error: vi.fn() } as never,
       {
-        setVideoPublishing,
-        getExternalVideosBaseUrl: () => Promise.resolve(currentBase),
+        setVideoPublishing: vi.fn().mockResolvedValue({ isError: false }),
+        getExternalVideosBaseUrl: base,
         getNodeSettings: () => Promise.resolve({ storageConfig: { storageMode, s3Config: {} } }),
         uploadVideo: upload,
         withVideoCacheInvalidation: (
@@ -109,7 +96,7 @@ it.each(['filesystem', 's3provider'] as const)(
           operation: () => Promise<void>
         ) => operation(),
       } as never,
-      { uploadFilesWithProgress: uploadS3 } as never,
+      { uploadFilesWithProgress: upload } as never,
       {
         getVideosDirectoryPath: () => root,
         getClientSettings: () => ({
@@ -123,67 +110,36 @@ it.each(['filesystem', 's3provider'] as const)(
       {} as never
     );
     const internal = service as unknown as { startPublishingJob(job: Job): Promise<void> };
-    let checkedUploadFailure = false;
+    const job: Job = {
+      jwtToken: 'test',
+      videoId: 'video123',
+      format: 'm3u8',
+      resolution: '720p',
+      sourceFileExtension: '.mp4',
+      encodingCompleted: true,
+      uploadCompleted: false,
+      connection: JSON.stringify(['http', 'localhost', 3000]),
+    };
     try {
-      for (const savedState of [
-        { uploadCompleted: false },
-        { uploadCompleted: true },
-        { uploadCompleted: true, externalVideosBaseUrl: 'https://old.test/bucket' },
-        { uploadCompleted: true, externalVideosBaseUrl: 'https://latest.test' },
-      ]) {
-        fs.writeFileSync(manifest, original);
-        const job: Job = {
-          jwtToken: 'test',
-          videoId: 'video123',
-          format: 'm3u8',
-          resolution: '720p',
-          sourceFileExtension: '.mp4',
-          encodingCompleted: true,
-          ...savedState,
-          connection: JSON.stringify(['http', 'localhost', 3000]),
-        };
-        await expect(
-          internal.startPublishingJob({ ...job, connection: 'different-node' })
-        ).rejects.toThrow('original Node connection');
-        expect(fs.readFileSync(manifest, 'utf8')).toBe(original);
-        if (!checkedUploadFailure) {
-          const uploader = storageMode === 'filesystem' ? upload : uploadS3;
-          uploader.mockRejectedValueOnce(new Error('Upload interrupted'));
-          await expect(internal.startPublishingJob(job)).rejects.toThrow('Upload interrupted');
-          expect(job.uploadCompleted).toBe(false);
-          expect(job.manifestUrlVersion).toBeUndefined();
-          const receipt = fs.readdirSync(path.join(root, '.publish-recovery'))[0];
-          const failedReceipt = JSON.parse(
-            fs.readFileSync(path.join(root, '.publish-recovery', receipt ?? ''), 'utf8')
-          ) as { uploadCompleted: boolean };
-          expect(failedReceipt.uploadCompleted).toBe(false);
-          checkedUploadFailure = true;
-        }
-        await internal.startPublishingJob(job);
-        expect(uploaded).toBe(
-          original.replace(
-            'https://old.test/bucket' + tail,
-            '../../720p/segments/segment-720p-0.ts'
-          )
-        );
-        expect(job.externalVideosBaseUrl).toBe(currentBase);
-        expect(job.manifestUrlVersion).toBe(1);
-        const receipts = fs.readdirSync(path.join(root, '.publish-recovery'));
-        expect(
-          (
-            JSON.parse(
-              fs.readFileSync(path.join(root, '.publish-recovery', receipts[0] ?? ''), 'utf8')
-            ) as { externalVideosBaseUrl: string }
-          ).externalVideosBaseUrl
-        ).toBe(currentBase);
-        upload.mockClear();
-        uploadS3.mockClear();
-        await internal.startPublishingJob(job);
-        expect(upload).not.toHaveBeenCalled();
-        expect(uploadS3).not.toHaveBeenCalled();
-        currentBase = 'https://latest.test';
-      }
-      expect(setVideoPublishing).toHaveBeenCalledTimes(9);
+      await expect(
+        internal.startPublishingJob({ ...job, connection: 'different-node' })
+      ).rejects.toThrow('original Node connection');
+      upload.mockRejectedValueOnce(new Error('Upload interrupted'));
+      await expect(internal.startPublishingJob(job)).rejects.toThrow('Upload interrupted');
+      expect(job.uploadCompleted).toBe(false);
+      await internal.startPublishingJob(job);
+      expect(uploaded).toBe(original);
+      expect(fs.readFileSync(manifest, 'utf8')).toBe(original);
+      expect(base).not.toHaveBeenCalled();
+      upload.mockClear();
+      await internal.startPublishingJob(job);
+      expect(upload).not.toHaveBeenCalled();
+      const receipt = fs.readdirSync(path.join(root, '.publish-recovery'))[0] ?? '';
+      const saved = JSON.parse(
+        fs.readFileSync(path.join(root, '.publish-recovery', receipt), 'utf8')
+      ) as Record<string, unknown>;
+      expect(saved['externalVideosBaseUrl']).toBeUndefined();
+      expect(saved['manifestUrlVersion']).toBeUndefined();
     } finally {
       service.close();
       fs.rmSync(root, { recursive: true, force: true });
