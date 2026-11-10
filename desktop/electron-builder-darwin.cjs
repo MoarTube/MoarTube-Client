@@ -26,6 +26,7 @@ module.exports = {
   extraMetadata: { main: 'desktop/main.cjs' },
   files: [
     'dist/**/*',
+      'bin/check-node-version.js',
     'desktop/main.cjs',
     'desktop/autostart.cjs',
     'src/config/data-layout.cjs',
@@ -38,7 +39,7 @@ module.exports = {
     { from: path.join(layout.assets, 'icon.png'), to: 'desktop/icon.png' },
   ],
   asar: true,
-  asarUnpack: ['dist/**/*', 'node_modules/**/*', 'package.json'],
+  asarUnpack: ['dist/**/*', 'bin/check-node-version.js', 'node_modules/**/*', 'package.json'],
   npmRebuild: false,
   extraResources: [
     { from: runtime, to: `ffmpeg/${target}` },

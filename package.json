@@ -32,6 +32,7 @@
     "bin"
   ],
   "scripts": {
+    "preinstall": "node bin/check-node-version.js",
     "dev": "tsx watch src/moartube-client.ts",
     "build": "tsup",
     "start": "node bin/moartube-client-start",

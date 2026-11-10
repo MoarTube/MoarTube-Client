@@ -1,3 +1,4 @@
+import '../bin/check-node-version.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startClient, type ClientRuntime } from '@/core/client-runtime.js';

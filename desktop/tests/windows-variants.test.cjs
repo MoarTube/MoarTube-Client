@@ -24,6 +24,8 @@ test('Windows variants have independent installers and outputs, with Node resour
   assert.notEqual(client.artifactName, bundled.artifactName);
   assert.notEqual(client.nsis.artifactName, bundled.nsis.artifactName);
   for (const config of [client, bundled]) {
+    assert(config.files.includes('bin/check-node-version.js'));
+    assert(config.asarUnpack.includes('bin/check-node-version.js'));
     assert.equal(config.nsis.oneClick, false);
     assert.equal(config.nsis.perMachine, false);
     assert.equal(config.nsis.selectPerMachineByDefault, false);

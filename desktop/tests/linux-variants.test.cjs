@@ -39,6 +39,10 @@ test('Linux variants have independent package identities, resources and reports 
     vm.runInNewContext(source, context);
     const client = context.module.exports('client', root),
       bundle = context.module.exports('bundled', root);
+    for (const config of [client, bundle]) {
+      assert(config.files.includes('bin/check-node-version.js'));
+      assert(config.asarUnpack.includes('bin/check-node-version.js'));
+    }
     assert.notEqual(client.appId, bundle.appId);
     assert.notEqual(client.executableName, bundle.executableName);
     assert.notEqual(client.deb.packageName, bundle.deb.packageName);

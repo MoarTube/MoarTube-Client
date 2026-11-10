@@ -19,6 +19,7 @@ function fixture(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'moartube-startup-'));
   fixtures.push(root);
   mkdirSync(path.join(root, 'bin'));
+  copyFileSync('bin/check-node-version.js', path.join(root, 'bin/check-node-version.js'));
   copyFileSync('bin/moartube-client-start', path.join(root, 'bin/moartube-client-start'));
   writeFileSync(path.join(root, 'package.json'), '{"type":"module"}');
   for (const name of targets) {

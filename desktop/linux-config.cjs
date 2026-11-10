@@ -30,6 +30,7 @@ module.exports = function createLinuxConfig(variant, root = path.resolve(__dirna
     },
     files: [
       'dist/**/*',
+      'bin/check-node-version.js',
       'desktop/main.cjs',
       'desktop/autostart.cjs',
       'src/config/data-layout.cjs',
@@ -43,7 +44,7 @@ module.exports = function createLinuxConfig(variant, root = path.resolve(__dirna
       { from: path.join(layout.assets, 'icon.png'), to: 'desktop/icon.png' },
     ],
     asar: true,
-    asarUnpack: ['dist/**/*', 'node_modules/**/*', 'package.json'],
+    asarUnpack: ['dist/**/*', 'bin/check-node-version.js', 'node_modules/**/*', 'package.json'],
     npmRebuild: false,
     extraResources: [
       { from: runtime, to: `ffmpeg/${target}`, filter: ['**/*'] },

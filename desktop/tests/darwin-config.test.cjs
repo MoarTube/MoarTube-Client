@@ -31,6 +31,8 @@ test('Darwin packages keep Electron, backend and FFmpeg resources on the selecte
     };
     vm.runInNewContext(source, context);
     const config = context.module.exports;
+    assert(config.files.includes('bin/check-node-version.js'));
+    assert(config.asarUnpack.includes('bin/check-node-version.js'));
     assert.equal(config.directories.output, layout.packages);
     assert.equal(config.extraResources[0].from, runtime);
     assert.equal(config.extraResources[0].to, `ffmpeg/${target}`);

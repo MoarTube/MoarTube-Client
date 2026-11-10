@@ -21,6 +21,7 @@ module.exports = function createWindowsConfig(variant, root = path.resolve(__dir
     extraMetadata: { main: 'desktop/main.cjs', moartubeBundledNode: selected.bundled },
     files: [
       'dist/**/*',
+      'bin/check-node-version.js',
       'desktop/main.cjs',
       'desktop/autostart.cjs',
       'src/config/data-layout.cjs',
@@ -33,7 +34,7 @@ module.exports = function createWindowsConfig(variant, root = path.resolve(__dir
       '!dist/**/*.d.ts',
     ],
     asar: true,
-    asarUnpack: ['dist/**/*', 'node_modules/**/*', 'package.json'],
+    asarUnpack: ['dist/**/*', 'bin/check-node-version.js', 'node_modules/**/*', 'package.json'],
     npmRebuild: false,
     extraResources: [
       ...(selected.bundled
