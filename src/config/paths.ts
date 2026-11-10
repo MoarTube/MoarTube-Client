@@ -29,7 +29,7 @@ export function initializePaths(rootPath: string, entryPointDir?: string): Paths
   const viewsPath = path.join(publicPath, 'views');
   const distPath = path.join(projectRoot, 'dist');
 
-  const dataPath = componentDirectory('client');
+  const dataPath = componentDirectory('client', { projectRoot });
   const tempPath = path.join(dataPath, 'temp');
   const videosPath = path.join(dataPath, 'media', 'videos');
 

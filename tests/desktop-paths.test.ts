@@ -21,9 +21,24 @@ it('does not accept a relative desktop data directory', () => {
   expect(() => initializePaths(process.cwd())).toThrow('absolute writable directory');
 });
 
-it('uses the same MoarTube client directory for source and installed distributions', () => {
+it('preserves an explicit shared data root for source runs', () => {
   vi.stubEnv('MOARTUBE_DATA_DIR', undefined);
   vi.stubEnv('MOARTUBE_DATA_ROOT', path.resolve('build/test/unified-user-data'));
-  const root = path.resolve('build/desktop/source-checkout');
+  const root = process.cwd();
   expect(initializePaths(root).data).toBe(path.resolve('build/test/unified-user-data/MoarTube/client'));
+});
+
+it('uses local checkout data for development settings, media and scratch files', () => {
+  vi.stubEnv('MOARTUBE_DATA_DIR', undefined);
+  vi.stubEnv('MOARTUBE_DATA_ROOT', undefined);
+  vi.stubEnv('IS_DOCKER_ENVIRONMENT', undefined);
+  const root = process.cwd();
+  const data = path.join(root, 'data');
+  for (const entry of ['src', 'dist']) {
+    const paths = initializePaths(root, path.join(root, entry));
+    expect(paths.data).toBe(data);
+    expect(paths.clientSettingsPath).toBe(path.join(data, '_client_settings.json'));
+    expect(paths.videos).toBe(path.join(data, 'media/videos'));
+    expect(paths.temp).toBe(path.join(data, 'temp'));
+  }
 });

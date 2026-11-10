@@ -17,7 +17,7 @@ export async function startClient(
   entryPointDir: string,
   desktop = false
 ): Promise<ClientRuntime> {
-  const releaseData = await prepareData('client');
+  const releaseData = await prepareData('client', { projectRoot: root });
   process.once('exit', releaseData);
   let config;
   try {

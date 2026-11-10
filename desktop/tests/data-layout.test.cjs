@@ -46,6 +46,57 @@ test('container volumes and explicit overrides remain isolated from installation
   assert.equal(componentDirectory('node', { env: { MOARTUBE_DATA_DIR: root } }), root);
   assert.throws(() => componentDirectory('client', { env: { MOARTUBE_DATA_DIR: 'relative' } }), /absolute/);
 });
+
+test('source checkouts lock and clean local data without inspecting production data', async t => {
+  const root = fixture(t);
+  const projectRoot = path.join(root, 'checkout');
+  fs.mkdirSync(path.join(projectRoot, 'src'), { recursive: true });
+  fs.writeFileSync(path.join(projectRoot, 'src/moartube-client.ts'), '');
+  const env = { APPDATA: root, HOME: root };
+  const production = componentDirectory('client', { env });
+  seed(production, 'client');
+  const releaseProduction = acquireDataLock(production);
+  const options = { projectRoot, env };
+  const local = path.join(projectRoot, 'data');
+  seed(local, 'client');
+  const existsSync = fs.existsSync;
+  const probe = t.mock.method(fs, 'existsSync', (file) => {
+    assert(!String(file).startsWith(path.dirname(production)), `Inspected production: ${file}`);
+    return existsSync(file);
+  });
+  try {
+    assert.equal(componentDirectory('client', options), local);
+    const release = await prepareData('client', options);
+    try {
+      assert(fs.existsSync(path.join(local, '.moartube-process.lock')));
+      assert.throws(() => cleanData('client', options), /already using/);
+    } finally {
+      release();
+    }
+    cleanData('client', options);
+    assert.deepEqual(fs.readdirSync(local), []);
+    assert.throws(() => cleanData('client', {
+      ...options, env: { ...env, MOARTUBE_DATA_DIR: projectRoot },
+    }), /shared or system data root/);
+  } finally {
+    probe.mock.restore();
+    releaseProduction();
+  }
+  assert.equal(fs.readFileSync(path.join(production, 'media/keep.txt'), 'utf8'), 'existing work');
+});
+
+test('source defaults preserve explicit overrides, containers and installed CLI paths', t => {
+  const projectRoot = fixture(t);
+  fs.mkdirSync(path.join(projectRoot, 'src'));
+  fs.writeFileSync(path.join(projectRoot, 'src/moartube-client.ts'), '');
+  const custom = path.join(projectRoot, 'custom');
+  assert.equal(componentDirectory('client', { projectRoot, env: { MOARTUBE_DATA_DIR: custom } }), custom);
+  assert.equal(componentDirectory('client', { projectRoot, env: { MOARTUBE_DATA_ROOT: custom } }), path.join(custom, 'MoarTube/client'));
+  assert.equal(componentDirectory('client', { projectRoot, env: { IS_DOCKER_ENVIRONMENT: 'true' } }), '/data/MoarTube/client');
+  const env = { APPDATA: projectRoot, HOME: projectRoot };
+  assert.equal(componentDirectory('client', { projectRoot: path.join(projectRoot, 'installed'), env }), path.join(dataRoot({ env }), 'client'));
+  assert.equal(componentDirectory('node', { projectRoot, env }), path.join(dataRoot({ env }), 'node'));
+});
 test('startup ignores legacy folders, import variables and abandoned migration journals', async t => {
   const root = fixture(t);
   for (const component of ['client', 'node']) {

@@ -94,7 +94,7 @@ Use `desktop:dev` for Client development and `desktop:dev:client-node` for the b
 Use `desktop:pack:windows:client`, `desktop:pack:windows:client-node`, or
 `desktop:pack:windows:all` to create unpacked apps.
 
-All distributions share one per-user application-data root named `MoarTube`:
+Installed distributions share one per-user application-data root named `MoarTube`:
 
 - Windows: `%APPDATA%/MoarTube`
 - macOS: `~/Library/Application Support/MoarTube`
@@ -106,12 +106,18 @@ Electron browser profiles, logs and Autostart preferences stay within the
 corresponding Client folder's `desktop` subdirectory. Development/test profiles
 remain isolated under `build/desktop/profiles`, using the same `MoarTube` layout.
 
+CLI development runs (`npm run dev`, `npm start`, and VS Code launches) use the
+source checkout's local `data` folder, including for locks and `--clean`. They do
+not inspect or modify the installed application's data. Explicit data-directory
+overrides and Docker's `/data/MoarTube/client` location still take precedence.
+
 Startup uses only these data folders. Older folders are never searched or imported;
 a missing folder starts with fresh defaults. An active data directory is locked
 to one process.
 `MOARTUBE_DATA_ROOT` selects a custom shared parent (or a folder already named
 `MoarTube`). Existing explicit `MOARTUBE_DATA_DIR` component overrides remain
-supported. Explicit custom locations start independently. Data stays outside the installation directories.
+supported. Explicit custom locations start independently. Installed application
+data stays outside the installation directories.
 The source ZIP for FFmpeg accompanies the installers; Node source and licenses
 are included in the bundle's application resources. Builds are unsigned candidates.
 

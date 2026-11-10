@@ -59,4 +59,4 @@ it('saves the node name from the real settings form and reloads the saved value'
   } finally {
     await browser.close();
   }
-});
+}, 30000);

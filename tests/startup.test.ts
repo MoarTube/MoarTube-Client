@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -30,10 +38,19 @@ function builder(root: string, content: string): void {
   writeFileSync(path.join(dir, 'cli-default.js'), content);
 }
 
-function start(root: string, args: string[] = []): ReturnType<typeof spawnSync> {
+function start(
+  root: string,
+  args: string[] = [],
+  env: NodeJS.ProcessEnv = {}
+): ReturnType<typeof spawnSync> {
   return spawnSync(process.execPath, [path.join(root, 'bin/moartube-client-start'), ...args], {
     cwd: tmpdir(),
-    env: { ...process.env, MOARTUBE_DATA_ROOT: path.join(root, 'user-data') },
+    env: {
+      ...process.env,
+      MOARTUBE_DATA_DIR: undefined,
+      MOARTUBE_DATA_ROOT: path.join(root, 'user-data'),
+      ...env,
+    },
     encoding: 'utf8',
   });
 }
@@ -52,6 +69,41 @@ afterEach(() => {
 });
 
 describe('startup launcher', () => {
+  it('cleans and starts checkout data even when the installed data is locked', () => {
+    const root = fixture();
+    const productionRoot = path.join(root, 'production');
+    const production = path.join(productionRoot, 'MoarTube/client');
+    mkdirSync(production, { recursive: true });
+    const lock = JSON.stringify({ pid: process.pid, token: 'production' });
+    writeFileSync(path.join(production, '.moartube-process.lock'), lock);
+    writeFileSync(path.join(production, '_client_settings.json'), '{}');
+    builder(root, `
+      const fs = require('node:fs');
+      if (fs.existsSync('data/old')) throw new Error('Local data was not cleaned');
+      fs.mkdirSync('dist');
+      fs.writeFileSync('dist/moartube-client.js', \`
+        import layout from '../src/config/data-layout.cjs';
+        import { fileURLToPath } from 'node:url';
+        const options = { projectRoot: fileURLToPath(new URL('../', import.meta.url)) };
+        const release = await layout.prepareData('client', options);
+        console.log(layout.componentDirectory('client', options));
+        release();
+      \`);
+    `);
+    const result = start(root, ['--clean'], {
+      MOARTUBE_DATA_ROOT: undefined,
+      IS_DOCKER_ENVIRONMENT: undefined,
+      APPDATA: productionRoot,
+      HOME: productionRoot,
+      XDG_DATA_HOME: productionRoot,
+    });
+    expect(result.status, String(result.stderr)).toBe(0);
+    expect(String(result.stdout)).toContain(path.join(root, 'data'));
+    expect(existsSync(path.join(root, 'data/old'))).toBe(false);
+    expect(readFileSync(path.join(production, '_client_settings.json'), 'utf8')).toBe('{}');
+    expect(readFileSync(path.join(production, '.moartube-process.lock'), 'utf8')).toBe(lock);
+  });
+
   it('cleans before building and starting with --clean', () => {
     const root = fixture();
     rmSync(path.join(root, 'temp'), { recursive: true });
