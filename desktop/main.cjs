@@ -10,6 +10,7 @@ const {
   utilityProcess,
 } = require('electron');
 const { randomBytes } = require('node:crypto');
+const { setTimeout: delay } = require('node:timers/promises');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, fork } = require('node:child_process');
@@ -270,7 +271,7 @@ if (!ownsInstance) {
         minWidth: Math.min(960, width),
         minHeight: Math.min(650, height),
         title: 'MoarTube Client',
-        backgroundColor: '#f8f9fa',
+        backgroundColor: '#fffcf8',
         icon: path.join(
           applicationRoot,
           process.platform === 'linux' ? 'desktop/icon.png' : 'dist/public/images/favicon.ico'
@@ -484,6 +485,9 @@ if (!ownsInstance) {
       ]);
       Menu.setApplicationMenu(windowMenu);
       await window.loadFile(path.join(__dirname, 'loading.html'));
+      const startupScreenShownAt = performance.now();
+      if (process.env.MOARTUBE_DESKTOP_SMOKE === '1')
+        app.moartubeStartupScreenShownAt = startupScreenShownAt;
       const environment = {
         ...process.env,
         MOARTUBE_DATA_DIR: dataLayout.client,
@@ -581,10 +585,21 @@ if (!ownsInstance) {
           return;
         }
         const ready = readyOrigin(message);
-        if (ready) {
+        if (ready && !origin) {
           clearTimeout(startupTimer);
           origin = ready;
-          void window.loadURL(`${origin}/account/signin`).catch((error) => fail(error.message));
+          // Initialization runs during the minimum display time. Slow startups
+          // proceed as soon as they are ready, without adding another 8 seconds.
+          const remaining = Math.max(0, Math.ceil(8000 - (performance.now() - startupScreenShownAt)));
+          void delay(remaining, undefined, { signal: startupAbort.signal })
+            .then(() => {
+              if (quitting || failureShown || backendExited || !window || window.isDestroyed())
+                return;
+              return window.loadURL(`${origin}/account/signin`);
+            })
+            .catch((error) => {
+              if (!quitting) fail(error.message);
+            });
         }
       });
       backend.on('exit', (code) => {

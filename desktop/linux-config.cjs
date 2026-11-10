@@ -38,6 +38,7 @@ module.exports = function createLinuxConfig(variant, root = path.resolve(__dirna
       'desktop/linux-processes.cjs',
       'desktop/bundled-node.cjs',
       'desktop/loading.html',
+      'desktop/loading.js',
       'package.json',
       '!dist/**/*.map',
       '!dist/**/*.d.ts',
@@ -69,6 +70,7 @@ module.exports = function createLinuxConfig(variant, root = path.resolve(__dirna
         'desktop/main.cjs',
         'desktop/autostart.cjs',
         'desktop/loading.html',
+        'desktop/loading.js',
         'src/config/data-layout.cjs',
       ])
         if (

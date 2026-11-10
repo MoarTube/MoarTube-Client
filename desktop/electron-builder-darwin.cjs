@@ -33,6 +33,7 @@ module.exports = {
     'desktop/policy.cjs',
     'desktop/linux-processes.cjs',
     'desktop/loading.html',
+    'desktop/loading.js',
     'package.json',
     '!dist/**/*.map',
     '!dist/**/*.d.ts',

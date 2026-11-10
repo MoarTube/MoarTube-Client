@@ -62,6 +62,12 @@ try {
   const page = await application.firstWindow();
   await page.waitForURL(/http:\/\/127\.0\.0\.1:\d+\/account\/signin/, { timeout: 90000 });
   await page.locator('#sign-in-form').waitFor({ state: 'visible' });
+  assert.ok(
+    await application.evaluate(
+      ({ app }) => performance.now() - app.moartubeStartupScreenShownAt >= 8000
+    ),
+    'The startup screen must remain displayed for at least 8 seconds'
+  );
   assert.equal(
     await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()),
     false

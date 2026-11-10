@@ -16,3 +16,4 @@ build/integration/
 build/test/
 resources/ffmpeg/
 node_modules/
+/debug.log

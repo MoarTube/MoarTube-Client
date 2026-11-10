@@ -112,6 +112,11 @@
   margin-bottom: 0 !important;
 }
 
+.signin-brand-panel #signin-tagline {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
 @media (pointer: coarse) {
   .signin-panel .form-control {
     font-size: 16px;

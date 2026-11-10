@@ -2,54 +2,203 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; style-src 'unsafe-inline'"
+      content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
     />
     <title>MoarTube Client</title>
     <style>
+      :root {
+        color-scheme: light;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        color: #1d1d20;
+        background: #fffcf8;
+      }
+      * {
+        box-sizing: border-box;
+      }
       body {
         margin: 0;
-        display: grid;
-        place-items: center;
-        min-height: 100vh;
-        background: #f8f9fa;
-        font:
-          16px 'Segoe UI',
-          sans-serif;
-        color: #344767;
       }
-      main {
-        text-align: center;
+      .startup {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 100svh;
+        isolation: isolate;
+        overflow: hidden;
       }
-      h1 {
-        font-size: 28px;
+      .startup-copy {
+        width: 47%;
+        min-width: 0;
+        padding: clamp(24px, 5vw, 88px);
+        padding-right: clamp(20px, 3vw, 52px);
+        padding-bottom: 112px;
       }
-      .spinner {
-        width: 28px;
-        height: 28px;
-        border: 3px solid #e3d6e0;
-        border-top-color: #cb0c9f;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 24px auto;
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: clamp(12px, 1.7vw, 28px);
+        margin-bottom: clamp(28px, 4.5vh, 56px);
       }
-      @keyframes spin {
+      .brand svg {
+        width: clamp(48px, 6vw, 104px);
+        flex-shrink: 0;
+      }
+      .brand-name {
+        font-size: clamp(15px, 1.8vw, 30px);
+        font-weight: 750;
+        letter-spacing: 0.2em;
+      }
+      .startup-headline {
+        margin: 0;
+        font-size: clamp(36px, 6.4vw, 112px);
+        font-weight: 800;
+        letter-spacing: -0.055em;
+        line-height: 1.08;
+      }
+      .startup-headline span {
+        display: block;
+        white-space: nowrap;
+      }
+      .startup-status {
+        margin-top: clamp(40px, 8vh, 92px);
+      }
+      .loading-track {
+        height: 9px;
+        width: 90%;
+        margin-bottom: 18px;
+        border-radius: 20px;
+        background: #f5b7e1;
+        overflow: hidden;
+      }
+      .loading-track::after {
+        content: '';
+        display: block;
+        width: 36%;
+        height: 100%;
+        border-radius: inherit;
+        background: #cb0c9f;
+        animation: loading 1.8s ease-in-out infinite alternate;
+      }
+      .status-title {
+        margin: 0 0 4px;
+        font-size: clamp(18px, 1.7vw, 28px);
+        font-weight: 700;
+      }
+      .status-detail {
+        margin: 0;
+        font-size: clamp(14px, 1.3vw, 22px);
+        line-height: 1.5;
+      }
+      .startup-footer {
+        position: absolute;
+        bottom: clamp(24px, 5vh, 52px);
+        left: clamp(24px, 5vw, 88px);
+        max-width: 40%;
+        margin: 0;
+        font-size: clamp(10px, 1.05vw, 18px);
+        font-weight: 750;
+        letter-spacing: 0.2em;
+        line-height: 1.6;
+      }
+      .startup-art {
+        position: absolute;
+        inset: 0 0 0 47%;
+        z-index: -1;
+        overflow: hidden;
+        clip-path: polygon(12% 0, 100% 0, 100% 100%, 0 100%);
+        background: linear-gradient(140deg, #d600a1, #cb0c9f 60%, #b9008d);
+      }
+      .startup-art svg {
+        width: 100%;
+        height: 100%;
+      }
+      @keyframes loading {
         to {
-          transform: rotate(360deg);
+          transform: translateX(178%);
         }
       }
-      p {
-        max-width: 420px;
-        line-height: 1.6;
+      @media (max-height: 600px) {
+        .startup-copy {
+          padding-top: 24px;
+          padding-bottom: 76px;
+        }
+        .brand {
+          margin-bottom: 20px;
+        }
+        .startup-headline {
+          font-size: clamp(32px, 5vw, 72px);
+        }
+        .startup-status {
+          margin-top: 28px;
+        }
+        .startup-footer {
+          bottom: 18px;
+        }
+      }
+      @media (max-width: 600px) {
+        .startup-copy {
+          width: 80%;
+          padding: 36px 24px 100px;
+        }
+        .startup-art {
+          left: 80%;
+          clip-path: polygon(40% 0, 100% 0, 100% 100%, 0 100%);
+        }
+        .startup-headline {
+          font-size: clamp(32px, 8vw, 48px);
+        }
+        .startup-footer {
+          max-width: 70%;
+          letter-spacing: 0.12em;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .loading-track::after {
+          animation: none;
+        }
       }
     </style>
   </head>
   <body>
-    <main>
-      <h1>MoarTube Client</h1>
-      <div class="spinner"></div>
-      <p>Starting your client and checking video processing support…</p>
+    <main class="startup" aria-label="MoarTube is starting">
+      <div class="startup-copy">
+        <div class="brand" aria-label="MoarTube">
+          <svg viewBox="0 0 104 70" aria-hidden="true">
+            <rect width="104" height="70" rx="20" fill="#cb0c9f" />
+            <path
+              d="M25 20Q25 17 28 19L51 33Q54 35 51 37L28 51Q25 53 25 50Z M54 20Q54 17 57 19L80 33Q83 35 80 37L57 51Q54 53 54 50Z"
+              fill="white"
+            />
+          </svg>
+          <span class="brand-name" aria-hidden="true">MOARTUBE</span>
+        </div>
+        <h1 class="startup-headline">
+          <span id="startup-line-top">Your media.</span
+          ><span id="startup-line-bottom">Your rules.</span>
+        </h1>
+        <div class="startup-status" role="status">
+          <div class="loading-track" aria-hidden="true"></div>
+          <p class="status-title">Starting MoarTube</p>
+          <p class="status-detail">Evaluating system capabilities...</p>
+        </div>
+      </div>
+      <p class="startup-footer">VIDEO &bull; LIVE &bull; THEIRS &bull; YOURS</p>
+      <div class="startup-art" aria-hidden="true">
+        <svg viewBox="0 0 800 900" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <path id="play" d="M0 0Q0 -48 44 -22L390 188Q434 215 390 242L44 452Q0 478 0 430Z" />
+          </defs>
+          <use href="#play" x="525" y="-350" fill="#f9b6e3" />
+          <use href="#play" x="400" y="270" fill="#f8b7e2" />
+          <use href="#play" x="110" y="260" fill="#fff" />
+          <path d="M300 960Q280 910 330 880L850 570L900 960Z" fill="#f8b7e2" />
+        </svg>
+      </div>
     </main>
+    <script src="loading.js"></script>
   </body>
 </html>

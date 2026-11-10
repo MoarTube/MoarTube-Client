@@ -29,6 +29,7 @@ module.exports = function createWindowsConfig(variant, root = path.resolve(__dir
       'desktop/linux-processes.cjs',
       'desktop/bundled-node.cjs',
       'desktop/loading.html',
+      'desktop/loading.js',
       'package.json',
       '!dist/**/*.map',
       '!dist/**/*.d.ts',
@@ -57,7 +58,7 @@ module.exports = function createWindowsConfig(variant, root = path.resolve(__dir
     afterPack({ appOutDir }) {
       const archive = path.join(appOutDir, 'resources/app.asar');
       const asar = require('@electron/asar');
-      for (const name of ['desktop/main.cjs', 'desktop/autostart.cjs', 'desktop/loading.html', 'src/config/data-layout.cjs']) {
+      for (const name of ['desktop/main.cjs', 'desktop/autostart.cjs', 'desktop/loading.html', 'desktop/loading.js', 'src/config/data-layout.cjs']) {
         if (!asar.extractFile(archive, path.normalize(name)).equals(fs.readFileSync(path.join(root, name))))
           throw new Error(`Packaged ${name} differs from source. Keep source files unchanged while packaging and rebuild.`);
       }
