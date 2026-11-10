@@ -125,7 +125,7 @@ describe.skipIf(!enabled)('HLS caching against a real local Silo server', () => 
     await service.putObjectFromData(
       config,
       key.master,
-      Buffer.from(`#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=100\nmanifest-720p.m3u8\n`),
+      Buffer.from(`#EXTM3U\n#MOARTUBE-LIVE\n#EXT-X-STREAM-INF:BANDWIDTH=100\nmanifest-720p.m3u8\n`),
       contentType
     );
     return key;
@@ -162,7 +162,9 @@ describe.skipIf(!enabled)('HLS caching against a real local Silo server', () => 
       config,
       key.dynamic,
       Readable.from([next.slice(0, 40), next.slice(40)]),
-      contentType
+      contentType,
+      undefined,
+      { liveSnapshot: Buffer.from(next) }
     );
     const replaced = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key.dynamic }));
     expect(replaced.ETag).not.toBe(first.ETag);
@@ -247,7 +249,7 @@ describe.skipIf(!enabled)('HLS caching against a real local Silo server', () => 
     await service.putObjectFromData(
       config,
       key.dynamic,
-      Readable.from([`#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXTINF:2,\n${publicBase}/${segment}\n`]),
+      Buffer.from(`#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXTINF:2,\n${publicBase}/${segment}\n`),
       contentType
     );
     const live = await read(key.dynamic, livePolicy);

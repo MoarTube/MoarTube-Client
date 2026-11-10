@@ -91,7 +91,7 @@ describe('S3 upload policies and shared budget against Silo', () => {
       service.putObjectFromData(
         fixture.config,
         live,
-        Buffer.from('#EXTM3U'),
+        Buffer.from('#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXTINF:2,\nsegment.ts\n'),
         'application/vnd.apple.mpegurl'
       ),
     ]);
@@ -104,10 +104,19 @@ describe('S3 upload policies and shared budget against Silo', () => {
       await service.putObjectFromData(
         fixture.config,
         key,
-        Buffer.from('#EXTM3U\n'),
+        Buffer.from(
+          '#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXTINF:2,\nsegment.ts\n' +
+            (terminalPlaylist ? '#EXT-X-ENDLIST\n' : '')
+        ),
         'application/vnd.apple.mpegurl',
         undefined,
         { terminalPlaylist }
+      );
+      const head = await fixture.client.send(
+        new HeadObjectCommand({ Bucket: fixture.config.bucketName, Key: key })
+      );
+      expect(head.Metadata?.['moartube-live-playlist']).toBe(
+        terminalPlaylist ? undefined : 'active'
       );
       expect(await policy(key)).toBe(
         terminalPlaylist ? 'no-store' : 'public, max-age=0, s-maxage=1, must-revalidate'

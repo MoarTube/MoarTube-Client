@@ -1,3 +1,4 @@
+import { isActiveLivePlaylist, livePlaylistCacheHeaders } from '@/utils/live-playlist-cache.js';
 import { BaseService } from './base.js';
 import { uploadPool } from '@/utils/work-pool.js';
 import type { Logger } from '@/utils/logger.js';
@@ -264,7 +265,7 @@ export class S3Service extends BaseService {
     data: Buffer | string | Readable | Blob | Uint8Array,
     contentType: string,
     signal?: AbortSignal,
-    options: { terminalPlaylist?: boolean } = {}
+    options: { terminalPlaylist?: boolean; liveSnapshot?: Buffer } = {}
   ): Promise<void> {
     const { bucketName, s3ProviderClientConfig } = s3Config;
     const client = this.createClientFromConfig(s3ProviderClientConfig);
@@ -272,6 +273,28 @@ export class S3Service extends BaseService {
     const release = await uploadPool.acquire();
     try {
       signal?.throwIfAborted();
+      const dynamic = key.includes('/dynamic/manifests/') && key.endsWith('.m3u8');
+      // Archive streams are generated locally; the matching rolling snapshot proves active state.
+      // Unknown streams have no proof and remain uncached.
+      const snapshot =
+        dynamic &&
+        contentType === 'application/vnd.apple.mpegurl' &&
+        options.terminalPlaylist !== true
+          ? (options.liveSnapshot ??
+            (typeof data === 'string'
+              ? Buffer.from(data)
+              : data instanceof Uint8Array
+                ? Buffer.from(data.buffer, data.byteOffset, data.byteLength)
+                : undefined))
+          : undefined;
+      const active =
+        options.terminalPlaylist !== true &&
+        contentType === 'application/vnd.apple.mpegurl' &&
+        snapshot !== undefined &&
+        isActiveLivePlaylist(
+          snapshot.subarray(0, 8192).toString('utf8'),
+          snapshot.subarray(-4096).toString('utf8')
+        );
       const upload = new Upload({
         client,
         queueSize: 1,
@@ -281,11 +304,13 @@ export class S3Service extends BaseService {
           Key: key,
           Body: data,
           ContentType: contentType,
-          CacheControl: key.includes('/dynamic/')
-            ? options.terminalPlaylist === true || contentType !== 'application/vnd.apple.mpegurl'
-              ? 'no-store'
-              : 'public, max-age=0, s-maxage=1, must-revalidate'
-            : 'public, max-age=0, s-maxage=30, must-revalidate',
+          ...(dynamic
+            ? livePlaylistCacheHeaders(active)
+            : {
+                CacheControl: key.includes('/dynamic/')
+                  ? 'no-store'
+                  : 'public, max-age=0, s-maxage=30, must-revalidate',
+              }),
         },
       });
 
@@ -375,7 +400,9 @@ export class S3Service extends BaseService {
               Key: file.key,
               Body: input,
               ContentType: file.contentType,
-              CacheControl: 'public, max-age=0, s-maxage=30, must-revalidate',
+              CacheControl: file.key.includes('/dynamic/')
+                ? 'no-store'
+                : 'public, max-age=0, s-maxage=30, must-revalidate',
             },
           });
           pending.add(upload);
@@ -518,7 +545,13 @@ export class S3Service extends BaseService {
         const body = response.Body as Readable;
         try {
           const master = dynamicKey.includes('manifest-master.m3u8');
-          const rewritten = Readable.from(transformManifest(body, (line) => line, !master));
+          const rewritten = Readable.from(
+            transformManifest(
+              body,
+              (line) => (master && line.trim() === '#MOARTUBE-LIVE' ? '' : line),
+              !master
+            )
+          );
           await this.putObjectFromData(
             s3Config,
             staticKey,
@@ -530,7 +563,7 @@ export class S3Service extends BaseService {
         }
 
         // Existing players keep polling the dynamic URL. Publish a terminal snapshot there too.
-        if (!dynamicKey.includes('manifest-master.m3u8')) {
+        {
           const finalized = await client.send(
             new GetObjectCommand({ Bucket: bucketName, Key: staticKey })
           );

@@ -624,7 +624,8 @@ export class LiveStreamService {
               manifestKey,
               manifest,
               'application/vnd.apple.mpegurl',
-              signal
+              signal,
+              { liveSnapshot: processedManifestBuffer }
             );
           } finally {
             if (manifestFilePath) {
