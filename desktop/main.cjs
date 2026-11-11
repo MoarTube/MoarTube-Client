@@ -590,8 +590,8 @@ if (!ownsInstance) {
           clearTimeout(startupTimer);
           origin = ready;
           // Initialization runs during the minimum display time. Slow startups
-          // proceed as soon as they are ready, without adding another 8 seconds.
-          const remaining = Math.max(0, Math.ceil(8000 - (performance.now() - startupScreenShownAt)));
+          // proceed as soon as they are ready, without adding another 5 seconds.
+          const remaining = Math.max(0, Math.ceil(5000 - (performance.now() - startupScreenShownAt)));
           void delay(remaining, undefined, { signal: startupAbort.signal })
             .then(() => {
               if (quitting || failureShown || backendExited || !window || window.isDestroyed())

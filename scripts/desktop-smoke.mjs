@@ -64,9 +64,9 @@ try {
   await page.locator('#sign-in-form').waitFor({ state: 'visible' });
   assert.ok(
     await application.evaluate(
-      ({ app }) => performance.now() - app.moartubeStartupScreenShownAt >= 8000
+      ({ app }) => performance.now() - app.moartubeStartupScreenShownAt >= 5000
     ),
-    'The startup screen must remain displayed for at least 8 seconds'
+    'The startup screen must remain displayed for at least 5 seconds'
   );
   assert.equal(
     await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()),
