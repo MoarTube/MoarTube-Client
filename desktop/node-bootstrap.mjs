@@ -1,18 +1,28 @@
 // This entry is also used by cluster workers. Only the primary talks to Electron.
 import cluster from 'node:cluster';
+import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
 import path from 'node:path';
 import bcrypt from 'bcryptjs';
 
 if (cluster.isPrimary) {
-  if (!process.connected || !process.env.MOARTUBE_DATA_DIR) throw new Error('Desktop supervisor required');
+  const supervisor = process.parentPort;
+  if ((!supervisor && !process.connected) || !process.env.MOARTUBE_DATA_DIR)
+    throw new Error('Desktop supervisor required');
+  // Utility processes do not receive the Node entry in argv. Cluster must use
+  // this bootstrap explicitly, including when it lives inside node.asar.
+  cluster.setupPrimary({ exec: fileURLToPath(import.meta.url), execArgv: [] });
+  const send = (message) =>
+    supervisor ? supervisor.postMessage(message) : process.send?.(message);
   const settingsPath = path.join(process.env.MOARTUBE_DATA_DIR, '_node_settings.json');
   fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
-  const settings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf8')) : {
-    workerCount: 4,
-    databaseConfig: { databaseDialect: 'sqlite' },
-    storageConfig: { storageMode: 'filesystem' },
-  };
+  const settings = fs.existsSync(settingsPath)
+    ? JSON.parse(fs.readFileSync(settingsPath, 'utf8'))
+    : {
+        workerCount: 4,
+        databaseConfig: { databaseDialect: 'sqlite' },
+        storageConfig: { storageMode: 'filesystem' },
+      };
   // Credentials belong to this private desktop profile, never a CLI Node profile.
   for (const field of ['username', 'password']) {
     if (!settings[field]) {
@@ -33,13 +43,21 @@ if (cluster.isPrimary) {
     stopping = true;
     if (loaded) process.emit('SIGTERM');
   };
-  process.on('message', (message) => { if (message?.type === 'shutdown') shutdown(); });
-  process.on('disconnect', shutdown);
+  const receive = (message) => {
+    if (message?.type === 'shutdown') shutdown();
+  };
+  if (supervisor) {
+    supervisor.on('message', ({ data }) => receive(data));
+    supervisor.on('close', shutdown);
+  } else {
+    process.on('message', receive);
+    process.on('disconnect', shutdown);
+  }
   let ready = false;
   cluster.on('message', (_worker, message) => {
     if (!ready && !stopping && message?.cmd === 'worker_http_ready') {
       ready = true;
-      process.send?.({ type: 'ready', port: message.port });
+      send({ type: 'ready', port: message.port });
     }
   });
   await import('./dist/moartube-node.js');

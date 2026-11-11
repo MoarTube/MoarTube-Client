@@ -98,6 +98,7 @@ export interface BaseNodeResponse {
 
 /** Safe lifecycle snapshot returned by tunnel operations; never contains credentials. */
 export interface CloudflareTunnelState {
+  failureReason?: 'rate-limited';
   mode: 'none' | 'quick' | 'named';
   status: 'stopped' | 'starting' | 'running' | 'error';
   name: string;

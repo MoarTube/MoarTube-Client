@@ -90,6 +90,11 @@ jobs:
         run: |
           npm ci
           npm run install:cloudflared
+      - name: Check bundled Node types
+        working-directory: build/desktop/node-source
+        run: |
+          npm run typecheck
+          node node_modules/typescript/bin/tsc -p tests/integration/tsconfig.json
       - name: Save completed npm downloads
         if: steps.npm-downloads.outputs.cache-hit != 'true'
         uses: actions/cache/save@v5
@@ -153,6 +158,8 @@ jobs:
         run: npm run desktop:build:windows:client-node
       - name: Verify packaged Client + Node
         run: npm run desktop:verify:windows:client-node -- "build/desktop/work/win32-x64/packages/bundled/win-unpacked/MoarTube Client + Node.exe"
+      - name: Verify bundled video playback
+        run: node scripts/desktop-share-smoke.mjs "build/desktop/work/win32-x64/packages/bundled/win-unpacked/MoarTube Client + Node.exe"
       - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
@@ -161,7 +168,7 @@ jobs:
             build/desktop/releases/win32-x64/*/*.exe
             build/desktop/releases/win32-x64/*/MoarTube-Client-*-portable.zip
             build/desktop/releases/win32-x64/*/MoarTube-FFmpeg-*-sources.zip
-            build/desktop/releases/win32-x64/*/*.blockmap
+            build/desktop/releases/win32-x64/*/MoarTube-Client-Node-*-sources.zip
             build/desktop/releases/win32-x64/*/SHA256SUMS-windows-bundled.txt
             build/desktop/releases/win32-x64/*/RELEASE-NOTES-windows-bundled.md
             build/desktop/reports/win32-x64/

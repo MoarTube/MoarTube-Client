@@ -120,6 +120,13 @@ export async function collectReleaseAssets({ directory, target, version, repo, t
         ]
       : [];
   const hasBundled = bundledBinaries.some((name) => names.has(name));
+  const needsNodeSources = target === 'win32-x64-bundled' || hasBundled;
+  const nodeSources = entries.filter(
+    (entry) =>
+      entry.name.startsWith(`MoarTube-Client-Node-${version}-windows-x64-`) &&
+      /-[a-f0-9]{12}-sources\.zip$/.test(entry.name)
+  );
+  const sourceCount = 1 + (needsNodeSources ? 1 : 0);
   const hasClient = platform.binaries.some((name) => names.has(name));
   const requiredBinaries =
     target === 'win32-x64'
@@ -127,9 +134,10 @@ export async function collectReleaseAssets({ directory, target, version, repo, t
       : platform.binaries;
   if (
     requiredBinaries.length === 0 ||
-    entries.length !== requiredBinaries.length + 1 ||
-    names.size !== requiredBinaries.length + 1 ||
+    entries.length !== requiredBinaries.length + sourceCount ||
+    names.size !== requiredBinaries.length + sourceCount ||
     sources.length !== 1 ||
+    nodeSources.length !== (needsNodeSources ? 1 : 0) ||
     !requiredBinaries.every((name) => names.has(name))
   )
     throw new Error(`Release downloads are incomplete or do not match ${target} ${version}`);
@@ -141,8 +149,14 @@ export async function collectReleaseAssets({ directory, target, version, repo, t
     assets.push({ ...entry, file });
   }
   const notesFile = asset(notes);
-  const sourceUrl = `https://github.com/${repo}/releases/download/${encodeURIComponent(tag)}/${sources[0].name}`;
-  if (!readFileSync(notesFile, 'utf8').includes(sourceUrl))
+  const notesText = readFileSync(notesFile, 'utf8');
+  if (
+    ![...sources, ...nodeSources].every((source) =>
+      notesText.includes(
+        `https://github.com/${repo}/releases/download/${encodeURIComponent(tag)}/${source.name}`
+      )
+    )
+  )
     throw new Error(
       'Release notes do not match the requested draft tag/repository. Rebuild with the correct Draft release tag.'
     );

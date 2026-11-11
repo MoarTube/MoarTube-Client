@@ -22,6 +22,7 @@ const run = (file, args = []) =>
 run(require.resolve('tsup/dist/cli-default.js'));
 run(path.join(root, 'scripts/prepare-desktop.mjs'), [`--variant=${variant}`]);
 if (variants.includes('bundled')) run(path.join(root, 'scripts/prepare-desktop-node.mjs'));
+run(path.join(root, 'scripts/prepare-desktop-javascript.mjs'), [`--variant=${variant}`]);
 for (const selected of variants) {
   run(require.resolve('electron-builder/out/cli/cli.js'), [
     '--config',

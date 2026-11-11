@@ -8,9 +8,8 @@ interface ParentPort {
   on(event: string, handler: (event: { data: unknown }) => void): void;
   postMessage(message: unknown): void;
 }
-// Bundled Windows and Linux/macOS use a standalone Node process to isolate
-// native dependencies from Electron. Standalone Windows development can also
-// use Electron's utility-process port.
+// Linux/macOS use a standalone Node process to isolate native dependencies
+// from Electron. Both Windows variants use Electron's utility-process port.
 const nodeParent: ParentPort | undefined =
   process.env['MOARTUBE_DESKTOP_NODE_BACKEND'] === '1' &&
   process.versions['electron'] === undefined &&

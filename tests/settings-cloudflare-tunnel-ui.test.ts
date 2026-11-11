@@ -19,6 +19,7 @@ it('places the tunnel toggle after Turnstile and reconciles saves, partial failu
   let runtimeStatus: 'starting' | 'stopped' | undefined;
   let refreshFailure: 'settings' | 'runtime' | undefined;
   let rollbackRejected = false;
+  let rateLimited = false;
   let saves = 0;
   await page.route('http://moartube.test/**', async (route) => {
     const pathname = new URL(route.request().url()).pathname;
@@ -59,6 +60,7 @@ it('places the tunnel toggle after Turnstile and reconciles saves, partial failu
             mode: 'quick',
             status: runtimeError ? 'error' : 'running',
             name: 'SECRET_QUICK_NAME',
+            ...(rateLimited ? { failureReason: 'rate-limited' } : {}),
           },
         },
       });
@@ -85,6 +87,7 @@ it('places the tunnel toggle after Turnstile and reconciles saves, partial failu
             status:
               runtimeStatus ?? (runtimeError ? 'error' : enabled === false ? 'stopped' : 'running'),
             name: 'SECRET_QUICK_NAME',
+            ...(rateLimited ? { failureReason: 'rate-limited' } : {}),
           },
         },
       });
@@ -192,6 +195,19 @@ it('places the tunnel toggle after Turnstile and reconciles saves, partial failu
       );
     }
 
+    behavior = 'partial';
+    rateLimited = true;
+    for (const rejected of [false, true]) {
+      rollbackRejected = rejected;
+      await toggle.click();
+      await browserExpect(toggle).toBeEnabled();
+      await browserExpect(toggle).not.toBeChecked();
+      await browserExpect(page.locator('#cloudflare-tunnels-status')).toHaveText(/rate-limiting.*HTTP 429/i);
+      expect(await page.locator('#cloudflare-tunnels-status').textContent()).not.toContain('SECRET_QUICK_NAME');
+    }
+    rateLimited = false;
+    rollbackRejected = false;
+    enabled = false;
     behavior = 'success';
     for (const state of ['starting', 'stopped'] as const) {
       runtimeStatus = state;

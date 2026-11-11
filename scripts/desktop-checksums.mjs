@@ -9,6 +9,7 @@ import {
   mkdirSync,
   existsSync,
   renameSync,
+  rmSync,
 } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
@@ -49,6 +50,19 @@ const layout = selectedLinux
 const directory = layout.release;
 mkdirSync(directory, { recursive: true });
 const selection = JSON.parse(readFileSync(layout.selection, 'utf8'));
+const nodeSource = selectedWindows?.bundled
+  ? JSON.parse(readFileSync(path.join(layout.state, 'node-source.json'), 'utf8'))
+  : undefined;
+const nodeSourcePrefix = `MoarTube-Client-Node-${version}-windows-x64-`;
+if (
+  nodeSource &&
+  (nodeSource.clientVersion !== version ||
+    nodeSource.releaseTag !== selection.releaseTag ||
+    typeof nodeSource.archive !== 'string' ||
+    !nodeSource.archive.startsWith(nodeSourcePrefix) ||
+    !/^[a-f0-9]{12}-sources\.zip$/.test(nodeSource.archive.slice(nodeSourcePrefix.length)))
+)
+  throw new Error('Client + Node source archive does not match this release.');
 const artifacts = [
   ...(darwin
     ? [`MoarTube-Client-${version}-${target}.dmg`, `MoarTube-Client-${version}-${target}.zip`]
@@ -62,6 +76,7 @@ const artifacts = [
           `${selectedWindows.prefix}-${version}-windows-x64-portable.zip`,
         ]),
   selection.sourceArchive,
+  ...(nodeSource ? [nodeSource.archive] : []),
 ].sort();
 const lines = [];
 for (const name of artifacts) {
@@ -72,6 +87,8 @@ for (const name of artifacts) {
   const digest = hash.digest('hex');
   if (name === selection.sourceArchive && digest !== selection.sourceSha256)
     throw new Error('FFmpeg source archive changed after desktop preparation');
+  if (name === nodeSource?.archive && digest !== nodeSource.sha256)
+    throw new Error('Client + Node source archive changed after desktop preparation');
   lines.push(`${digest}  ${name}`);
 }
 if (selectedWindows) {
@@ -95,9 +112,12 @@ if (selectedWindows && process.argv.includes('--all-windows-variants')) {
     }
   }
 }
-const blockmap = `${selectedWindows?.prefix ?? 'MoarTube-Client'}-${version}-windows-x64-setup.exe.blockmap`;
-if (!linux && !darwin && existsSync(path.join(layout.packages, blockmap)))
-  renameSync(path.join(layout.packages, blockmap), path.join(directory, blockmap));
+if (selectedWindows) {
+  // Remove maps from prior builds of this version. ZIP-based NSIS packages have no block map.
+  const blockmap = `${selectedWindows.prefix}-${version}-windows-x64-setup.exe.blockmap`;
+  rmSync(path.join(layout.packages, blockmap), { force: true });
+  rmSync(path.join(directory, blockmap), { force: true });
+}
 if (selectedLinux)
   writeFileSync(
     path.join(directory, `SHA256SUMS-${target}-${selectedLinux.name}.txt`),

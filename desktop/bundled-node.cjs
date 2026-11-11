@@ -4,7 +4,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const linuxProcesses = require('./linux-processes.cjs');
 
-async function startNode({ directory, runtime, data, log, onFailure, onSpawn, signal }) {
+async function startNode({ directory, runtime, utility, data, log, onFailure, onSpawn, signal }) {
   // Retain this profile's listening port across restarts. A fresh profile gets
   // an unused port, so it can coexist with an independently running CLI Node.
   const settingsPath = path.join(data, '_node_settings.json');
@@ -25,24 +25,26 @@ async function startNode({ directory, runtime, data, log, onFailure, onSpawn, si
   });
   signal?.throwIfAborted();
   fs.mkdirSync(data, { recursive: true });
-  const child = fork(path.join(directory, 'desktop-bootstrap.mjs'), [], {
-    execPath: runtime,
+  const options = {
     execArgv: [],
     cwd: data,
-    windowsHide: true,
     env: {
       ...process.env,
       NODE_ENV: 'production',
       MOARTUBE_DATA_DIR: data,
       MOARTUBE_BUNDLED_NODE_PORT: String(port),
       MOARTUBE_CLOUDFLARED_PATH: path.join(
-        directory,
+        directory.endsWith('.asar') ? directory + '.unpacked' : directory,
         `resources/cloudflared/${process.platform}-${process.arch}`,
         process.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared'
       ),
     },
-    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
-  });
+    stdio: utility ? 'pipe' : ['ignore', 'pipe', 'pipe', 'ipc'],
+  };
+  const entry = path.join(directory, 'desktop-bootstrap.mjs');
+  const child = utility
+    ? utility.fork(entry, [], { ...options, serviceName: 'MoarTube Node Backend' })
+    : fork(entry, [], { ...options, execPath: runtime, windowsHide: true });
   let stopping = false;
   const childIdentity =
     process.platform === 'linux' ? linuxProcesses.identity(child.pid) : undefined;
@@ -76,10 +78,12 @@ async function startNode({ directory, runtime, data, log, onFailure, onSpawn, si
       }
     });
   });
-  async function stop() {
+  let stoppingPromise;
+  function stop() {
+    if (stoppingPromise) return stoppingPromise;
     stopping = true;
-    if (exited) return;
-    await new Promise((resolve) => {
+    if (exited) return Promise.resolve();
+    stoppingPromise = new Promise((resolve) => {
       const timer = setTimeout(() => {
         if (process.platform === 'linux') {
           linuxProcesses.terminateOwnedTree(child.pid, childIdentity);
@@ -98,8 +102,10 @@ async function startNode({ directory, runtime, data, log, onFailure, onSpawn, si
         clearTimeout(timer);
         resolve();
       });
-      if (child.connected) child.send({ type: 'shutdown' }, () => {});
+      if (utility) child.postMessage({ type: 'shutdown' });
+      else if (child.connected) child.send({ type: 'shutdown' }, () => {});
     });
+    return stoppingPromise;
   }
   return { ready, stop };
 }

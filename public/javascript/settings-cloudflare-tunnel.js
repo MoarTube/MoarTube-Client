@@ -89,14 +89,21 @@ class MoarTubeCloudflareTunnelToggle {
       const running = tunnel?.status === 'running' && ['quick', 'named'].includes(tunnel.mode);
 
       if (requested && (failure || refreshFailed || !this.confirmed || !running)) {
+        const rateLimited =
+          failure?.tunnel?.failureReason === 'rate-limited' ||
+          tunnel?.failureReason === 'rate-limited';
         const reset = await this.resetFailedEnable(
           refreshed && settings.value.isCloudflareTunnelEnabled === false
         );
         const message = failure?.admissionBusy
           ? 'Another settings change is in progress. The switch is off. Wait for it to finish and try again.'
           : reset
-            ? 'Cloudflare Tunnels could not be enabled. The preference is off. Please try again.'
-            : 'Cloudflare Tunnels could not be enabled. The switch is off, but the saved preference could not be confirmed as off. Refresh settings before retrying.';
+            ? rateLimited
+              ? 'Cloudflare is rate-limiting Quick Tunnel creation (HTTP 429). The preference is off. Wait before trying again.'
+              : 'Cloudflare Tunnels could not be enabled. The preference is off. Please try again.'
+            : rateLimited
+              ? 'Cloudflare is rate-limiting Quick Tunnel creation (HTTP 429). The switch is off, but the saved preference could not be confirmed as off. Refresh settings before retrying.'
+              : 'Cloudflare Tunnels could not be enabled. The switch is off, but the saved preference could not be confirmed as off. Refresh settings before retrying.';
         this.status.text(message);
         this.showAlert(true, message);
         return;

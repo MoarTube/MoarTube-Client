@@ -475,7 +475,7 @@ if (!ownsInstance) {
                   detail:
                     'Autostart and Minimize on Close are available in the File and tray menus. When Minimize on Close is off, closing the window quits MoarTube and stops its managed processes. Quit MoarTube always stops the app.\n\n' +
                     (bundled
-                      ? 'MoarTube Client and Node run together. Node.js, Cloudflared, FFmpeg and FFprobe are bundled.'
+                      ? 'MoarTube Client and Node run together. Their runtimes, Cloudflared, FFmpeg and FFprobe are bundled.'
                       : 'Connect to your MoarTube Node from the sign-in screen. FFmpeg and FFprobe are bundled with this application.'),
                 });
               },
@@ -508,11 +508,12 @@ if (!ownsInstance) {
               `build/desktop/work/${process.platform}-${process.arch}/staging/bundled`
             );
         bundledNode = await require('./bundled-node.cjs').startNode({
-          directory: path.join(resources, 'node'),
-          runtime: path.join(
+          directory: path.join(
             resources,
-            process.platform === 'win32' ? 'runtime/node.exe' : 'runtime/node'
+            app.isPackaged && process.platform === 'win32' ? 'node.asar' : 'node'
           ),
+          runtime: process.platform === 'win32' ? undefined : path.join(resources, 'runtime/node'),
+          utility: process.platform === 'win32' ? utilityProcess : undefined,
           data: dataLayout.node,
           log,
           onFailure: fail,
@@ -530,7 +531,7 @@ if (!ownsInstance) {
         environment.MOARTUBE_DESKTOP_KEY = desktopKey;
         if (process.env.MOARTUBE_DESKTOP_SMOKE === '1') app.moartubeNodePort = port;
       }
-      if (bundled || process.platform === 'linux' || process.platform === 'darwin') {
+      if (process.platform === 'linux' || process.platform === 'darwin') {
         environment.MOARTUBE_DESKTOP_NODE_BACKEND = '1';
         const entry = app.isPackaged
           ? path.join(process.resourcesPath, 'app.asar.unpacked/dist/desktop-backend.js')

@@ -149,7 +149,6 @@ jobs:
             build/desktop/releases/win32-x64/*/*.exe
             build/desktop/releases/win32-x64/*/MoarTube-Client-*-portable.zip
             build/desktop/releases/win32-x64/*/MoarTube-FFmpeg-*-sources.zip
-            build/desktop/releases/win32-x64/*/*.blockmap
             build/desktop/releases/win32-x64/*/SHA256SUMS-windows-client.txt
             build/desktop/releases/win32-x64/*/RELEASE-NOTES-windows-client.md
             build/desktop/reports/win32-x64/

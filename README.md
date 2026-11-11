@@ -54,6 +54,11 @@ Downloads share `build/desktop/releases/win32-x64/1.1.0`. Client filenames
 start with `MoarTube-Client-`; bundled filenames start with `MoarTube-Client-Node-`.
 Portable ZIP filenames end in `-windows-x64-portable.zip`; setup installers end
 in `-windows-x64-setup.exe`.
+Both setup executables use ZIP/Deflate payloads for faster extraction and
+distribute full installers for upgrades.
+The NSIS build generates an override of the installed builder's file-copy
+template to skip caching a second full setup executable. The installed
+uninstaller handles removal and full-installer upgrades.
 Windows setup offers installation for **Just me** (selected by default on a fresh
 installation) or **All users**. Just me uses `%LOCALAPPDATA%\Programs`; All users
 requests administrator permission and uses Program Files. Upgrades retain the
@@ -94,6 +99,50 @@ Use `desktop:dev` for Client development and `desktop:dev:client-node` for the b
 Use `desktop:pack:windows:client`, `desktop:pack:windows:client-node`, or
 `desktop:pack:windows:all` to create unpacked apps.
 
+Windows packages omit dependency source maps, TypeScript declarations, tests,
+examples and benchmarks to reduce installer extraction and upgrade work. Runtime
+JavaScript, native modules, assets and licenses remain included.
+
+The Windows build commands also consolidate pure JavaScript dependencies into
+shared bundles for both variants. Native modules, logging workers and packages
+that read their own runtime assets retain their production dependency trees.
+Both Windows variants run the Client backend in an Electron utility process.
+Windows Client + Node also runs the Node primary in a utility process and its
+cluster workers through Electron's embedded Node runtime. Node JavaScript and
+dependencies are read directly from `resources/node.asar`; the bundle omits the
+separate Node executable. The Electron `RunAsNode` fuse must remain enabled for
+cluster workers. Native Node-API SQLite, Cloudflared, logging worker entry points
+and public assets are unpacked at install time. Build checks exercise SQLite in
+Electron before and after packaging and verify the packaged runtime version.
+Client JavaScript dependencies and shared bundles are read directly from ASAR;
+native libraries, logging worker entry points and public assets use disk paths.
+Bundled dependency notices are in `THIRD-PARTY-NOTICES.txt`. Windows Client + Node
+installers and ZIPs contain runtime files. Matching Node and Client source,
+original manifests/lockfiles, dependency sources and desktop build recipes are a
+separate `MoarTube-Client-Node-<version>-windows-x64-<hash>-sources.zip` release
+download. The installed `resources/node-SOURCES.txt` records its URL and SHA-256.
+The build includes it in checksums and release notes; the Windows draft uploader
+requires both this archive and the FFmpeg source archive alongside the binaries.
+Source downloads are optional for running the app and are never unpacked at startup.
+Audited package versions also omit build/install helpers, declaration-only
+dependencies and unused dependency CLIs. Shared runtime dependencies remain
+included. `build/desktop/reports/win32-x64/javascript-bundles.json` records each
+omitted dependency and its reason; upgraded packages keep their full production
+dependencies until audited again.
+The Windows bundled Node runtime also shares byte-identical AJV dependencies
+after checking their dependency resolution, and consolidates audited YAML and
+semver JavaScript behind their runtime entry points. The build report records
+these changes; original dependency sources are included in the source download.
+Audited runtime copies also omit package documentation, adjacent tests, type-test
+folders, duplicate TypeScript sources and native build sources. Compiled schema
+validators, JSON schemas, Swagger UI assets, logging workers and native binaries
+remain included. License notices are retained even inside excluded folders;
+`omittedPackageContents` in the build report records the exclusions.
+
+For manual electron-builder invocations, first run
+`node scripts/prepare-desktop-javascript.mjs --variant=client` (or `bundled`, after
+preparing the Node resources). The standard Windows build commands do this automatically.
+
 Installed distributions share one per-user application-data root named `MoarTube`:
 
 - Windows: `%APPDATA%/MoarTube`
@@ -118,8 +167,10 @@ to one process.
 `MoarTube`). Existing explicit `MOARTUBE_DATA_DIR` component overrides remain
 supported. Explicit custom locations start independently. Installed application
 data stays outside the installation directories.
-The source ZIP for FFmpeg accompanies the installers; Node source and licenses
-are included in the bundle's application resources. Builds are unsigned candidates.
+The source ZIP for FFmpeg accompanies the installers. Windows Client + Node also
+has a separate matching application source download; Linux bundles retain Node
+source in their application resources. License notices remain installed in both.
+Builds are unsigned candidates.
 
 ## Linux desktop option
 

@@ -21,8 +21,12 @@ async function fixture(t, target = 'win32-x64') {
   });
   const windows = target === 'win32-x64';
   const binaries = windows
-    ? ['MoarTube-Client-1.1.0-windows-x64-setup.exe', 'MoarTube-Client-1.1.0-windows-x64-portable.zip',
-      'MoarTube-Client-Node-1.1.0-windows-x64-setup.exe', 'MoarTube-Client-Node-1.1.0-windows-x64-portable.zip']
+    ? [
+        'MoarTube-Client-1.1.0-windows-x64-setup.exe',
+        'MoarTube-Client-1.1.0-windows-x64-portable.zip',
+        'MoarTube-Client-Node-1.1.0-windows-x64-setup.exe',
+        'MoarTube-Client-Node-1.1.0-windows-x64-portable.zip',
+      ]
     : target.startsWith('linux')
       ? [`MoarTube-Client-1.1.0-${target}.deb`, `MoarTube-Client-1.1.0-${target}-portable.tar.gz`]
       : [`MoarTube-Client-1.1.0-${target}.dmg`, `MoarTube-Client-1.1.0-${target}.zip`];
@@ -34,7 +38,11 @@ async function fixture(t, target = 'win32-x64') {
   // Artifacts can retain arbitrary leading directories; discover by checksum.
   const output = path.join(directory, 'nested artifact', target, '1.1.0');
   fs.mkdirSync(output, { recursive: true });
-  const files = [...binaries, source];
+  const files = [
+    ...binaries,
+    source,
+    ...(windows ? ['MoarTube-Client-Node-1.1.0-windows-x64-123456abcdef-sources.zip'] : []),
+  ];
   for (const name of files) fs.writeFileSync(path.join(output, name), name);
   fs.writeFileSync(
     path.join(output, checksum),
@@ -42,7 +50,10 @@ async function fixture(t, target = 'win32-x64') {
   );
   fs.writeFileSync(
     path.join(output, notes),
-    `Sources: https://github.com/${repo}/releases/download/${tag}/${source}\n`
+    files
+      .filter((name) => name.includes('-sources.'))
+      .map((name) => `Sources: https://github.com/${repo}/releases/download/${tag}/${name}\n`)
+      .join('')
   );
   return { directory, output, files, checksum, notes, target, repo, tag, commit, version: '1.1.0' };
 }
@@ -92,14 +103,22 @@ test('accepts either complete Windows variant alone and rejects an incomplete bu
   const { collectReleaseAssets } = await import('../../scripts/lib/draft-release.mjs');
   for (const prefix of ['MoarTube-Client-1.1.0-', 'MoarTube-Client-Node-1.1.0-']) {
     const local = await fixture(t);
-    const files = local.files.filter(name => name.startsWith(prefix) || name.includes('FFmpeg'));
-    fs.writeFileSync(path.join(local.output, local.checksum), files.map(name => `${hash(name)}  ${name}`).join('\n') + '\n');
+    const files = local.files.filter((name) => name.startsWith(prefix) || name.includes('FFmpeg'));
+    fs.writeFileSync(
+      path.join(local.output, local.checksum),
+      files.map((name) => `${hash(name)}  ${name}`).join('\n') + '\n'
+    );
     const assets = await collectReleaseAssets(local);
-    assert.equal(assets.length, 5);
+    assert.equal(assets.length, prefix.startsWith('MoarTube-Client-Node-') ? 6 : 5);
   }
   const local = await fixture(t);
-  const files = local.files.filter(name => name !== 'MoarTube-Client-Node-1.1.0-windows-x64-portable.zip');
-  fs.writeFileSync(path.join(local.output, local.checksum), files.map(name => `${hash(name)}  ${name}`).join('\n') + '\n');
+  const files = local.files.filter(
+    (name) => name !== 'MoarTube-Client-Node-1.1.0-windows-x64-portable.zip'
+  );
+  fs.writeFileSync(
+    path.join(local.output, local.checksum),
+    files.map((name) => `${hash(name)}  ${name}`).join('\n') + '\n'
+  );
   await assert.rejects(collectReleaseAssets(local), /incomplete/);
 });
 
@@ -111,16 +130,57 @@ test('separate Windows workflows contribute disjoint assets to the same draft', 
     const prefix = variant === 'bundled' ? 'MoarTube-Client-Node-' : 'MoarTube-Client-1.1.0-';
     const source = `MoarTube-FFmpeg-test-build-${variant}-sources.zip`;
     fs.writeFileSync(path.join(local.output, source), source);
-    const files = [...local.files.filter(name => name.startsWith(prefix)), source];
+    const files = [...local.files.filter((name) => name.startsWith(prefix)), source];
     const checksum = `SHA256SUMS-windows-${variant}.txt`;
     const notes = `RELEASE-NOTES-windows-${variant}.md`;
-    fs.writeFileSync(path.join(local.output, checksum), files.map(name => `${hash(name)}  ${name}`).join('\n') + '\n');
-    fs.writeFileSync(path.join(local.output, notes), `Sources: https://github.com/${repo}/releases/download/${tag}/${source}\n`);
+    fs.writeFileSync(
+      path.join(local.output, checksum),
+      files.map((name) => `${hash(name)}  ${name}`).join('\n') + '\n'
+    );
+    fs.writeFileSync(
+      path.join(local.output, notes),
+      files
+        .filter((name) => name.endsWith('-sources.zip'))
+        .map((name) => `Sources: https://github.com/${repo}/releases/download/${tag}/${name}\n`)
+        .join('')
+    );
     const assets = await collectReleaseAssets({ ...local, target: `win32-x64-${variant}` });
-    assert.equal(assets.length, 5);
-    names.push(assets.map(asset => asset.name));
+    assert.equal(assets.length, variant === 'bundled' ? 6 : 5);
+    names.push(assets.map((asset) => asset.name));
   }
-  assert.deepEqual(names[0].filter(name => names[1].includes(name)), []);
+  assert.deepEqual(
+    names[0].filter((name) => names[1].includes(name)),
+    []
+  );
+});
+
+test('a bundled Windows release requires its matching application sources and download link', async (t) => {
+  const { collectReleaseAssets } = await import('../../scripts/lib/draft-release.mjs');
+  const local = await fixture(t);
+  const source = local.files.find(
+    (name) => name.startsWith('MoarTube-Client-Node-') && name.endsWith('-sources.zip')
+  );
+  fs.writeFileSync(
+    path.join(local.output, local.checksum),
+    local.files
+      .filter((name) => name !== source)
+      .map((name) => `${hash(name)}  ${name}`)
+      .join('\n') + '\n'
+  );
+  await assert.rejects(collectReleaseAssets(local), /incomplete/);
+  fs.writeFileSync(
+    path.join(local.output, local.checksum),
+    local.files.map((name) => `${hash(name)}  ${name}`).join('\n') + '\n'
+  );
+  const notes = fs.readFileSync(path.join(local.output, local.notes), 'utf8');
+  fs.writeFileSync(
+    path.join(local.output, local.notes),
+    notes
+      .split('\n')
+      .filter((line) => !line.includes(source))
+      .join('\n')
+  );
+  await assert.rejects(collectReleaseAssets(local), /requested draft tag/);
 });
 
 test('uploads each target allowlist, pins an untagged draft and never publishes it', async (t) => {

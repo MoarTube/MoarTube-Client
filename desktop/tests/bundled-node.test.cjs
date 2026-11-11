@@ -5,12 +5,83 @@ const os = require('node:os');
 const path = require('node:path');
 const net = require('node:net');
 const { startNode } = require('../bundled-node.cjs');
+const { EventEmitter } = require('node:events');
+const { PassThrough } = require('node:stream');
+
+test('utility supervision uses ASAR disk resources and shares one shutdown promise', async (t) => {
+  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'moartube-utility-supervisor-'));
+  t.after(() => {
+    assert.equal(path.dirname(data), path.resolve(os.tmpdir()));
+    assert(path.basename(data).startsWith('moartube-utility-supervisor-'));
+    fs.rmSync(data, { recursive: true, force: true });
+  });
+  let messages = 0;
+  let options;
+  const directory = path.join(data, 'resources/node.asar');
+  const { prepareDesktopTestNode } = await import('../../scripts/lib/desktop-test-profile.mjs');
+  prepareDesktopTestNode(data);
+  const nodeData = path.join(data, 'MoarTube/client_node/node');
+  const utility = {
+    fork(entry, args, configuration) {
+      options = configuration;
+      assert.equal(entry, path.join(directory, 'desktop-bootstrap.mjs'));
+      assert.deepEqual(args, []);
+      const child = Object.assign(new EventEmitter(), {
+        pid: 987654,
+        stdout: new PassThrough(),
+        stderr: new PassThrough(),
+        postMessage(message) {
+          assert.deepEqual(message, { type: 'shutdown' });
+          messages++;
+          setTimeout(() => child.emit('exit', 0), 10);
+        },
+      });
+      setImmediate(() => {
+        child.emit('spawn');
+        child.emit('message', {
+          type: 'ready',
+          port: Number(options.env.MOARTUBE_BUNDLED_NODE_PORT),
+        });
+      });
+      return child;
+    },
+  };
+  const failures = [];
+  const service = await startNode({
+    directory,
+    data: nodeData,
+    utility,
+    log: { write() {} },
+    onSpawn() {},
+    onFailure: (message) => failures.push(message),
+  });
+  await service.ready;
+  assert.equal(options.serviceName, 'MoarTube Node Backend');
+  assert.equal(options.stdio, 'pipe');
+  assert.equal(options.execPath, undefined);
+  assert.equal(
+    options.env.MOARTUBE_CLOUDFLARED_PATH,
+    path.join(
+      directory + '.unpacked',
+      `resources/cloudflared/${process.platform}-${process.arch}`,
+      process.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared'
+    )
+  );
+  const stopping = service.stop();
+  assert.equal(service.stop(), stopping);
+  await stopping;
+  await service.stop();
+  assert.equal(messages, 1);
+  assert.deepEqual(failures, []);
+});
 
 test('the supervisor preserves the owned Node port and refuses to attach to another server', async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'moartube-node-supervisor-'));
   const data = path.join(directory, 'data');
   fs.mkdirSync(data);
-  fs.writeFileSync(path.join(directory, 'desktop-bootstrap.mjs'), `
+  fs.writeFileSync(
+    path.join(directory, 'desktop-bootstrap.mjs'),
+    `
     import net from 'node:net';
     const port = Number(process.env.MOARTUBE_BUNDLED_NODE_PORT);
     const server = net.createServer();
@@ -18,11 +89,18 @@ test('the supervisor preserves the owned Node port and refuses to attach to anot
     process.on('message', message => {
       if (message.type === 'shutdown') server.close(() => process.exit(0));
     });
-  `);
+  `
+  );
   const children = [];
   const failures = [];
-  const options = { directory, data, runtime: process.execPath, log: { write() {} },
-    onFailure: message => failures.push(message), onSpawn: pid => children.push(pid) };
+  const options = {
+    directory,
+    data,
+    runtime: process.execPath,
+    log: { write() {} },
+    onFailure: (message) => failures.push(message),
+    onSpawn: (pid) => children.push(pid),
+  };
   let first;
   let second;
   let foreign;
@@ -30,7 +108,10 @@ test('the supervisor preserves the owned Node port and refuses to attach to anot
     first = await startNode(options);
     const port = await first.ready;
     await first.stop();
-    fs.writeFileSync(path.join(data, '_node_settings.json'), JSON.stringify({ nodeListeningPort: port }));
+    fs.writeFileSync(
+      path.join(data, '_node_settings.json'),
+      JSON.stringify({ nodeListeningPort: port })
+    );
     second = await startNode(options);
     assert.equal(await second.ready, port, 'Restart must preserve the public listening port');
     await second.stop();
@@ -45,7 +126,7 @@ test('the supervisor preserves the owned Node port and refuses to attach to anot
   } finally {
     await first?.stop();
     await second?.stop();
-    if (foreign?.listening) await new Promise(resolve => foreign.close(resolve));
+    if (foreign?.listening) await new Promise((resolve) => foreign.close(resolve));
     const resolved = path.resolve(directory);
     assert.equal(path.dirname(resolved), path.resolve(os.tmpdir()));
     assert(path.basename(resolved).startsWith('moartube-node-supervisor-'));

@@ -136,6 +136,17 @@ try {
       app.getAppMetrics().find((metric) => metric.name === 'MoarTube Client Backend')?.pid
   );
   if (!Number.isInteger(backendPid)) throw new Error('Managed backend process was not found');
+  if (process.platform === 'win32')
+    assert.equal(
+      await application.evaluate(
+        ({ app }, pid) => app.getAppMetrics().some(
+          (metric) => metric.pid === pid && metric.name === 'MoarTube Client Backend'
+        ),
+        backendPid
+      ),
+      true,
+      'Windows Client must run its backend in an Electron utility process'
+    );
   if (readFileSync(preserved, 'utf8') !== 'preserve media across desktop starts')
     throw new Error('Desktop startup removed existing media');
   const isolation = await page.evaluate(() => ({

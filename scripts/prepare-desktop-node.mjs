@@ -14,6 +14,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { desktopPaths } from '../tooling/build-paths.cjs';
+import { verifyNodeRuntime } from '../desktop/node-runtime.cjs';
 
 const windows = process.platform === 'win32';
 if (
@@ -58,6 +59,8 @@ copyFileSync(
   path.join(root, 'desktop/node-bootstrap.mjs'),
   path.join(destination, 'desktop-bootstrap.mjs')
 );
+if (windows)
+  copyFileSync(path.join(root, 'desktop/node-preflight.mjs'), path.join(destination, 'desktop-preflight.mjs'));
 const npm = path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
 execFileSync(
   windows ? process.execPath : 'npm',
@@ -73,10 +76,17 @@ execFileSync(
   ],
   { cwd: destination, stdio: 'inherit', windowsHide: true }
 );
-// Build SQLite for the standalone Node ABI, never Electron's ABI.
-const native = 'node_modules/better-sqlite3/build/Release/better_sqlite3.node';
-mkdirSync(path.dirname(path.join(destination, native)), { recursive: true });
-copyFileSync(path.join(dependencies, native), path.join(destination, native));
+// Node-API builds work in Electron and standalone Node. Older Linux builds can
+// still supply the ABI-specific addon compiled in their dependency container.
+const prebuilt = `node_modules/better-sqlite3/prebuilds/${target}.node`;
+const native = existsSync(path.join(destination, prebuilt))
+  ? prebuilt : 'node_modules/better-sqlite3/build/Release/better_sqlite3.node';
+if (windows && native !== prebuilt)
+  throw new Error('Windows bundles require the Node-API SQLite package (better-sqlite3 13.0.3 or newer).');
+if (native !== prebuilt) {
+  mkdirSync(path.dirname(path.join(destination, native)), { recursive: true });
+  copyFileSync(path.join(dependencies, native), path.join(destination, native));
+}
 
 const requireNode = createRequire(path.join(dependencies, 'package.json'));
 execFileSync(
@@ -117,37 +127,18 @@ for (const name of ['LICENSE', 'README.md'])
       path.join(destination, 'resources/cloudflared', name)
     );
 
-// The official distribution carries Node.js and all of its third-party notices.
+// Linux continues to ship the standalone runtime. Windows uses Electron's
+// embedded Node runtime and verifies the native addon in a utility process.
 const version = process.version;
 const runtime = path.join(bundle, 'runtime');
-mkdirSync(runtime, { recursive: true });
+let runtimeMetadata;
 if (windows) {
-  const archiveName = `node-${version}-win-x64.zip`;
-  const cache = path.join(layout.cache, 'node', version);
-  mkdirSync(cache, { recursive: true });
-  async function download(name) {
-    const file = path.join(cache, name);
-    if (!existsSync(file)) {
-      const response = await fetch(`https://nodejs.org/dist/${version}/${name}`);
-      if (!response.ok) throw new Error(`Node.js download failed: ${response.status}`);
-      writeFileSync(file, Buffer.from(await response.arrayBuffer()));
-    }
-    return file;
-  }
-  const checksums = readFileSync(await download('SHASUMS256.txt'), 'utf8');
-  const checksum = checksums
-    .split('\n')
-    .find((line) => line.trim().endsWith(` ${archiveName}`))
-    ?.trim()
-    .split(/\s+/)[0];
-  const archive = await download(archiveName);
-  if (!checksum || digest(archive) !== checksum)
-    throw new Error('Official Node.js archive checksum mismatch');
-  execFileSync('tar.exe', ['-xf', archive, '-C', cache], { stdio: 'inherit', windowsHide: true });
-  const distribution = path.join(cache, `node-${version}-win-x64`);
-  for (const file of ['node.exe', 'LICENSE'])
-    copyFileSync(path.join(distribution, file), path.join(runtime, file));
+  if (path.resolve(runtime) !== path.resolve(layout.staging, 'bundled/runtime'))
+    throw new Error('Invalid obsolete Node runtime staging directory');
+  rmSync(runtime, { recursive: true, force: true });
+  runtimeMetadata = { runtimeHost: 'electron', buildNodeVersion: version, ...verifyNodeRuntime(root, destination) };
 } else {
+  mkdirSync(runtime, { recursive: true });
   const selection = JSON.parse(readFileSync(layout.selection, 'utf8'));
   if (selection.nodeVersion !== process.version)
     throw new Error('Bundled Node runtime version mismatch');
@@ -157,9 +148,10 @@ if (windows) {
   const { assertLinuxElf } = await import('../tooling/ffmpeg/scripts/linux-elf.mjs');
   for (const file of [path.join(runtime, 'node'), path.join(destination, native), cloudflared])
     assertLinuxElf(readFileSync(file), process.arch);
+  runtimeMetadata = { runtimeHost: 'node', runtimeVersion: version, runtimeSha256: digest(path.join(runtime, 'node')) };
 }
-execFileSync(
-  path.join(runtime, windows ? 'node.exe' : 'node'),
+if (!windows) execFileSync(
+  path.join(runtime, 'node'),
   [
     '--input-type=commonjs',
     '-e',
@@ -172,8 +164,7 @@ writeFileSync(
   JSON.stringify(
     {
       nodeVersion: JSON.parse(readFileSync(path.join(destination, 'package.json'))).version,
-      runtimeVersion: version,
-      runtimeSha256: digest(path.join(runtime, windows ? 'node.exe' : 'node')),
+      ...runtimeMetadata,
       cloudflaredSha256: digest(cloudflared),
     },
     null,

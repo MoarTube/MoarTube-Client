@@ -7,6 +7,7 @@ import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { desktopPaths } from '../tooling/build-paths.cjs';
+import { prepareDesktopTestNode } from './lib/desktop-test-profile.mjs';
 
 if (!['win32', 'linux'].includes(process.platform))
   throw new Error('Bundled smoke requires Windows or Linux.');
@@ -16,6 +17,7 @@ const executablePath = process.argv[2] ? path.resolve(process.argv[2]) : undefin
 const launchExecutable = executablePath ?? (await import('electron')).default;
 const mode = executablePath ? 'packaged' : 'development';
 const profile = path.join(layout.profiles, `bundled-smoke-${mode}-${Date.now()}`);
+prepareDesktopTestNode(profile);
 const report = path.join(layout.reports, `bundled-${mode}`);
 const dataBase = path.join(profile, 'MoarTube/client_node');
 const userData = path.join(dataBase, 'client/desktop');
@@ -82,6 +84,8 @@ try {
   page.on('pageerror', (error) => errors.push(error.message));
   await page.waitForURL(/\/videos$/, { timeout: 180_000 });
   await page.waitForLoadState('networkidle');
+  assert.equal(JSON.parse(readFileSync(nodeSettings, 'utf8')).isCloudflareTunnelEnabled, false,
+    'Routine smoke tests must not create public tunnels');
   assert.equal(
     await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()),
     false
@@ -150,7 +154,49 @@ try {
   }));
   nodePort = owned.port;
   assert(Number.isInteger(owned.node) && Number.isInteger(owned.client));
-  if (previousPort !== undefined)
+  if (process.platform === 'win32') {
+    assert.equal(
+      await application.evaluate(
+        ({ app }, pid) => app.getAppMetrics().some(
+          (metric) => metric.pid === pid && metric.name === 'MoarTube Client Backend'
+        ),
+        owned.client
+      ),
+      true,
+      'Windows bundled Client must run its backend in an Electron utility process'
+    );
+    assert.equal(
+      await application.evaluate(
+        ({ app }, pid) => app.getAppMetrics().some(
+          (metric) => metric.pid === pid && metric.name === 'MoarTube Node Backend'
+        ),
+        owned.node
+      ), true, 'Windows bundled Node must run in an Electron utility process'
+    );
+    if (executablePath) {
+      const resources = path.join(path.dirname(executablePath), 'resources');
+      assert(existsSync(path.join(resources, 'node.asar')));
+      assert(!existsSync(path.join(resources, 'runtime/node.exe')));
+    }
+    const initial = await page.evaluate(async () =>
+      (await fetch('/settings/node/workers')).json()
+    );
+    assert.equal(initial.isError, false);
+    // Exercise cluster IPC and newly forked workers through the actual backend.
+    for (const workerCount of [1, initial.workerCount]) {
+      const changed = await page.evaluate(async (workerCount) =>
+        (await fetch('/settings/node/workers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workerCount, confirmDecrease: true }),
+        })).json(), workerCount
+      );
+      assert.equal(changed.isError, false, JSON.stringify(changed));
+      assert.equal(changed.workerCount, workerCount);
+      assert.equal(changed.runningWorkers, Math.min(workerCount, changed.maxWorkers));
+    }
+  }
+  if (previousPort !== undefined && previousPort > 0)
     assert.equal(owned.port, previousPort, 'Restart must retain the owned Node listening port');
   assert.equal(
     (await fetch(`${url}/videos`)).status,
