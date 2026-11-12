@@ -3,6 +3,8 @@ const net = require('node:net');
 const path = require('node:path');
 const fs = require('node:fs');
 const linuxProcesses = require('./linux-processes.cjs');
+const darwinProcesses =
+  process.platform === 'darwin' ? require('./darwin-processes.cjs') : undefined;
 
 async function startNode({ directory, runtime, utility, data, log, onFailure, onSpawn, signal }) {
   // Retain this profile's listening port across restarts. A fresh profile gets
@@ -44,9 +46,17 @@ async function startNode({ directory, runtime, utility, data, log, onFailure, on
   const entry = path.join(directory, 'desktop-bootstrap.mjs');
   const child = utility
     ? utility.fork(entry, [], { ...options, serviceName: 'MoarTube Node Backend' })
-    : fork(entry, [], { ...options, execPath: runtime, windowsHide: true });
+    : fork(entry, [], {
+        ...options,
+        execPath: runtime,
+        windowsHide: true,
+        detached: process.platform === 'darwin',
+      });
   let stopping = false;
-  let childIdentity = process.platform === 'linux' ? linuxProcesses.identity(child.pid) : undefined;
+  let childIdentity =
+    process.platform === 'linux'
+      ? linuxProcesses.identity(child.pid)
+      : darwinProcesses?.identity(child.pid);
   let exited = false;
   // Process exit can precede the final pipe data events. Shutdown may already
   // have ended the shared log when those events arrive.
@@ -57,6 +67,7 @@ async function startNode({ directory, runtime, utility, data, log, onFailure, on
   child.stderr.on('data', forwardLog);
   child.once('spawn', () => {
     if (process.platform === 'linux') childIdentity = linuxProcesses.identity(child.pid);
+    if (process.platform === 'darwin') childIdentity = darwinProcesses.identity(child.pid);
     onSpawn(child.pid);
   });
   const ready = new Promise((resolve, reject) => {
@@ -94,6 +105,10 @@ async function startNode({ directory, runtime, utility, data, log, onFailure, on
       const timer = setTimeout(() => {
         if (process.platform === 'linux') {
           linuxProcesses.terminateOwnedTree(child.pid, childIdentity);
+          return resolve();
+        }
+        if (process.platform === 'darwin') {
+          darwinProcesses.terminateOwnedTree(child.pid, childIdentity);
           return resolve();
         }
         const killer = spawn('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], {

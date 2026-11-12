@@ -1,6 +1,6 @@
 import { desktopPaths } from '../tooling/build-paths.cjs';
 import { windowsPaths, windowsVariant } from '../desktop/windows-variant.cjs';
-import { parseDarwinTarget } from '../tooling/ffmpeg/scripts/darwin-native.mjs';
+import { parseDarwinDesktopArgs, darwinVariant, darwinPaths } from '../desktop/darwin-variant.cjs';
 import { parseLinuxDesktopArgs, linuxVariant, linuxPaths } from '../desktop/linux-variant.cjs';
 import {
   createReadStream,
@@ -20,7 +20,10 @@ const darwin = process.argv.includes('--darwin');
 if (darwin && linux)
   throw new Error('Usage: desktop-checksums.mjs --darwin [--arch=x64|--arch=arm64]');
 const target = darwin
-  ? parseDarwinTarget(process.argv.slice(2).filter((arg) => arg !== '--darwin')).target
+  ? parseDarwinDesktopArgs(
+      process.argv.slice(2).filter((arg) => arg !== '--darwin'),
+      'client'
+    ).target
   : linux
     ? parseLinuxDesktopArgs(
         process.argv.slice(2).filter((arg) => arg !== '--linux'),
@@ -42,16 +45,26 @@ const selectedLinux = linux
       ).variant
     )
   : undefined;
-const layout = selectedLinux
-  ? linuxPaths(root, target.slice(6), version, selectedLinux.name)
-  : selectedWindows
-    ? windowsPaths(root, version, selectedWindows.name)
-    : desktopPaths(root, target, version);
+const selectedDarwin = darwin
+  ? darwinVariant(
+      parseDarwinDesktopArgs(
+        process.argv.slice(2).filter((arg) => arg !== '--darwin'),
+        'client'
+      ).variant
+    )
+  : undefined;
+const layout = selectedDarwin
+  ? darwinPaths(root, target.slice(7), version, selectedDarwin.name)
+  : selectedLinux
+    ? linuxPaths(root, target.slice(6), version, selectedLinux.name)
+    : selectedWindows
+      ? windowsPaths(root, version, selectedWindows.name)
+      : desktopPaths(root, target, version);
 const directory = layout.release;
 mkdirSync(directory, { recursive: true });
 const selection = JSON.parse(readFileSync(layout.selection, 'utf8'));
 const nodeSource =
-  selectedWindows?.bundled || selectedLinux?.bundled
+  selectedWindows?.bundled || selectedLinux?.bundled || selectedDarwin?.bundled
     ? JSON.parse(readFileSync(path.join(layout.state, 'node-source.json'), 'utf8'))
     : undefined;
 const nodeSourcePrefix = `MoarTube-Client-Node-${version}-${target === 'win32-x64' ? 'windows-x64' : target}-`;
@@ -66,7 +79,10 @@ if (
   throw new Error('Client + Node source archive does not match this release.');
 const artifacts = [
   ...(darwin
-    ? [`MoarTube-Client-${version}-${target}.dmg`, `MoarTube-Client-${version}-${target}.zip`]
+    ? [
+        `${selectedDarwin.prefix}-${version}-${target}.dmg`,
+        `${selectedDarwin.prefix}-${version}-${target}.zip`,
+      ]
     : linux
       ? [
           `${selectedLinux.prefix}-${version}-${target}.deb`,
@@ -119,12 +135,13 @@ if (selectedWindows) {
   rmSync(path.join(layout.packages, blockmap), { force: true });
   rmSync(path.join(directory, blockmap), { force: true });
 }
-if (selectedLinux)
+const selectedUnix = selectedLinux ?? selectedDarwin;
+if (selectedUnix)
   writeFileSync(
-    path.join(directory, `SHA256SUMS-${target}-${selectedLinux.name}.txt`),
+    path.join(directory, `SHA256SUMS-${target}-${selectedUnix.name}.txt`),
     lines.slice().sort().join('\n') + '\n'
   );
-const checksumFile = selectedLinux?.bundled
+const checksumFile = selectedUnix?.bundled
   ? `SHA256SUMS-${target}-bundled.txt`
   : linux || darwin
     ? `SHA256SUMS-${target}.txt`

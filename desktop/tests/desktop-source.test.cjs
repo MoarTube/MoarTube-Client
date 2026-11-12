@@ -5,7 +5,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { createHash } = require('node:crypto');
 
-for (const target of ['win32-x64', 'linux-arm64'])
+for (const target of ['win32-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64'])
   test(
     `${target} source archive preserves original materials and hashes without copying private data or binaries`,
     { skip: process.platform !== 'win32' },
@@ -43,6 +43,7 @@ for (const target of ['win32-x64', 'linux-arm64'])
           );
       write(node, 'node_modules/native/src/database.c', 'native source');
       write(node, 'node_modules/native/build/Release/database.node', 'compiled addon');
+      write(node, 'node_modules/native/build/Release/library.dylib', 'compiled Mac library');
       write(client, 'src/utils/image-runtime/profiles/NOTICE.txt', 'profile provenance');
       write(node, 'resources/cloudflared/win32-x64/cloudflared.exe', 'compiled tunnel');
       write(node, 'data/credentials.json', 'private node data');
@@ -84,6 +85,17 @@ for (const target of ['win32-x64', 'linux-arm64'])
         assert(readme.includes('No standalone Node executable is distributed'));
         assert(readme.includes('Client dependencies and shared JavaScript stay in app.asar'));
       }
+      if (target.startsWith('darwin-')) {
+        assert(source.archive.includes(`-${target}-`));
+        assert(readme.includes(`native macOS 15+ ${target.slice(7)}`));
+        assert(
+          readme.includes(
+            `desktop:build:darwin${target.endsWith('arm64') ? ':arm64' : ''}:client-node`
+          )
+        );
+        assert(readme.includes('Client dependencies and shared JavaScript stay in app.asar'));
+        assert(readme.includes('No standalone Node executable is distributed'));
+      }
       const names = manifest.files.map((item) => item.path);
       assert(names.includes('node/src/keep.txt'));
       assert(names.includes('client/scripts/keep.txt'));
@@ -91,7 +103,9 @@ for (const target of ['win32-x64', 'linux-arm64'])
       assert(names.includes('client/src/utils/image-runtime/profiles/NOTICE.txt'));
       assert(names.includes('node/resources/cloudflared/LICENSE'));
       assert(
-        !names.some((name) => /credentials|settings\.json|\.env$|\.(exe|node|dll)$/.test(name))
+        !names.some((name) =>
+          /credentials|settings\.json|\.env$|\.(exe|node|dll|dylib)$/.test(name)
+        )
       );
       assert.equal(
         fs.readFileSync(path.join(extracted, 'node/package.json'), 'utf8'),

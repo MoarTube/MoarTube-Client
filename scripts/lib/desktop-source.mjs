@@ -18,6 +18,7 @@ export const clientSourceFiles = [
   'bin',
   'scripts',
   'desktop',
+  'docs',
   'tooling',
   'package.json',
   'package-lock.json',
@@ -66,10 +67,14 @@ export async function createDesktopSourceArchive({
 }) {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._+-]*$/.test(version))
     throw new Error('Invalid source archive version');
-  if (!['win32-x64', 'linux-x64', 'linux-arm64'].includes(target))
+  if (!['win32-x64', 'linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64'].includes(target))
     throw new Error('Invalid source archive target');
   const linux = target.startsWith('linux-');
-  const releaseTarget = linux ? target : 'windows-x64';
+  const darwin = target.startsWith('darwin-');
+  const releaseTarget = target === 'win32-x64' ? 'windows-x64' : target;
+  const rebuildCommand = darwin
+    ? `darwin${target.endsWith('arm64') ? ':arm64' : ''}:client-node`
+    : `${linux ? 'linux' : 'windows'}:client-node${target === 'linux-arm64' ? ' -- --arch=arm64' : ''}`;
   mkdirSync(staging, { recursive: true });
   for (const [component, source, files] of [
     ['client', root, clientSourceFiles],
@@ -84,7 +89,7 @@ export async function createDesktopSourceArchive({
           const relative = path.relative(source, file);
           if (relative.split(path.sep).some((part) => ['.git', '.bin'].includes(part)))
             return false;
-          if (/\.(exe|dll|node|obj|o|a)$|\.so(?:\.[\d.]+)?$/i.test(file)) return false;
+          if (/\.(exe|dll|dylib|node|obj|o|a)$|\.so(?:\.[\d.]+)?$/i.test(file)) return false;
           if (lstatSync(file).isSymbolicLink())
             throw new Error(`Unexpected source symlink: ${file}`);
           return true;
@@ -100,11 +105,11 @@ export async function createDesktopSourceArchive({
       'node/ contains the original Node source, package manifest, lockfile, build scripts, assets and production dependency sources.\n' +
       'Compiled executables, native addons and private application data are excluded.\n' +
       'BUILD.json identifies the runtime versions and matching FFmpeg source download. SOURCE-MANIFEST.json lists source file hashes.\n\n' +
-      `Rebuild on ${linux ? `Linux ${target.slice(6)} (Ubuntu 24.04 baseline)` : 'Windows x64'} with the build Node.js version recorded in BUILD.json.\n` +
+      `Rebuild on ${darwin ? `native macOS 15+ ${target.slice(7)}` : linux ? `Linux ${target.slice(6)} (Ubuntu 24.04 baseline)` : 'Windows x64'} with the build Node.js version recorded in BUILD.json.\n` +
       'Run npm ci and npm run install:cloudflared in node/; npm ci replaces the source-only dependency tree and installs the Node-API SQLite binary.\n' +
       'Run npm ci in client/. Follow client/README.md and the included FFmpeg recipes to rebuild/stage the matching FFmpeg runtime.\n' +
-      `From client/, set MOARTUBE_NODE_SOURCE to the absolute node/ directory, then run npm run desktop:build:${linux ? 'linux' : 'windows'}:client-node${target === 'linux-arm64' ? ' -- --arch=arm64' : ''}.\n` +
-      (linux
+      `From client/, set MOARTUBE_NODE_SOURCE to the absolute node/ directory, then run npm run desktop:build:${rebuildCommand}.\n` +
+      (linux || darwin
         ? 'Both backends run through Electron. Client images use FFmpeg with a WASM colour-normalization worker. npm ci uses the included package-lock.json; no native image addon rebuilding or binary replacement is required. Client dependencies and shared JavaScript stay in app.asar. Node JavaScript is stored in node.asar. No standalone Node executable is distributed.\n'
         : 'The bundle runs both backends through Electron. Node JavaScript is stored in node.asar; native binaries, logging workers and public assets are unpacked during installation. No standalone Node executable is distributed.\n') +
       'Dependency/tool downloads need network access. These source materials are not needed to install or run the application.\n'

@@ -15,7 +15,10 @@ module.exports = function createWindowsConfig(variant, root = path.resolve(__dir
   const selected = windowsVariant(variant);
   const layout = windowsPaths(root, require('../package.json').version, selected.name);
   const selectionPath = layout.selection;
-  if (!fs.existsSync(selectionPath)) throw new Error('Run npm run desktop:prepare first.');
+  if (!fs.existsSync(selectionPath))
+    throw new Error(
+      'Desktop resources are missing. Use npm run desktop:build:windows:all to prepare and package them.'
+    );
   const selection = JSON.parse(fs.readFileSync(selectionPath, 'utf8'));
   const directory = path.resolve(selection.runtimeDirectory);
   if (!directory.startsWith(layout.staging + path.sep) || path.basename(directory) !== 'runtime')

@@ -9,7 +9,7 @@ function verifyNodeRuntime(root, directory, executable = require('electron')) {
   const profile = fs.mkdtempSync(path.join(temporary, 'node-'));
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
-  if (process.platform === 'linux') {
+  if (['linux', 'darwin'].includes(process.platform)) {
     env.ELECTRON_RUN_AS_NODE = '1';
     env.MOARTUBE_CLOUDFLARED_PATH = path.join(
       directory.endsWith('.asar') ? directory + '.unpacked' : directory,
@@ -19,7 +19,7 @@ function verifyNodeRuntime(root, directory, executable = require('electron')) {
   try {
     const output = execFileSync(
       executable,
-      process.platform === 'linux'
+      ['linux', 'darwin'].includes(process.platform)
         ? [path.join(directory, 'desktop-preflight.mjs')]
         : [path.join(root, 'desktop/node-preflight.cjs'), path.resolve(directory), profile],
       { cwd: root, env, encoding: 'utf8', windowsHide: true, timeout: 30_000 }

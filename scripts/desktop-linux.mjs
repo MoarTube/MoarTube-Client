@@ -105,6 +105,7 @@ try {
     'public',
     'bin',
     'desktop',
+    'docs',
     'scripts',
     'tooling',
     'tests',

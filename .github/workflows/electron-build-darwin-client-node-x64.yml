@@ -1,4 +1,4 @@
-name: macOS Apple Silicon ARM64 Electron candidate
+name: macOS x64 - Client + Node
 on:
   workflow_dispatch:
     inputs:
@@ -6,37 +6,43 @@ on:
         description: Existing draft release tag (leave empty for build artifacts only)
         type: string
         required: false
-        default: ''
+        default: ""
   workflow_call:
     inputs:
       release_tag:
         description: Existing draft release tag (leave empty for build artifacts only)
         type: string
         required: false
-        default: ''
+        default: ""
 permissions:
   contents: read
 env:
   MOARTUBE_RELEASE_TAG: ${{ inputs.release_tag }}
 jobs:
   build:
-    name: Build darwin-arm64
-    runs-on: macos-15
+    name: Build darwin-x64 - Client + Node
+    runs-on: macos-15-intel
     timeout-minutes: 150
     env:
-      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
       ELECTRON_CACHE: ${{ github.workspace }}/build/desktop/cache/electron
       ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/build/desktop/cache/builder
-      MOARTUBE_NODE_LICENSE: ${{ github.workspace }}/build/desktop/node-LICENSE
-      MOARTUBE_FFMPEG_OFFLINE: '1'
-      MOARTUBE_DEPENDENCIES_PREPARED: '1'
+      MOARTUBE_FFMPEG_OFFLINE: "1"
+      MOARTUBE_DEPENDENCIES_PREPARED: "1"
+      MOARTUBE_NODE_SOURCE: ${{ github.workspace }}/build/desktop/node-source
     steps:
       - uses: actions/checkout@v6
+      - name: Check out bundled MoarTube Node
+        uses: actions/checkout@v6
+        with:
+          repository: MoarTube/MoarTube-Node
+          path: build/desktop/node-source
+          persist-credentials: false
       - uses: actions/setup-node@v6
         with:
           package-manager-cache: false
           node-version: 24.22.1
-          architecture: arm64
+          architecture: x64
       - name: Restore verified FFmpeg downloads
         uses: actions/cache/restore@v5
         id: ffmpeg-downloads
@@ -46,22 +52,22 @@ jobs:
           key: ffmpeg-downloads-v1-${{ runner.os }}-${{ hashFiles('tooling/ffmpeg/sources.lock.json') }}
       - name: Identify compiled FFmpeg cache
         id: ffmpeg-key
-        run: node tooling/ffmpeg/scripts/compiled-cache.mjs key darwin-arm64
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs key darwin-x64
       - name: Restore compiled FFmpeg candidate
         uses: actions/cache/restore@v5
         id: compiled-ffmpeg
         with:
           path: |-
-            build/ffmpeg/install/darwin-arm64/bin
-            build/ffmpeg/candidates/darwin-arm64
-            build/ffmpeg/releases/darwin-arm64
-            build/ffmpeg/state/darwin-arm64
-            build/ffmpeg/reports/darwin-arm64/*.json
-            build/ffmpeg/reports/darwin-arm64/software/result.json
+            build/ffmpeg/install/darwin-x64/bin
+            build/ffmpeg/candidates/darwin-x64
+            build/ffmpeg/releases/darwin-x64
+            build/ffmpeg/state/darwin-x64
+            build/ffmpeg/reports/darwin-x64/*.json
+            build/ffmpeg/reports/darwin-x64/software/result.json
           key: ${{ steps.ffmpeg-key.outputs.key }}
       - name: Verify restored FFmpeg candidate
         if: steps.compiled-ffmpeg.outputs.cache-hit == 'true'
-        run: node tooling/ffmpeg/scripts/compiled-cache.mjs verify darwin-arm64
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs verify darwin-x64
       - name: Restore desktop dependency downloads
         uses: actions/cache/restore@v5
         id: desktop-dependencies
@@ -69,7 +75,7 @@ jobs:
           path: |-
             build/desktop/cache/electron
             build/desktop/cache/builder
-          key: desktop-dependencies-v1-darwin-arm64-${{ hashFiles('package-lock.json', 'scripts/prefetch-desktop-tools.mjs', 'desktop/builder-cache.cjs', 'desktop/linux/dependencies.Dockerfile') }}
+          key: desktop-dependencies-v1-darwin-x64-${{ hashFiles('package-lock.json', 'scripts/prefetch-desktop-tools.mjs', 'desktop/builder-cache.cjs', 'desktop/linux/dependencies.Dockerfile') }}
           restore-keys: desktop-dependencies-v1-darwin-
       - name: Locate npm download cache
         id: npm-cache-directory
@@ -79,19 +85,25 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: ${{ steps.npm-cache-directory.outputs.directory }}
-          key: npm-downloads-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+          key: npm-downloads-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json', 'build/desktop/node-source/package-lock.json') }}
           restore-keys: npm-downloads-v1-${{ runner.os }}-
       - run: npm ci
+      - name: Install bundled Node dependencies and Cloudflared
+        working-directory: build/desktop/node-source
+        run: |
+          npm ci
+          npm run install:cloudflared
+      - name: Check bundled Node types
+        working-directory: build/desktop/node-source
+        run: |
+          npm run typecheck
+          node node_modules/typescript/bin/tsc -p tests/integration/tsconfig.json
       - name: Save completed npm downloads
         if: steps.npm-downloads.outputs.cache-hit != 'true'
         uses: actions/cache/save@v5
         with:
           path: ${{ steps.npm-cache-directory.outputs.directory }}
           key: ${{ steps.npm-downloads.outputs.cache-primary-key }}
-      - name: Preserve the matching bundled Node license
-        run: |
-          mkdir -p build/desktop
-          curl --fail --location --retry 3 "https://raw.githubusercontent.com/nodejs/node/$(node -p process.version)/LICENSE" --output "$MOARTUBE_NODE_LICENSE"
       - name: Download Electron and packaging tools
         run: node scripts/prefetch-desktop-tools.mjs
       - name: Save desktop dependency downloads
@@ -104,7 +116,7 @@ jobs:
           key: ${{ steps.desktop-dependencies.outputs.cache-primary-key }}
       - name: Download and verify all FFmpeg inputs
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
-        run: node tooling/ffmpeg/scripts/download-inputs.mjs darwin-arm64
+        run: node tooling/ffmpeg/scripts/download-inputs.mjs darwin-x64
       - name: Check complete download cache
         if: ${{ !cancelled() && steps.ffmpeg-downloads.outputs.cache-hit != 'true' }}
         id: ffmpeg-cache-ready
@@ -122,48 +134,59 @@ jobs:
       - run: npm run typecheck
       - run: npm run ffmpeg:test:tooling
       - run: npm run desktop:test
-      - run: npm run ffmpeg:build:darwin:arm64
+      - name: Reverify cached FFmpeg on native macOS
+        if: steps.compiled-ffmpeg.outputs.cache-hit == 'true'
+        run: npm run ffmpeg:verify:darwin
+      - run: npm run ffmpeg:build:darwin
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
       - name: Validate compiled candidate for caching
         id: compiled-cache-ready
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
-        run: node tooling/ffmpeg/scripts/compiled-cache.mjs save darwin-arm64
+        run: node tooling/ffmpeg/scripts/compiled-cache.mjs save darwin-x64
       - name: Save verified compiled FFmpeg
         if: steps.compiled-cache-ready.outcome == 'success'
         uses: actions/cache/save@v5
         with:
           path: |-
-            build/ffmpeg/install/darwin-arm64/bin
-            build/ffmpeg/candidates/darwin-arm64
-            build/ffmpeg/releases/darwin-arm64
-            build/ffmpeg/state/darwin-arm64
-            build/ffmpeg/reports/darwin-arm64/*.json
-            build/ffmpeg/reports/darwin-arm64/software/result.json
+            build/ffmpeg/install/darwin-x64/bin
+            build/ffmpeg/candidates/darwin-x64
+            build/ffmpeg/releases/darwin-x64
+            build/ffmpeg/state/darwin-x64
+            build/ffmpeg/reports/darwin-x64/*.json
+            build/ffmpeg/reports/darwin-x64/software/result.json
           key: ${{ steps.compiled-ffmpeg.outputs.cache-primary-key }}
-      - run: npm run desktop:build:darwin:arm64
+      - name: Verify image processing and colour normalization
+        run: npm run test:images
+      - run: npm run desktop:build:darwin:client-node
       - uses: actions/upload-artifact@v6
         with:
-          name: moartube-client-darwin-arm64-candidate
-          path: build/desktop/releases/darwin-arm64/
+          name: moartube-client-node-darwin-x64-candidate
+          path: |
+            build/desktop/releases/darwin-x64/*/MoarTube-Client-Node-[0-9]*-darwin-x64.dmg
+            build/desktop/releases/darwin-x64/*/MoarTube-Client-Node-[0-9]*-darwin-x64.zip
+            build/desktop/releases/darwin-x64/*/*-sources.tar.xz
+            build/desktop/releases/darwin-x64/*/SHA256SUMS-darwin-x64-bundled.txt
+            build/desktop/releases/darwin-x64/*/RELEASE-NOTES-darwin-x64-bundled.md
+            build/desktop/releases/darwin-x64/*/MoarTube-Client-Node-*-darwin-x64-*-sources.zip
           if-no-files-found: error
           retention-days: 14
       - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
-          name: moartube-client-darwin-arm64-build-reports
+          name: moartube-client-node-darwin-x64-build-reports
           path: |
-            build/ffmpeg/reports/darwin-arm64/
-            build/desktop/reports/darwin-arm64/
+            build/ffmpeg/reports/darwin-x64/
+            build/desktop/reports/darwin-x64/
           retention-days: 14
   verify:
-    name: Verify darwin-arm64 on ${{ matrix.runner }}
+    name: Verify darwin-x64 Client + Node on ${{ matrix.runner }}
     needs: build
     strategy:
       fail-fast: false
       matrix:
         runner:
-          - macos-15
-          - macos-26
+          - macos-15-intel
+          - macos-26-intel
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
@@ -172,7 +195,7 @@ jobs:
         with:
           package-manager-cache: false
           node-version: 24.22.1
-          architecture: arm64
+          architecture: x64
       - name: Locate npm download cache
         id: npm-cache-directory
         run: node scripts/npm-cache-directory.mjs
@@ -192,17 +215,17 @@ jobs:
           key: ${{ steps.npm-downloads.outputs.cache-primary-key }}
       - uses: actions/download-artifact@v7
         with:
-          name: moartube-client-darwin-arm64-candidate
-          path: build/desktop/releases/darwin-arm64/
-      - run: npm run desktop:verify:darwin:arm64
+          name: moartube-client-node-darwin-x64-candidate
+          path: build/desktop/releases/darwin-x64/
+      - run: npm run desktop:verify:darwin:client-node
       - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
-          name: moartube-client-darwin-arm64-${{ matrix.runner }}-verification
-          path: build/desktop/reports/darwin-arm64/
+          name: moartube-client-node-darwin-x64-${{ matrix.runner }}-verification
+          path: build/desktop/reports/darwin-x64/
           retention-days: 14
   upload-draft:
-    name: Upload verified darwin-arm64 assets to draft
+    name: Upload verified darwin-x64 Client + Node to draft
     needs:
       - build
       - verify
@@ -212,7 +235,7 @@ jobs:
     permissions:
       contents: write
     concurrency:
-      group: draft-upload-${{ github.repository }}-${{ inputs.release_tag }}-darwin-arm64
+      group: draft-upload-${{ github.repository }}-${{ inputs.release_tag }}-darwin-x64
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v6
@@ -224,9 +247,9 @@ jobs:
           node-version: 24.22.1
       - uses: actions/download-artifact@v7
         with:
-          name: moartube-client-darwin-arm64-candidate
+          name: moartube-client-node-darwin-x64-candidate
           path: build/release-upload
-      - name: Upload darwin-arm64 downloads to existing draft
+      - name: Upload darwin-x64 downloads to existing draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/upload-desktop-draft.mjs darwin-arm64 build/release-upload
+        run: node scripts/upload-desktop-draft.mjs darwin-x64-bundled build/release-upload

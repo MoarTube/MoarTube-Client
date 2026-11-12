@@ -68,6 +68,11 @@ Packaged application folders are under
 `build/desktop/work/win32-x64/packages/client/win-unpacked` and
 `build/desktop/work/win32-x64/packages/bundled/win-unpacked`.
 Run `npm.cmd run desktop:verify:windows:all` to verify both packaged apps.
+Use `desktop:verify:windows:client` or `desktop:verify:windows:client-node` to
+verify one variant from its build/pack output. The bundle check also verifies
+share playback. A missing packaged executable produces an error; these commands
+do not fall back to a development launch. For a different executable location,
+append `-- "<path-to-executable>"` to the single-variant command.
 Both Electron variants enable **Autostart** and **Minimize on Close** by default.
 Client and Node Settings each offer **Allow connections from other computers**.
 The Client defaults to local connections in every distribution. The bundled Node
@@ -198,9 +203,9 @@ to one process.
 `MoarTube`). Existing explicit `MOARTUBE_DATA_DIR` component overrides remain
 supported. Explicit custom locations start independently. Installed application
 data stays outside the installation directories.
-The source ZIP for FFmpeg accompanies the installers. Windows Client + Node also
-has a separate matching application source download; Linux bundles retain Node
-source in their application resources. License notices remain installed in both.
+Matching FFmpeg sources accompany the installers. Windows, Linux and macOS
+Client + Node builds also have a separate matching application source download;
+runtime packages retain license notices and a source archive pointer.
 Builds are unsigned candidates.
 
 ## Linux desktop option
@@ -275,19 +280,33 @@ physical Pi desktop/GPU qualification remains separate.
 ## macOS Intel and Apple Silicon desktop options
 
 Darwin x64 and ARM64 have native FFmpeg and Electron DMG/ZIP build scripts targeting macOS 15+.
-Choose **macOS Intel x64 Electron candidate** or **macOS Apple Silicon ARM64 Electron candidate**
-in GitHub Actions to build and test either architecture independently from Windows. On an Intel Mac, run `npm run ffmpeg:build:darwin`,
-`npm run desktop:build:darwin` and `npm run desktop:verify:darwin`.
+Choose **macOS x64 - Client**, **macOS x64 - Client + Node**,
+**macOS ARM64 - Client**, or **macOS ARM64 - Client + Node** in GitHub Actions.
+Each workflow builds its selected variant's DMG/ZIP candidates and verifies them
+on native macOS runners. The all-platform workflow calls all four. Both Darwin
+architectures use Electron for the backends, keep JavaScript dependencies in
+ASAR, and apply the shared audited dependency pruning and Node consolidation.
+The bundle's matching source/build materials are an optional separate download.
+ZIP/Deflate and DMG/UDZO default to compression level 6; locales remain included.
+Package reports record file counts. These changes await native build and runtime
+qualification before claiming installation-time or size improvements.
+On an Intel Mac, run `npm run ffmpeg:build:darwin`,
+`npm run desktop:build:darwin:all` and `npm run desktop:verify:darwin:all`.
 On Apple Silicon, use `npm run ffmpeg:build:darwin:arm64`,
-`npm run desktop:build:darwin:arm64` and `npm run desktop:verify:darwin:arm64`.
-The ARM64 path awaits its first native CI qualification. Initial packages use
+`npm run desktop:build:darwin:arm64:all` and `npm run desktop:verify:darwin:arm64:all`.
+Reverify existing FFmpeg candidates without rebuilding with
+`npm run ffmpeg:verify:darwin` or `npm run ffmpeg:verify:darwin:arm64`
+on the matching native Mac. These run feature and software-media checks;
+VideoToolbox hardware qualification remains separate.
+Both variants await fresh native CI qualification. Initial packages use
 ad-hoc signing and are not notarized. See the [macOS guide](docs/electron-darwin.md).
 
 ## Compile FFmpeg before starting
 
 The Node.js minimum is **24.22.1**. `.nvmrc` selects that version, and GitHub
 workflows and Linux container images pin it exactly for builds and bundled Node
-backends. Electron supplies its own Node runtime for the Windows utility process.
+backends. Electron supplies the runtime for desktop utility processes on all
+supported platforms.
 
 Linux x64 builds use Ubuntu 24.04 as the baseline and test exported binaries on
 Ubuntu 24.04 and 26.04. Run `npm run ffmpeg:build:linux` with Docker's Linux engine

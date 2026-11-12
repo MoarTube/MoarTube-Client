@@ -34,11 +34,19 @@ jobs:
     uses: ./.github/workflows/electron-build-linux-client-node-arm64.yml
     with:
       release_tag: ${{ inputs.release_tag }}
-  macos-intel:
-    uses: ./.github/workflows/electron-build-darwin-x64.yml
+  darwin-client-x64:
+    uses: ./.github/workflows/electron-build-darwin-client-x64.yml
     with:
       release_tag: ${{ inputs.release_tag }}
-  macos-apple-silicon:
-    uses: ./.github/workflows/electron-build-darwin-arm64.yml
+  darwin-client-node-x64:
+    uses: ./.github/workflows/electron-build-darwin-client-node-x64.yml
+    with:
+      release_tag: ${{ inputs.release_tag }}
+  darwin-client-arm64:
+    uses: ./.github/workflows/electron-build-darwin-client-arm64.yml
+    with:
+      release_tag: ${{ inputs.release_tag }}
+  darwin-client-node-arm64:
+    uses: ./.github/workflows/electron-build-darwin-client-node-arm64.yml
     with:
       release_tag: ${{ inputs.release_tag }}

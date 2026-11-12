@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-for (const target of ['win32-x64', 'linux-x64', 'linux-arm64'])
+for (const target of ['win32-x64', 'linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64'])
   test(`${target} Node ASAR keeps JavaScript archived and external resources on disk`, async (t) => {
     const { archiveDesktopNode } = await import('../../scripts/lib/desktop-node-archive.mjs');
     const asar = require('@electron/asar');
@@ -30,6 +30,7 @@ for (const target of ['win32-x64', 'linux-x64', 'linux-arm64'])
       'dist/public/index.ejs',
       'node_modules/thread-stream/lib/worker.js',
       'node_modules/pino/lib/worker.js',
+      ...(target.startsWith('darwin-') ? ['node_modules/native/library.dylib'] : []),
     ];
     for (const name of [...archived, ...unpacked]) {
       const file = path.join(node, name);

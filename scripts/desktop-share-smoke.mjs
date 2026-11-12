@@ -14,7 +14,11 @@ mkdirSync(profile, { recursive: true });
 prepareDesktopTestNode(profile);
 const executablePath = process.argv[2] ? path.resolve(process.argv[2]) : undefined;
 const ffmpegDirectory = executablePath
-  ? path.join(path.dirname(executablePath), 'resources/ffmpeg', layout.target)
+  ? path.join(
+      path.dirname(executablePath),
+      process.platform === 'darwin' ? '../Resources/ffmpeg' : 'resources/ffmpeg',
+      layout.target
+    )
   : undefined;
 const selection = executablePath ? undefined : JSON.parse(readFileSync(layout.selection, 'utf8'));
 const ffmpegManifest = executablePath
@@ -72,9 +76,13 @@ try {
   const page = await application.firstWindow();
   page.setDefaultTimeout(15_000);
   await page.waitForURL(/\/videos$/, { timeout: 180_000 });
-  assert.equal(JSON.parse(readFileSync(path.join(profile,
-    'MoarTube/client_node/node/_node_settings.json'), 'utf8')).isCloudflareTunnelEnabled, false,
-    'Playback tests must not create public tunnels');
+  assert.equal(
+    JSON.parse(
+      readFileSync(path.join(profile, 'MoarTube/client_node/node/_node_settings.json'), 'utf8')
+    ).isCloudflareTunnelEnabled,
+    false,
+    'Playback tests must not create public tunnels'
+  );
   const violations = [];
   await page.evaluate(() => {
     window.shareFrameViolations = [];

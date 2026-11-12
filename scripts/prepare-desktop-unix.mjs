@@ -13,6 +13,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { writeDarwinReleaseNotes } from './lib/darwin-release-notes.mjs';
 import { writeLinuxReleaseNotes } from './lib/linux-release-notes.mjs';
 import { sha256 } from './lib/desktop-ffmpeg.mjs';
 
@@ -68,23 +69,6 @@ mkdirSync(output, { recursive: true });
 mkdirSync(layout.reports, { recursive: true });
 mkdirSync(layout.state, { recursive: true });
 const runtimeDirectory = path.join(layout.staging, selection.buildId, 'runtime');
-const nodeRuntimeDirectory = path.join(layout.staging, `node-${arch}-${process.version}`);
-if (darwin) {
-  const nodeLicense =
-    process.env.MOARTUBE_NODE_LICENSE ?? path.resolve(path.dirname(process.execPath), '../LICENSE');
-  if (!existsSync(nodeLicense))
-    throw new Error(
-      'Node runtime LICENSE missing; set MOARTUBE_NODE_LICENSE to the matching Node distribution LICENSE.'
-    );
-  mkdirSync(nodeRuntimeDirectory, { recursive: true });
-  copyFileSync(process.execPath, path.join(nodeRuntimeDirectory, 'node'));
-  chmodSync(path.join(nodeRuntimeDirectory, 'node'), 0o755);
-  copyFileSync(nodeLicense, path.join(nodeRuntimeDirectory, 'LICENSE'));
-  writeFileSync(
-    path.join(nodeRuntimeDirectory, 'NOTICES.txt'),
-    `Node.js ${process.version} (${arch}), bundled for the desktop backend. See LICENSE for Node.js and third-party license texts.\n`
-  );
-}
 cpSync(candidate, runtimeDirectory, { recursive: true });
 for (const name of ['ffmpeg', 'ffprobe'])
   chmodSync(path.join(runtimeDirectory, manifest.files[name].path), 0o755);
@@ -107,7 +91,6 @@ writeFileSync(
   JSON.stringify(
     {
       runtimeDirectory,
-      nodeRuntimeDirectory: darwin ? nodeRuntimeDirectory : undefined,
       nodeVersion: process.version,
       buildId: manifest.buildId,
       sourceArchive: selection.sourceArchive,
@@ -120,15 +103,7 @@ writeFileSync(
   ) + '\n'
 );
 if (darwin) {
-  writeFileSync(
-    path.join(output, `RELEASE-NOTES-${target}.md`),
-    `# MoarTube Client ${version} - macOS 15+ ${arch === 'arm64' ? 'Apple Silicon ARM64' : 'Intel x64'}\n\n` +
-      `- [Disk image](${releaseBase}/MoarTube-Client-${version}-${target}.dmg)\n` +
-      `- [Application ZIP](${releaseBase}/MoarTube-Client-${version}-${target}.zip)\n` +
-      `- [FFmpeg corresponding sources](${sourceUrl}) - optional\n` +
-      `- [Checksums](${releaseBase}/SHA256SUMS-${target}.txt)\n\n` +
-      'Ad-hoc signed, not notarized. macOS may block browser downloads; see docs/electron-darwin.md for manual approval. Node.js, FFmpeg and FFprobe are bundled. Connect to an existing MoarTube Node. Publish and retain matching FFmpeg sources beside the app. Hardware VideoToolbox and physical Mac qualification remain pending.\n'
-  );
+  writeDarwinReleaseNotes({ output, version, target, releaseBase, sourceUrl });
 } else {
   writeLinuxReleaseNotes({ output, version, target, releaseBase, sourceUrl });
 }

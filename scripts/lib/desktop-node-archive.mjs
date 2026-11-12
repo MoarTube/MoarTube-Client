@@ -6,7 +6,7 @@ export async function archiveDesktopNode(
   directory,
   target = `${process.platform}-${process.arch}`
 ) {
-  if (!['win32-x64', 'linux-x64', 'linux-arm64'].includes(target))
+  if (!['win32-x64', 'linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64'].includes(target))
     throw new Error('Unsupported Node archive target');
   directory = path.resolve(directory);
   const archive = directory + '.asar';
@@ -19,7 +19,7 @@ export async function archiveDesktopNode(
     // ASAR's API matches absolute paths. Native addons, external executables,
     // worker entry points and public assets need real filesystem paths.
     unpack:
-      '**/{dist/public/**/*,resources/cloudflared/**/*,node_modules/**/*.node,node_modules/**/*.dll,node_modules/**/*.so*,node_modules/thread-stream/lib/worker.js,node_modules/pino/lib/worker.js}',
+      '**/{dist/public/**/*,resources/cloudflared/**/*,node_modules/**/*.node,node_modules/**/*.dll,node_modules/**/*.dylib,node_modules/**/*.so*,node_modules/thread-stream/lib/worker.js,node_modules/pino/lib/worker.js}',
   });
   for (const name of ['dist/moartube-node.js', 'desktop-bootstrap.mjs', 'desktop-preflight.mjs'])
     if (statFile(archive, path.normalize(name)).unpacked)

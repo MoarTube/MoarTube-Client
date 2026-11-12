@@ -47,10 +47,10 @@ function allowPermission(permission, url, origin) {
 module.exports = {
   usesElectronClient: (platform, arch) =>
     (platform === 'win32' && arch === 'x64') ||
-    (platform === 'linux' && ['x64', 'arm64'].includes(arch)),
+    (['linux', 'darwin'].includes(platform) && ['x64', 'arm64'].includes(arch)),
   usesElectronNode: (platform, arch) =>
     (platform === 'win32' && arch === 'x64') ||
-    (platform === 'linux' && ['x64', 'arm64'].includes(arch)),
+    (['linux', 'darwin'].includes(platform) && ['x64', 'arm64'].includes(arch)),
   supportsDesktopTarget,
   isLocalNavigation,
   isExternalLink,

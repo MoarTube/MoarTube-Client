@@ -24,6 +24,8 @@ const {
   usesElectronClient,
 } = require('./policy.cjs');
 const linuxProcesses = require('./linux-processes.cjs');
+const darwinProcesses =
+  process.platform === 'darwin' ? require('./darwin-processes.cjs') : undefined;
 const { createAutostart, AUTOSTART_ARGUMENT } = require('./autostart.cjs');
 const { desktopLayout, prepareData } = require('../src/config/data-layout.cjs');
 
@@ -33,7 +35,7 @@ const version = require('../package.json').version;
 const electronNode = usesElectronNode(process.platform, process.arch);
 const electronClient = usesElectronClient(process.platform, process.arch);
 const bundled =
-  ['win32', 'linux'].includes(process.platform) &&
+  ['win32', 'linux', 'darwin'].includes(process.platform) &&
   (app.isPackaged
     ? require('../package.json').moartubeBundledNode === true
     : process.env.MOARTUBE_DESKTOP_BUNDLED === '1');
@@ -118,12 +120,7 @@ async function stopBackend() {
           return;
         }
         if (process.platform === 'darwin') {
-          // The Mac backend owns a separate process group, including media jobs.
-          try {
-            process.kill(-backend.pid, 'SIGKILL');
-          } catch {
-            backend.kill();
-          }
+          darwinProcesses.terminateOwnedTree(backend.pid, backendIdentity);
           resolve();
           return;
         }
@@ -581,6 +578,7 @@ if (!ownsInstance) {
       backend.stdout?.on('data', forwardBackendLog);
       backend.on('spawn', () => {
         if (process.platform === 'linux') backendIdentity = linuxProcesses.identity(backend.pid);
+        if (process.platform === 'darwin') backendIdentity = darwinProcesses.identity(backend.pid);
         if (process.env.MOARTUBE_DESKTOP_SMOKE === '1') app.moartubeBackendPid = backend.pid;
       });
       backend.stderr?.on('data', forwardBackendLog);

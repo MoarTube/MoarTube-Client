@@ -138,7 +138,7 @@ try {
   if (!Number.isInteger(backendPid)) throw new Error('Managed backend process was not found');
   if (
     process.platform === 'win32' ||
-    (process.platform === 'linux' && executablePath)
+    (['linux', 'darwin'].includes(process.platform) && executablePath)
   )
     assert.equal(
       await application.evaluate(

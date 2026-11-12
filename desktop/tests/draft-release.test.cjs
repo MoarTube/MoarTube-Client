@@ -99,6 +99,61 @@ function github({
   };
 }
 
+test('Darwin release uploads isolate both variants on both architectures', async (t) => {
+  const { collectReleaseAssets } = await import('../../scripts/lib/draft-release.mjs');
+  for (const arch of ['x64', 'arm64'])
+    for (const variant of ['client', 'bundled']) {
+      const target = `darwin-${arch}`;
+      const local = await fixture(t, target);
+      const prefix = variant === 'bundled' ? 'MoarTube-Client-Node' : 'MoarTube-Client';
+      const files = [
+        `${prefix}-1.1.0-${target}.dmg`,
+        `${prefix}-1.1.0-${target}.zip`,
+        ...local.files.filter((name) => name.endsWith('-sources.tar.xz')),
+        ...(variant === 'bundled'
+          ? [`MoarTube-Client-Node-1.1.0-${target}-123456abcdef-sources.zip`]
+          : []),
+      ];
+      for (const name of files) fs.writeFileSync(path.join(local.output, name), name);
+      const checksum = `SHA256SUMS-${target}-${variant}.txt`;
+      const notes = `RELEASE-NOTES-${target}-${variant}.md`;
+      fs.writeFileSync(
+        path.join(local.output, checksum),
+        files.map((name) => `${hash(name)}  ${name}`).join('\n') + '\n'
+      );
+      fs.copyFileSync(path.join(local.output, local.notes), path.join(local.output, notes));
+      if (variant === 'bundled')
+        fs.appendFileSync(
+          path.join(local.output, notes),
+          `Sources: https://github.com/${repo}/releases/download/${tag}/${files.at(-1)}\n`
+        );
+      const options = { ...local, target: `${target}-${variant}` };
+      const assets = await collectReleaseAssets(options);
+      assert.deepEqual(
+        assets.map((asset) => asset.name).sort(),
+        [...files, checksum, notes].sort()
+      );
+      if (variant === 'bundled') {
+        fs.writeFileSync(
+          path.join(local.output, checksum),
+          files
+            .slice(0, -1)
+            .map((name) => `${hash(name)}  ${name}`)
+            .join('\n') + '\n'
+        );
+        await assert.rejects(collectReleaseAssets(options), /incomplete/);
+      }
+      fs.writeFileSync(
+        path.join(local.output, checksum),
+        files
+          .slice(1)
+          .map((name) => `${hash(name)}  ${name}`)
+          .join('\n') + '\n'
+      );
+      await assert.rejects(collectReleaseAssets(options), /incomplete/);
+    }
+});
+
 test('accepts either complete Windows variant alone and rejects an incomplete bundled pair', async (t) => {
   const { collectReleaseAssets } = await import('../../scripts/lib/draft-release.mjs');
   for (const prefix of ['MoarTube-Client-1.1.0-', 'MoarTube-Client-Node-1.1.0-']) {

@@ -76,6 +76,20 @@ export async function collectReleaseAssets({ directory, target, version, repo, t
         source: new RegExp('^[a-zA-Z0-9._-]+-' + platform + '-[a-zA-Z0-9._-]+-sources\\.tar\\.xz$'),
       };
     }
+  for (const arch of ['x64', 'arm64'])
+    for (const variant of ['client', 'bundled']) {
+      const platform = 'darwin-' + arch;
+      const prefix = variant === 'bundled' ? 'MoarTube-Client-Node' : 'MoarTube-Client';
+      platforms[platform + '-' + variant] = {
+        checksum: 'SHA256SUMS-' + platform + '-' + variant + '.txt',
+        notes: 'RELEASE-NOTES-' + platform + '-' + variant + '.md',
+        binaries: [
+          prefix + '-' + version + '-' + platform + '.dmg',
+          prefix + '-' + version + '-' + platform + '.zip',
+        ],
+        source: new RegExp('^[a-zA-Z0-9._-]+-' + platform + '-[a-zA-Z0-9._-]+-sources\\.tar\\.xz$'),
+      };
+    }
   const platform = platforms[target];
   if (!platform) throw new Error(`Unsupported draft release target: ${target}`);
   const checksum = platform.checksum ?? `SHA256SUMS-${target}.txt`;
@@ -121,9 +135,14 @@ export async function collectReleaseAssets({ directory, target, version, repo, t
       : [];
   const hasBundled = bundledBinaries.some((name) => names.has(name));
   const needsNodeSources =
-    ['win32-x64-bundled', 'linux-x64-bundled', 'linux-arm64-bundled'].includes(target) ||
-    hasBundled;
-  const nodeSourceTarget = target.startsWith('linux-')
+    [
+      'win32-x64-bundled',
+      'linux-x64-bundled',
+      'linux-arm64-bundled',
+      'darwin-x64-bundled',
+      'darwin-arm64-bundled',
+    ].includes(target) || hasBundled;
+  const nodeSourceTarget = /^(linux|darwin)-/.test(target)
     ? target.replace(/-bundled$/, '')
     : 'windows-x64';
   const nodeSources = entries.filter(

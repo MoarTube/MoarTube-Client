@@ -63,7 +63,7 @@ jobs:
         run: npm run ffmpeg:build:windows
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
       - name: Package candidate with source and evidence
-        run: npm run ffmpeg:package:windows
+        run: node tooling/ffmpeg/scripts/package-windows.mjs
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
       - name: Validate compiled candidate for caching
         id: compiled-cache-ready

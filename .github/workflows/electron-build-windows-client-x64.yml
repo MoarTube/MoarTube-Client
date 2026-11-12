@@ -116,7 +116,7 @@ jobs:
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
       - name: Package verified FFmpeg for reuse
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
-        run: npm run ffmpeg:package:windows
+        run: node tooling/ffmpeg/scripts/package-windows.mjs
       - name: Validate compiled candidate for caching
         id: compiled-cache-ready
         if: steps.compiled-ffmpeg.outputs.cache-hit != 'true'
@@ -142,7 +142,7 @@ jobs:
       - name: Build Client installer and ZIP
         run: npm run desktop:build:windows:client
       - name: Verify packaged Client
-        run: npm run desktop:verify:windows:client -- "build/desktop/work/win32-x64/packages/client/win-unpacked/MoarTube Client.exe"
+        run: npm run desktop:verify:windows:client
       - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:

@@ -14,7 +14,8 @@ import {
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ffmpegPaths } from '../../build-paths.cjs';
-import { requireDarwinTarget, run, inspectDarwinDependencies } from './darwin-native.mjs';
+import { requireDarwinTarget, run } from './darwin-native.mjs';
+import { verifyDarwinBinaries } from './darwin-verification.mjs';
 
 const { arch, target } = requireDarwinTarget();
 const root = fileURLToPath(new URL('../../../', import.meta.url));
@@ -61,74 +62,14 @@ for (const source of lock.sources) {
   run('tar', ['-xf', archive, '--strip-components=1', '-C', destination]);
 }
 run('bash', [path.join(root, 'tooling/ffmpeg/platforms/darwin/build.sh'), root, arch]);
-const files = {};
-const dependencies = [];
-for (const name of ['ffmpeg', 'ffprobe']) {
-  const file = path.join(layout.install, 'bin', name);
-  run('codesign', ['--force', '--sign', '-', file]);
-  const linked = inspectDarwinDependencies(file, arch);
-  files[name] = { sha256: hash(file) };
-  dependencies.push({ name, sha256: files[name].sha256, libraries: linked });
-}
-const ffmpeg = path.join(layout.install, 'bin/ffmpeg');
-const listing = (flag) => run(ffmpeg, ['-hide_banner', flag], { stdio: 'pipe' });
-const capabilities = Object.fromEntries(
-  ['encoders', 'decoders', 'filters', 'protocols', 'muxers', 'demuxers', 'hwaccels'].map((name) => [
-    name,
-    listing(`-${name}`),
-  ])
-);
-const required = {
-  encoders: ['libx264', 'libvpx-vp9', 'libopus', 'aac', 'png', 'mjpeg', 'h264_videotoolbox'],
-  decoders: ['h264', 'hevc', 'libdav1d', 'vp9', 'aac', 'opus', 'png', 'mjpeg', 'rawvideo'],
-  filters: [
-    'scale',
-    'scale_vt',
-    'hwupload',
-    'hwdownload',
-    'split',
-    'fps',
-    'overlay',
-    'pad',
-    'crop',
-    'format',
-    'aresample',
-    'setsar',
-    'premultiply',
-    'unpremultiply',
-    'sidedata',
-  ],
-  protocols: ['file', 'pipe', 'http', 'https', 'tls', 'tcp', 'udp', 'rtmp', 'rtmps'],
-  muxers: ['hls', 'mp4', 'mpegts', 'flv', 'webm', 'image2', 'image2pipe'],
-  demuxers: ['mov', 'matroska', 'mpegts', 'flv', 'hls', 'rawvideo'],
-  hwaccels: ['videotoolbox'],
-};
-for (const [kind, names] of Object.entries(required))
-  for (const name of names)
-    if (!new RegExp(`(^|\\s)${name}(?=\\s|,|$)`, 'm').test(capabilities[kind]))
-      throw new Error(`Missing Darwin FFmpeg ${kind}: ${name}`);
-json(path.join(layout.reports, 'features.json'), {
-  passed: true,
-  required,
-  capabilities,
-  binarySha256: Object.fromEntries(
-    Object.entries(files).map(([name, file]) => [name, file.sha256])
-  ),
+for (const name of ['ffmpeg', 'ffprobe'])
+  run('codesign', ['--force', '--sign', '-', path.join(layout.install, 'bin', name)]);
+const { files } = verifyDarwinBinaries({
+  ffmpeg: path.join(layout.install, 'bin/ffmpeg'),
+  ffprobe: path.join(layout.install, 'bin/ffprobe'),
+  arch,
+  reports: layout.reports,
 });
-json(path.join(layout.reports, 'dependencies.json'), dependencies);
-run(process.execPath, [
-  path.join(root, 'tooling/ffmpeg/scripts/verify-software.mjs'),
-  ffmpeg,
-  path.join(layout.install, 'bin/ffprobe'),
-  path.join(layout.reports, 'software'),
-]);
-const software = read(path.join(layout.reports, 'software/result.json'));
-if (
-  !software.results.length ||
-  software.results.some((result) => !result.passed) ||
-  Object.entries(files).some(([name, file]) => software.binarySha256[name] !== file.sha256)
-)
-  throw new Error('Darwin software qualification failed or mismatches the binaries');
 const recipeSha256 = recipeHash(root, target);
 const version = lock.sources.find((source) => source.id === 'ffmpeg').version;
 const buildId = `${version}-moartube-${target}-${files.ffmpeg.sha256.slice(0, 16)}-r${recipeSha256.slice(0, 8)}`;

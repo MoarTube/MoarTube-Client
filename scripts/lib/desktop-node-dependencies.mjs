@@ -15,7 +15,7 @@ import {
 import path from 'node:path';
 import { isLicenseNotice } from './desktop-runtime-dependencies.mjs';
 
-// These are packaging optimizations for the audited Windows Node runtime.
+// These are packaging optimizations for the audited desktop Node runtime.
 // A package update keeps its original tree until the new version is reviewed.
 export async function consolidateDesktopNodeDependencies(destination) {
   destination = path.resolve(destination);

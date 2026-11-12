@@ -54,5 +54,6 @@ async function verifyNodePackage({
     if (verified[key] !== bundle[key])
       throw new Error(`Packaged Node ${key} differs from staging.`);
   console.log('Packaged Electron-hosted Node native preflight passed', verified);
+  return verified;
 }
 module.exports = { verifyNodePackage };

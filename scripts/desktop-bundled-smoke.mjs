@@ -9,8 +9,8 @@ import { fileURLToPath } from 'node:url';
 import { desktopPaths } from '../tooling/build-paths.cjs';
 import { prepareDesktopTestNode } from './lib/desktop-test-profile.mjs';
 
-if (!['win32', 'linux'].includes(process.platform))
-  throw new Error('Bundled smoke requires Windows or Linux.');
+if (!['win32', 'linux', 'darwin'].includes(process.platform))
+  throw new Error('Bundled smoke requires Windows, Linux or macOS.');
 const root = fileURLToPath(new URL('../', import.meta.url));
 const layout = desktopPaths(root, `${process.platform}-${process.arch}`);
 const executablePath = process.argv[2] ? path.resolve(process.argv[2]) : undefined;
@@ -157,8 +157,11 @@ try {
   }));
   nodePort = owned.port;
   assert(Number.isInteger(owned.node) && Number.isInteger(owned.client));
-  if (process.platform === 'linux' || (process.platform === 'win32' && process.arch === 'x64')) {
-    if (executablePath || process.platform === 'win32')
+  if (
+    ['linux', 'darwin'].includes(process.platform) ||
+    (process.platform === 'win32' && process.arch === 'x64')
+  ) {
+    if (executablePath || ['win32', 'darwin'].includes(process.platform))
       assert.equal(
         await application.evaluate(
           ({ app }, pid) =>
@@ -182,7 +185,10 @@ try {
       'Bundled Node must run in an Electron utility process'
     );
     if (executablePath) {
-      const resources = path.join(path.dirname(executablePath), 'resources');
+      const resources = path.resolve(
+        path.dirname(executablePath),
+        process.platform === 'darwin' ? '../Resources' : 'resources'
+      );
       assert(existsSync(path.join(resources, 'node.asar')));
       assert(
         !existsSync(path.join(resources, 'runtime')),

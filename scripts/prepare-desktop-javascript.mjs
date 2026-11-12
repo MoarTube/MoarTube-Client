@@ -14,9 +14,11 @@ import {
 
 if (
   !(process.platform === 'win32' && process.arch === 'x64') &&
-  !(process.platform === 'linux' && ['x64', 'arm64'].includes(process.arch))
+  !(['linux', 'darwin'].includes(process.platform) && ['x64', 'arm64'].includes(process.arch))
 )
-  throw new Error('Desktop JavaScript consolidation supports Windows x64 and Linux x64/ARM64.');
+  throw new Error(
+    'Desktop JavaScript consolidation supports Windows x64 and Linux/macOS x64/ARM64.'
+  );
 const root = fileURLToPath(new URL('../', import.meta.url));
 const version = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version;
 const target = `${process.platform}-${process.arch}`;
@@ -44,6 +46,7 @@ reports.client = await bundleDesktopJavaScript({
     'desktop/autostart.cjs',
     'desktop/policy.cjs',
     'desktop/linux-processes.cjs',
+    ...(process.platform === 'darwin' ? ['desktop/darwin-processes.cjs'] : []),
     'desktop/bundled-node.cjs',
     'desktop/loading.html',
     'desktop/loading.js',
@@ -115,9 +118,9 @@ if (variant !== 'client') {
   addDesktopSourceNotes(
     path.join(
       layout.release,
-      process.platform === 'linux'
-        ? `RELEASE-NOTES-${target}-bundled.md`
-        : 'RELEASE-NOTES-windows-bundled.md'
+      process.platform === 'win32'
+        ? 'RELEASE-NOTES-windows-bundled.md'
+        : `RELEASE-NOTES-${target}-bundled.md`
     ),
     source
   );

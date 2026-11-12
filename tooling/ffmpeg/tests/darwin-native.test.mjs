@@ -5,6 +5,7 @@ import {
   validateDarwinDependencies,
   parseDarwinTarget,
 } from '../scripts/darwin-native.mjs';
+import { darwinRequirements, missingDarwinFeatures } from '../scripts/darwin-verification.mjs';
 
 function binary(cpu = 0x01000007, minimum = 0x000f0000) {
   const data = Buffer.alloc(56);
@@ -65,4 +66,26 @@ test('Darwin FFmpeg cannot depend on a build machine Homebrew or relative librar
       () => validateDarwinDependencies(system + `\t${library} (compatibility version 1.0.0)\n`),
       /Non-system/
     );
+});
+
+test('Darwin feature verification handles protocol sections and format aliases', () => {
+  const reports = Object.fromEntries(
+    Object.entries(darwinRequirements).map(([kind, names]) => [
+      kind,
+      kind === 'protocols'
+        ? 'Input:\n' + names.map((name) => `  ${name}`).join('\n') + '\nOutput:\n'
+        : kind === 'hwaccels'
+          ? names.join('\n')
+          : names.map((name) => ` V..... ${name} description`).join('\n'),
+    ])
+  );
+  reports.demuxers = reports.demuxers.replace(
+    'mov description',
+    'mov,mp4,m4a,3gp,3g2,mj2 description'
+  );
+  reports.muxers = reports.muxers.replace('mp4 description', 'mov,mp4 description');
+  assert.deepEqual(missingDarwinFeatures(reports), []);
+  reports.filters = reports.filters.replace(' V..... scale_vt description', '');
+  reports.protocols = reports.protocols.replace('  rtmps', '');
+  assert.deepEqual(missingDarwinFeatures(reports), ['filters: scale_vt', 'protocols: rtmps']);
 });

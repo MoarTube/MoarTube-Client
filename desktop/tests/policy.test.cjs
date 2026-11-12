@@ -18,9 +18,11 @@ test('Electron backend selection preserves the configured platform runtimes', ()
   assert.equal(usesElectronClient('linux', 'x64'), true);
   assert.equal(usesElectronClient('win32', 'x64'), true);
   assert.equal(usesElectronClient('win32', 'arm64'), false);
-  assert.equal(usesElectronClient('darwin', 'arm64'), false);
+  assert.equal(usesElectronClient('darwin', 'arm64'), true);
+  assert.equal(usesElectronClient('darwin', 'x64'), true);
   assert.equal(usesElectronNode('win32', 'arm64'), false);
-  assert.equal(usesElectronNode('darwin', 'x64'), false);
+  assert.equal(usesElectronNode('darwin', 'x64'), true);
+  assert.equal(usesElectronNode('darwin', 'arm64'), true);
 });
 
 test('startup accepts Apple Silicon and the other packaged targets while rejecting unsupported hosts', () => {

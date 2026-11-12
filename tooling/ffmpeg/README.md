@@ -31,7 +31,7 @@ alone is approximately 380 MiB. All generated files stay under `build/ffmpeg`.
 
 ```powershell
 npm.cmd run ffmpeg:build:windows
-npm.cmd run ffmpeg:package:windows
+node tooling/ffmpeg/scripts/package-windows.mjs
 ```
 
 The build verifies cached/downloaded SHA-256 hashes, installs only the locked
@@ -80,10 +80,11 @@ no staging or override is needed. Missing FFmpeg or FFprobe throws an actionable
 startup error before GPU assessment, CPU fallback or media-directory cleanup.
 An explicit `FFMPEG_BIN` or client `ffmpegPath` can select another executable.
 
-To prepare resource files from an unpacked candidate for packaging:
+Normal desktop builds stage resources automatically. To manually stage an
+unpacked Windows candidate into the repository's resource fallback directory:
 
 ```powershell
-npm.cmd run ffmpeg:stage:windows -- "build/ffmpeg/candidates/win32-x64/<build-id>"
+node tooling/ffmpeg/scripts/stage-windows.mjs "build/ffmpeg/candidates/win32-x64/<build-id>"
 ```
 
 Staging checks binary hashes and copies a new immutable build into
