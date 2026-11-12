@@ -26,6 +26,21 @@ class MoarTubeNodeVisitLinks {
 							</a>
 						</div>
 					`;
+    root.querySelectorAll('.node-visit-link').forEach((link) => {
+      const row = document.createElement('div');
+      row.className = 'node-visit-row';
+      link.before(row);
+      row.append(link);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'node-visit-copy';
+      button.disabled = true;
+      button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-copy" viewBox="0 0 16 16" aria-hidden="true">' +
+        '<path fill-rule="evenodd" d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1z"/></svg>' +
+        '<span class="node-visit-copy-status" role="status" aria-live="polite"></span>';
+      row.append(button);
+      button.addEventListener('click', () => void this.copyLink(button));
+    });
     this.publicLink = root.querySelector('[data-node-public-link]');
     this.tunnelLink = root.querySelector('[data-node-tunnel-link]');
     this.tunnelItem = root.querySelector('[data-node-tunnel-item]');
@@ -51,6 +66,14 @@ class MoarTubeNodeVisitLinks {
     link.querySelector('.node-visit-address').textContent = url || unavailable;
     link.querySelector('.node-visit-external').hidden = !url;
     const label = link.querySelector('.node-visit-label').textContent;
+    const button = link.parentElement.querySelector('.node-visit-copy');
+    if (button.dataset.url !== (url || '')) {
+      this.resetCopy(button);
+      button.dataset.url = url || '';
+    }
+    button.disabled = !url;
+    button.title = 'Copy ' + label;
+    button.setAttribute('aria-label', 'Copy ' + label);
     link.title = url || unavailable;
     link.setAttribute('aria-label', label + ': ' + (url || unavailable));
     if (url) {
@@ -60,6 +83,42 @@ class MoarTubeNodeVisitLinks {
       link.removeAttribute('href');
       link.setAttribute('aria-disabled', 'true');
     }
+  }
+
+  resetCopy(button) {
+    window.clearTimeout(button.copyTimer);
+    button.querySelector('[role="status"]').textContent = '';
+  }
+
+  async copyLink(button) {
+    const url = button.dataset.url;
+    if (!url || button.disabled) return;
+    this.resetCopy(button);
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(url);
+      copied = true;
+    } catch (_) {
+      // Support clipboard copying on HTTP connections and older browsers.
+      const input = document.createElement('textarea');
+      input.value = url;
+      input.style.cssText = 'position:fixed;left:-9999px;top:0';
+      input.setAttribute('readonly', '');
+      const focused = document.activeElement;
+      document.body.append(input);
+      try {
+        input.select();
+        copied = document.execCommand('copy');
+      } catch (_) {
+        /* Report failure without displaying a success indicator. */
+      } finally {
+        input.remove();
+        focused?.focus({ preventScroll: true });
+      }
+    }
+    if (button.dataset.url !== url || !button.isConnected) return;
+    button.querySelector('[role="status"]').textContent = copied ? 'Copied!' : 'Copy failed';
+    button.copyTimer = window.setTimeout(() => this.resetCopy(button), 2000);
   }
 
   render(settings, tunnel, loading = false) {

@@ -133,6 +133,7 @@ jobs:
             build/desktop/releases/linux-x64/*/MoarTube-Client-Node-[0-9]*-linux-x64.deb
             build/desktop/releases/linux-x64/*/MoarTube-Client-Node-[0-9]*-linux-x64-portable.tar.gz
             build/desktop/releases/linux-x64/*/*.tar.xz
+            build/desktop/releases/linux-x64/*/MoarTube-Client-Node-*-linux-x64-*-sources.zip
             build/desktop/releases/linux-x64/*/SHA256SUMS-linux-x64-bundled.txt
             build/desktop/releases/linux-x64/*/RELEASE-NOTES-linux-x64-bundled.md
             build/desktop/reports/linux-x64/

@@ -15,6 +15,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { desktopPaths } from '../tooling/build-paths.cjs';
 import { verifyNodeRuntime } from '../desktop/node-runtime.cjs';
+import desktopPolicy from '../desktop/policy.cjs';
+
+const { usesElectronNode } = desktopPolicy;
 
 const windows = process.platform === 'win32';
 if (
@@ -23,6 +26,7 @@ if (
 )
   throw new Error('Build bundled Node on matching Windows x64 or Linux x64/ARM64.');
 const target = process.platform + '-' + process.arch;
+const electronHosted = usesElectronNode(process.platform, process.arch);
 const root = fileURLToPath(new URL('../', import.meta.url));
 const source = path.resolve(
   process.env.MOARTUBE_NODE_SOURCE || path.join(root, '../MoarTube-Node')
@@ -59,8 +63,11 @@ copyFileSync(
   path.join(root, 'desktop/node-bootstrap.mjs'),
   path.join(destination, 'desktop-bootstrap.mjs')
 );
-if (windows)
-  copyFileSync(path.join(root, 'desktop/node-preflight.mjs'), path.join(destination, 'desktop-preflight.mjs'));
+if (electronHosted)
+  copyFileSync(
+    path.join(root, 'desktop/node-preflight.mjs'),
+    path.join(destination, 'desktop-preflight.mjs')
+  );
 const npm = path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
 execFileSync(
   windows ? process.execPath : 'npm',
@@ -80,9 +87,12 @@ execFileSync(
 // still supply the ABI-specific addon compiled in their dependency container.
 const prebuilt = `node_modules/better-sqlite3/prebuilds/${target}.node`;
 const native = existsSync(path.join(destination, prebuilt))
-  ? prebuilt : 'node_modules/better-sqlite3/build/Release/better_sqlite3.node';
-if (windows && native !== prebuilt)
-  throw new Error('Windows bundles require the Node-API SQLite package (better-sqlite3 13.0.3 or newer).');
+  ? prebuilt
+  : 'node_modules/better-sqlite3/build/Release/better_sqlite3.node';
+if (electronHosted && native !== prebuilt)
+  throw new Error(
+    'Electron-hosted bundles require the Node-API SQLite package (better-sqlite3 13.0.3 or newer).'
+  );
 if (native !== prebuilt) {
   mkdirSync(path.dirname(path.join(destination, native)), { recursive: true });
   copyFileSync(path.join(dependencies, native), path.join(destination, native));
@@ -127,16 +137,20 @@ for (const name of ['LICENSE', 'README.md'])
       path.join(destination, 'resources/cloudflared', name)
     );
 
-// Linux continues to ship the standalone runtime. Windows uses Electron's
-// embedded Node runtime and verifies the native addon in a utility process.
+// MoarTube Node uses Electron on Windows x64 and both Linux architectures.
+// Both Linux Client backends also use Electron; no separate runtime is staged.
 const version = process.version;
 const runtime = path.join(bundle, 'runtime');
 let runtimeMetadata;
-if (windows) {
+if (electronHosted) {
   if (path.resolve(runtime) !== path.resolve(layout.staging, 'bundled/runtime'))
     throw new Error('Invalid obsolete Node runtime staging directory');
   rmSync(runtime, { recursive: true, force: true });
-  runtimeMetadata = { runtimeHost: 'electron', buildNodeVersion: version, ...verifyNodeRuntime(root, destination) };
+  runtimeMetadata = {
+    runtimeHost: 'electron',
+    buildNodeVersion: version,
+    ...verifyNodeRuntime(root, destination),
+  };
 } else {
   mkdirSync(runtime, { recursive: true });
   const selection = JSON.parse(readFileSync(layout.selection, 'utf8'));
@@ -148,17 +162,22 @@ if (windows) {
   const { assertLinuxElf } = await import('../tooling/ffmpeg/scripts/linux-elf.mjs');
   for (const file of [path.join(runtime, 'node'), path.join(destination, native), cloudflared])
     assertLinuxElf(readFileSync(file), process.arch);
-  runtimeMetadata = { runtimeHost: 'node', runtimeVersion: version, runtimeSha256: digest(path.join(runtime, 'node')) };
+  runtimeMetadata = {
+    runtimeHost: 'node',
+    runtimeVersion: version,
+    runtimeSha256: digest(path.join(runtime, 'node')),
+  };
 }
-if (!windows) execFileSync(
-  path.join(runtime, 'node'),
-  [
-    '--input-type=commonjs',
-    '-e',
-    "const Database=require('better-sqlite3');const db=new Database(':memory:');db.exec('create table preflight (id integer)');db.close();console.log('Bundled SQLite native preflight passed');",
-  ],
-  { cwd: destination, stdio: 'inherit', windowsHide: true }
-);
+if (!electronHosted)
+  execFileSync(
+    path.join(runtime, 'node'),
+    [
+      '--input-type=commonjs',
+      '-e',
+      "const Database=require('better-sqlite3');const db=new Database(':memory:');db.exec('create table preflight (id integer)');db.close();console.log('Bundled SQLite native preflight passed');",
+    ],
+    { cwd: destination, stdio: 'inherit', windowsHide: true }
+  );
 writeFileSync(
   path.join(bundle, 'bundle.json'),
   JSON.stringify(

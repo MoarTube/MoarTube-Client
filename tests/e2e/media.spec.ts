@@ -9,7 +9,6 @@ import {
   expectSuccess,
   closeDialog,
 } from './fixtures.js';
-import sharp from 'sharp';
 import { readFile } from 'node:fs/promises';
 
 for (const [name, options] of [
@@ -46,11 +45,7 @@ for (const [kind, width, height] of [
     signedInPage: page,
     importedVideo: video,
   }) => {
-    const buffer = await sharp({
-      create: { width: 80, height: 60, channels: 3, background: 'blue' },
-    })
-      .png()
-      .toBuffer();
+    const buffer = await readFile(new URL('../fixtures/images/alpha.png', import.meta.url));
     await video.row.locator('.thumbnail-button').click();
     const upload = clientResponse(page, `/videos/${video.id}/images/${kind}`);
     const refreshed = observe(
@@ -66,7 +61,15 @@ for (const [kind, width, height] of [
     await expectSuccess(upload);
     const served = await refreshed;
     expect(served.ok()).toBeTruthy();
-    const metadata = await sharp(await served.body()).metadata();
+    const metadata = await page.evaluate(
+      async (bytes) => {
+        const image = await createImageBitmap(new Blob([Uint8Array.from(bytes)]));
+        const size = { width: image.width, height: image.height };
+        image.close();
+        return size;
+      },
+      Array.from(await served.body())
+    );
     expect(metadata).toMatchObject({ width, height });
   });
 }

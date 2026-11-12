@@ -9,23 +9,31 @@ const options = {
   stdio: 'inherit',
   env: { ...process.env, MOARTUBE_DESKTOP_ARCH: arch },
 };
-const run = (args) => execFileSync(process.execPath, args, options);
+const run = (args, env = {}) =>
+  execFileSync(process.execPath, args, { ...options, env: { ...options.env, ...env } });
 run(['node_modules/tsup/dist/cli-default.js']);
 run(['scripts/prepare-desktop-linux.mjs']);
 if (variants.includes('bundled')) run(['scripts/prepare-desktop-node.mjs']);
+run([
+  'scripts/prepare-desktop-javascript.mjs',
+  '--variant=' + (variants.length === 2 ? 'all' : variants[0]),
+]);
 for (const variant of variants) {
-  run([
-    'node_modules/electron-builder/out/cli/cli.js',
-    '--config',
-    variant === 'client'
-      ? 'desktop/electron-builder-linux.cjs'
-      : 'desktop/electron-builder-linux-bundled.cjs',
-    '--linux',
-    '--' + arch,
-    ...(dir ? ['--dir'] : []),
-    '--publish',
-    'never',
-  ]);
+  run(
+    [
+      'node_modules/electron-builder/out/cli/cli.js',
+      '--config',
+      variant === 'client'
+        ? 'desktop/electron-builder-linux.cjs'
+        : 'desktop/electron-builder-linux-bundled.cjs',
+      '--linux',
+      '--' + arch,
+      ...(dir ? ['--dir'] : []),
+      '--publish',
+      'never',
+    ],
+    { ELECTRON_BUILDER_COMPRESSION_LEVEL: process.env.ELECTRON_BUILDER_COMPRESSION_LEVEL ?? '6' }
+  );
   if (!dir) {
     run(['scripts/verify-desktop-linux-package.mjs', '--variant=' + variant]);
     run(['scripts/desktop-checksums.mjs', '--linux', '--arch=' + arch, '--variant=' + variant]);

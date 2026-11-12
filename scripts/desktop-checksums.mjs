@@ -50,10 +50,11 @@ const layout = selectedLinux
 const directory = layout.release;
 mkdirSync(directory, { recursive: true });
 const selection = JSON.parse(readFileSync(layout.selection, 'utf8'));
-const nodeSource = selectedWindows?.bundled
-  ? JSON.parse(readFileSync(path.join(layout.state, 'node-source.json'), 'utf8'))
-  : undefined;
-const nodeSourcePrefix = `MoarTube-Client-Node-${version}-windows-x64-`;
+const nodeSource =
+  selectedWindows?.bundled || selectedLinux?.bundled
+    ? JSON.parse(readFileSync(path.join(layout.state, 'node-source.json'), 'utf8'))
+    : undefined;
+const nodeSourcePrefix = `MoarTube-Client-Node-${version}-${target === 'win32-x64' ? 'windows-x64' : target}-`;
 if (
   nodeSource &&
   (nodeSource.clientVersion !== version ||

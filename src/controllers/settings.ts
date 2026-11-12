@@ -30,7 +30,7 @@ import type {
   ToggleBooleanBody,
 } from '@/types/requests.js';
 import { detectSystemCpu } from '@/utils/hardware.js';
-import sharp from 'sharp';
+import { renderImages } from '@/utils/images.js';
 import type { FfmpegService, GpuCapability } from '@/services/ffmpeg.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -44,9 +44,6 @@ import { getCpuMetrics } from '@/utils/cpu-metrics.js';
 import { getGpuMetrics } from '@/utils/gpu-metrics.js';
 import { bundledNodePort } from '@/config/bundled-desktop.js';
 import { storageMigrationSchema } from '@/validators/storage-migration.js';
-
-// Disable sharp cache
-sharp.cache(false);
 
 export class SettingsController extends BaseController {
   public apiGetMetricsBundle = async (
@@ -538,16 +535,17 @@ export class SettingsController extends BaseController {
     }
 
     if (avatarFile) {
-      const iconBuffer = await sharp(avatarFile, { limitInputPixels: 40_000_000 })
-        .resize({ width: 48 })
-        .resize(48, 48)
-        .png({ compressionLevel: 9 })
-        .toBuffer();
-      const avatarBuffer = await sharp(avatarFile, { limitInputPixels: 40_000_000 })
-        .resize({ width: 128 })
-        .resize(128, 128)
-        .png({ compressionLevel: 9 })
-        .toBuffer();
+      const [iconBuffer, avatarBuffer] = await renderImages(
+        avatarFile,
+        [
+          { width: 48, height: 48, format: 'png' },
+          { width: 128, height: 128, format: 'png' },
+        ],
+        this.ffmpegService.getPath()
+      );
+      if (!iconBuffer || !avatarBuffer) {
+        throw new Error('Avatar processing did not produce both images');
+      }
 
       const response = await this.nodeApiService.setAvatar(
         request.session.jwtToken ?? '',
@@ -574,11 +572,14 @@ export class SettingsController extends BaseController {
     }
 
     if (bannerFile) {
-      const bannerBuffer = await sharp(bannerFile, { limitInputPixels: 40_000_000 })
-        .resize({ width: 2560 })
-        .resize(2560, 424)
-        .png({ compressionLevel: 9 })
-        .toBuffer();
+      const [bannerBuffer] = await renderImages(
+        bannerFile,
+        [{ width: 2560, height: 424, format: 'png' }],
+        this.ffmpegService.getPath()
+      );
+      if (!bannerBuffer) {
+        throw new Error('Banner processing did not produce an image');
+      }
       const response = await this.nodeApiService.setBanner(
         request.session.jwtToken ?? '',
         bannerBuffer

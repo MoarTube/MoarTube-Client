@@ -1,24 +1,22 @@
 // Test the bundled Node runtime and real backend IPC separately from Chromium.
 const fs = require('node:fs');
 const path = require('node:path');
-const { createRequire } = require('node:module');
 const { execFileSync, fork } = require('node:child_process');
 const { createHash } = require('node:crypto');
 
 async function main() {
-  if (process.versions.electron) throw new Error('Run with the bundled standalone Node runtime');
   const resources = path.resolve(process.argv[2]);
   const target = `${process.platform}-${process.arch}`;
   const directory = path.resolve(`build/desktop/reports/${target}`);
   fs.mkdirSync(directory, { recursive: true });
   const profile = path.resolve(`build/desktop/profiles/${target}/backend-node`);
-  const app = path.join(resources, 'app.asar.unpacked');
-  const sharp = createRequire(path.join(app, 'package.json'))('sharp');
-  const jpeg = await sharp({
-    create: { width: 32, height: 24, channels: 3, background: '#c10087' },
-  })
-    .jpeg()
-    .toBuffer();
+  const app = path.join(resources, process.versions.electron ? 'app.asar' : 'app.asar.unpacked');
+  execFileSync(process.execPath, [path.join(__dirname, 'desktop-image-probe.cjs'), resources], {
+    env: { ...process.env },
+    stdio: 'inherit',
+    timeout: 120000,
+    windowsHide: true,
+  });
   const runtime = path.join(resources, 'ffmpeg', target);
   const manifest = JSON.parse(fs.readFileSync(path.join(runtime, 'manifest.json'), 'utf8'));
   if (manifest.target !== target) throw new Error('Packaged FFmpeg architecture mismatch');
@@ -31,29 +29,6 @@ async function main() {
       throw new Error(`Checksum mismatch: ${name}`);
     execFileSync(file, ['-version'], { timeout: 30000, stdio: 'ignore' });
   }
-  const png = execFileSync(
-    path.join(runtime, manifest.files.ffmpeg.path),
-    [
-      '-hide_banner',
-      '-loglevel',
-      'error',
-      '-i',
-      'pipe:0',
-      '-vf',
-      'scale=16:12',
-      '-frames:v',
-      '1',
-      '-f',
-      'image2pipe',
-      '-vcodec',
-      'png',
-      'pipe:1',
-    ],
-    { input: jpeg, timeout: 60000 }
-  );
-  const metadata = await sharp(png).metadata();
-  if (metadata.width !== 16 || metadata.height !== 12)
-    throw new Error('Packaged Sharp/FFmpeg pipeline failed');
   for (const stopMethod of ['shutdown', 'disconnect']) {
     const child = fork(path.join(app, 'dist/desktop-backend.js'), [], {
       execPath: process.execPath,
@@ -116,14 +91,14 @@ async function main() {
       {
         target,
         node: process.version,
-        sharp: sharp.versions,
+        imagePipeline: 'WASM normalization + FFmpeg',
         ffmpegBuildId: manifest.buildId,
         softwareImagePipeline: 'passed',
         backendHttp: 'passed',
         ipcShutdown: 'passed',
         parentDisconnectShutdown: 'passed',
         scope:
-          'Bundled standalone Node backend and real child IPC; no renderer/sandbox qualification',
+          'Packaged Client backend and real child IPC; renderer/sandbox qualification is separate',
       },
       null,
       2

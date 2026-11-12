@@ -20,6 +20,8 @@ const {
   isExternalLink,
   readyOrigin,
   allowPermission,
+  usesElectronNode,
+  usesElectronClient,
 } = require('./policy.cjs');
 const linuxProcesses = require('./linux-processes.cjs');
 const { createAutostart, AUTOSTART_ARGUMENT } = require('./autostart.cjs');
@@ -28,6 +30,8 @@ const { desktopLayout, prepareData } = require('../src/config/data-layout.cjs');
 app.setName('MoarTube Client');
 const applicationRoot = app.isPackaged ? app.getAppPath() : path.resolve(__dirname, '..');
 const version = require('../package.json').version;
+const electronNode = usesElectronNode(process.platform, process.arch);
+const electronClient = usesElectronClient(process.platform, process.arch);
 const bundled =
   ['win32', 'linux'].includes(process.platform) &&
   (app.isPackaged
@@ -83,6 +87,10 @@ function showWindow() {
   window.setSkipTaskbar(false);
   window.show();
   window.focus();
+}
+
+function forwardBackendLog(chunk) {
+  if (log && !log.writableEnded && !log.destroyed) log.write(chunk);
 }
 
 function fail(message) {
@@ -259,8 +267,8 @@ if (!ownsInstance) {
         };
       }
       const workArea = screen.getPrimaryDisplay().workArea;
-      const width = Math.round(workArea.width * 0.80);
-      const height = Math.round(workArea.height * 0.80);
+      const width = Math.round(workArea.width * 0.8);
+      const height = Math.round(workArea.height * 0.8);
       window = new BrowserWindow({
         show: showMainWindow,
         skipTaskbar: !showMainWindow,
@@ -508,12 +516,9 @@ if (!ownsInstance) {
               `build/desktop/work/${process.platform}-${process.arch}/staging/bundled`
             );
         bundledNode = await require('./bundled-node.cjs').startNode({
-          directory: path.join(
-            resources,
-            app.isPackaged && process.platform === 'win32' ? 'node.asar' : 'node'
-          ),
-          runtime: process.platform === 'win32' ? undefined : path.join(resources, 'runtime/node'),
-          utility: process.platform === 'win32' ? utilityProcess : undefined,
+          directory: path.join(resources, app.isPackaged && electronNode ? 'node.asar' : 'node'),
+          runtime: electronNode ? undefined : path.join(resources, 'runtime/node'),
+          utility: electronNode ? utilityProcess : undefined,
           data: dataLayout.node,
           log,
           onFailure: fail,
@@ -531,25 +536,26 @@ if (!ownsInstance) {
         environment.MOARTUBE_DESKTOP_KEY = desktopKey;
         if (process.env.MOARTUBE_DESKTOP_SMOKE === '1') app.moartubeNodePort = port;
       }
-      if (process.platform === 'linux' || process.platform === 'darwin') {
+      if (!electronClient) {
         environment.MOARTUBE_DESKTOP_NODE_BACKEND = '1';
         const entry = app.isPackaged
           ? path.join(process.resourcesPath, 'app.asar.unpacked/dist/desktop-backend.js')
           : path.join(applicationRoot, 'dist/desktop-backend.js');
         backend = fork(entry, [], {
-          execPath: bundled
-            ? path.join(
-                app.isPackaged
-                  ? process.resourcesPath
-                  : path.join(
-                      applicationRoot,
-                      `build/desktop/work/${process.platform}-${process.arch}/staging/bundled`
-                    ),
-                process.platform === 'win32' ? 'runtime/node.exe' : 'runtime/node'
-              )
-            : app.isPackaged
-              ? path.join(process.resourcesPath, 'runtime/node')
-              : (process.env.npm_node_execpath ?? 'node'),
+          execPath:
+            bundled && !electronNode
+              ? path.join(
+                  app.isPackaged
+                    ? process.resourcesPath
+                    : path.join(
+                        applicationRoot,
+                        `build/desktop/work/${process.platform}-${process.arch}/staging/bundled`
+                      ),
+                  process.platform === 'win32' ? 'runtime/node.exe' : 'runtime/node'
+                )
+              : app.isPackaged
+                ? path.join(process.resourcesPath, 'runtime/node')
+                : (process.env.npm_node_execpath ?? 'node'),
           execArgv: [],
           detached: process.platform === 'darwin',
           windowsHide: true,
@@ -572,12 +578,12 @@ if (!ownsInstance) {
           serviceName: 'MoarTube Client Backend',
         });
       }
-      backend.stdout?.on('data', (chunk) => log.write(chunk));
+      backend.stdout?.on('data', forwardBackendLog);
       backend.on('spawn', () => {
         if (process.platform === 'linux') backendIdentity = linuxProcesses.identity(backend.pid);
         if (process.env.MOARTUBE_DESKTOP_SMOKE === '1') app.moartubeBackendPid = backend.pid;
       });
-      backend.stderr?.on('data', (chunk) => log.write(chunk));
+      backend.stderr?.on('data', forwardBackendLog);
       backend.on('error', (error) => fail(`The client backend could not start: ${error.message}`));
       backend.on('message', (message) => {
         if (quitting || !window || window.isDestroyed()) return;
@@ -591,7 +597,10 @@ if (!ownsInstance) {
           origin = ready;
           // Initialization runs during the minimum display time. Slow startups
           // proceed as soon as they are ready, without adding another 5 seconds.
-          const remaining = Math.max(0, Math.ceil(5000 - (performance.now() - startupScreenShownAt)));
+          const remaining = Math.max(
+            0,
+            Math.ceil(5000 - (performance.now() - startupScreenShownAt))
+          );
           void delay(remaining, undefined, { signal: startupAbort.signal })
             .then(() => {
               if (quitting || failureShown || backendExited || !window || window.isDestroyed())

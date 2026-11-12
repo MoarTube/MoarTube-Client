@@ -4,6 +4,8 @@ import {
   type ChildProcess,
   type SpawnOptionsWithoutStdio,
 } from 'node:child_process';
+import { createRequire } from 'node:module';
+import type * as ImageRuntime from './image-runtime/client.cjs';
 
 const active = new Set<ChildProcess>();
 let closing = false;
@@ -36,6 +38,10 @@ export function spawnMediaProcess(
 
 export async function stopMediaProcesses(): Promise<void> {
   closing = true;
+  const images = createRequire(import.meta.url)(
+    './image-runtime/client.cjs'
+  ) as typeof ImageRuntime;
+  await images.stopImages();
   await Promise.all(
     [...active].map(
       (child) =>

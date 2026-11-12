@@ -6,7 +6,21 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createRequire } = require('node:module');
 const { createHash } = require('node:crypto');
-const { linuxPaths, linuxVariant, parseLinuxDesktopArgs } = require('../linux-variant.cjs');
+const {
+  linuxPaths,
+  linuxVariant,
+  parseLinuxDesktopArgs,
+  deferImageProbeToVm,
+} = require('../linux-variant.cjs');
+
+test('only cross-architecture ARM64 builds defer the WASM execution probe to the full-system VM', () => {
+  for (const engine of ['x86_64', 'amd64'])
+    assert.equal(deferImageProbeToVm('arm64', engine), true);
+  for (const engine of ['arm64', 'aarch64', undefined])
+    assert.equal(deferImageProbeToVm('arm64', engine), false);
+  for (const engine of ['x86_64', 'amd64', 'arm64', undefined])
+    assert.equal(deferImageProbeToVm('x64', engine), false);
+});
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'moartube-linux-variants-'));
@@ -27,7 +41,6 @@ test('Linux variants have independent package identities, resources and reports 
       layout.selection,
       JSON.stringify({
         runtimeDirectory: path.join(layout.staging, 'ffmpeg/runtime'),
-        nodeRuntimeDirectory: path.join(layout.staging, 'node'),
       })
     );
     const context = {
@@ -41,6 +54,13 @@ test('Linux variants have independent package identities, resources and reports 
       bundle = context.module.exports('bundled', root);
     for (const config of [client, bundle]) {
       assert(config.files.includes('bin/check-node-version.js'));
+      assert(config.files.includes('vendor/**/*'));
+      assert.equal(config.deb.compression, 'zst');
+      assert.equal(config.directories.app, path.join(layout.staging, 'javascript/client'));
+      assert(!config.asarUnpack.includes('vendor/**/*'));
+      assert(!config.asarUnpack.includes('node_modules/**/*'));
+      assert(config.asarUnpack.includes('node_modules/@imagemagick/magick-wasm/**/*'));
+      assert.equal(config.asar.smartUnpack, false);
       assert(config.asarUnpack.includes('bin/check-node-version.js'));
     }
     assert.notEqual(client.appId, bundle.appId);
@@ -53,9 +73,15 @@ test('Linux variants have independent package identities, resources and reports 
       linuxPaths(root, arch, '1.1.0', 'bundled').reports
     );
     assert(!client.extraResources.some((resource) => resource.to === 'node'));
-    assert(bundle.extraResources.some((resource) => resource.to === 'node'));
-    assert(bundle.extraResources.some((resource) => resource.to === 'node/node_modules'));
-    assert(client.extraResources.some((resource) => resource.to === 'runtime'));
+    assert(bundle.extraResources.some((resource) => resource.to === 'node.asar'));
+    assert(
+      bundle.extraResources.some((resource) => resource.to === 'node.asar.unpacked/node_modules')
+    );
+    assert.equal(
+      client.extraResources.some((resource) => resource.to === 'runtime'),
+      false
+    );
+    assert.equal(client.asarUnpack.includes('node_modules/**/*'), false);
     assert.equal(client.extraMetadata.moartubeBundledNode, false);
     assert.equal(bundle.extraMetadata.moartubeBundledNode, true);
   }
@@ -78,6 +104,9 @@ test('each Linux release target accepts only its own binary pair and matching so
         `${prefix}-1.1.0-${base}.deb`,
         `${prefix}-1.1.0-${base}-portable.tar.gz`,
         `9.0.2-moartube-${base}-test-sources.tar.xz`,
+        ...(variant === 'bundled'
+          ? [`MoarTube-Client-Node-1.1.0-${base}-0123456789ab-sources.zip`]
+          : []),
       ];
       for (const name of names) fs.writeFileSync(path.join(directory, name), name);
       const checksum = path.join(directory, `SHA256SUMS-${target}.txt`);
@@ -89,7 +118,12 @@ test('each Linux release target accepts only its own binary pair and matching so
       );
       fs.writeFileSync(
         path.join(directory, `RELEASE-NOTES-${target}.md`),
-        `https://github.com/MoarTube/MoarTube-Client/releases/download/v1.1.0/${names[2]}`
+        names
+          .slice(2)
+          .map(
+            (name) => `https://github.com/MoarTube/MoarTube-Client/releases/download/v1.1.0/${name}`
+          )
+          .join('\n')
       );
       const options = {
         directory,
@@ -98,7 +132,7 @@ test('each Linux release target accepts only its own binary pair and matching so
         repo: 'MoarTube/MoarTube-Client',
         tag: 'v1.1.0',
       };
-      assert.equal((await collectReleaseAssets(options)).length, 5);
+      assert.equal((await collectReleaseAssets(options)).length, names.length + 2);
       fs.appendFileSync(path.join(directory, names[0]), 'changed');
       await assert.rejects(collectReleaseAssets(options), /checksum mismatch/);
     }

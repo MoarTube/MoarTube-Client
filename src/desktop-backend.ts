@@ -8,11 +8,10 @@ interface ParentPort {
   on(event: string, handler: (event: { data: unknown }) => void): void;
   postMessage(message: unknown): void;
 }
-// Linux/macOS use a standalone Node process to isolate native dependencies
-// from Electron. Both Windows variants use Electron's utility-process port.
+// Utility-process backends use parentPort. Legacy runtimes and the headless
+// packaged-backend probe use an explicitly enabled, real child IPC channel.
 const nodeParent: ParentPort | undefined =
   process.env['MOARTUBE_DESKTOP_NODE_BACKEND'] === '1' &&
-  process.versions['electron'] === undefined &&
   process.connected &&
   process.send !== undefined
     ? {

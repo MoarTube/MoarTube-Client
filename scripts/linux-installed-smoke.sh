@@ -33,8 +33,10 @@ backend_media="build/desktop/profiles/$target/backend-node/client/media/videos/i
 mkdir -p "$(dirname "$backend_media")"
 printf 'preserve backend media\n' > "$backend_media"
 chown -R desktop-test:desktop-test /workspace /home/desktop-test
+test ! -e "/opt/$product/resources/runtime"
+backend_runtime=(env ELECTRON_RUN_AS_NODE=1 "/opt/$product/$executable")
 runuser -u desktop-test -- env HOME=/home/desktop-test \
-  "/opt/$product/resources/runtime/node" scripts/desktop-backend-probe.cjs "/opt/$product/resources"
+  "${backend_runtime[@]}" scripts/desktop-backend-probe.cjs "/opt/$product/resources"
 cp "$reports/backend-probe.json" "$reports/installed-backend-probe.json"
 chown root:root "/opt/$product/chrome-sandbox"
 chmod 4755 "/opt/$product/chrome-sandbox"
@@ -60,8 +62,10 @@ test -n "$portable_exe"
 chown -R desktop-test:desktop-test "$portable"
 chown root:root "$(dirname "$portable_exe")/chrome-sandbox"
 chmod 4755 "$(dirname "$portable_exe")/chrome-sandbox"
+test ! -e "$(dirname "$portable_exe")/resources/runtime"
+backend_runtime=(env ELECTRON_RUN_AS_NODE=1 "$portable_exe")
 runuser -u desktop-test -- env HOME=/home/desktop-test \
-  "$(dirname "$portable_exe")/resources/runtime/node" scripts/desktop-backend-probe.cjs "$(dirname "$portable_exe")/resources"
+  "${backend_runtime[@]}" scripts/desktop-backend-probe.cjs "$(dirname "$portable_exe")/resources"
 cp "$reports/backend-probe.json" "$reports/portable-backend-probe.json"
 run_gui "$portable_exe"
 cp "$reports/$report_mode/smoke.json" "$reports/portable-smoke.json"

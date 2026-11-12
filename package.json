@@ -38,7 +38,6 @@
     "start": "node bin/moartube-client-start",
     "prepack": "npm run build",
     "prepare": "husky install",
-
     "typecheck": "tsc --noEmit",
     "typecheck:integration": "tsc -p tests/integration/tsconfig.json --noEmit",
     "typecheck:e2e": "tsc -p tests/e2e/tsconfig.json --noEmit",
@@ -49,18 +48,16 @@
     "lint:fix": "eslint src tests --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "knip": "knip",
-
     "test": "vitest run",
+    "test:images": "node --test tests/image-runtime/*.test.cjs",
     "test:coverage": "vitest run --coverage",
     "test:node-contracts": "vitest run --config vitest.node-contracts.config.ts",
-
     "test:integration": "node --import tsx tests/integration/run.ts all",
     "test:integration:preflight": "node --import tsx tests/integration/run.ts preflight",
     "test:gpu": "node --import tsx tests/integration/run.ts gpu",
     "test:gpu:e2e": "node --import tsx tests/integration/run.ts gpu-e2e",
     "test:runner:setup": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/setup-integration-runner.ps1",
     "test:runner": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/start-integration-runner.ps1",
-
     "test:e2e:install": "playwright install chromium firefox webkit",
     "test:e2e": "playwright test --project=chromium",
     "test:e2e:all": "playwright test",
@@ -71,13 +68,11 @@
     "test:memory": "playwright test --config playwright.memory.config.ts",
     "test:watch-page": "playwright test --config playwright.watch.config.ts",
     "test:comments": "playwright test --config playwright.comments.config.ts",
-
     "desktop:dev": "npm run build && node scripts/desktop.mjs",
     "desktop:dev:client-node": "npm run build && node scripts/prepare-desktop-bundled.mjs && node scripts/desktop.mjs --bundled",
     "desktop:prepare": "node scripts/prepare-desktop.mjs",
     "desktop:prepare:client-node": "node scripts/prepare-desktop-bundled.mjs",
     "desktop:test": "node --test desktop/tests/*.test.cjs && vitest run --config vitest.desktop.config.ts",
-
     "desktop:build:windows:client": "node scripts/desktop-windows.mjs --variant=client",
     "desktop:build:windows:client-node": "node scripts/desktop-windows.mjs --variant=bundled",
     "desktop:build:windows:all": "node scripts/desktop-windows.mjs",
@@ -87,7 +82,6 @@
     "desktop:verify:windows:client": "node scripts/desktop-smoke.mjs",
     "desktop:verify:windows:client-node": "node scripts/desktop-bundled-smoke.mjs",
     "desktop:verify:windows:all": "node scripts/verify-desktop-windows.mjs",
-
     "desktop:prepare:linux": "node scripts/prepare-desktop-linux.mjs",
     "desktop:build:linux:client": "node scripts/desktop-linux.mjs --variant=client",
     "desktop:build:linux:client-node": "node scripts/desktop-linux.mjs --variant=bundled",
@@ -102,27 +96,22 @@
     "desktop:verify:linux:all": "node scripts/verify-desktop-linux.mjs",
     "desktop:verify:linux:arm64:native:all": "node scripts/verify-desktop-linux.mjs --arch=arm64",
     "desktop:verify:linux:arm64:vm:all": "node scripts/verify-desktop-linux-arm64-vm.mjs --variant=all",
-
     "desktop:prepare:darwin": "node scripts/prepare-desktop-darwin.mjs",
     "desktop:prepare:darwin:arm64": "node scripts/prepare-desktop-darwin.mjs --arch=arm64",
     "desktop:build:darwin": "node scripts/desktop-darwin.mjs",
     "desktop:build:darwin:arm64": "node scripts/desktop-darwin.mjs --arch=arm64",
     "desktop:verify:darwin": "node scripts/verify-desktop-darwin.mjs",
     "desktop:verify:darwin:arm64": "node scripts/verify-desktop-darwin.mjs --arch=arm64",
-
     "ffmpeg:build:windows": "node tooling/ffmpeg/scripts/build-windows.mjs",
     "ffmpeg:package:windows": "node tooling/ffmpeg/scripts/package-windows.mjs",
     "ffmpeg:stage:windows": "node tooling/ffmpeg/scripts/stage-windows.mjs",
     "ffmpeg:verify:windows": "node tooling/ffmpeg/scripts/verify-features.mjs",
-
     "ffmpeg:build:linux": "node tooling/ffmpeg/scripts/build-linux.mjs",
     "ffmpeg:build:linux:arm64": "node tooling/ffmpeg/scripts/build-linux.mjs --arch=arm64",
     "ffmpeg:verify:linux:runtimes": "node tooling/ffmpeg/scripts/verify-linux-runtimes.mjs",
     "ffmpeg:verify:linux:arm64:runtimes": "node tooling/ffmpeg/scripts/verify-linux-runtimes.mjs --arch=arm64",
-
     "ffmpeg:build:darwin": "node tooling/ffmpeg/scripts/build-darwin.mjs",
     "ffmpeg:build:darwin:arm64": "node tooling/ffmpeg/scripts/build-darwin.mjs --arch=arm64",
-
     "ffmpeg:verify:software": "node tooling/ffmpeg/scripts/verify-software.mjs",
     "ffmpeg:test:tooling": "node --test tooling/ffmpeg/tests/*.test.mjs"
   },
@@ -146,6 +135,7 @@
     "@fastify/swagger-ui": "^5.2.5",
     "@fastify/view": "^11.1.1",
     "@fastify/websocket": "^11.2.0",
+    "@imagemagick/magick-wasm": "0.0.46",
     "awilix": "^12.0.5",
     "axios": "^1.7.7",
     "ejs": "^4.0.1",
@@ -156,7 +146,6 @@
     "pino": "^10.3.0",
     "pino-pretty": "^13.1.3",
     "portscanner": "^2.2.0",
-    "sharp": "^0.33.5",
     "systeminformation": "^5.23.5",
     "ws": "^8.18.0",
     "zod": "^4.3.6"

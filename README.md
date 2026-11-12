@@ -107,6 +107,37 @@ The Windows build commands also consolidate pure JavaScript dependencies into
 shared bundles for both variants. Native modules, logging workers and packages
 that read their own runtime assets retain their production dependency trees.
 Both Windows variants run the Client backend in an Electron utility process.
+Linux x64 and ARM64 apply dependency consolidation and content pruning to both
+Client and Client + Node. Bundled Node dependencies stay inside ASAR and run through
+Electron on both architectures. Both Linux x64 and ARM64 Client backends now use
+Electron's embedded Node runtime, and neither variant ships a standalone Node
+executable. Client dependencies and shared vendor bundles stay inside ASAR on
+both architectures; logging workers, image workers and WASM assets remain unpacked.
+The ARM64 host/ASAR migration passed installed and portable qualification in the
+full-system Debian Trixie VM, including the packaged WASM/FFmpeg worker and
+Chromium kernel sandbox. The current Linux x64 and ARM64 portable archives each
+contain 167 regular files for Client and 205 for Client + Node, with no standalone
+Node runtime. These are archive file counts, not installation-time benchmarks.
+Client images now use FFmpeg for centre-cover resizing, PNG compression and JPEG
+encoding. Profiled and CMYK inputs are first converted to sRGB in a persistent
+`@imagemagick/magick-wasm@0.0.46` worker; ordinary unprofiled 8-bit RGB JPEG/PNG
+inputs bypass that conversion. The worker and its WASM asset are installed as a
+small set of real files, with no native image addon or Electron ABI dependency.
+Pinned profiles and their provenance are in `src/utils/image-runtime/profiles`.
+Uploads retain the 20 MiB / 40 megapixel limits; decoding, queued jobs and output
+buffers are bounded, and conversion/encoding has timeouts. PNG transparency is
+preserved; JPEG is flattened against black. EXIF orientation is ignored and
+removed, matching the existing upload policy. JPEG uses FFmpeg q=1 (qmin=1,
+4:2:0), a conservative quality preset rather than a numeric equivalent of Sharp
+quality 90; generated JPEG files can be larger. Run `npm run test:images` with
+staged FFmpeg or an explicit `FFMPEG_BIN` override for fixture-based image tests.
+The image migration passed Windows x64 and Linux x64 packaged checks, plus Linux
+ARM64 installed/portable image and GUI checks in the full-system Debian Trixie VM.
+The macOS image migration still requires fresh native packaged qualification.
+Native SQLite libraries, Cloudflared, logging workers and public assets
+retain real disk paths and executable permissions. ARM64 optimization builds, package checks and installed/portable GUI tests have
+passed in the full-system Debian Trixie VM with Chromium sandboxing enabled.
+Physical ARM64 hardware, GPU and Wayland qualification remain separate.
 Windows Client + Node also runs the Node primary in a utility process and its
 cluster workers through Electron's embedded Node runtime. Node JavaScript and
 dependencies are read directly from `resources/node.asar`; the bundle omits the
@@ -114,7 +145,7 @@ separate Node executable. The Electron `RunAsNode` fuse must remain enabled for
 cluster workers. Native Node-API SQLite, Cloudflared, logging worker entry points
 and public assets are unpacked at install time. Build checks exercise SQLite in
 Electron before and after packaging and verify the packaged runtime version.
-Client JavaScript dependencies and shared bundles are read directly from ASAR;
+Windows Client JavaScript dependencies and shared bundles are read directly from ASAR;
 native libraries, logging worker entry points and public assets use disk paths.
 Bundled dependency notices are in `THIRD-PARTY-NOTICES.txt`. Windows Client + Node
 installers and ZIPs contain runtime files. Matching Node and Client source,
@@ -197,8 +228,19 @@ For prepared/offline builds, prepare the Client dependency image first with
 then the Node image with
 `node scripts/prepare-linux-node-dependencies.mjs --arch=x64` while
 `MOARTUBE_DEPENDENCIES_PREPARED=1`. Normal builds prepare their images automatically.
-SQLite is compiled for the target's standalone Node.js runtime; Cloudflared is
-checked against its pinned release digest. Credentials and user data are excluded.
+Linux x64 and ARM64 DEBs use Zstandard level 3; portable tar.gz uses gzip level 6. The
+container builder supplies its compressor from the pinned build Node runtime.
+The image WASM dependency uses normal npm installation and caching; its precompiled
+asset, license and third-party notices are staged without a native image build.
+Linux x64 and ARM64 verify bundled Node-API SQLite and Cloudflared under Electron
+before and after packaging. Both Client variants probe the WASM worker and FFmpeg
+image outputs after packaging. Cloudflared is checked
+against its pinned release digest. Credentials and user data are excluded.
+Linux x64 and ARM64 Client + Node ship runtime files and license notices, with matching
+application sources and build materials in the optional
+`MoarTube-Client-Node-<version>-linux-<arch>-<hash>-sources.zip` release asset.
+`resources/node-SOURCES.txt` identifies that archive and its SHA-256. Release
+checksums and draft upload checks require it alongside the FFmpeg source archive.
 
 Four separate GitHub workflows cover **Linux x64 / ARM64 — Client / Client + Node**.
 The all-platform workflow calls all four. Each contributes only its own binary

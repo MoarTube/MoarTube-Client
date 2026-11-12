@@ -11,6 +11,7 @@ import { VideoImportService } from '../src/services/video-import.js';
 import { SettingsController } from '../src/controllers/settings.js';
 import { S3Service } from '../src/services/s3.js';
 import { siloFixture, siloProxy } from './support/silo.js';
+import * as images from '../src/utils/images.js';
 
 const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 let root: string, app: FastifyInstance, api: NodeApiService, config: any;
@@ -465,10 +466,14 @@ describe('Client CDN remediation', () => {
   });
 
   it('never reports a filesystem image rejection as success', async () => {
+    const imageProcessing = vi
+      .spyOn(images, 'renderImages')
+      .mockResolvedValue([Buffer.from('encoded image')]);
+    const setPreview = vi.fn().mockResolvedValue({ isError: true, message: 'rejected image' });
     const controller = new VideosController(
       {
         getNodeSettings: async () => ({ storageConfig: { storageMode: 'filesystem' } }),
-        setPreview: async () => ({ isError: true, message: 'rejected image' }),
+        setPreview,
       } as never,
       {} as never,
       {} as never,
@@ -476,7 +481,8 @@ describe('Client CDN remediation', () => {
       {} as never,
       {} as never,
       {} as never,
-      {} as never
+      {} as never,
+      { getPath: () => 'ffmpeg' } as never
     );
     const output = reply();
     const png = Buffer.from(
@@ -492,6 +498,8 @@ describe('Client CDN remediation', () => {
       output as never
     );
     expect(output.send.mock.calls[0]?.[0]).toMatchObject({ isError: true });
+    expect(setPreview).toHaveBeenCalledOnce();
+    imageProcessing.mockRestore();
   });
 
   it('does not encode after rejected admission and retries uploaded confirmation without re-encoding', async () => {

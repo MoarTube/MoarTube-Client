@@ -1,6 +1,13 @@
 // Apply only to audited versions. A dependency upgrade falls back to shipping
 // its full production tree until its runtime imports can be audited again.
 const rules = {
+  '@imagemagick/magick-wasm': {
+    versions: ['0.0.46'],
+    dependencies: {},
+    // The default wasm32 artifact works on every supported CPU architecture.
+    // Keep the CJS loader, selected asset and license/third-party notices.
+    files: ['dist/x64', 'dist/index.js', 'dist/index.d.ts', 'README.md'],
+  },
   ejs: {
     versions: ['3.1.10', '4.0.1'],
     dependencies: { jake: 'Used by the EJS CLI and build tasks, not template rendering.' },
@@ -12,14 +19,10 @@ const rules = {
     dependencies: {
       'prebuild-install':
         'Downloads the native addon during installation; the desktop ships the verified addon.',
-      'node-addon-api': 'C++ headers used to build the addon; the desktop ships the verified Node-API binary.',
+      'node-addon-api':
+        'C++ headers used to build the addon; the desktop ships the verified Node-API binary.',
     },
-    files: [
-      'prebuilds/darwin-arm64.node', 'prebuilds/darwin-x64.node',
-      'prebuilds/linux-arm64.node', 'prebuilds/linux-x64.node',
-      'prebuilds/linuxmusl-arm64.node', 'prebuilds/linuxmusl-x64.node',
-      'prebuilds/win32-arm64.node',
-    ],
+    files: [],
   },
   '@fastify/swagger': {
     versions: ['9.6.1'],
@@ -80,7 +83,6 @@ const contentVersions = {
   rfdc: ['1.4.1'],
   'safe-regex2': ['5.0.0'],
   'secure-json-parse': ['4.1.0'],
-  sharp: ['0.33.5'],
   'sonic-boom': ['4.2.0'],
 };
 const contentDirectories = {
@@ -89,7 +91,6 @@ const contentDirectories = {
   'better-sqlite3': ['src', 'deps', 'binding.gyp'], // Addon remains in build/Release/ or prebuilds/.
   'fast-json-stringify': ['build'], // Prebuilt validator is in lib/schema-validator.js.
   'json-schema-traverse': ['spec'], // Not Swagger's runtime lib/spec/.
-  sharp: ['install'], // Keep src/build/Release/ as a supported native-addon location.
   'sonic-boom': ['fixtures'],
 };
 
@@ -126,7 +127,10 @@ export function desktopRuntimeFileReason(relative, profile) {
   return undefined;
 }
 
-export function desktopRuntimeManifest(original) {
+export function desktopRuntimeManifest(
+  original,
+  { platform = process.platform, arch = process.arch } = {}
+) {
   const dependencyRule = rules[original.name];
   const rule = dependencyRule?.versions.includes(original.version) ? dependencyRule : undefined;
   const pruneDevelopmentFiles = contentVersions[original.name]?.includes(original.version) === true;
@@ -148,10 +152,24 @@ export function desktopRuntimeManifest(original) {
     manifest,
     excludedFiles: [
       ...(rule?.files ?? []),
+      ...(original.name === 'better-sqlite3' && original.version === '13.0.3'
+        ? [
+            'darwin-arm64',
+            'darwin-x64',
+            'linux-arm64',
+            'linux-x64',
+            'linuxmusl-arm64',
+            'linuxmusl-x64',
+            'win32-arm64',
+            'win32-x64',
+          ]
+            .filter((target) => target !== `${platform}-${arch}`)
+            .map((target) => `prebuilds/${target}.node`)
+        : []),
       ...(pruneDevelopmentFiles ? (contentDirectories[original.name] ?? []) : []),
     ],
     omittedDependencies,
     pruneDevelopmentFiles,
-    nativeSource: pruneDevelopmentFiles && original.name === 'sharp',
+    nativeSource: false,
   };
 }

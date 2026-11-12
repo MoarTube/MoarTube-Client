@@ -79,8 +79,8 @@ const capabilities = Object.fromEntries(
   ])
 );
 const required = {
-  encoders: ['libx264', 'libvpx-vp9', 'libopus', 'aac', 'png', 'h264_videotoolbox'],
-  decoders: ['h264', 'hevc', 'libdav1d', 'vp9', 'aac', 'opus'],
+  encoders: ['libx264', 'libvpx-vp9', 'libopus', 'aac', 'png', 'mjpeg', 'h264_videotoolbox'],
+  decoders: ['h264', 'hevc', 'libdav1d', 'vp9', 'aac', 'opus', 'png', 'mjpeg', 'rawvideo'],
   filters: [
     'scale',
     'scale_vt',
@@ -93,10 +93,14 @@ const required = {
     'crop',
     'format',
     'aresample',
+    'setsar',
+    'premultiply',
+    'unpremultiply',
+    'sidedata',
   ],
   protocols: ['file', 'pipe', 'http', 'https', 'tls', 'tcp', 'udp', 'rtmp', 'rtmps'],
-  muxers: ['hls', 'mp4', 'mpegts', 'flv', 'webm', 'image2'],
-  demuxers: ['mov', 'matroska', 'mpegts', 'flv', 'hls'],
+  muxers: ['hls', 'mp4', 'mpegts', 'flv', 'webm', 'image2', 'image2pipe'],
+  demuxers: ['mov', 'matroska', 'mpegts', 'flv', 'hls', 'rawvideo'],
   hwaccels: ['videotoolbox'],
 };
 for (const [kind, names] of Object.entries(required))

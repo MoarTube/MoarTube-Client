@@ -41,11 +41,6 @@ export function verifyDarwinBundle(app, arch = 'x64') {
   const nativeModules = readdirSync(modules, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile() && /\.(node|dylib)$/.test(entry.name))
     .map((entry) => path.join(entry.parentPath ?? entry.path, entry.name));
-  if (
-    !nativeModules.some((file) => file.endsWith('.node')) ||
-    !nativeModules.some((file) => file.includes('libvips'))
-  )
-    throw new Error('Packaged Sharp native dependencies missing');
   for (const file of [...binaries, ...nativeModules]) inspectMachO(file, arch);
   for (const file of binaries)
     if (!(statSync(file).mode & 0o111)) throw new Error(`Executable permissions missing: ${file}`);

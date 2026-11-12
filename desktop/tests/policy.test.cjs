@@ -6,7 +6,22 @@ const {
   isExternalLink,
   readyOrigin,
   allowPermission,
+  usesElectronNode,
+  usesElectronClient,
 } = require('../policy.cjs');
+
+test('Electron backend selection preserves the configured platform runtimes', () => {
+  assert.equal(usesElectronNode('win32', 'x64'), true);
+  assert.equal(usesElectronNode('linux', 'x64'), true);
+  assert.equal(usesElectronNode('linux', 'arm64'), true);
+  assert.equal(usesElectronClient('linux', 'arm64'), true);
+  assert.equal(usesElectronClient('linux', 'x64'), true);
+  assert.equal(usesElectronClient('win32', 'x64'), true);
+  assert.equal(usesElectronClient('win32', 'arm64'), false);
+  assert.equal(usesElectronClient('darwin', 'arm64'), false);
+  assert.equal(usesElectronNode('win32', 'arm64'), false);
+  assert.equal(usesElectronNode('darwin', 'x64'), false);
+});
 
 test('startup accepts Apple Silicon and the other packaged targets while rejecting unsupported hosts', () => {
   for (const [platform, arch] of [

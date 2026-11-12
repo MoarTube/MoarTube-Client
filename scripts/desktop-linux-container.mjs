@@ -14,6 +14,7 @@ if (process.env.MOARTUBE_DEPENDENCIES_PREPARED !== '1') {
   execFileSync(process.execPath, ['scripts/prefetch-desktop-tools.mjs'], options);
 }
 execFileSync('npm', ['run', 'desktop:test'], options);
+execFileSync('npm', ['run', 'test:images'], options);
 execFileSync(
   'npm',
   [

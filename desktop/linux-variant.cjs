@@ -52,4 +52,7 @@ function parseLinuxDesktopArgs(args, defaultVariant = 'all') {
     dir: args.includes('--dir'),
   };
 }
-module.exports = { linuxVariant, linuxPaths, parseLinuxDesktopArgs };
+function deferImageProbeToVm(arch, engineArchitecture) {
+  return arch === 'arm64' && ['x86_64', 'amd64'].includes(engineArchitecture);
+}
+module.exports = { linuxVariant, linuxPaths, parseLinuxDesktopArgs, deferImageProbeToVm };

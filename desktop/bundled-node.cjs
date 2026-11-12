@@ -46,12 +46,19 @@ async function startNode({ directory, runtime, utility, data, log, onFailure, on
     ? utility.fork(entry, [], { ...options, serviceName: 'MoarTube Node Backend' })
     : fork(entry, [], { ...options, execPath: runtime, windowsHide: true });
   let stopping = false;
-  const childIdentity =
-    process.platform === 'linux' ? linuxProcesses.identity(child.pid) : undefined;
+  let childIdentity = process.platform === 'linux' ? linuxProcesses.identity(child.pid) : undefined;
   let exited = false;
-  child.stdout.on('data', (chunk) => log.write(chunk));
-  child.stderr.on('data', (chunk) => log.write(chunk));
-  child.once('spawn', () => onSpawn(child.pid));
+  // Process exit can precede the final pipe data events. Shutdown may already
+  // have ended the shared log when those events arrive.
+  const forwardLog = (chunk) => {
+    if (!log.writableEnded && !log.destroyed) log.write(chunk);
+  };
+  child.stdout.on('data', forwardLog);
+  child.stderr.on('data', forwardLog);
+  child.once('spawn', () => {
+    if (process.platform === 'linux') childIdentity = linuxProcesses.identity(child.pid);
+    onSpawn(child.pid);
+  });
   const ready = new Promise((resolve, reject) => {
     const timer = setTimeout(
       () => reject(new Error('The bundled Node did not become ready within 90 seconds.')),

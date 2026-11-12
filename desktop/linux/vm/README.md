@@ -11,6 +11,14 @@ For native ARM64 Docker container checks across Ubuntu and Trixie, use
 rejected before test containers are created. ARM64 builds and FFmpeg checks
 continue to support user-mode emulation.
 
+When ARM64 is built on an x64 Docker engine, the packaged Electron/WASM image
+probe is deferred: a minimal WASM initialization reproduces a segmentation fault
+under that user-mode emulator, while standalone ARM64 Node can initialize it.
+The build records `deferred-to-full-system-vm` in the variant's `image-probe.json`,
+not a passed runtime result. Static package checks still run. Native ARM64 builds
+run the probe during packaging. The full-system VM must pass the image pipeline
+for both installed and portable artifacts before the ARM64 result is qualified.
+
 Requires Node.js 24.22.1 or newer, Docker's Linux engine, at least 6 GiB available Docker RAM
 and roughly 8 GiB temporary disk space. The guest uses four Cortex-A76 virtual
 CPUs and 4 GiB RAM. No extra WSL distribution, Windows QEMU installation, KVM,

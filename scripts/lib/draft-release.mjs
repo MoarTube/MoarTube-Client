@@ -120,10 +120,15 @@ export async function collectReleaseAssets({ directory, target, version, repo, t
         ]
       : [];
   const hasBundled = bundledBinaries.some((name) => names.has(name));
-  const needsNodeSources = target === 'win32-x64-bundled' || hasBundled;
+  const needsNodeSources =
+    ['win32-x64-bundled', 'linux-x64-bundled', 'linux-arm64-bundled'].includes(target) ||
+    hasBundled;
+  const nodeSourceTarget = target.startsWith('linux-')
+    ? target.replace(/-bundled$/, '')
+    : 'windows-x64';
   const nodeSources = entries.filter(
     (entry) =>
-      entry.name.startsWith(`MoarTube-Client-Node-${version}-windows-x64-`) &&
+      entry.name.startsWith(`MoarTube-Client-Node-${version}-${nodeSourceTarget}-`) &&
       /-[a-f0-9]{12}-sources\.zip$/.test(entry.name)
   );
   const sourceCount = 1 + (needsNodeSources ? 1 : 0);

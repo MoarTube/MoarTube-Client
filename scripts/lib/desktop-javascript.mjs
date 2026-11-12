@@ -22,7 +22,7 @@ import {
 // requires, or files located relative to their own package. Preserve their
 // complete production dependency trees instead of rewriting those contracts.
 export const desktopExternals = [
-  'sharp',
+  '@imagemagick/magick-wasm',
   'systeminformation',
   'better-sqlite3',
   'fastify',
@@ -56,6 +56,9 @@ export async function bundleDesktopJavaScript({
   copy = [],
   external = desktopExternals,
   pruneManifest = true,
+  platform = process.platform,
+  arch = process.arch,
+  additionalDependencies = [],
 }) {
   source = path.resolve(source);
   destination = path.resolve(destination);
@@ -63,7 +66,7 @@ export async function bundleDesktopJavaScript({
   for (const name of copy)
     cpSync(path.join(source, name), path.join(destination, name), { recursive: true });
 
-  const names = new Set();
+  const names = new Set(additionalDependencies);
   const vendors = new Map();
   const isExternal = (specifier) =>
     external.some((pattern) =>
@@ -211,14 +214,18 @@ export async function bundleDesktopJavaScript({
       if (optional) return;
       throw error;
     }
+    copyPackageDirectory(directory);
+  }
+  function copyPackageDirectory(directory) {
     if (visited.has(directory)) return;
     visited.add(directory);
     const relative = path.relative(source, directory);
     if (!relative.startsWith(`node_modules${path.sep}`))
       throw new Error(`Desktop dependency is outside its isolated tree: ${directory}`);
     const original = JSON.parse(readFileSync(path.join(directory, 'package.json'), 'utf8'));
-    const profile = desktopRuntimeManifest(original);
-    const { manifest, omittedDependencies: omissions } = profile;
+    const profile = desktopRuntimeManifest(original, { platform, arch });
+    const { omittedDependencies: omissions } = profile;
+    const manifest = profile.manifest;
     omittedDependencies.push(...omissions);
     // node-addon-api is build-only, but inline header code is compiled into the
     // SQLite binary. Keep its attribution after removing its runtime tree.

@@ -8,7 +8,7 @@ const { startNode } = require('../bundled-node.cjs');
 const { EventEmitter } = require('node:events');
 const { PassThrough } = require('node:stream');
 
-test('utility supervision uses ASAR disk resources and shares one shutdown promise', async (t) => {
+test('utility supervision shares shutdown and ignores late output after the log ends', async (t) => {
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'moartube-utility-supervisor-'));
   t.after(() => {
     assert.equal(path.dirname(data), path.resolve(os.tmpdir()));
@@ -17,6 +17,12 @@ test('utility supervision uses ASAR disk resources and shares one shutdown promi
   });
   let messages = 0;
   let options;
+  let utilityChild;
+  const log = new PassThrough();
+  const logged = [];
+  const logErrors = [];
+  log.on('data', chunk => logged.push(chunk.toString()));
+  log.on('error', error => logErrors.push(error));
   const directory = path.join(data, 'resources/node.asar');
   const { prepareDesktopTestNode } = await import('../../scripts/lib/desktop-test-profile.mjs');
   prepareDesktopTestNode(data);
@@ -36,6 +42,7 @@ test('utility supervision uses ASAR disk resources and shares one shutdown promi
           setTimeout(() => child.emit('exit', 0), 10);
         },
       });
+      utilityChild = child;
       setImmediate(() => {
         child.emit('spawn');
         child.emit('message', {
@@ -51,11 +58,12 @@ test('utility supervision uses ASAR disk resources and shares one shutdown promi
     directory,
     data: nodeData,
     utility,
-    log: { write() {} },
+    log,
     onSpawn() {},
     onFailure: (message) => failures.push(message),
   });
   await service.ready;
+  utilityChild.stdout.write('before shutdown');
   assert.equal(options.serviceName, 'MoarTube Node Backend');
   assert.equal(options.stdio, 'pipe');
   assert.equal(options.execPath, undefined);
@@ -71,6 +79,14 @@ test('utility supervision uses ASAR disk resources and shares one shutdown promi
   assert.equal(service.stop(), stopping);
   await stopping;
   await service.stop();
+  // UtilityProcess exit may arrive before its stdout/stderr are drained.
+  // Reproduce that ordering after the caller closes the shared desktop log.
+  log.end();
+  utilityChild.stdout.write('late stdout');
+  utilityChild.stderr.write('late stderr');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(logged, ['before shutdown']);
+  assert.deepEqual(logErrors, []);
   assert.equal(messages, 1);
   assert.deepEqual(failures, []);
 });

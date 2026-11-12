@@ -62,6 +62,42 @@ it('truncates node addresses and respects CDN and tunnel availability', async ()
     await browserExpect(tunnelLink).toHaveAttribute('href', tunnel.publicUrl + '/');
     await browserExpect(tunnelLink).toHaveAttribute('title', tunnel.publicUrl + '/');
     await browserExpect(tunnelLink).toHaveAttribute('target', '_blank');
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: async (text: string) => { (window as Window & { copiedUrl: string }).copiedUrl = text; } },
+      });
+    });
+    const publicCopy = page.getByRole('button', { name: 'Copy Public URL', exact: true });
+    const tunnelCopy = page.getByRole('button', { name: 'Copy Tunnel URL', exact: true });
+    await publicCopy.click();
+    expect(await page.evaluate('window.copiedUrl')).toBe('https://' + settings.publicNodeAddress + '/');
+    await browserExpect(publicCopy).toContainText('Copied!');
+    await browserExpect(publicCopy.locator('svg.bi-copy')).toBeVisible();
+    await browserExpect(publicCopy.locator('[role="status"]')).toBeEmpty();
+    await browserExpect(publicCopy.locator('svg.bi-copy')).toBeVisible();
+    await tunnelCopy.click();
+    expect(await page.evaluate('window.copiedUrl')).toBe(tunnel.publicUrl + '/');
+    await browserExpect(tunnelCopy).toContainText('Copied!');
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: async () => { throw new Error('Clipboard denied'); } },
+      });
+      document.execCommand = () => false;
+    });
+    await publicCopy.click();
+    await browserExpect(publicCopy).toContainText('Copy failed');
+    await browserExpect(publicCopy.locator('svg.bi-copy')).toBeVisible();
+    await page.evaluate(() => {
+      document.execCommand = (command: string) => {
+        (window as Window & { copiedUrl: string }).copiedUrl = (document.activeElement as HTMLTextAreaElement).value;
+        return command === 'copy';
+      };
+    });
+    await publicCopy.click();
+    expect(await page.evaluate('window.copiedUrl')).toBe('https://' + settings.publicNodeAddress + '/');
+    await browserExpect(publicCopy).toContainText('Copied!');
     expect(await page.locator('#sidenav-main hr').count()).toBe(3);
     expect(
       await tunnelLink
@@ -93,6 +129,7 @@ it('truncates node addresses and respects CDN and tunnel availability', async ()
     await browserExpect(tunnelLink).toBeVisible();
     await browserExpect(tunnelLink).not.toHaveAttribute('href');
     await browserExpect(tunnelLink).toContainText('Disabled');
+    await browserExpect(tunnelCopy).toBeDisabled();
     settings.isCloudflareTunnelEnabled = true;
     tunnel.status = 'starting';
     await page.evaluate(`MoarTubeNodeVisitLinks.load(${JSON.stringify(settings)})`);

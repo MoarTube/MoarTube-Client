@@ -217,6 +217,7 @@ describe('publishing queue state', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
       {} as never
     );
     const reply = { send: vi.fn() };

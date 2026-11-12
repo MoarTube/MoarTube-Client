@@ -63,6 +63,10 @@ const name = `moartube-desktop-build-${arch}-${variant}-${process.pid}`;
 const envArgs = process.env.MOARTUBE_RELEASE_TAG
   ? ['-e', `MOARTUBE_RELEASE_TAG=${process.env.MOARTUBE_RELEASE_TAG}`]
   : [];
+const engineArchitecture = docker(['info', '--format', '{{.Architecture}}'], {
+  stdio: ['ignore', 'pipe', 'inherit'],
+  encoding: 'utf8',
+}).stdout.trim();
 docker([
   'create',
   '--platform',
@@ -75,6 +79,8 @@ docker([
   'CSC_IDENTITY_AUTO_DISCOVERY=false',
   '-e',
   `MOARTUBE_DESKTOP_ARCH=${arch}`,
+  '-e',
+  `MOARTUBE_DESKTOP_ENGINE_ARCH=${engineArchitecture}`,
   '-e',
   `MOARTUBE_DEPENDENCIES_PREPARED=${prepared ? '1' : '0'}`,
   '-e',
@@ -108,8 +114,10 @@ try {
     'package.json',
     'package-lock.json',
     'tsconfig.json',
+    'tsconfig.build.json',
     'tsup.config.ts',
     'LICENSE.md',
+    'README.md',
   ]) {
     const source = path.join(root, item);
     // Prepared images already contain scripts/. Copy its contents rather than
@@ -188,10 +196,6 @@ try {
   }
   mkdirSync(layout.reports, { recursive: true });
   docker(['cp', `${name}:/workspace/build/desktop/reports/${target}/.`, layout.reports]);
-  const engineArchitecture = docker(['info', '--format', '{{.Architecture}}'], {
-    stdio: ['ignore', 'pipe', 'inherit'],
-    encoding: 'utf8',
-  }).stdout.trim();
   const imageId = docker(['image', 'inspect', image, '--format', '{{.Id}}'], {
     stdio: ['ignore', 'pipe', 'inherit'],
     encoding: 'utf8',

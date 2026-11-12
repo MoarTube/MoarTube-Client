@@ -26,7 +26,7 @@ module.exports = {
   extraMetadata: { main: 'desktop/main.cjs' },
   files: [
     'dist/**/*',
-      'bin/check-node-version.js',
+    'bin/check-node-version.js',
     'desktop/main.cjs',
     'desktop/autostart.cjs',
     'src/config/data-layout.cjs',
@@ -37,11 +37,24 @@ module.exports = {
     'package.json',
     '!dist/**/*.map',
     '!dist/**/*.d.ts',
+    '!node_modules/@imagemagick/magick-wasm/dist/x64/**/*',
+    '!node_modules/@imagemagick/magick-wasm/dist/index.js',
     { from: path.join(layout.assets, 'icon.png'), to: 'desktop/icon.png' },
   ],
   asar: true,
   asarUnpack: ['dist/**/*', 'bin/check-node-version.js', 'node_modules/**/*', 'package.json'],
   npmRebuild: false,
+  afterPack({ appOutDir, packager }) {
+    const resources = path.join(
+      appOutDir,
+      packager.appInfo.productFilename + '.app/Contents/Resources'
+    );
+    require('node:child_process').execFileSync(
+      path.join(resources, 'runtime/node'),
+      [path.join(root, 'scripts/desktop-image-probe.cjs'), resources],
+      { stdio: 'inherit', timeout: 120_000 }
+    );
+  },
   extraResources: [
     { from: runtime, to: `ffmpeg/${target}` },
     { from: node, to: 'runtime', filter: ['node', 'LICENSE', 'NOTICES.txt'] },

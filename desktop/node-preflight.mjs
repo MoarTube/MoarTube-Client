@@ -23,10 +23,12 @@ const cloudflared = await promisify(execFile)(
 );
 const cloudflaredVersion = /cloudflared version (\d+\.\d+\.\d+)/.exec(cloudflared.stdout)?.[1];
 if (!cloudflaredVersion) throw new Error('Cloudflared preflight failed');
-process.parentPort.postMessage({
+const result = {
   cloudflaredVersion,
   electronVersion: process.versions.electron,
   runtimeVersion: process.version,
   sqlitePackageVersion: require('better-sqlite3/package.json').version,
   sqliteVersion,
-});
+};
+if (process.parentPort) process.parentPort.postMessage(result);
+else console.log('MOARTUBE_NODE_PREFLIGHT ' + JSON.stringify(result));

@@ -7,7 +7,12 @@ export default defineConfig({
     environment: 'node',
     globalSetup: ['./tests/support/silo-global.mjs'],
     include: ['tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    exclude: ['tests/e2e/**', 'tests/node-contracts/**', 'node_modules/**'],
+    exclude: [
+      'tests/e2e/**',
+      'tests/node-contracts/**',
+      'tests/image-runtime/**',
+      'node_modules/**',
+    ],
   },
   resolve: {
     alias: {

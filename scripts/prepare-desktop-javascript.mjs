@@ -12,11 +12,15 @@ import {
   nodeRuntimeFiles,
 } from './lib/desktop-source.mjs';
 
-if (process.platform !== 'win32' || process.arch !== 'x64')
-  throw new Error('Desktop JavaScript consolidation currently targets Windows x64.');
+if (
+  !(process.platform === 'win32' && process.arch === 'x64') &&
+  !(process.platform === 'linux' && ['x64', 'arm64'].includes(process.arch))
+)
+  throw new Error('Desktop JavaScript consolidation supports Windows x64 and Linux x64/ARM64.');
 const root = fileURLToPath(new URL('../', import.meta.url));
 const version = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version;
-const layout = desktopPaths(root, 'win32-x64', version);
+const target = `${process.platform}-${process.arch}`;
+const layout = desktopPaths(root, target, version);
 const variant = process.argv.find((arg) => arg.startsWith('--variant='))?.split('=')[1] ?? 'all';
 if (!['client', 'bundled', 'all'].includes(variant))
   throw new Error('Invalid desktop JavaScript variant');
@@ -33,6 +37,8 @@ reports.client = await bundleDesktopJavaScript({
   source: root,
   destination: reset('client'),
   entries: ['dist/desktop-backend.js'],
+  // Required by the separate CJS image worker, outside the bundled entry graph.
+  additionalDependencies: ['@imagemagick/magick-wasm'],
   copy: [
     'desktop/main.cjs',
     'desktop/autostart.cjs',
@@ -44,6 +50,7 @@ reports.client = await bundleDesktopJavaScript({
     'src/config/data-layout.cjs',
     'bin/check-node-version.js',
     'dist/public',
+    'dist/image-runtime',
   ],
 });
 if (variant !== 'client') {
@@ -73,9 +80,11 @@ if (variant !== 'client') {
     staging: reset('sources'),
     releaseDirectory: layout.release,
     version,
+    target,
     releaseTag: ffmpeg.releaseTag,
     build: {
       ...bundle,
+      clientRuntimeHost: 'electron',
       clientVersion: version,
       runtimeFiles,
       ffmpeg: {
@@ -103,8 +112,16 @@ if (variant !== 'client') {
     path.join(layout.state, 'node-source.json'),
     JSON.stringify(source, null, 2) + '\n'
   );
-  addDesktopSourceNotes(path.join(layout.release, 'RELEASE-NOTES-windows-bundled.md'), source);
-  if (variant === 'all')
+  addDesktopSourceNotes(
+    path.join(
+      layout.release,
+      process.platform === 'linux'
+        ? `RELEASE-NOTES-${target}-bundled.md`
+        : 'RELEASE-NOTES-windows-bundled.md'
+    ),
+    source
+  );
+  if (variant === 'all' && process.platform === 'win32')
     addDesktopSourceNotes(path.join(layout.release, 'RELEASE-NOTES.md'), source);
   reports.node.source = source;
 }

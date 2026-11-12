@@ -45,6 +45,12 @@ function allowPermission(permission, url, origin) {
   return permission === 'clipboard-sanitized-write' && isLocalNavigation(url, origin);
 }
 module.exports = {
+  usesElectronClient: (platform, arch) =>
+    (platform === 'win32' && arch === 'x64') ||
+    (platform === 'linux' && ['x64', 'arm64'].includes(arch)),
+  usesElectronNode: (platform, arch) =>
+    (platform === 'win32' && arch === 'x64') ||
+    (platform === 'linux' && ['x64', 'arm64'].includes(arch)),
   supportsDesktopTarget,
   isLocalNavigation,
   isExternalLink,

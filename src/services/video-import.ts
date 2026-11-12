@@ -3,7 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { type ChildProcess } from 'node:child_process';
 import { spawnMediaProcess as spawn } from '@/utils/media-processes.js';
-import sharp from 'sharp';
+import { renderImages, VIDEO_IMAGES } from '@/utils/images.js';
 import { BaseService } from './base.js';
 import { encodingPool } from '@/utils/work-pool.js';
 import type { Logger } from '@/utils/logger.js';
@@ -30,7 +30,6 @@ export class VideoImportService extends BaseService {
     private readonly ffmpegService: FfmpegService
   ) {
     super('videoImportService', logger);
-    sharp.cache(false);
   }
 
   public beginImport(videoId: string): void {
@@ -148,18 +147,14 @@ export class VideoImportService extends BaseService {
       return;
     }
 
-    const thumbnailBuffer = await sharp(sourceImagePath)
-      .resize({ width: 100, height: 100, fit: 'cover' })
-      .jpeg({ quality: 90 })
-      .toBuffer();
-    const previewFileBuffer = await sharp(sourceImagePath)
-      .resize({ width: 512, height: 288, fit: 'cover' })
-      .jpeg({ quality: 90 })
-      .toBuffer();
-    const posterFileBuffer = await sharp(sourceImagePath)
-      .resize({ width: 1280, height: 720, fit: 'cover' })
-      .jpeg({ quality: 90 })
-      .toBuffer();
+    const [thumbnailBuffer, previewFileBuffer, posterFileBuffer] = await renderImages(
+      sourceImagePath,
+      VIDEO_IMAGES,
+      this.ffmpegService.getPath()
+    );
+    if (!thumbnailBuffer || !previewFileBuffer || !posterFileBuffer) {
+      throw new Error('Video image processing did not produce all images');
+    }
 
     if (this.cancelledImports.has(videoId)) {
       throw new Error('Import cancelled');

@@ -137,6 +137,8 @@ jobs:
       # The desktop suite is native Windows; the S3 integration suite needs its
       # separate Silo service and does not belong in Electron packaging.
       - run: npm run desktop:test
+      - name: Verify image processing and colour normalization
+        run: npm run test:images
       - name: Build Client installer and ZIP
         run: npm run desktop:build:windows:client
       - name: Verify packaged Client

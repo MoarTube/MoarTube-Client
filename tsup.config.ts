@@ -1,5 +1,6 @@
 import { defineConfig } from 'tsup';
 import { cpSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
 export default defineConfig({
   entry: ['src/moartube-client.ts', 'src/desktop-backend.ts'],
@@ -17,20 +18,22 @@ export default defineConfig({
   skipNodeModulesBundle: true,
   external: [
     '../bin/check-node-version.js',
-    // Keep native modules external
-    'sharp',
-    'systeminformation'
+    // Keep packages with runtime asset/worker lookup external.
+    '@imagemagick/magick-wasm',
+    'systeminformation',
   ],
   esbuildOptions(options) {
     options.charset = 'utf8';
   },
   async onSuccess() {
+    execFileSync(process.execPath, ['scripts/verify-image-assets.mjs'], { stdio: 'inherit' });
+    cpSync('src/utils/image-runtime', 'dist/image-runtime', { recursive: true });
     // Copy public folder (views, css, js, images, fonts) to dist folder
     try {
-        cpSync('public', 'dist/public', { recursive: true });
-        console.log('Copied public folder to dist/public');
+      cpSync('public', 'dist/public', { recursive: true });
+      console.log('Copied public folder to dist/public');
     } catch (e) {
-        console.log('No public folder to copy or copy failed', e);
+      console.log('No public folder to copy or copy failed', e);
     }
   },
 });

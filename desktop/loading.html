@@ -93,6 +93,10 @@
         font-size: clamp(14px, 1.3vw, 22px);
         line-height: 1.5;
       }
+      .status-dots {
+        display: inline-block;
+        animation: status-dots 1.5s steps(1, end) infinite;
+      }
       .startup-footer {
         position: absolute;
         bottom: clamp(24px, 5vh, 52px);
@@ -119,6 +123,17 @@
       @keyframes loading {
         to {
           transform: translateX(178%);
+        }
+      }
+      @keyframes status-dots {
+        0% {
+          clip-path: inset(0 66.6667% 0 0);
+        }
+        33.3333% {
+          clip-path: inset(0 33.3333% 0 0);
+        }
+        66.6667% {
+          clip-path: inset(0);
         }
       }
       @media (max-height: 600px) {
@@ -157,7 +172,8 @@
         }
       }
       @media (prefers-reduced-motion: reduce) {
-        .loading-track::after {
+        .loading-track::after,
+        .status-dots {
           animation: none;
         }
       }
@@ -183,7 +199,7 @@
         <div class="startup-status" role="status">
           <div class="loading-track" aria-hidden="true"></div>
           <p class="status-title">Starting MoarTube</p>
-          <p class="status-detail">Evaluating system capabilities...</p>
+          <p class="status-detail">Evaluating system capabilities<span class="status-dots" aria-hidden="true">...</span></p>
         </div>
       </div>
       <p class="startup-footer">VIDEO &bull; LIVE &bull; THEIRS &bull; YOURS</p>

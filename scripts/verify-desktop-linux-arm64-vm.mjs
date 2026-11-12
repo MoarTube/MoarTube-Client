@@ -136,7 +136,7 @@ try {
   ]);
   for (const file of ['prepare-guest.sh', 'guest-init.sh'])
     docker(['cp', path.join(recipe, file), `${guestName}:/workspace/${file}`]);
-  for (const directory of ['scripts', 'tooling'])
+  for (const directory of ['scripts', 'tooling', 'src'])
     docker([
       'cp',
       path.join(root, directory) + path.sep + '.',
@@ -239,7 +239,16 @@ try {
   );
   const evidence = path.join(reports, 'evidence/reports/linux-arm64');
   const gui = {};
+  const imagePipeline = {};
   for (const mode of ['installed', 'portable']) {
+    const backend = read(path.join(evidence, `${mode}-backend-probe.json`));
+    if (
+      backend.target !== 'linux-arm64' ||
+      backend.softwareImagePipeline !== 'passed' ||
+      backend.imagePipeline !== 'WASM normalization + FFmpeg'
+    )
+      throw new Error(`${mode}: ARM64 WASM/FFmpeg pipeline evidence missing`);
+    imagePipeline[mode] = backend;
     const result = read(path.join(evidence, `${mode}-smoke.json`));
     if (
       !result.sandbox ||
@@ -267,6 +276,7 @@ try {
     hostImageId: docker(['image', 'inspect', hostImage, '--format', '{{.Id}}'], { capture: true }),
     artifacts,
     gui,
+    imagePipeline,
     checkedAt: new Date().toISOString(),
     scope:
       'ARM64 guest kernel, Xvfb/software graphics; no physical Pi, Wayland or GPU qualification',

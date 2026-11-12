@@ -19,7 +19,6 @@ export const clientSourceFiles = [
   'scripts',
   'desktop',
   'tooling',
-  'node_modules/sharp',
   'package.json',
   'package-lock.json',
   'tsconfig.json',
@@ -61,11 +60,16 @@ export async function createDesktopSourceArchive({
   version,
   releaseTag,
   build,
+  target = 'win32-x64',
   writeArchive = (file, directory) =>
     writeBuilderArchive('zip', file, directory, { withoutDir: true, compression: 'normal' }),
 }) {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._+-]*$/.test(version))
     throw new Error('Invalid source archive version');
+  if (!['win32-x64', 'linux-x64', 'linux-arm64'].includes(target))
+    throw new Error('Invalid source archive target');
+  const linux = target.startsWith('linux-');
+  const releaseTarget = linux ? target : 'windows-x64';
   mkdirSync(staging, { recursive: true });
   for (const [component, source, files] of [
     ['client', root, clientSourceFiles],
@@ -80,7 +84,7 @@ export async function createDesktopSourceArchive({
           const relative = path.relative(source, file);
           if (relative.split(path.sep).some((part) => ['.git', '.bin'].includes(part)))
             return false;
-          if (/\.(exe|dll|node|obj|o)$/i.test(file)) return false;
+          if (/\.(exe|dll|node|obj|o|a)$|\.so(?:\.[\d.]+)?$/i.test(file)) return false;
           if (lstatSync(file).isSymbolicLink())
             throw new Error(`Unexpected source symlink: ${file}`);
           return true;
@@ -91,16 +95,18 @@ export async function createDesktopSourceArchive({
   writeFileSync(path.join(staging, 'BUILD.json'), JSON.stringify(build, null, 2) + '\n');
   writeFileSync(
     path.join(staging, 'README.txt'),
-    'Matching source and build materials for the Windows MoarTube Client + Node release.\n\n' +
+    `Matching source and build materials for the ${releaseTarget} MoarTube Client + Node release.\n\n` +
       'client/ contains the desktop application source and packaging recipes.\n' +
       'node/ contains the original Node source, package manifest, lockfile, build scripts, assets and production dependency sources.\n' +
       'Compiled executables, native addons and private application data are excluded.\n' +
       'BUILD.json identifies the runtime versions and matching FFmpeg source download. SOURCE-MANIFEST.json lists source file hashes.\n\n' +
-      'Rebuild on Windows x64 with the Node.js version recorded in BUILD.json.\n' +
+      `Rebuild on ${linux ? `Linux ${target.slice(6)} (Ubuntu 24.04 baseline)` : 'Windows x64'} with the build Node.js version recorded in BUILD.json.\n` +
       'Run npm ci and npm run install:cloudflared in node/; npm ci replaces the source-only dependency tree and installs the Node-API SQLite binary.\n' +
       'Run npm ci in client/. Follow client/README.md and the included FFmpeg recipes to rebuild/stage the matching FFmpeg runtime.\n' +
-      'From client/, set MOARTUBE_NODE_SOURCE to the absolute node/ directory, then run npm run desktop:build:windows:client-node.\n' +
-      'The Windows bundle runs both backends through Electron. Node JavaScript is stored in node.asar; native binaries, logging workers and public assets are unpacked during installation. No standalone Node executable is distributed.\n' +
+      `From client/, set MOARTUBE_NODE_SOURCE to the absolute node/ directory, then run npm run desktop:build:${linux ? 'linux' : 'windows'}:client-node${target === 'linux-arm64' ? ' -- --arch=arm64' : ''}.\n` +
+      (linux
+        ? 'Both backends run through Electron. Client images use FFmpeg with a WASM colour-normalization worker. npm ci uses the included package-lock.json; no native image addon rebuilding or binary replacement is required. Client dependencies and shared JavaScript stay in app.asar. Node JavaScript is stored in node.asar. No standalone Node executable is distributed.\n'
+        : 'The bundle runs both backends through Electron. Node JavaScript is stored in node.asar; native binaries, logging workers and public assets are unpacked during installation. No standalone Node executable is distributed.\n') +
       'Dependency/tool downloads need network access. These source materials are not needed to install or run the application.\n'
   );
   const entries = [];
@@ -126,11 +132,12 @@ export async function createDesktopSourceArchive({
   const partial = path.join(releaseDirectory, `node-sources.partial-${process.pid}.zip`);
   await writeArchive(partial, staging);
   const sha256 = digest(partial);
-  const archive = `MoarTube-Client-Node-${version}-windows-x64-${sha256.slice(0, 12)}-sources.zip`;
+  const archive = `MoarTube-Client-Node-${version}-${releaseTarget}-${sha256.slice(0, 12)}-sources.zip`;
   const output = path.join(releaseDirectory, archive);
   renameSync(partial, output);
   return {
     schemaVersion: 1,
+    target,
     clientVersion: version,
     nodeVersion: build.nodeVersion,
     archive,

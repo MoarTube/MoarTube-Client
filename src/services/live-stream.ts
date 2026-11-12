@@ -10,7 +10,7 @@ import {
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Logger } from '@/utils/logger.js';
-import sharp from 'sharp';
+import { renderImages, VIDEO_IMAGES } from '@/utils/images.js';
 import type { NodeApiService } from './node-api.js';
 import type { S3Service } from './s3.js';
 import type { StorageConfig } from '@/types/node-api.js';
@@ -697,23 +697,14 @@ export class LiveStreamService {
           if (code === 0 && fs.existsSync(sourceImagePath)) {
             try {
               this.uploadingImages = { thumbnail: true, preview: true, poster: true };
-              const [thumbnail, preview, poster] = await Promise.all([
-                sharp(sourceImagePath)
-                  .resize({ width: 100 })
-                  .resize(100, 100)
-                  .jpeg({ quality: 90 })
-                  .toBuffer(),
-                sharp(sourceImagePath)
-                  .resize({ width: 512 })
-                  .resize(512, 288)
-                  .jpeg({ quality: 90 })
-                  .toBuffer(),
-                sharp(sourceImagePath)
-                  .resize({ width: 1280 })
-                  .resize(1280, 720)
-                  .jpeg({ quality: 90 })
-                  .toBuffer(),
-              ]);
+              const [thumbnail, preview, poster] = await renderImages(
+                sourceImagePath,
+                VIDEO_IMAGES,
+                this.ffmpegService.getPath()
+              );
+              if (!thumbnail || !preview || !poster) {
+                throw new Error('Live image processing did not produce all images');
+              }
 
               if (storageConfig.storageMode === 'filesystem') {
                 // Node API methods: setThumbnail, setPreview, setPoster

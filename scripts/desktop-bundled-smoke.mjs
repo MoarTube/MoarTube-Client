@@ -84,8 +84,11 @@ try {
   page.on('pageerror', (error) => errors.push(error.message));
   await page.waitForURL(/\/videos$/, { timeout: 180_000 });
   await page.waitForLoadState('networkidle');
-  assert.equal(JSON.parse(readFileSync(nodeSettings, 'utf8')).isCloudflareTunnelEnabled, false,
-    'Routine smoke tests must not create public tunnels');
+  assert.equal(
+    JSON.parse(readFileSync(nodeSettings, 'utf8')).isCloudflareTunnelEnabled,
+    false,
+    'Routine smoke tests must not create public tunnels'
+  );
   assert.equal(
     await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()),
     false
@@ -154,42 +157,52 @@ try {
   }));
   nodePort = owned.port;
   assert(Number.isInteger(owned.node) && Number.isInteger(owned.client));
-  if (process.platform === 'win32') {
+  if (process.platform === 'linux' || (process.platform === 'win32' && process.arch === 'x64')) {
+    if (executablePath || process.platform === 'win32')
+      assert.equal(
+        await application.evaluate(
+          ({ app }, pid) =>
+            app
+              .getAppMetrics()
+              .some((metric) => metric.pid === pid && metric.name === 'MoarTube Client Backend'),
+          owned.client
+        ),
+        true,
+        'Packaged bundled Client must run its backend in an Electron utility process'
+      );
     assert.equal(
       await application.evaluate(
-        ({ app }, pid) => app.getAppMetrics().some(
-          (metric) => metric.pid === pid && metric.name === 'MoarTube Client Backend'
-        ),
-        owned.client
+        ({ app }, pid) =>
+          app
+            .getAppMetrics()
+            .some((metric) => metric.pid === pid && metric.name === 'MoarTube Node Backend'),
+        owned.node
       ),
       true,
-      'Windows bundled Client must run its backend in an Electron utility process'
-    );
-    assert.equal(
-      await application.evaluate(
-        ({ app }, pid) => app.getAppMetrics().some(
-          (metric) => metric.pid === pid && metric.name === 'MoarTube Node Backend'
-        ),
-        owned.node
-      ), true, 'Windows bundled Node must run in an Electron utility process'
+      'Bundled Node must run in an Electron utility process'
     );
     if (executablePath) {
       const resources = path.join(path.dirname(executablePath), 'resources');
       assert(existsSync(path.join(resources, 'node.asar')));
-      assert(!existsSync(path.join(resources, 'runtime/node.exe')));
+      assert(
+        !existsSync(path.join(resources, 'runtime')),
+        'Electron backends must not ship a standalone Node runtime'
+      );
     }
-    const initial = await page.evaluate(async () =>
-      (await fetch('/settings/node/workers')).json()
-    );
+    const initial = await page.evaluate(async () => (await fetch('/settings/node/workers')).json());
     assert.equal(initial.isError, false);
     // Exercise cluster IPC and newly forked workers through the actual backend.
     for (const workerCount of [1, initial.workerCount]) {
-      const changed = await page.evaluate(async (workerCount) =>
-        (await fetch('/settings/node/workers', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ workerCount, confirmDecrease: true }),
-        })).json(), workerCount
+      const changed = await page.evaluate(
+        async (workerCount) =>
+          (
+            await fetch('/settings/node/workers', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ workerCount, confirmDecrease: true }),
+            })
+          ).json(),
+        workerCount
       );
       assert.equal(changed.isError, false, JSON.stringify(changed));
       assert.equal(changed.workerCount, workerCount);

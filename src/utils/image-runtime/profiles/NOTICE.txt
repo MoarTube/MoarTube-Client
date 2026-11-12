@@ -1,0 +1,17 @@
+Pinned libvips 8.18.6 fallback ICC profile assets
+https://github.com/libvips/libvips/tree/v8.18.6/libvips/colour/profiles
+
+srgb.icc is sRGB.icm (480 bytes)
+SHA256 c56e1685d888f5edb92fe07f2750f387f8fe8e91b32ff8fb0b56bfbbb9458353
+Embedded cprt tag: CC0
+
+cmyk.icc is cmyk.icm (961644 bytes), description Chemical proof
+SHA256 156e7c14f244cfc4ed83a755ca4803d80e15dd249b40fae82cb127d3902e15c7
+Embedded copyright: Created by Graeme W. Gill. Released into the public domain.
+No Warranty, Use at your own risk.
+
+These binary assets were downloaded directly from the pinned libvips release
+and matched byte-for-byte to the reference used in the normalization research.
+They are independent data files; neither Sharp nor libvips code is needed at
+build time or runtime. Keep these notices with redistributions of the profiles.
+Use scripts/verify-image-assets.mjs to verify the pinned hashes.

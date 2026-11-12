@@ -81,7 +81,7 @@ for (const variant of variants) {
       const asset = selected.prefix + '-' + version + '-' + target + suffix;
       docker(['cp', path.join(layout.release, asset), name + ':/workspace/' + asset]);
     }
-    for (const directory of ['tooling', 'desktop', 'scripts'])
+    for (const directory of ['tooling', 'desktop', 'scripts', 'src'])
       docker([
         'cp',
         path.join(root, directory) + path.sep + '.',

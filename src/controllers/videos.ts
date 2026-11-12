@@ -4,7 +4,8 @@ import { pipeline } from 'node:stream/promises';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import sharp from 'sharp';
+import { renderImages } from '@/utils/images.js';
+import type { FfmpegService } from '@/services/ffmpeg.js';
 import { BaseController } from './base.js';
 import type { NodeApiService } from '@/services/node-api.js';
 import type { VideoImportService } from '@/services/video-import.js';
@@ -35,7 +36,8 @@ export class VideosController extends BaseController {
     manifestService: ManifestService,
     private readonly s3Service: S3Service,
     private readonly socketService: SocketService,
-    private readonly nodeSocketService: NodeSocketService
+    private readonly nodeSocketService: NodeSocketService,
+    private readonly ffmpegService: FfmpegService
   ) {
     super('VideosController');
     void manifestService;
@@ -648,11 +650,14 @@ export class VideosController extends BaseController {
 
       const buffer = await data.toBuffer();
       // Resize
-      const thumbnailBuffer = await sharp(buffer, { limitInputPixels: 40_000_000 })
-        .resize({ width: 100 })
-        .resize(100, 100)
-        .jpeg({ quality: 90 })
-        .toBuffer();
+      const [thumbnailBuffer] = await renderImages(
+        buffer,
+        [{ width: 100, height: 100, format: 'jpeg' }],
+        this.ffmpegService.getPath()
+      );
+      if (!thumbnailBuffer) {
+        throw new Error('Thumbnail processing did not produce an image');
+      }
 
       const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
       const storageConfig = nodeSettings.storageConfig;
@@ -694,11 +699,14 @@ export class VideosController extends BaseController {
 
       const buffer = await data.toBuffer();
       // Resize
-      const previewBuffer = await sharp(buffer, { limitInputPixels: 40_000_000 })
-        .resize({ width: 512 })
-        .resize(512, 288)
-        .jpeg({ quality: 90 })
-        .toBuffer();
+      const [previewBuffer] = await renderImages(
+        buffer,
+        [{ width: 512, height: 288, format: 'jpeg' }],
+        this.ffmpegService.getPath()
+      );
+      if (!previewBuffer) {
+        throw new Error('Preview processing did not produce an image');
+      }
 
       const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
       const storageConfig = nodeSettings.storageConfig;
@@ -738,11 +746,14 @@ export class VideosController extends BaseController {
 
       const buffer = await data.toBuffer();
       // Resize
-      const posterBuffer = await sharp(buffer, { limitInputPixels: 40_000_000 })
-        .resize({ width: 1280 })
-        .resize(1280, 720)
-        .jpeg({ quality: 90 })
-        .toBuffer();
+      const [posterBuffer] = await renderImages(
+        buffer,
+        [{ width: 1280, height: 720, format: 'jpeg' }],
+        this.ffmpegService.getPath()
+      );
+      if (!posterBuffer) {
+        throw new Error('Poster processing did not produce an image');
+      }
 
       const nodeSettings = await this.nodeApiService.getNodeSettings(jwtToken);
       const storageConfig = nodeSettings.storageConfig;

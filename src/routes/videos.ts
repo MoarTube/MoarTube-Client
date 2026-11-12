@@ -26,7 +26,8 @@ export function videosRoutes(
     manifestService,
     s3Service,
     socketService,
-    nodeSocketService
+    nodeSocketService,
+    container.resolve('ffmpegService')
   );
 
   fastify.get(

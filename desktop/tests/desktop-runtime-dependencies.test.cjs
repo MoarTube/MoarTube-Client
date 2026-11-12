@@ -24,12 +24,11 @@ test('unaudited dependency versions retain their complete manifest', async () =>
 test('content rules preserve native addon fallbacks and Swagger spec modules', async () => {
   const { desktopRuntimeFileReason, desktopRuntimeManifest } =
     await import('../../scripts/lib/desktop-runtime-dependencies.mjs');
-  const sharp = desktopRuntimeManifest({ name: 'sharp', version: '0.33.5' });
-  assert(desktopRuntimeFileReason('src/pipeline.cc', sharp));
-  assert.equal(
-    desktopRuntimeFileReason('src/build/Release/sharp-win32-x64.node', sharp),
-    undefined
-  );
+  const wasm = desktopRuntimeManifest({ name: '@imagemagick/magick-wasm', version: '0.0.46' });
+  assert(desktopRuntimeFileReason('dist/x64/magick.wasm', wasm));
+  assert.equal(desktopRuntimeFileReason('dist/x86/magick.wasm', wasm), undefined);
+  assert.equal(desktopRuntimeFileReason('NOTICE', wasm), undefined);
+  assert.equal(desktopRuntimeFileReason('LICENSE', wasm), undefined);
   const swagger = desktopRuntimeManifest({ name: '@fastify/swagger', version: '9.6.1' });
   assert.equal(desktopRuntimeFileReason('lib/spec/openapi/index.js', swagger), undefined);
 });
@@ -144,11 +143,33 @@ test('runtime pruning removes build-only branches while retaining a shared packa
 test('SQLite Node-API pruning retains the Windows binary and removes build headers and foreign binaries', async () => {
   const { desktopRuntimeManifest, desktopRuntimeFileReason } =
     await import('../../scripts/lib/desktop-runtime-dependencies.mjs');
-  const profile = desktopRuntimeManifest({ name: 'better-sqlite3', version: '13.0.3',
-    dependencies: { 'node-addon-api': '^8.0.0' } });
+  const profile = desktopRuntimeManifest(
+    { name: 'better-sqlite3', version: '13.0.3', dependencies: { 'node-addon-api': '^8.0.0' } },
+    { platform: 'win32', arch: 'x64' }
+  );
   assert.deepEqual(profile.manifest.dependencies, {});
-  for (const name of ['prebuilds/linux-x64.node', 'prebuilds/win32-arm64.node', 'src/better_sqlite3.cpp', 'deps/sqlite3/sqlite3.c'])
+  for (const name of [
+    'prebuilds/linux-x64.node',
+    'prebuilds/win32-arm64.node',
+    'src/better_sqlite3.cpp',
+    'deps/sqlite3/sqlite3.c',
+  ])
     assert(desktopRuntimeFileReason(name, profile), name);
   for (const name of ['prebuilds/win32-x64.node', 'lib/binding.js', 'LICENSE'])
     assert.equal(desktopRuntimeFileReason(name, profile), undefined, name);
 });
+
+for (const arch of ['x64', 'arm64'])
+  test(`Linux ${arch} SQLite pruning retains only its matching ELF addon`, async () => {
+    const { desktopRuntimeManifest, desktopRuntimeFileReason } =
+      await import('../../scripts/lib/desktop-runtime-dependencies.mjs');
+    const profile = desktopRuntimeManifest(
+      { name: 'better-sqlite3', version: '13.0.3' },
+      { platform: 'linux', arch }
+    );
+    assert.equal(desktopRuntimeFileReason(`prebuilds/linux-${arch}.node`, profile), undefined);
+    assert(desktopRuntimeFileReason('prebuilds/win32-x64.node', profile));
+    assert(
+      desktopRuntimeFileReason(`prebuilds/linux-${arch === 'x64' ? 'arm64' : 'x64'}.node`, profile)
+    );
+  });

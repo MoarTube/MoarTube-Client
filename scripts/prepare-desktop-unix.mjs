@@ -69,20 +69,22 @@ mkdirSync(layout.reports, { recursive: true });
 mkdirSync(layout.state, { recursive: true });
 const runtimeDirectory = path.join(layout.staging, selection.buildId, 'runtime');
 const nodeRuntimeDirectory = path.join(layout.staging, `node-${arch}-${process.version}`);
-const nodeLicense =
-  process.env.MOARTUBE_NODE_LICENSE ?? path.resolve(path.dirname(process.execPath), '../LICENSE');
-if (!existsSync(nodeLicense))
-  throw new Error(
-    'Node runtime LICENSE missing; set MOARTUBE_NODE_LICENSE to the matching Node distribution LICENSE.'
+if (darwin) {
+  const nodeLicense =
+    process.env.MOARTUBE_NODE_LICENSE ?? path.resolve(path.dirname(process.execPath), '../LICENSE');
+  if (!existsSync(nodeLicense))
+    throw new Error(
+      'Node runtime LICENSE missing; set MOARTUBE_NODE_LICENSE to the matching Node distribution LICENSE.'
+    );
+  mkdirSync(nodeRuntimeDirectory, { recursive: true });
+  copyFileSync(process.execPath, path.join(nodeRuntimeDirectory, 'node'));
+  chmodSync(path.join(nodeRuntimeDirectory, 'node'), 0o755);
+  copyFileSync(nodeLicense, path.join(nodeRuntimeDirectory, 'LICENSE'));
+  writeFileSync(
+    path.join(nodeRuntimeDirectory, 'NOTICES.txt'),
+    `Node.js ${process.version} (${arch}), bundled for the desktop backend. See LICENSE for Node.js and third-party license texts.\n`
   );
-mkdirSync(nodeRuntimeDirectory, { recursive: true });
-copyFileSync(process.execPath, path.join(nodeRuntimeDirectory, 'node'));
-chmodSync(path.join(nodeRuntimeDirectory, 'node'), 0o755);
-copyFileSync(nodeLicense, path.join(nodeRuntimeDirectory, 'LICENSE'));
-writeFileSync(
-  path.join(nodeRuntimeDirectory, 'NOTICES.txt'),
-  `Node.js ${process.version} (${arch}), bundled for the desktop backend. See LICENSE for Node.js and third-party license texts.\n`
-);
+}
 cpSync(candidate, runtimeDirectory, { recursive: true });
 for (const name of ['ffmpeg', 'ffprobe'])
   chmodSync(path.join(runtimeDirectory, manifest.files[name].path), 0o755);
@@ -105,7 +107,7 @@ writeFileSync(
   JSON.stringify(
     {
       runtimeDirectory,
-      nodeRuntimeDirectory,
+      nodeRuntimeDirectory: darwin ? nodeRuntimeDirectory : undefined,
       nodeVersion: process.version,
       buildId: manifest.buildId,
       sourceArchive: selection.sourceArchive,

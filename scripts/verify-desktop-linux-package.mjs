@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync, statSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,7 +30,6 @@ if (manifest.target !== target || manifest.buildId !== selection.buildId)
 const binaries = {};
 for (const [name, file] of [
   ['electron', path.join(unpacked, selected.executable)],
-  ['node', path.join(resources, 'runtime/node')],
   ...['ffmpeg', 'ffprobe'].map((name) => [name, path.join(runtime, manifest.files[name].path)]),
 ]) {
   assertLinuxElf(readFileSync(file), arch);
@@ -39,8 +38,8 @@ for (const [name, file] of [
   if (['ffmpeg', 'ffprobe'].includes(name) && binaries[name] !== manifest.files[name].sha256)
     throw new Error(`Packaged checksum mismatch: ${name}`);
 }
-if (!statSync(path.join(resources, 'runtime/LICENSE')).size)
-  throw new Error('Bundled Node license missing');
+if (existsSync(path.join(resources, 'runtime')) || existsSync(path.join(resources, 'node')))
+  throw new Error('Standalone Node runtime or loose Node tree included in Linux package');
 const nativeLibraries = [];
 function inspect(directory) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -53,21 +52,25 @@ function inspect(directory) {
   }
 }
 inspect(path.join(resources, 'app.asar.unpacked'));
-if (!nativeLibraries.some((file) => file.endsWith('.node') && file.includes('sharp')))
-  throw new Error('Packaged Sharp native module missing');
+if (nativeLibraries.some((file) => /sharp|vips/i.test(file)))
+  throw new Error('Obsolete Sharp/libvips native libraries in Client package');
+if (
+  !statSync(
+    path.join(
+      resources,
+      'app.asar.unpacked/node_modules/@imagemagick/magick-wasm/dist/x86/magick.wasm'
+    )
+  ).size
+)
+  throw new Error('Packaged image WASM asset missing');
 if (selected.bundled) {
-  inspect(path.join(resources, 'node/node_modules'));
-  const nodeRequire = path.join(resources, 'node/package.json');
-  execFileSync(
-    path.join(resources, 'runtime/node'),
-    [
-      '--input-type=commonjs',
-      '-e',
-      "const Database=require('better-sqlite3');const db=new Database(':memory:');db.exec('create table probe(id)');db.close()",
-    ],
-    { cwd: path.dirname(nodeRequire) }
+  inspect(path.join(resources, 'node.asar.unpacked/node_modules'));
+  const tunnel = path.join(
+    resources,
+    'node.asar.unpacked/resources/cloudflared',
+    target,
+    'cloudflared'
   );
-  const tunnel = path.join(resources, 'node/resources/cloudflared', target, 'cloudflared');
   assertLinuxElf(readFileSync(tunnel), arch);
   if (!(statSync(tunnel).mode & 0o111)) throw new Error('Cloudflared is not executable');
 }
@@ -99,4 +102,6 @@ writeFileSync(
     2
   ) + '\n'
 );
-console.log(`${target}: Electron, Sharp, FFmpeg, DEB architecture and archive integrity verified.`);
+console.log(
+  `${target}: Electron, image WASM, FFmpeg, DEB architecture and archive integrity verified.`
+);
