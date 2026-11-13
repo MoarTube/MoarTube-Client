@@ -71,6 +71,7 @@
     "desktop:dev": "npm run build && node scripts/desktop.mjs",
     "desktop:dev:client-node": "npm run build && node scripts/prepare-desktop-bundled.mjs && node scripts/desktop.mjs --bundled",
     "desktop:test": "node --test desktop/tests/*.test.cjs && vitest run --config vitest.desktop.config.ts",
+
     "desktop:build:windows:client": "node scripts/desktop-windows.mjs --variant=client",
     "desktop:build:windows:client-node": "node scripts/desktop-windows.mjs --variant=bundled",
     "desktop:build:windows:all": "node scripts/desktop-windows.mjs",
@@ -80,6 +81,7 @@
     "desktop:verify:windows:client": "node scripts/verify-desktop-windows.mjs client",
     "desktop:verify:windows:client-node": "node scripts/verify-desktop-windows.mjs bundled",
     "desktop:verify:windows:all": "node scripts/verify-desktop-windows.mjs",
+
     "desktop:build:linux:client": "node scripts/desktop-linux.mjs --variant=client",
     "desktop:build:linux:client-node": "node scripts/desktop-linux.mjs --variant=bundled",
     "desktop:build:linux:all": "node scripts/desktop-linux.mjs",
@@ -93,6 +95,7 @@
     "desktop:verify:linux:all": "node scripts/verify-desktop-linux.mjs",
     "desktop:verify:linux:arm64:native:all": "node scripts/verify-desktop-linux.mjs --arch=arm64",
     "desktop:verify:linux:arm64:vm:all": "node scripts/verify-desktop-linux-arm64-vm.mjs --variant=all",
+
     "desktop:build:darwin:client": "node scripts/desktop-darwin.mjs --arch=x64 --variant=client",
     "desktop:build:darwin:client-node": "node scripts/desktop-darwin.mjs --arch=x64 --variant=bundled",
     "desktop:build:darwin:all": "node scripts/desktop-darwin.mjs --arch=x64 --variant=all",
@@ -102,6 +105,7 @@
     "desktop:verify:darwin:client": "node scripts/verify-desktop-darwin.mjs --arch=x64 --variant=client",
     "desktop:verify:darwin:client-node": "node scripts/verify-desktop-darwin.mjs --arch=x64 --variant=bundled",
     "desktop:verify:darwin:all": "node scripts/verify-desktop-darwin.mjs --arch=x64 --variant=all",
+
     "desktop:build:darwin:arm64:client": "node scripts/desktop-darwin.mjs --arch=arm64 --variant=client",
     "desktop:build:darwin:arm64:client-node": "node scripts/desktop-darwin.mjs --arch=arm64 --variant=bundled",
     "desktop:build:darwin:arm64:all": "node scripts/desktop-darwin.mjs --arch=arm64 --variant=all",
@@ -111,6 +115,7 @@
     "desktop:verify:darwin:arm64:client": "node scripts/verify-desktop-darwin.mjs --arch=arm64 --variant=client",
     "desktop:verify:darwin:arm64:client-node": "node scripts/verify-desktop-darwin.mjs --arch=arm64 --variant=bundled",
     "desktop:verify:darwin:arm64:all": "node scripts/verify-desktop-darwin.mjs --arch=arm64 --variant=all",
+
     "ffmpeg:build:windows": "node tooling/ffmpeg/scripts/build-windows.mjs",
     "ffmpeg:verify:windows": "node tooling/ffmpeg/scripts/verify-features.mjs",
     "ffmpeg:build:linux": "node tooling/ffmpeg/scripts/build-linux.mjs",

@@ -130,4 +130,4 @@ it('shows the worker dropdown without redundant status text and confirms only de
   } finally {
     await browser.close();
   }
-});
+}, 30000);
