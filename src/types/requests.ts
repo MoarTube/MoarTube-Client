@@ -24,6 +24,7 @@ export interface StartStreamBody {
   isRecordingStreamLocally: boolean;
   networkAddress: string;
   videoId?: string;
+  resume?: boolean;
 }
 
 export interface StopStreamParams {

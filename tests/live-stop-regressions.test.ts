@@ -13,6 +13,15 @@ import { DEFAULT_CLIENT_SETTINGS } from '../src/config/defaults.js';
 import { spawnMediaProcess } from '../src/utils/media-processes.js';
 
 // Encoder and unrelated API dependencies are isolated; HLS files and stop HTTP calls are real.
+vi.mock('../src/services/live-stream-images.js', () => ({
+  LiveStreamImages: class {
+    enqueue(): void {}
+    finish(): Promise<void> {
+      return Promise.resolve();
+    }
+  },
+}));
+
 vi.mock('../src/utils/media-processes.js', () => ({ spawnMediaProcess: vi.fn() }));
 
 describe('Client stop drain contract', () => {
@@ -84,9 +93,6 @@ describe('Client stop drain contract', () => {
         { refreshMasterManifest: () => Promise.resolve() } as never,
         { getPath: () => 'test-encoder' } as never
       );
-      (
-        service as unknown as { lastVideoImagesUpdateTimestamp: number }
-      ).lastVideoImagesUpdateTimestamp = Date.now();
       try {
         await service.performStreamingJob(
           'token',

@@ -70,6 +70,7 @@ export interface StreamVideoOptions {
   isRecordingStreamLocally: boolean;
   networkAddress: string;
   videoId?: string;
+  resume?: boolean;
 }
 
 /**
@@ -1414,7 +1415,8 @@ export class NodeApiService extends BaseService {
   public async setThumbnail(
     jwtToken: string,
     videoId: string,
-    buffer: Buffer
+    buffer: Buffer,
+    signal?: AbortSignal
   ): Promise<BaseNodeResponse> {
     const formData = new FormData();
     formData.append('thumbnailFile', buffer, 'thumbnail.jpg');
@@ -1425,6 +1427,7 @@ export class NodeApiService extends BaseService {
 
     const response = await client.post(`/videos/${videoId}/images/thumbnail`, formData, {
       headers,
+      signal: signal ? AbortSignal.any([signal, this.shutdown.signal]) : this.shutdown.signal,
     });
     return this.mutationResult<BaseNodeResponse>(response);
   }
@@ -1432,7 +1435,8 @@ export class NodeApiService extends BaseService {
   public async setPreview(
     jwtToken: string,
     videoId: string,
-    buffer: Buffer
+    buffer: Buffer,
+    signal?: AbortSignal
   ): Promise<BaseNodeResponse> {
     const formData = new FormData();
     formData.append('previewFile', buffer, 'preview.jpg');
@@ -1441,14 +1445,18 @@ export class NodeApiService extends BaseService {
     const headers = formData.getHeaders();
     headers['Authorization'] = `Bearer ${jwtToken}`;
 
-    const response = await client.post(`/videos/${videoId}/images/preview`, formData, { headers });
+    const response = await client.post(`/videos/${videoId}/images/preview`, formData, {
+      headers,
+      signal: signal ? AbortSignal.any([signal, this.shutdown.signal]) : this.shutdown.signal,
+    });
     return this.mutationResult<BaseNodeResponse>(response);
   }
 
   public async setPoster(
     jwtToken: string,
     videoId: string,
-    buffer: Buffer
+    buffer: Buffer,
+    signal?: AbortSignal
   ): Promise<BaseNodeResponse> {
     const formData = new FormData();
     formData.append('posterFile', buffer, 'poster.jpg');
@@ -1457,7 +1465,10 @@ export class NodeApiService extends BaseService {
     const headers = formData.getHeaders();
     headers['Authorization'] = `Bearer ${jwtToken}`;
 
-    const response = await client.post(`/videos/${videoId}/images/poster`, formData, { headers });
+    const response = await client.post(`/videos/${videoId}/images/poster`, formData, {
+      headers,
+      signal: signal ? AbortSignal.any([signal, this.shutdown.signal]) : this.shutdown.signal,
+    });
     return this.mutationResult<BaseNodeResponse>(response);
   }
 
@@ -1476,6 +1487,7 @@ export class NodeApiService extends BaseService {
       isRecordingStreamLocally,
       networkAddress,
       videoId,
+      resume,
     } = options;
     const selectedOrigin = await this.getBaseUrl();
     if (
@@ -1489,18 +1501,22 @@ export class NodeApiService extends BaseService {
     ) {
       throw new Error('Stop or reconcile the previous stream session before resuming it.');
     }
-    const response = await this.postAuthenticated<StreamVideoResponse>(jwtToken, '/streams/start', {
-      title,
-      description,
-      tags,
-      rtmpPort,
-      uuid,
-      resolution,
-      isRecordingStreamRemotely,
-      isRecordingStreamLocally,
-      networkAddress,
-      videoId,
-    });
+    const response = await this.postAuthenticated<StreamVideoResponse>(
+      jwtToken,
+      resume === true ? '/streams/resume' : '/streams/start',
+      {
+        title,
+        description,
+        tags,
+        rtmpPort,
+        uuid,
+        resolution,
+        isRecordingStreamRemotely,
+        isRecordingStreamLocally,
+        networkAddress,
+        videoId,
+      }
+    );
     const origin = selectedOrigin;
     const action = this.actions.prepare(
       origin,

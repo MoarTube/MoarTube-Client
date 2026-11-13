@@ -878,10 +878,10 @@
 									$('#videos_table_row_' + videoId).find('td').eq(5).html('<p class="text-secondary mb-0 text-sm">' + self.calculateBandwidthUsage_MB(bandwidth) + '</p>');
 								}
 
-								if ($('#video-thumbnail-loading-spinner-' + videoId).length) {
-  $('#video-thumbnail-loading-spinner-' + videoId).replaceWith('<img id="video-thumbnail-' + videoId + '" class="avatar avatar-sm me-3 cursor-pointer" alt="video thumbnail">');
-}
-MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId), self.EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/thumbnail.jpg');
+
+							}
+							else if (type === 'images_updated') {
+								self.refreshLiveImages(data.payload.videoId, data.payload.images, data.payload.version);
 							}
 							else if (type === 'streaming_stopped') {
 								const videoId = data.payload.videoId;
@@ -1062,11 +1062,53 @@ MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId
 		showLiveModal(videoId) {
 			const self = this;
 			let choices;
+			const collectStreamOptions = () => {
+				const title = Swal.getPopup().querySelector('#importTitleInput').value;
+				const description = Swal.getPopup().querySelector('#importDescriptionInput').value;
+				const tags = choices.getValue(true);
+				const rtmpPort = Swal.getPopup().querySelector('#rtmpPortInput').value;
+				const isRecordingStreamRemotely = Swal.getPopup().querySelector('#recordStreamRemotelyCheckbox').checked;
+				const isRecordingStreamLocally = Swal.getPopup().querySelector('#recordStreamLocallyCheckbox').checked;
+				const networkAddress = Swal.getPopup().querySelector('#liveNetworkAddressSelect').value;
+
+				let resolution = '';
+
+				const radioButtons = Swal.getPopup().querySelectorAll('input[name="streamResolutionRadioButton"]');
+				radioButtons.forEach(streamResolutionRadioButton => {
+					if (streamResolutionRadioButton.checked) {
+						resolution = streamResolutionRadioButton.value;
+					}
+				});
+
+				if (title === '') {
+					Swal.showValidationMessage('enter a title');
+					return false;
+				}
+				else if (description === '') {
+					Swal.showValidationMessage('enter a description');
+					return false;
+				}
+				else if (tags.length === 0) {
+					Swal.showValidationMessage('enter at least one tag');
+					return false;
+				}
+				else if (rtmpPort === '') {
+					Swal.showValidationMessage('enter an rtmp port');
+					return false;
+				}
+				else if (resolution === '') {
+					Swal.showValidationMessage('select a stream input resolution');
+					return false;
+				}
+
+				return { title: title, description: description, tags: tags, rtmpPort: rtmpPort, resolution: resolution, isRecordingStreamRemotely: isRecordingStreamRemotely, isRecordingStreamLocally: isRecordingStreamLocally, networkAddress: networkAddress, videoId: videoId }
+			};
 
 			const i = Swal.mixin({
 				customClass: {
 					popup: "stream-video-dialog",
 					confirmButton: "btn bg-gradient-success",
+					denyButton: "btn bg-gradient-success ms-2",
 					cancelButton: "btn bg-gradient-danger"
 				},
 				buttonsStyling: !1
@@ -1128,8 +1170,11 @@ MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId
 					</div>',
 				showCloseButton: true,
 				showCancelButton: false,
-				confirmButtonText: '<i class="fa fa-thumbs-up"></i> Stream!',
-				confirmButtonAriaLabel: "Thumbs up",
+				showDenyButton: videoId != null,
+				denyButtonText: 'Resume',
+				confirmButtonText: videoId != null ? 'Restart' : '<i class="fa fa-thumbs-up"></i> Stream!',
+				confirmButtonAriaLabel: videoId != null ? "Restart stream" : "Start stream",
+				denyButtonAriaLabel: "Resume stream",
 				cancelButtonText: '<i class="fa fa-thumbs-down"></i> Cancel',
 				cancelButtonAriaLabel: "Thumbs down",
 				willOpen: () => {
@@ -1194,50 +1239,11 @@ MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId
 				didOpen: () => {
 					$('#importTitleInput').focus();
 				},
-				preConfirm: () => {
-					const title = Swal.getPopup().querySelector('#importTitleInput').value;
-					const description = Swal.getPopup().querySelector('#importDescriptionInput').value;
-					const tags = choices.getValue(true);
-					const rtmpPort = Swal.getPopup().querySelector('#rtmpPortInput').value;
-					const isRecordingStreamRemotely = Swal.getPopup().querySelector('#recordStreamRemotelyCheckbox').checked;
-					const isRecordingStreamLocally = Swal.getPopup().querySelector('#recordStreamLocallyCheckbox').checked;
-					const networkAddress = Swal.getPopup().querySelector('#liveNetworkAddressSelect').value;
-
-					let resolution = '';
-
-					const radioButtons = Swal.getPopup().querySelectorAll('input[name="streamResolutionRadioButton"]');
-					radioButtons.forEach(streamResolutionRadioButton => {
-						if (streamResolutionRadioButton.checked) {
-							resolution = streamResolutionRadioButton.value;
-						}
-					});
-
-					if (title === '') {
-						Swal.showValidationMessage('enter a title');
-						return false;
-					}
-					else if (description === '') {
-						Swal.showValidationMessage('enter a description');
-						return false;
-					}
-					else if (tags.length === 0) {
-						Swal.showValidationMessage('enter at least one tag');
-						return false;
-					}
-					else if (rtmpPort === '') {
-						Swal.showValidationMessage('enter an rtmp port');
-						return false;
-					}
-					else if (resolution === '') {
-						Swal.showValidationMessage('select a stream input resolution');
-						return false;
-					}
-
-					return { title: title, description: description, tags: tags, rtmpPort: rtmpPort, resolution: resolution, isRecordingStreamRemotely: isRecordingStreamRemotely, isRecordingStreamLocally: isRecordingStreamLocally, networkAddress: networkAddress, videoId: videoId }
-				}
+				preConfirm: collectStreamOptions,
+				preDeny: collectStreamOptions
 			})
 				.then((result) => {
-					if (result.isConfirmed) {
+					if (result.isConfirmed || result.isDenied) {
 						const title = result.value.title;
 						const description = result.value.description;
 						const tags = result.value.tags.join(',');
@@ -1248,7 +1254,7 @@ MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId
 						const networkAddress = result.value.networkAddress;
 						const videoId = result.value.videoId;
 
-						$.ajax({ type: 'POST', url: '/streams/start', data: JSON.stringify({ title: title, description: description, tags: tags, rtmpPort: rtmpPort, resolution: resolution, isRecordingStreamRemotely: isRecordingStreamRemotely, isRecordingStreamLocally: isRecordingStreamLocally, networkAddress: networkAddress, videoId: videoId }), contentType: 'application/json; charset=utf-8' })
+						$.ajax({ type: 'POST', url: '/streams/start', data: JSON.stringify({ title: title, description: description, tags: tags, rtmpPort: rtmpPort, resolution: resolution, isRecordingStreamRemotely: isRecordingStreamRemotely, isRecordingStreamLocally: isRecordingStreamLocally, networkAddress: networkAddress, videoId: videoId, resume: result.isDenied }), contentType: 'application/json; charset=utf-8' })
 							.always(function () {
 
 							})
@@ -1260,8 +1266,8 @@ MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId
 
 								}
 							})
-							.fail(function () {
-								self.showAlert(true, 'video file import error occurred');
+							.fail(function (xhr) {
+								self.showAlert(true, xhr.responseJSON?.message || (result.isDenied ? 'unable to resume stream' : 'unable to start stream'));
 							});
 					}
 				});
@@ -1938,11 +1944,34 @@ MoarTubeMemory.refreshImage(document.getElementById('video-thumbnail-' + videoId
 				});
 		}
 
+		refreshLiveImages(videoId, images, version) {
+			const update = (element, name) => {
+				MoarTubeMemory.refreshImage(element, this.EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/' + name + '.jpg?revision=' + encodeURIComponent(version), 0);
+			};
+			if (images.includes('thumbnail')) {
+				const spinner = document.getElementById('video-thumbnail-loading-spinner-' + videoId);
+				if (spinner) {
+					const image = document.createElement('img');
+					image.id = 'video-thumbnail-' + videoId;
+					image.className = 'avatar avatar-sm me-3 cursor-pointer';
+					image.alt = 'video thumbnail';
+					spinner.replaceWith(image);
+				}
+				update(document.getElementById('video-thumbnail-' + videoId), 'thumbnail');
+			}
+			const modal = document.getElementById('video-images-modal');
+			if (modal?.dataset.videoId === String(videoId)) {
+				for (const name of ['thumbnail', 'preview', 'poster']) {
+					if (images.includes(name)) update(modal.querySelector('#' + name + '-image-button'), name);
+				}
+			}
+		}
+
 		showThumbnailModal(videoId) {
 			const self = this;
 
 			const html = '\
-				<div class="row row-cols-3 g-4">\
+				<div id="video-images-modal" data-video-id="' + videoId + '" class="row row-cols-3 g-4">\
 					<div class="col-auto d-flex align-items-center justify-content-center">\
 						<div class="card upload-images-button-container">\
 							<img id="thumbnail-image-button" src="' + self.EXTERNAL_VIDEOS_BASE_URL + '/external/videos/' + videoId + '/images/thumbnail.jpg" class="card-img-top rounded-top" alt="thumbnail" role="button" style="width: 100px; height: 100px;">\

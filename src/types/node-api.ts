@@ -145,6 +145,9 @@ export interface VideoDataAllResponse {
 }
 
 export interface VideoMeta {
+  resolution?: string;
+  isRecordingStreamRemotely?: boolean;
+  isRecordingStreamLocally?: boolean;
   networkAddress: string;
   rtmpPort: number | string;
   uuid: string;
@@ -162,6 +165,8 @@ export interface VideoOutputs {
 }
 
 export interface VideoData {
+  lengthSeconds?: number;
+  lengthTimestamp?: string;
   uuid: string;
   isLive: boolean;
   isStreaming: boolean;

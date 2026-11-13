@@ -10,7 +10,7 @@ import {
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Logger } from '@/utils/logger.js';
-import { renderImages, VIDEO_IMAGES } from '@/utils/images.js';
+import { LiveStreamImages } from './live-stream-images.js';
 import type { NodeApiService } from './node-api.js';
 import type { S3Service } from './s3.js';
 import type { StorageConfig } from '@/types/node-api.js';
@@ -22,10 +22,17 @@ import { randomUUID } from 'node:crypto';
 import { readLiveHls, withLiveHlsFiles, type LiveHlsSegment } from '@/utils/live-hls.js';
 import { PlaylistArchive } from '@/utils/playlist-archive.js';
 import { WorkPool } from '@/utils/work-pool.js';
+import {
+  readLiveStreamState,
+  saveLiveStreamState,
+  type LiveStreamState,
+} from '@/utils/live-stream-state.js';
 
 const livePool = new WorkPool(2, 0);
 
 interface StreamContext {
+  sessionStartIndex?: number;
+  discontinuities?: number;
   cleanup?: Promise<void> | undefined;
   generation?: string;
   retained?: Map<string, { index: number; removedAt?: number; duration: number }>;
@@ -51,6 +58,7 @@ interface SendSegmentOptions {
 }
 
 interface HandleStreamDataOptions extends LiveHlsSegment {
+  images?: LiveStreamImages;
   context: StreamContext;
   jwtToken: string;
   videoId: string;
@@ -75,8 +83,6 @@ export class LiveStreamService {
       aborter: AbortController;
     }
   > = new Map();
-  private uploadingImages = { thumbnail: false, preview: false, poster: false };
-  private lastVideoImagesUpdateTimestamp = 0;
   private closing = false;
 
   constructor(
@@ -127,6 +133,56 @@ export class LiveStreamService {
     return 0;
   }
 
+  public async prepareStreamResume(
+    jwtToken: string,
+    videoId: string,
+    resolution: string,
+    isRecordingStreamRemotely: boolean,
+    isRecordingStreamLocally: boolean
+  ): Promise<LiveStreamState> {
+    if (this.activeStreams.has(videoId)) {
+      throw new Error('This stream is already active or stopping');
+    }
+    const response = requireNodeSuccess(await this.nodeApiService.getVideoData(jwtToken, videoId));
+    const video = response.videoData;
+    if (!video.isLive || video.isStreaming || video.isFinalized) {
+      throw new Error('Only a stopped, unfinalized live stream can be resumed');
+    }
+    const meta = video.meta;
+    if (
+      meta?.resolution !== resolution ||
+      meta.isRecordingStreamRemotely !== isRecordingStreamRemotely ||
+      meta.isRecordingStreamLocally !== isRecordingStreamLocally
+    ) {
+      throw new Error(
+        'Resume requires the original resolution and recording settings. Use Restart to change them.'
+      );
+    }
+    const videoDir = path.join(this.settingsRepository.getVideosDirectoryPath(), videoId);
+    const state = readLiveStreamState(videoDir);
+    if (!state) {
+      throw new Error(
+        'The saved stream state is unavailable on this Client. Use the original Client to resume.'
+      );
+    }
+    if (
+      state.resolution !== resolution ||
+      state.isRecordingStreamRemotely !== isRecordingStreamRemotely ||
+      state.isRecordingStreamLocally !== isRecordingStreamLocally
+    ) {
+      throw new Error('The saved stream settings do not match this video');
+    }
+    if (
+      isRecordingStreamRemotely &&
+      state.nextSegmentIndex > 0 &&
+      !fs.existsSync(path.join(videoDir, 'adaptive', `archive-${resolution}.m3u8`))
+    ) {
+      throw new Error('The recorded playlist is unavailable on this Client');
+    }
+    state.lengthSeconds = Math.max(state.lengthSeconds, video.lengthSeconds ?? 0);
+    return state;
+  }
+
   public async performStreamingJob(
     jwtToken: string,
     videoId: string,
@@ -134,7 +190,8 @@ export class LiveStreamService {
     format: string,
     resolution: string,
     isRecordingStreamRemotely: boolean,
-    isRecordingStreamLocally: boolean
+    isRecordingStreamLocally: boolean,
+    resumeState?: LiveStreamState
   ): Promise<void> {
     if (this.closing) {
       throw new Error('MoarTube Client is shutting down');
@@ -145,6 +202,9 @@ export class LiveStreamService {
     }
     try {
       this.logger.info(`[LiveStreamService] Starting live stream for id: ${videoId}`);
+      if (this.activeStreams.has(videoId)) {
+        throw new Error('This stream is already active or stopping');
+      }
       if (this.activeStreams.size >= 2) {
         throw new Error('Live stream capacity reached');
       }
@@ -163,12 +223,16 @@ export class LiveStreamService {
       const isCloudflareCdnEnabled = nodeSettings.isCloudflareCdnEnabled ?? false;
       const videosPath = this.settingsRepository.getVideosDirectoryPath();
 
-      if (storageConfig.storageMode === 's3provider' && storageConfig.s3Config) {
+      if (!resumeState && storageConfig.storageMode === 's3provider' && storageConfig.s3Config) {
         const prefix = `external/videos/${videoId}/adaptive/m3u8`;
         await this.nodeApiService.withVideoCacheInvalidation(
           jwtToken,
           videoId,
-          ['adaptive/m3u8/'],
+          // Old segment URLs are no longer referenced after Restart. Only recorded
+          // playlists reuse long-lived cache identities when this tree is replaced.
+          ['master', '240p', '360p', '480p', '720p', '1080p', '1440p', '2160p'].map(
+            (name) => `adaptive/m3u8/static/manifests/manifest-${name}.m3u8`
+          ),
           () =>
             this.s3Service.deleteDirectoryRecursive(
               storageConfig.s3Config as NonNullable<typeof storageConfig.s3Config>,
@@ -180,7 +244,9 @@ export class LiveStreamService {
       await this.manifestService.refreshMasterManifest(jwtToken, videoId);
 
       const videoDir = path.join(videosPath, videoId);
-      await this.deleteDirectoryRecursive(videoDir);
+      if (!resumeState) {
+        await this.deleteDirectoryRecursive(videoDir);
+      }
 
       ['source', 'images', 'adaptive'].forEach((dir) =>
         fs.mkdirSync(path.join(videoDir, dir), { recursive: true })
@@ -188,13 +254,30 @@ export class LiveStreamService {
 
       const sourceFilePath = path.join(videoDir, 'source', `${videoId}.ts`);
 
-      const encoderDirectory = path.join(videoDir, 'adaptive', 'encoder');
+      const state: LiveStreamState = resumeState
+        ? { ...resumeState }
+        : {
+            generation: randomUUID(),
+            nextSegmentIndex: 0,
+            lengthSeconds: 0,
+            discontinuities: 0,
+            resolution,
+            isRecordingStreamRemotely,
+            isRecordingStreamLocally,
+          };
+      const startNumber = state.nextSegmentIndex;
+      const lengthOffset = state.lengthSeconds;
+      const discontinuities = state.discontinuities + (resumeState && startNumber > 0 ? 1 : 0);
+      saveLiveStreamState(videoDir, state);
+      // Each encoder gets fresh working files; published segments and recordings stay intact.
+      const encoderDirectory = path.join(videoDir, 'adaptive', 'encoder', randomUUID());
       fs.mkdirSync(encoderDirectory, { recursive: true });
       const livePlaylist = path.join(encoderDirectory, 'live.m3u8');
       const ffmpegArguments = withLiveHlsFiles(
         this.generateFfmpegLiveArguments(videoId, resolution, format, rtmpUrl),
         livePlaylist,
-        resolution
+        resolution,
+        startNumber
       );
 
       const process = spawn(this.ffmpegService.getPath(), ffmpegArguments, {
@@ -207,24 +290,31 @@ export class LiveStreamService {
         this.logger.error(`Live encoder failed for video ${videoId}`, error);
       });
 
-      let lengthSeconds = 0;
-      let lengthTimestamp = '';
+      let lengthSeconds = lengthOffset;
+      let lengthTimestamp = this.secondsToTimestamp(lengthOffset);
       let lengthUpdatePending = false;
       let stderrTail = '';
       let deliveryFailed = false;
 
       const context: StreamContext = {
-        generation: randomUUID(),
+        generation: state.generation,
+        sessionStartIndex: startNumber,
+        discontinuities,
         ...(isRecordingStreamRemotely
           ? {
               archive: new PlaylistArchive(
-                path.join(videoDir, 'adaptive', `archive-${resolution}.m3u8`)
+                path.join(videoDir, 'adaptive', `archive-${resolution}.m3u8`),
+                0,
+                Boolean(
+                  resumeState &&
+                  fs.existsSync(path.join(videoDir, 'adaptive', `archive-${resolution}.m3u8`))
+                )
               ),
             }
           : {}),
         segmentCounter: -1,
-        nextExpectedSegmentIndex: 0,
-        endOfValidManifestPattern: Buffer.from(`segment-${resolution}-0.ts\n`),
+        nextExpectedSegmentIndex: startNumber,
+        endOfValidManifestPattern: Buffer.from(`segment-${resolution}-${String(startNumber)}.ts\n`),
         endOfValidManifestPatternLength: 0,
       };
       context.endOfValidManifestPatternLength = context.endOfValidManifestPattern.length;
@@ -233,6 +323,21 @@ export class LiveStreamService {
         tracker.drainSeconds = () => Math.ceil((context.longestWindow ?? 0) * 2 + 6);
       }
 
+      if (!tracker) {
+        throw new Error('Live stream tracker is missing');
+      }
+      const images = new LiveStreamImages({
+        jwtToken,
+        videoId,
+        signal: tracker.aborter.signal,
+        storageConfig,
+        ffmpegPath: this.ffmpegService.getPath(),
+        logger: this.logger,
+        nodeApiService: this.nodeApiService,
+        s3Service: this.s3Service,
+        socketService: this.socketService,
+      });
+
       process.stderr.on('data', (data: Buffer) => {
         stderrTail = (stderrTail + data.toString()).slice(-16 * 1024);
         if (!this.isLiveStreamStopping(videoId)) {
@@ -240,8 +345,13 @@ export class LiveStreamService {
           if (stderrTemp.includes('time=') && !lengthUpdatePending) {
             const index = stderrTemp.indexOf('time=');
             const timePart = stderrTemp.substring(index + 5);
-            lengthTimestamp = timePart.substring(0, 11);
-            lengthSeconds = this.timestampToSeconds(lengthTimestamp);
+            const elapsed = this.timestampToSeconds(timePart.substring(0, 11));
+            if (!Number.isFinite(elapsed) || elapsed < 0) {
+              return;
+            }
+            lengthSeconds = lengthOffset + elapsed;
+            lengthTimestamp = this.secondsToTimestamp(lengthSeconds);
+            state.lengthSeconds = lengthSeconds;
 
             lengthUpdatePending = true;
             void this.nodeApiService
@@ -263,12 +373,14 @@ export class LiveStreamService {
           finished: () => process.exitCode !== null || process.signalCode !== null,
           stopping: () => this.isLiveStreamStopping(videoId),
           signal: activeStream.aborter.signal,
+          startNumber,
         })) {
           if (this.isLiveStreamStopping(videoId)) {
             break;
           }
           await this.handleStreamData({
             ...files,
+            images,
             context,
             jwtToken,
             videoId,
@@ -281,6 +393,9 @@ export class LiveStreamService {
             format,
             sourceFilePath,
           });
+          state.nextSegmentIndex = context.nextExpectedSegmentIndex;
+          state.discontinuities = discontinuities;
+          saveLiveStreamState(videoDir, state);
         }
       })()
         .catch((error: unknown) => {
@@ -295,7 +410,9 @@ export class LiveStreamService {
         })
         .finally(async () => {
           try {
+            await images.finish();
             await context.archive?.close();
+            saveLiveStreamState(videoDir, state);
           } finally {
             release();
           }
@@ -437,6 +554,22 @@ export class LiveStreamService {
           publicName(Number(index))
         )
       );
+      const resumed = (context.discontinuities ?? 0) > 0;
+      const boundary = context.sessionStartIndex ?? 0;
+      if (resumed) {
+        const beforeBoundary = context.segmentCounter <= boundary;
+        publicLines.splice(
+          2,
+          0,
+          `#EXT-X-DISCONTINUITY-SEQUENCE:${String((context.discontinuities ?? 0) - (beforeBoundary ? 1 : 0))}`
+        );
+        if (beforeBoundary) {
+          const uri = publicLines.findIndex((line) => line.trim().endsWith(publicName(boundary)));
+          if (uri > 0) {
+            publicLines.splice(uri - 1, 0, '#EXT-X-DISCONTINUITY');
+          }
+        }
+      }
       const manifestFileName = `manifest-${resolution}.m3u8`;
 
       if (context.archive) {
@@ -459,8 +592,9 @@ export class LiveStreamService {
         );
         await context.archive.append(
           duration,
-          String(publicLines[entryIndex]).trim(),
-          targetDuration
+          `../../${resolution}/segments/${segmentFileName}`,
+          targetDuration,
+          resumed && currentSegmentCounter === boundary
         );
       }
 
@@ -476,7 +610,7 @@ export class LiveStreamService {
         storageConfig,
         isCloudflareCdnEnabled,
       });
-      this.sendImagesToNode(jwtToken, videoId, segmentBuffer, storageConfig);
+      options.images?.enqueue(segmentBuffer);
 
       if (isRecordingStreamLocally) {
         fs.appendFileSync(sourceFilePath, segmentBuffer);
@@ -634,123 +768,6 @@ export class LiveStreamService {
           }
         }
       );
-    }
-  }
-
-  private sendImagesToNode(
-    jwtToken: string,
-    videoId: string,
-    segmentBuffer: Buffer,
-    storageConfig: StorageConfig
-  ): void {
-    if (
-      !this.uploadingImages.thumbnail &&
-      !this.uploadingImages.preview &&
-      !this.uploadingImages.poster &&
-      Date.now() - this.lastVideoImagesUpdateTimestamp > 10000
-    ) {
-      this.lastVideoImagesUpdateTimestamp = Date.now();
-      const imagesDir = path.join(
-        this.settingsRepository.getVideosDirectoryPath(),
-        videoId,
-        'images'
-      );
-      const sourceImagePath = path.join(imagesDir, 'source.jpg');
-      this.uploadingImages = { thumbnail: true, preview: true, poster: true };
-
-      const process = spawn(this.ffmpegService.getPath(), [
-        '-i',
-        'pipe:0',
-        '-ss',
-        '0.5',
-        '-q',
-        '18',
-        '-frames:v',
-        '1',
-        '-y',
-        sourceImagePath,
-      ]);
-      process.stderr.resume();
-      const deadline = setTimeout(() => process.kill(), 30_000);
-      deadline.unref();
-      process.once('close', () => {
-        clearTimeout(deadline);
-      });
-      process.once('error', () => {
-        this.uploadingImages = { thumbnail: false, preview: false, poster: false };
-      });
-
-      // FFmpeg triggers a write EOF error when piping live mpeg-ts segments
-      // because they lack trailer data. This is benign on Windows; swallow it
-      // to prevent an unhandled 'error' event from crashing the process.
-      process.stdin.on('error', () => {});
-
-      process.stdin.write(segmentBuffer, () => {
-        process.stdin.end();
-      });
-
-      process.on('exit', (code): void => {
-        if (code !== 0) {
-          this.uploadingImages = { thumbnail: false, preview: false, poster: false };
-        }
-        void (async (): Promise<void> => {
-          if (code === 0 && fs.existsSync(sourceImagePath)) {
-            try {
-              this.uploadingImages = { thumbnail: true, preview: true, poster: true };
-              const [thumbnail, preview, poster] = await renderImages(
-                sourceImagePath,
-                VIDEO_IMAGES,
-                this.ffmpegService.getPath()
-              );
-              if (!thumbnail || !preview || !poster) {
-                throw new Error('Live image processing did not produce all images');
-              }
-
-              if (storageConfig.storageMode === 'filesystem') {
-                // Node API methods: setThumbnail, setPreview, setPoster
-                requireNodeSuccess(
-                  await this.nodeApiService.setThumbnail(jwtToken, videoId, thumbnail)
-                );
-                requireNodeSuccess(
-                  await this.nodeApiService.setPreview(jwtToken, videoId, preview)
-                );
-                requireNodeSuccess(await this.nodeApiService.setPoster(jwtToken, videoId, poster));
-              } else if (storageConfig.s3Config !== undefined) {
-                const s3Config = storageConfig.s3Config;
-                await this.nodeApiService.withVideoCacheInvalidation(
-                  jwtToken,
-                  videoId,
-                  ['images/thumbnail.jpg', 'images/preview.jpg', 'images/poster.jpg'],
-                  async () => {
-                    await this.s3Service.putObjectFromData(
-                      s3Config,
-                      `external/videos/${videoId}/images/thumbnail.jpg`,
-                      thumbnail,
-                      'image/jpeg'
-                    );
-                    await this.s3Service.putObjectFromData(
-                      s3Config,
-                      `external/videos/${videoId}/images/preview.jpg`,
-                      preview,
-                      'image/jpeg'
-                    );
-                    await this.s3Service.putObjectFromData(
-                      s3Config,
-                      `external/videos/${videoId}/images/poster.jpg`,
-                      poster,
-                      'image/jpeg'
-                    );
-                  }
-                );
-              }
-            } catch (err) {
-              this.logger.error(`Failed to update images for live stream ${videoId}`, err);
-            } finally {
-              this.uploadingImages = { thumbnail: false, preview: false, poster: false };
-            }
-          }
-        })();
-      });
     }
   }
 
@@ -928,6 +945,13 @@ export class LiveStreamService {
     const minutes = Number.parseInt(parts[1] ?? '0', 10);
     const seconds = Number.parseFloat(parts[2] ?? '0');
     return hours * 3600 + minutes * 60 + seconds;
+  }
+
+  private secondsToTimestamp(seconds: number): string {
+    const centiseconds = Math.round(seconds * 100);
+    const hours = Math.floor(centiseconds / 360000);
+    const minutes = Math.floor((centiseconds % 360000) / 6000);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${((centiseconds % 6000) / 100).toFixed(2).padStart(5, '0')}`;
   }
 
   private async deleteDirectoryRecursive(directoryPath: string): Promise<void> {

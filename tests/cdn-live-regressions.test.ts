@@ -39,7 +39,6 @@ function streamHarness(generation: string, failCleanup: boolean | 'response' = f
     {} as never
   );
   const internal = service as unknown as {
-    lastVideoImagesUpdateTimestamp: number;
     handleStreamData(options: unknown): Promise<void>;
   };
   const pattern = Buffer.from('segment-720p-0.ts\n');
@@ -51,7 +50,6 @@ function streamHarness(generation: string, failCleanup: boolean | 'response' = f
     endOfValidManifestPatternLength: pattern.length,
   };
   async function publish(index: number): Promise<void> {
-    internal.lastVideoImagesUpdateTimestamp = Date.now();
     const start = Math.max(0, index - 19);
     let manifest = `#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXT-X-MEDIA-SEQUENCE:${String(start)}\n`;
     for (let segment = start; segment <= index; segment++) {

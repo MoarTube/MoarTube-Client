@@ -8,12 +8,19 @@ export interface LiveHlsSegment {
 }
 
 /** Standard, atomic HLS files; pipe:N.ts is not a valid FFmpeg pipe descriptor. */
-export function withLiveHlsFiles(args: string[], playlist: string, resolution: string): string[] {
+export function withLiveHlsFiles(
+  args: string[],
+  playlist: string,
+  resolution: string,
+  startNumber = 0
+): string[] {
   if (args.at(-1) !== 'pipe:1' || !/^\d+p$/.test(resolution)) {
     throw new Error('Expected the generated live HLS output and a valid resolution');
   }
   return [
     ...args.slice(0, -1),
+    '-start_number',
+    String(startNumber),
     '-hls_flags',
     'delete_segments+temp_file',
     '-hls_delete_threshold',
@@ -52,9 +59,9 @@ async function readBounded(file: string, limit: number): Promise<Buffer> {
 export async function* readLiveHls(
   playlist: string,
   resolution: string,
-  state: { finished(): boolean; stopping(): boolean; signal: AbortSignal }
+  state: { finished(): boolean; stopping(): boolean; signal: AbortSignal; startNumber?: number }
 ): AsyncGenerator<LiveHlsSegment, void> {
-  let next = 0;
+  let next = state.startNumber ?? 0;
   while (!state.stopping()) {
     const finished = state.finished();
     let bytes: Buffer;

@@ -43,10 +43,17 @@ export class StreamsController extends BaseController {
       isRecordingStreamLocally,
       networkAddress,
       videoId: existingVideoId,
+      resume = false,
     } = body;
 
     if (!isPortValid(rtmpPort)) {
       return await this.sendError(reply, 'rtmpPort is not valid', 400);
+    }
+    if (
+      typeof resume !== 'boolean' ||
+      (resume && (existingVideoId === undefined || existingVideoId === ''))
+    ) {
+      return await this.sendError(reply, 'Resume requires an existing video', 400);
     }
 
     let admitted: string | undefined;
@@ -56,6 +63,15 @@ export class StreamsController extends BaseController {
       if (portStatus === 'closed') {
         const uuid = 'moartube';
         const jwtToken = request.session.jwtToken ?? '';
+        const resumeState = resume
+          ? await this.liveStreamService.prepareStreamResume(
+              jwtToken,
+              existingVideoId as string,
+              resolution,
+              isRecordingStreamRemotely,
+              isRecordingStreamLocally
+            )
+          : undefined;
 
         const response = await this.nodeApiService.streamVideo(jwtToken, {
           title,
@@ -67,6 +83,7 @@ export class StreamsController extends BaseController {
           isRecordingStreamRemotely,
           isRecordingStreamLocally,
           networkAddress,
+          resume,
           ...(existingVideoId !== undefined && existingVideoId !== ''
             ? { videoId: existingVideoId }
             : {}),
@@ -79,9 +96,11 @@ export class StreamsController extends BaseController {
         const newVideoId = response.videoId;
         admitted = newVideoId;
 
-        const setExtResponse = requireNodeSuccess(
-          await this.nodeApiService.setSourceFileExtension(jwtToken, newVideoId, '.ts')
-        );
+        const setExtResponse = resume
+          ? { isError: false }
+          : requireNodeSuccess(
+              await this.nodeApiService.setSourceFileExtension(jwtToken, newVideoId, '.ts')
+            );
 
         if (setExtResponse.isError) {
           return await reply.send(setExtResponse);
@@ -96,7 +115,8 @@ export class StreamsController extends BaseController {
           'm3u8',
           resolution,
           isRecordingStreamRemotely,
-          isRecordingStreamLocally
+          isRecordingStreamLocally,
+          resumeState
         );
 
         return await this.sendSuccess(reply, { rtmpUrl });

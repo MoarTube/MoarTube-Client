@@ -36,10 +36,8 @@ describe('recorded live delivery', () => {
       {} as never
     );
     const internal = service as unknown as {
-      lastVideoImagesUpdateTimestamp: number;
       handleStreamData(options: unknown): Promise<void>;
     };
-    internal.lastVideoImagesUpdateTimestamp = Date.now();
     const context = {
       archive,
       segmentCounter: -1,
