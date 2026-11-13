@@ -197,9 +197,16 @@ export class NodeSocketService extends BaseService {
 
       // this.logger.info(`WebSocket message received: ${msgStr.substring(0, 200)}`);
 
-      const parsedMessage = JSON.parse(msgStr) as { eventName?: string; data?: unknown };
+      const parsedMessage = JSON.parse(msgStr) as {
+        eventName?: string;
+        errorType?: string;
+        data?: unknown;
+      };
 
-      if (parsedMessage.eventName === 'pong') {
+      if (parsedMessage.eventName === 'error' && parsedMessage.errorType === 'register') {
+        this.logger.warn('Node rejected WebSocket registration; sign in again to reconnect');
+        this.disconnect();
+      } else if (parsedMessage.eventName === 'pong') {
         // this.logger.info('Received pong from Node');
         if (this.pingTimeoutTimer) {
           clearTimeout(this.pingTimeoutTimer);
